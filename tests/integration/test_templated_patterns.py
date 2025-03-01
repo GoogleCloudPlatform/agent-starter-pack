@@ -169,8 +169,7 @@ def get_test_combinations() -> list[tuple[str, str]]:
 
 @pytest.mark.parametrize(
     "agent,deployment_target",
-    # get_test_combinations(),
-    [("multimodal_live_api", "cloud_run")],
+    get_test_combinations(),
     # Edit here to manually force a specific combination e.g ("langgraph_base_react", "agent_engine")
 )
 def test_agent_deployment(agent: str, deployment_target: str) -> None:

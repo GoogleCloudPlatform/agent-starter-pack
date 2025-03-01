@@ -113,7 +113,7 @@ If you encounter any issues or have specific suggestions, please first consider 
 
 ### Share Your Experience
 
-For other types of feedback, or if you'd like to share a positive experience or success story using this starter pack, we'd love to hear from you! You can reach out to us at <a href="mailto:e2e-gen-ai-app-starter-pack@google.com">e2e-gen-ai-app-starter-pack@google.com</a>.
+For other types of feedback, or if you'd like to share a positive experience or success story using this starter pack, we'd love to hear from you! You can reach out to us at <a href="mailto:agent-starter-pack@google.com">agent-starter-pack@google.com</a>.
 
 Thank you for your contributions!
 

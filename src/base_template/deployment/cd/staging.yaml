@@ -14,7 +14,7 @@
 
 steps:
 {%- if cookiecutter.data_ingestion %}
-  - name: "python:3.11"
+  - name: "python:3.11-slim"
     id: deploy-data-ingestion-pipeline-prod
     entrypoint: bash
     args:
@@ -96,7 +96,7 @@ steps:
       - |
         echo $(gcloud auth print-identity-token -q) > id_token.txt
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-  - name: "python:3.11" 
+  - name: "python:3.11-slim" 
     id: install-dependencies
     entrypoint: /bin/bash
     args:
@@ -106,7 +106,7 @@ steps:
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
-  - name: "python:3.11"
+  - name: "python:3.11-slim"
     id: deploy-staging
     entrypoint: /bin/bash
     args:
@@ -131,7 +131,7 @@ steps:
 {%- endif %}
 
   # Load Testing
-  - name: "python:3.11"
+  - name: "python:3.11-slim"
     id: load_test
     entrypoint: /bin/bash
     args:

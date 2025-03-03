@@ -14,7 +14,7 @@
 
 steps:
 {%- if cookiecutter.data_ingestion %}
-  - name: "python:3.11"
+  - name: "python:3.11-slim"
     id: deploy-data-ingestion-pipeline-prod
     entrypoint: bash
     args:
@@ -63,7 +63,7 @@ steps:
       - "--set-env-vars"
       - "COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- endif %}"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-  - name: "python:3.11" 
+  - name: "python:3.11-slim" 
     id: install-dependencies
     entrypoint: /bin/bash
     args:
@@ -73,7 +73,7 @@ steps:
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
-  - name: "python:3.11"
+  - name: "python:3.11-slim"
     id: trigger-deployment
     entrypoint: /bin/bash
     args:

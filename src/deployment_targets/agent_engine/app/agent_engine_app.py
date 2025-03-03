@@ -32,19 +32,20 @@ from app.utils.gcs import create_bucket_if_not_exists
 from app.utils.tracing import CloudTraceLoggingSpanExporter
 from app.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
 
-
 logging.basicConfig(
     level=logging.INFO,
 )
 
+
 class AgentEngineApp:
     """Class for managing agent engine functionality."""
 
-    def __init__(self, project_id: str | None = None, env_vars: dict[str, str] | None = None) -> None:
+    def __init__(
+        self, project_id: str | None = None, env_vars: dict[str, str] | None = None
+    ) -> None:
         """Initialize the AgentEngineApp variables"""
         self.project_id = project_id
         self.env_vars = env_vars if env_vars is not None else {}
-
 
     def set_up(self) -> None:
         """The set_up method is used to define application initialization logic"""
@@ -144,8 +145,8 @@ class AgentEngineApp:
 
 
 def deploy_agent_engine_app(
-    project: str | None = None,
-    location: str | None = None,
+    project: str,
+    location: str,
     agent_name: str | None = None,
     requirements_file: str = ".requirements.txt",
     extra_packages: list[str] = ["./app"],
@@ -169,13 +170,12 @@ def deploy_agent_engine_app(
     # Common configuration for both create and update operations
     agent_config = {
         "reasoning_engine": agent,
-        "requirements": requirements,
         "display_name": agent_name,
         "description": "This is a sample custom application in Reasoning Engine that uses LangGraph",
         "extra_packages": extra_packages,
     }
-
     logging.info(f"Agent config: {agent_config}")
+    agent_config["requirements"] = requirements
 
     # Check if an agent with this name already exists
     existing_agents = reasoning_engines.ReasoningEngine.list(
@@ -207,14 +207,36 @@ def deploy_agent_engine_app(
 
 if __name__ == "__main__":
     import argparse
-    
+
     parser = argparse.ArgumentParser(description="Deploy agent engine app to Vertex AI")
-    parser.add_argument("--project", default=None, help="GCP project ID (defaults to application default credentials)")
-    parser.add_argument("--location", default="us-central1", help="GCP region (defaults to us-central1)")
-    parser.add_argument("--agent-name", default="{{cookiecutter.project_name}}", help="Name for the agent engine")
-    parser.add_argument("--requirements-file", default=".requirements.txt", help="Path to requirements.txt file")
-    parser.add_argument("--extra-packages", nargs="+", default=["./app"], help="Additional packages to include")
-    parser.add_argument("--set-env-vars", help="Comma-separated list of environment variables in KEY=VALUE format")
+    parser.add_argument(
+        "--project",
+        default=None,
+        help="GCP project ID (defaults to application default credentials)",
+    )
+    parser.add_argument(
+        "--location", default="us-central1", help="GCP region (defaults to us-central1)"
+    )
+    parser.add_argument(
+        "--agent-name",
+        default="{{cookiecutter.project_name}}",
+        help="Name for the agent engine",
+    )
+    parser.add_argument(
+        "--requirements-file",
+        default=".requirements.txt",
+        help="Path to requirements.txt file",
+    )
+    parser.add_argument(
+        "--extra-packages",
+        nargs="+",
+        default=["./app"],
+        help="Additional packages to include",
+    )
+    parser.add_argument(
+        "--set-env-vars",
+        help="Comma-separated list of environment variables in KEY=VALUE format",
+    )
     args = parser.parse_args()
 
     # Parse environment variables if provided
@@ -228,11 +250,19 @@ if __name__ == "__main__":
     if not args.project:
         _, args.project = google.auth.default()
 
+    print("""
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║   🤖 DEPLOYING AGENT TO VERTEX AI AGENT ENGINE 🤖         ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+    """)
+
     deploy_agent_engine_app(
         project=args.project,
         location=args.location,
         agent_name=args.agent_name,
         requirements_file=args.requirements_file,
         extra_packages=args.extra_packages,
-        env_vars=env_vars
+        env_vars=env_vars,
     )

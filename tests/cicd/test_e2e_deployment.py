@@ -63,20 +63,20 @@ class CICDTestConfig:
 # Define test matrix with different agent and deployment target combinations
 CICD_TEST_MATRIX: list[CICDTestConfig] = [
     # CICDTestConfig(
-    #     agent="crewai_coding_crew",
-    #     deployment_target="cloud_run",
-    # ),
-    # CICDTestConfig(
-    #     agent="crewai_coding_crew",
-    #     deployment_target="agent_engine",
-    # ),
-    # CICDTestConfig(
     #     agent="langgraph_base_react",
     #     deployment_target="agent_engine",
     # ),
     # CICDTestConfig(
     #     agent="langgraph_base_react",
     #     deployment_target="cloud_run",
+    # ),
+    # CICDTestConfig(
+    #     agent="crewai_coding_crew",
+    #     deployment_target="cloud_run",
+    # ),
+    # CICDTestConfig(
+    #     agent="crewai_coding_crew",
+    #     deployment_target="agent_engine",
     # ),
     # CICDTestConfig(
     #     agent="agentic_rag_vertexai_search",

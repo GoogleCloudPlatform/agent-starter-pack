@@ -2,7 +2,7 @@
 
 {{cookiecutter.agent_description}}
 
-Template generated with `googleCloudPlatform/agent-starter-pack`
+Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack)
 
 ## Project Structure
 
@@ -113,7 +113,9 @@ For full command options and usage, refer to the [Makefile](Makefile).
 3.  **Interact with the Agent**
     Once both the backend and frontend are running, click the play button in the frontend UI to establish a connection with the backend. You can now interact with the Multimodal Live Agent! You can try asking questions such as "Using the tool you have, define Governance in the context MLOPs" to allow the agent to use the documentation it was provided to.
 
-**Cloud Shell usage**
+<details>
+<summary><b>Cloud Shell usage</b></summary>
+
 To use the `multimodal_live_api` agent in Cloud Shell, follow these steps:
 
 1.  **Start the Frontend:**
@@ -153,6 +155,7 @@ To use the `multimodal_live_api` agent in Cloud Shell, follow these steps:
     *   Click the "Play button" to connect. Start interacting with it!
 
 *   When using Cloud Shell there is a known limitation when using the feedback feature in the Frontend. Feedback submission might fail due to different origins between the frontend and backend in the Cloud Shell environment.
+</details>
 {%- else %}
 ## Usage
 

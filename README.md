@@ -27,7 +27,7 @@ pip install agent-starter-pack
 agent-starter-pack create my-awesome-agent
 ```
 
-**That's it!** You now have a fully functional agent project, complete with a backend, frontend, and deployment infrastructure, ready to explore and customize.
+**That's it!** You now have a fully functional agent project—complete with backend, frontend, and deployment infrastructure—ready for you to explore and customize.
 For more installation options, see the [Installation Guide](docs/installation.md).
 
 ---

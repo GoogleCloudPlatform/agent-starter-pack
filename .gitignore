@@ -194,3 +194,5 @@ target
 set_projects.sh
 delete_genai_repos.sh
 cleanup_e2e_projects.sh
+.cloudbuild/terraform/backend.tf
+.cloudbuild/terraform/vars/env.tfvars

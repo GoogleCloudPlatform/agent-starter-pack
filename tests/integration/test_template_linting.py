@@ -19,6 +19,8 @@ from datetime import datetime
 
 from rich.console import Console
 
+from src.cli.utils.template import get_available_agents, get_deployment_targets
+
 console = Console()
 TARGET_DIR = "target"
 
@@ -140,19 +142,48 @@ def test_template_linting(agent: str, deployment_target: str) -> None:
         raise
 
 
+def get_test_combinations() -> list[tuple[str, str]]:
+    """Generate all valid agent and deployment target combinations for testing."""
+    combinations = []
+    agents = get_available_agents()
+
+    for agent_info in agents.values():
+        agent_name = agent_info["name"]
+        # Get available deployment targets for this agent
+        targets = get_deployment_targets(agent_name)
+
+        # Add each valid combination
+        for target in targets:
+            combinations.append((agent_name, target))
+
+    return combinations
+
+
+def get_test_combinations_to_run() -> list[tuple[str, str]]:
+    """Get the test combinations to run, either from environment or all available."""
+    if os.environ.get("_TEST_AGENT_COMBINATION"):
+        env_combo_parts = os.environ.get("_TEST_AGENT_COMBINATION", "").split(",")
+        if len(env_combo_parts) == 2:
+            env_combo = (env_combo_parts[0], env_combo_parts[1])
+            console.print(
+                f"[bold blue]Running test for combination from environment:[/] {env_combo}"
+            )
+            return [env_combo]
+        else:
+            console.print(
+                f"[bold red]Invalid environment combination format:[/] {env_combo_parts}"
+            )
+
+    combos = get_test_combinations()
+    console.print(f"[bold blue]Running tests for all combinations:[/] {combos}")
+    return combos
+
+
 def test_all_templates() -> None:
     """Test linting for all template combinations"""
-    template_configs = [
-        ("langgraph_base_react", "agent_engine"),
-        ("langgraph_base_react", "cloud_run"),
-        ("crewai_coding_crew", "agent_engine"),
-        ("crewai_coding_crew", "cloud_run"),
-        ("agentic_rag_vertexai_search", "agent_engine"),
-        ("agentic_rag_vertexai_search", "cloud_run"),
-        ("multimodal_live_api", "cloud_run"),
-    ]
+    combinations = get_test_combinations_to_run()
 
-    for agent, deployment_target in template_configs:
+    for agent, deployment_target in combinations:
         console.print(f"\n[bold cyan]Testing {agent} with {deployment_target}[/]")
         test_template_linting(agent, deployment_target)
 

@@ -167,11 +167,32 @@ def get_test_combinations() -> list[tuple[str, str]]:
     return combinations
 
 
+def get_test_combinations_to_run() -> list[tuple[str, str]]:
+    """Get the test combinations to run, either from environment or all available."""
+    if os.environ.get("_TEST_AGENT_COMBINATION"):
+        env_combo_parts = os.environ.get("_TEST_AGENT_COMBINATION", "").split(",")
+        if len(env_combo_parts) == 2:
+            env_combo = (env_combo_parts[0], env_combo_parts[1])
+            console.print(
+                f"[bold blue]Running test for combination from environment:[/] {env_combo}"
+            )
+            return [env_combo]
+        else:
+            console.print(
+                f"[bold red]Invalid environment combination format:[/] {env_combo_parts}"
+            )
+
+    combos = get_test_combinations()
+    console.print(f"[bold blue]Running tests for all combinations:[/] {combos}")
+    return combos
+
+
 @pytest.mark.parametrize(
     "agent,deployment_target",
-    get_test_combinations(),
+    get_test_combinations_to_run(),
     # Edit here to manually force a specific combination e.g ("langgraph_base_react", "agent_engine")
 )
 def test_agent_deployment(agent: str, deployment_target: str) -> None:
     """Test agent templates with different deployment targets"""
+    console.print(f"[bold cyan]Testing combination:[/] {agent}, {deployment_target}")
     _run_agent_test(agent, deployment_target)

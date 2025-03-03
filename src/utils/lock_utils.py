@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Utilities for managing Poetry lock files and dependencies."""
+"""Utilities for managing uv lock files and dependencies."""
 
 import pathlib
 from pathlib import Path

@@ -33,7 +33,7 @@ resource "google_cloudbuild_trigger" "pr_checks" {
     "data_ingestion/**",
     "tests/**",
     "deployment/**",
-    "poetry.lock",
+    "uv.lock",
   {%- if cookiecutter.data_ingestion %}
     "data_ingestion/**",
   {%- endif %}
@@ -62,7 +62,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
     "data_ingestion/**",
     "tests/**",
     "deployment/**",
-    "poetry.lock"
+    "uv.lock"
   ]
   substitutions = {
     _STAGING_PROJECT_ID            = var.staging_project_id

@@ -15,7 +15,7 @@
 steps:
 {%- if cookiecutter.data_ingestion %}
   - name: "python:3.11-slim"
-    id: deploy-data-ingestion-pipeline-prod
+    id: deploy-data-ingestion-pipeline-staging
     entrypoint: bash
     args:
       - -c

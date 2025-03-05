@@ -1,6 +1,6 @@
 # 🚀 Agent Starter Pack
 
-[1-Minute Video Overview](https://youtu.be/jHt-ZVD660g) | [Documentation](./docs/README.md)
+![Version](https://img.shields.io/pypi/v/agent-starter-pack?color=blue) [![1-Minute Video Overview](https://img.shields.io/badge/1--Minute%20Overview-gray)](https://youtu.be/jHt-ZVD660g) [![Docs](https://img.shields.io/badge/Documentation-gray)](./docs/README.md)
 
 
 The `agent-starter-pack` is a collection of production-ready Generative AI Agent templates built for Google Cloud. <br>

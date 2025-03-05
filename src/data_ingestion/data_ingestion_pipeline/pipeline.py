@@ -46,7 +46,7 @@ def pipeline(
         deduped_table=deduped_table,
         location=location,
         embedding_column="embedding",
-    )
+    ).set_retry(num_retries=2)
 
     # Ingest the processed data into Vertex AI Search datastore
     ingest_data(
@@ -55,4 +55,4 @@ def pipeline(
         input_files=processed_data.output,
         data_store_id=data_store_id,
         embedding_column="embedding",
-    )
+    ).set_retry(num_retries=2)

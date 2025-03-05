@@ -79,7 +79,7 @@ class Client:
 
         Args:
             agent_callable_path: Path to local agent class
-            remote_agent_engine_id: ID of remote reasoning engine
+            remote_agent_engine_id: ID of remote Agent engine
             url: URL for remote service
             authenticate_request: Whether to authenticate requests to remote URL
         """

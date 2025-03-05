@@ -80,16 +80,9 @@ For detailed information on authentication with Vertex AI, visit the [official d
     agent-starter-pack create my-project-name --debug
     ```
 
-### Template Rendering Issues
+### Issues with Agent Engine
 
-**Problem**: Project created with placeholders (e.g., `{{ project_id }}`).
-
-**Solution**:
-
-1.  **Delete Project:** Remove the incorrect project directory.
-2.  **Debug Mode:** `agent-starter-pack create my-project --debug`.
-3.  **Check Configuration:** Verify GCP project and authentication setup.
-4. **File an Issue:** If it persists, file a bug report with `--debug` output.
+Consider leveraging the [public product documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/troubleshooting/set-up)
 
 ## Getting More Help
 

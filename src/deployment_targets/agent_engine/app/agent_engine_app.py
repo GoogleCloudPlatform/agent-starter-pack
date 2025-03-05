@@ -171,7 +171,7 @@ def deploy_agent_engine_app(
     agent_config = {
         "reasoning_engine": agent,
         "display_name": agent_name,
-        "description": "This is a sample custom application in Reasoning Engine that uses LangGraph",
+        "description": "This is a sample custom application in Agent Engine that uses LangGraph",
         "extra_packages": extra_packages,
     }
     logging.info(f"Agent config: {agent_config}")

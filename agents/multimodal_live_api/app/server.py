@@ -111,7 +111,7 @@ class GeminiSession:
                 ]
             )
             logging.debug(f"Tool response: {tool_response}")
-            await session.send(tool_response)
+            await session.send(input=tool_response)
 
     async def receive_from_gemini(self) -> None:
         """Listen for and process messages from Gemini.

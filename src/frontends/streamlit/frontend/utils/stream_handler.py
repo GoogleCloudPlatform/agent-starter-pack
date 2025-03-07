@@ -124,9 +124,20 @@ class Client:
         headers = {
             "Content-Type": "application/json",
         }
-        if self.authenticate_request:
-            headers["Authorization"] = f"Bearer {self.id_token}"
-        requests.post(url, data=json.dumps(feedback_dict), headers=headers, timeout=10)
+        if self.url:
+            url = urljoin(self.url, "feedback")
+            headers = {
+                "Content-Type": "application/json",
+            }
+            if self.authenticate_request:
+                headers["Authorization"] = f"Bearer {self.id_token}"
+            requests.post(
+                url, data=json.dumps(feedback_dict), headers=headers, timeout=10
+            )
+        elif self.agent is not None:
+            self.agent.register_feedback(feedback=feedback_dict)
+        else:
+            raise ValueError("No agent or URL configured for feedback logging")
 
     def stream_messages(
         self, data: dict[str, Any]

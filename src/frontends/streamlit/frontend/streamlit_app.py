@@ -239,8 +239,10 @@ def display_feedback(side_bar: SideBar) -> None:
         )
         if feedback is not None:
             client = Client(
-                agent_callable_path=side_bar.agent_callable_path,
                 remote_agent_engine_id=side_bar.remote_agent_engine_id,
+                agent_callable_path=side_bar.agent_callable_path,
+                url=side_bar.url_input_field,
+                authenticate_request=side_bar.should_authenticate_request,
             )
             client.log_feedback(
                 feedback_dict=feedback,

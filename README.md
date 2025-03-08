@@ -11,6 +11,13 @@ It accelerates development by providing a holistic, production-ready solution, a
 | [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live Multimodal API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring](./docs/monitoring.md), [observability](./docs/observability.md), and [CI/CD](./docs/deployment.md) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. |
 
 ---
+
+## Before Getting Started
+
+Install:
+- python: https://www.python.org/downloads/
+- nodeJS: https://nodejs.org/en
+- gcloud: https://cloud.google.com/sdk/docs/install
  
 ## ⚡ Get Started in 1 Minute
 
@@ -101,6 +108,11 @@ See the [documentation](docs/) for more details:
 
 - **March 6, 2025**: A [120 Minute livestream video demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s) of the new `agent-starter-pack` were we build 3 Agents under 30 minutes!
 - **Oct 29, 2024**: A [20-Minute Video Walkthrough](https://youtu.be/kwRG7cnqSu0) is available, showcasing the previous `agent-starter-pack`.
+
+## Troubleshooting:
+
+Check Quotas: https://cloud.google.com/docs/quotas/view-manage
+- If you are at max on your Vertex AI API quotas, you can either submit an increase of quota or delete some of the existing prompts in "prompt management"
 
 ## Contributing
 

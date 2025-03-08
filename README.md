@@ -97,7 +97,10 @@ See the [documentation](docs/) for more details:
 - [CLI Reference](docs/cli/README.md)
 - [Troubleshooting](docs/troubleshooting.md)
 
-**Video Walkthrough:** A [20-Minute Video Walkthrough](https://youtu.be/kwRG7cnqSu0) is available, showcasing the previous `e2e-gen-ai-app-starter-pack`. A new walkthrough for the `agent-starter-pack` will be released soon!
+### Video Walkthrough:
+
+- **March 6, 2025**: A [120 Minute livestream video demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s) of the new `agent-starter-pack` were we build 3 Agents under 30 minutes!
+- **Oct 29, 2024**: A [20-Minute Video Walkthrough](https://youtu.be/kwRG7cnqSu0) is available, showcasing the previous `agent-starter-pack`.
 
 ## Contributing
 

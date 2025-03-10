@@ -35,3 +35,5 @@ steps:
 logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  env:
+    - "INTEGRATION_TEST=TRUE"

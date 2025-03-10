@@ -36,3 +36,4 @@ options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
   env:
     - "_TEST_AGENT_COMBINATION=${_TEST_AGENT_COMBINATION}"
+    - "INTEGRATION_TEST=TRUE"

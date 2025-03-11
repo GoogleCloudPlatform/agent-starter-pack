@@ -113,6 +113,15 @@ For full command options and usage, refer to the [Makefile](Makefile).
 3.  **Interact with the Agent**
     Once both the backend and frontend are running, click the play button in the frontend UI to establish a connection with the backend. You can now interact with the Multimodal Live Agent! You can try asking questions such as "Using the tool you have, define Governance in the context MLOPs" to allow the agent to use the documentation it was provided to.
 
+**Remote access**:
+Use [Cloud Run proxy](https://cloud.google.com/sdk/gcloud/reference/run/services/proxy) for local access. The backend will be accessible at `http://localhost:8000`:
+
+   ```bash
+   gcloud run services proxy genai-app-sample --port 8000 --project $PROJECT_ID --region $REGION
+   ```
+
+   You can then use the same frontend setup described above to interact with your Cloud Run deployment.
+
 <details>
 <summary><b>Cloud Shell usage</b></summary>
 

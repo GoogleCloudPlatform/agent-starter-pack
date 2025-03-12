@@ -214,7 +214,7 @@ def create(
         project_path = destination_dir / project_name
         # Determine the correct path to display to the user
         display_path = str(project_path) if output_dir else project_name
-        
+
         if include_data_ingestion:
             project_id = creds_info.get("project", "")
             console.print(
@@ -486,7 +486,16 @@ def replace_region_in_files(
         )
 
     # Define allowed file extensions
-    allowed_extensions = {".md", ".py", ".tfvars", ".yaml", ".tf", ".yml", "Makefile", "makefile"}
+    allowed_extensions = {
+        ".md",
+        ".py",
+        ".tfvars",
+        ".yaml",
+        ".tf",
+        ".yml",
+        "Makefile",
+        "makefile",
+    }
 
     # Skip directories that shouldn't be modified
     skip_dirs = {".git", "__pycache__", "venv", ".venv", "node_modules"}
@@ -504,7 +513,10 @@ def replace_region_in_files(
         if (
             file_path.is_dir()
             or any(skip_dir in file_path.parts for skip_dir in skip_dirs)
-            or (file_path.suffix not in allowed_extensions and file_path.name not in allowed_extensions)
+            or (
+                file_path.suffix not in allowed_extensions
+                and file_path.name not in allowed_extensions
+            )
         ):
             continue
 

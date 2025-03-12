@@ -163,6 +163,7 @@ def create(
         # GCP Setup
         logging.debug("Setting up GCP...")
 
+        creds_info = {}
         # Check for uv installation if not skipping checks
         if not skip_checks:
             # Set up GCP environment
@@ -187,7 +188,6 @@ def create(
                 console.print(
                     "> Continuing with template processing...", style="yellow"
                 )
-                creds_info = {}
 
         # Process template
         template_path = get_template_path(final_agent, debug=debug)

@@ -32,6 +32,8 @@ from vertexai.preview import reasoning_engines
 
 from frontend.utils.multimodal_utils import format_content
 
+st.cache_resource.clear()
+
 
 @st.cache_resource
 def get_remote_agent(remote_agent_engine_id: str) -> Any:
@@ -65,6 +67,16 @@ def get_remote_url_config(url: str, authenticate_request: bool) -> dict[str, Any
     }
 
 
+@st.cache_resource()
+def get_local_agent(agent_callable_path: str) -> Any:
+    """Get cached local agent instance."""
+    module_path, class_name = agent_callable_path.rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    agent = getattr(module, class_name)()
+    agent.set_up()
+    return agent
+
+
 class Client:
     """A client for streaming events from a server."""
 
@@ -94,14 +106,10 @@ class Client:
             self.agent = get_remote_agent(remote_agent_engine_id)
             self.url = None
         else:
-            # Force reload all submodules to get latest changes
             self.url = None
             if agent_callable_path is None:
                 raise ValueError("agent_callable_path cannot be None")
-            module_path, class_name = agent_callable_path.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            self.agent = getattr(module, class_name)()
-            self.agent.set_up()
+            self.agent = get_local_agent(agent_callable_path)
 
     def log_feedback(self, feedback_dict: dict[str, Any], run_id: str) -> None:
         """Log user feedback for a specific run."""

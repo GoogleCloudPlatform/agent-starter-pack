@@ -22,9 +22,9 @@ dependencies = [
 {%- endif %}
 ]
 {% if cookiecutter.deployment_target == 'cloud_run' %}
-requires-python = ">=3.10,<=3.13"
+requires-python = ">=3.10,<3.14"
 {% elif cookiecutter.deployment_target == 'agent_engine' %}
-requires-python = ">=3.10,<=3.11"
+requires-python = ">=3.10,<3.13"
 {%- endif %}
 
 [dependency-groups]

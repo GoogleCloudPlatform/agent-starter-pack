@@ -163,11 +163,12 @@ def create(
         # GCP Setup
         logging.debug("Setting up GCP...")
 
+        creds_info = {}
         # Check for uv installation if not skipping checks
         if not skip_checks:
             # Set up GCP environment
             try:
-                setup_gcp_environment(
+                creds_info = setup_gcp_environment(
                     auto_approve=auto_approve,
                     skip_checks=skip_checks,
                     region=region,
@@ -211,17 +212,29 @@ def create(
         )
 
         project_path = destination_dir / project_name
+        # Determine the correct path to display to the user
+        display_path = str(project_path) if output_dir else project_name
+
+        if include_data_ingestion:
+            project_id = creds_info.get("project", "")
+            console.print(
+                f"\n[bold white]===== DATA INGESTION SETUP =====[/bold white]\n"
+                f"This agent uses a datastore for grounded responses.\n"
+                f"The agent will work without data, but for optimal results:\n"
+                f"1. Set up dev environment:\n"
+                f"   [white italic]`export PROJECT_ID={project_id} && cd {display_path} && make setup-dev-env`[/white italic]\n\n"
+                f"   See deployment/README.md for more info\n"
+                f"2. Run the data ingestion pipeline:\n"
+                f"   [white italic]`export PROJECT_ID={project_id} && cd {display_path} && make data-ingestion`[/white italic]\n\n"
+                f"   See data_ingestion/README.md for more info\n"
+                f"[bold white]=================================[/bold white]\n"
+            )
         console.print("\n> 👍 Done. Execute the following command to get started:")
-        if output_dir:
-            # If output_dir was specified, use the absolute path
-            console.print(
-                f"[bold bright_green]cd {project_path} && make install && make playground[/]"
-            )
-        else:
-            # If no output_dir specified, just use project name
-            console.print(
-                f"[bold bright_green]cd {project_name} && make install && make playground[/]"
-            )
+
+        # Show the command to get started
+        console.print(
+            f"[bold bright_green]cd {display_path} && make install && make playground[/]"
+        )
 
         # Replace region in all files if a different region was specified
         if region != "us-central1":
@@ -473,7 +486,16 @@ def replace_region_in_files(
         )
 
     # Define allowed file extensions
-    allowed_extensions = {".md", ".py", ".tfvars", ".yaml", ".tf", ".yml"}
+    allowed_extensions = {
+        ".md",
+        ".py",
+        ".tfvars",
+        ".yaml",
+        ".tf",
+        ".yml",
+        "Makefile",
+        "makefile",
+    }
 
     # Skip directories that shouldn't be modified
     skip_dirs = {".git", "__pycache__", "venv", ".venv", "node_modules"}
@@ -491,7 +513,10 @@ def replace_region_in_files(
         if (
             file_path.is_dir()
             or any(skip_dir in file_path.parts for skip_dir in skip_dirs)
-            or file_path.suffix not in allowed_extensions
+            or (
+                file_path.suffix not in allowed_extensions
+                and file_path.name not in allowed_extensions
+            )
         ):
             continue
 
@@ -520,6 +545,13 @@ def replace_region_in_files(
                     logging.debug(f"Replacing data_store_region in {file_path}")
                 content = content.replace(
                     'data_store_region="us"', f'data_store_region="{data_store_region}"'
+                )
+                modified = True
+            elif 'data-store-region="us"' in content:
+                if debug:
+                    logging.debug(f"Replacing data-store-region in {file_path}")
+                content = content.replace(
+                    'data-store-region="us"', f'data-store-region="{data_store_region}"'
                 )
                 modified = True
             elif "_DATA_STORE_REGION: us" in content:

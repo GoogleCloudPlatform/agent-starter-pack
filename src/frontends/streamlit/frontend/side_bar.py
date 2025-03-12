@@ -60,7 +60,7 @@ class SideBar:
                 index=["Local Agent", "Remote Engine ID", "Remote URL"].index(
                     default_agent_type
                 ),
-                help="'Local Agent' uses a local implementation, 'Remote Agent Engine ID' connects to a deployed Vertex AI agent, and 'Remote URL' connects to a custom endpoint."
+                help="'Local Agent' uses a local implementation, 'Remote Agent Engine ID' connects to a deployed Vertex AI agent, and 'Remote URL' connects to a custom endpoint.",
             )
 
             if use_agent_path == "Local Agent":

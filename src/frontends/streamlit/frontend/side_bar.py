@@ -57,7 +57,7 @@ class SideBar:
             use_agent_path = self.st.selectbox(
                 "Select Agent Type",
                 ["Local Agent", "Remote Agent Engine ID", "Remote URL"],
-                index=["Local Agent", "Remote Engine ID", "Remote URL"].index(
+                index=["Local Agent", "Remote Agent Engine ID", "Remote URL"].index(
                     default_agent_type
                 ),
                 help="'Local Agent' uses a local implementation, 'Remote Agent Engine ID' connects to a deployed Vertex AI agent, and 'Remote URL' connects to a custom endpoint.",
@@ -73,7 +73,7 @@ class SideBar:
                 self.remote_agent_engine_id = None
                 self.url_input_field = None
                 self.should_authenticate_request = False
-            elif use_agent_path == "Remote Engine ID":
+            elif use_agent_path == "Remote Agent Engine ID":
                 self.remote_agent_engine_id = self.st.text_input(
                     label="Remote Agent Engine ID",
                     value=os.environ.get(

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import Any
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from frontend.utils.stream_handler import EventProcessor, StreamHandler
 
@@ -150,7 +150,8 @@ def test_event_processor_direct_response() -> None:
     stream_handler_mock.new_token.assert_any_call(" World")
 
 
-def test_event_processor_session_state_updates() -> None:
+@patch("uuid.uuid4", return_value="test_run")
+def test_event_processor_session_state_updates(mock_uuid: MagicMock) -> None:
     """Test EventProcessor updates to session state"""
     st_mock = MockStreamlit()
     client_mock = MagicMock()
@@ -165,22 +166,24 @@ def test_event_processor_session_state_updates() -> None:
     st_mock.session_state.user_chats["test_session"]["messages"] = []
 
     processor = EventProcessor(st_mock, client_mock, stream_handler_mock)
-    run_id = "test_run"
-    processor.process_events(run_id=run_id)
+    # Set run_id before processing events
+    st_mock.session_state["run_id"] = "test_run"
+    processor.process_events()
 
     # Verify stream events call
     client_mock.stream_messages.assert_called_once()
     call_args = client_mock.stream_messages.call_args[1]["data"]
 
-    # Verify messages passed correctly
-    assert "messages" in call_args
-    assert call_args["messages"] == []
+    # Verify input and config structure
+    assert "input" in call_args
+    assert "messages" in call_args["input"]
+    assert call_args["input"]["messages"] == []
 
     # Verify config passed correctly
     assert "config" in call_args
     config = call_args["config"]
     assert "run_id" in config
-    assert config["run_id"] == processor.current_run_id
+    assert config["run_id"] == "test_run"
     assert config["metadata"]["user_id"] == "test_user"
     assert config["metadata"]["session_id"] == "test_session"
 
@@ -189,10 +192,12 @@ def test_event_processor_session_state_updates() -> None:
     assert len(messages) == 1
     assert messages[0]["content"] == "test response"
     assert "id" in messages[0]
-    assert st_mock.session_state["run_id"] == run_id
+    assert messages[0]["id"] == "test_run"
+    assert st_mock.session_state["run_id"] == "test_run"
 
 
-def test_event_processor_session_state_updates_with_tools() -> None:
+@patch("uuid.uuid4", return_value="test_run")
+def test_event_processor_session_state_updates_with_tools(mock_uuid: MagicMock) -> None:
     """Test EventProcessor updates to session state when using tools"""
     st_mock = MockStreamlit()
     client_mock = MagicMock()
@@ -229,8 +234,9 @@ def test_event_processor_session_state_updates_with_tools() -> None:
     st_mock.session_state.user_chats["test_session"]["messages"] = []
 
     processor = EventProcessor(st_mock, client_mock, stream_handler_mock)
-    run_id = "test_run"
-    processor.process_events(run_id=run_id)
+    # Set run_id before processing events
+    st_mock.session_state["run_id"] = "test_run"
+    processor.process_events()
 
     # Verify session state updates
     messages = st_mock.session_state.user_chats["test_session"]["messages"]

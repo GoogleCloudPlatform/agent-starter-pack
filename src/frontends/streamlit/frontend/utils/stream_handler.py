@@ -159,7 +159,7 @@ class Client:
             if self.authenticate_request:
                 headers["Authorization"] = f"Bearer {self.id_token}"
             with requests.post(
-                self.url, json={"input": data}, headers=headers, stream=True, timeout=10
+                self.url, json=data, headers=headers, stream=True, timeout=10
             ) as response:
                 for line in response.iter_lines():
                     if line:
@@ -169,7 +169,7 @@ class Client:
                         except json.JSONDecodeError:
                             print(f"Failed to parse event: {line.decode('utf-8')}")
         elif self.agent is not None:
-            yield from self.agent.stream_query(input=data)
+            yield from self.agent.stream_query(**data)
 
 
 class StreamHandler:
@@ -207,17 +207,17 @@ class EventProcessor:
         self.current_run_id: str | None = None
         self.additional_kwargs: dict[str, Any] = {}
 
-    def process_events(self, run_id: str | None = None) -> None:
+    def process_events(self) -> None:
         """Process events from the stream, handling each event type appropriately."""
         messages = self.st.session_state.user_chats[
             self.st.session_state["session_id"]
         ]["messages"]
-        self.current_run_id = run_id or str(uuid.uuid4())
+        self.current_run_id = str(uuid.uuid4())
         # Set run_id in session state at start of processing
         self.st.session_state["run_id"] = self.current_run_id
         stream = self.client.stream_messages(
             data={
-                "messages": messages,
+                "input": {"messages": messages},
                 "config": {
                     "run_id": self.current_run_id,
                     "metadata": {

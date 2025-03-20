@@ -134,7 +134,7 @@ workflow.add_node(
     ToolNode(
         tools=tools,
         # With False, tool errors won't be caught by LangGraph
-        handle_tool_errors=False,
+        handle_tool_errors=True,
     ),
 )
 workflow.add_edge("agent", "tools")

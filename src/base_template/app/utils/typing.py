@@ -62,6 +62,7 @@ class Feedback(BaseModel):
     text: str | None = ""
     run_id: str
     log_type: Literal["feedback"] = "feedback"
+    service_name: Literal["{{cookiecutter.project_name}}"] = "{{cookiecutter.project_name}}"
 
 
 def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:

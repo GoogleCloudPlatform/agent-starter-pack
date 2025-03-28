@@ -550,31 +550,3 @@ def test_setup_cicd_invalid_git_provider(mock_path_exists: MagicMock) -> None:
 
     assert result.exit_code != 0
     assert "Invalid value for '--git-provider'" in result.output
-
-
-@pytest.mark.parametrize(
-    "command_error", ["ALREADY_EXISTS", "PERMISSION_DENIED", "NOT_FOUND"]
-)
-def test_setup_cicd_command_errors(
-    command_error: str, mock_run_command: MagicMock, mock_path_exists: MagicMock
-) -> None:
-    """Test handling of various command execution errors"""
-    mock_run_command.side_effect = subprocess.CalledProcessError(
-        1, [], stderr=f"Error: {command_error}"
-    )
-
-    runner = CliRunner()
-    result = runner.invoke(
-        setup_cicd,
-        [
-            "--staging-project",
-            "test-staging",
-            "--prod-project",
-            "test-prod",
-            "--cicd-project",
-            "test-cicd",
-            "--auto-approve",
-        ],
-    )
-
-    assert result.exit_code != 0

@@ -12,6 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+variable "project_name" {
+  type        = string
+  description = "Project name used as a base for resource naming"
+  default     = "{{ cookiecutter.project_name | replace('_', '-') }}"
+}
+
 variable "prod_project_id" {
   type        = string
   description = "**Production** Google Cloud Project ID for resource deployment."
@@ -43,22 +49,10 @@ variable "repository_name" {
   type        = string
 }
 
-variable "telemetry_bigquery_dataset_id" {
-  type        = string
-  description = "BigQuery dataset ID for telemetry data export."
-  default     = "telemetry_genai_app_sample_sink"
-}
-
-variable "feedback_bigquery_dataset_id" {
-  type        = string
-  description = "BigQuery dataset ID for feedback data export."
-  default     = "feedback_genai_app_sample_sink"
-}
-
 variable "telemetry_logs_filter" {
   type        = string
   description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."
-  default     = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"Sample Chatbot Application\""
+  default     = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"{{cookiecutter.project_name}}\""
 }
 
 variable "feedback_logs_filter" {
@@ -67,48 +61,13 @@ variable "feedback_logs_filter" {
   default     = "jsonPayload.log_type=\"feedback\""
 }
 
-variable "telemetry_sink_name" {
-  type        = string
-  description = "Name of the telemetry data Log Sink."
-  default     = "telemetry_logs_genai_app_sample"
-}
-
-variable "feedback_sink_name" {
-  type        = string
-  description = "Name of the feedback data Log Sink."
-  default     = "feedback_logs_genai_app_sample"
-}
-
-variable "cicd_runner_sa_name" {
-  description = "Service account name to be used for the CICD processes"
-  type        = string
-  default     = "cicd-runner"
-}
-
-variable "suffix_bucket_name_load_test_results" {
-  description = "Suffix Name of the bucket that will be used to store the results of the load test. Prefix will be project id."
-  type        = string
-  default     = "cicd-load-test-results"
-}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-variable "cloud_run_app_sa_name" {
-  description = "Service account name to be used for the Cloud Run service"
-  type        = string
-  default     = "{{cookiecutter.project_name}}-cr"
-}
-
-variable "artifact_registry_repo_name" {
-  description = "Name of the Artifact registry repository to be used to push containers"
-  type        = string
-  default     = "genai-containers"
-}
-
+{% if cookiecutter.deployment_target == 'cloud_run' %}
 variable "cloud_run_app_roles" {
   description = "List of roles to assign to the Cloud Run app service account"
-{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+{% elif cookiecutter.deployment_target == 'agent_engine' %}
 variable "agentengine_sa_roles" {
   description = "List of roles to assign to the Agent Engine service account"
-{%- endif %}
+{% endif %}
   type        = list(string)
   default = [
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -152,23 +111,12 @@ variable "cicd_sa_deployment_required_roles" {
   ]
 }
 
-{%- if cookiecutter.data_ingestion %}
-variable "vertexai_pipeline_sa_name" {
-  description = "Service account name to be used for the Vertex AI service"
-  type        = string
-  default     = "data-ingestion-vertexai-sa"
-}
+{% if cookiecutter.data_ingestion %}
 
 variable "pipeline_cron_schedule" {
   type        = string
   description = "Cron expression defining the schedule for automated data ingestion."
   default     = "0 0 * * 0" # Run at 00:00 UTC every Sunday
-}
-
-variable "data_store_region" {
-  type        = string
-  description = "Google Cloud region for resource deployment."
-  default     = "us"
 }
 
 variable "pipelines_roles" {
@@ -187,16 +135,47 @@ variable "pipelines_roles" {
     "roles/resourcemanager.projectIamAdmin"
   ]
 }
-
-variable "datastore_name" {
-  description = "The name of the datastore"
-  type = string
-  default = "sample-datastore"
+{% if cookiecutter.datastore_type == "vertex_ai_search" %}
+variable "data_store_region" {
+  type        = string
+  description = "Google Cloud region for resource deployment."
+  default     = "us"
+}
+{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+variable "vector_search_embedding_size" {
+  type = number
+  description = "The number of dimensions for the embeddings."
+  default = 768
 }
 
-variable "search_engine_name" {
-  description = "The name of the search engine"
-  type = string
-  default = "sample-search-engine"
+variable "vector_search_approximate_neighbors_count" {
+  type = number
+  description = "The approximate number of neighbors to return."
+  default = 150
 }
-{%- endif %}
+
+variable "vector_search_min_replica_count" {
+  type = number
+  description = "The min replica count for vector search instance"
+  default = 1
+}
+
+variable "vector_search_max_replica_count" {
+  type = number
+  description = "The max replica count for vector search instance"
+  default = 1
+}
+
+variable "vector_search_shard_size" {
+  description = "The shard size of the vector search instance"
+  type = string
+  default = "SHARD_SIZE_SMALL"
+}
+
+variable "vector_search_machine_type" {
+  description = "The machine type for the vector search instance"
+  type = string
+  default = "e2-standard-2"
+}
+{% endif %}
+{% endif %}

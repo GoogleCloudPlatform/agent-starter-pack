@@ -25,8 +25,14 @@ steps:
     env:
       - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT}"
       - "REGION=${_REGION}"
+      {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
       - "DATA_STORE_REGION=${_DATA_STORE_REGION}"
       - "DATA_STORE_ID=${_DATA_STORE_ID}"
+      {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+      - "VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX}"
+      - "VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT}"
+      - "VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET}"
+      {%- endif %}
       - "PROJECT_ID=${_PROD_PROJECT_ID}"
       - "SERVICE_ACCOUNT=${_PIPELINE_SA_EMAIL}"
       - "PIPELINE_NAME=${_PIPELINE_NAME}"
@@ -59,9 +65,9 @@ steps:
       - "--concurrency"
       - "40"
       - "--service-account"
-      - "${_CLOUD_RUN_APP_SA_NAME}@${_PROD_PROJECT_ID}.iam.gserviceaccount.com"
+      - "${_CLOUD_RUN_APP_SA_EMAIL}"
       - "--set-env-vars"
-      - "COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- endif %}"
+      - "COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET}{%- endif %}{%- endif %}"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
   - name: "python:3.11-slim" 
     id: install-dependencies
@@ -83,7 +89,7 @@ steps:
         uv run app/agent_engine_app.py \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
-          --set-env-vars COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- endif %}
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}
@@ -92,7 +98,7 @@ substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID
   _REGION: us-central1
 
-logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
+logsBucket: gs://${PROJECT_ID}-{{cookiecutter.project_name}}-logs-data/build-logs
 options:
   substitutionOption: ALLOW_LOOSE
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

@@ -22,6 +22,12 @@ from typing import Any
 
 import yaml
 from cookiecutter.main import cookiecutter
+from rich.console import Console
+from rich.prompt import Prompt
+
+from src.cli.utils.version import get_current_version
+
+from .datastores import DATASTORES
 
 
 @dataclass
@@ -172,15 +178,13 @@ def prompt_deployment_target(agent_name: str) -> str:
     if not targets:
         return ""
 
-    from rich.console import Console
-
     console = Console()
     console.print("\n> Please select a deployment target:")
     for idx, target in enumerate(targets, 1):
         info = TARGET_INFO.get(target, {})
         display_name = info.get("display_name", target)
         description = info.get("description", "")
-        console.print(f"{idx}. {display_name} - {description}")
+        console.print(f"{idx}. [bold]{display_name}[/] - [dim]{description}[/]")
 
     from rich.prompt import IntPrompt
 
@@ -192,8 +196,38 @@ def prompt_deployment_target(agent_name: str) -> str:
     return targets[choice - 1]
 
 
-def prompt_data_ingestion(agent_name: str) -> bool:
-    """Ask user if they want to include data pipeline if the agent supports it."""
+def prompt_datastore_selection(
+    agent_name: str, from_cli_flag: bool = False
+) -> str | None:
+    """Ask user to select a datastore type if the agent supports data ingestion.
+
+    Args:
+        agent_name: Name of the agent
+        from_cli_flag: Whether this is being called due to explicit --include-data-ingestion flag
+    """
+    console = Console()
+
+    # If this is from CLI flag, skip the "would you like to include" prompt
+    if from_cli_flag:
+        console.print("\n> Please select a datastore type for your data:")
+
+        # Display options with descriptions
+        for i, (_key, info) in enumerate(DATASTORES.items(), 1):
+            console.print(
+                f"{i}. [bold]{info['name']}[/] - [dim]{info['description']}[/]"
+            )
+
+        choice = Prompt.ask(
+            "\nEnter the number of your choice",
+            choices=[str(i) for i in range(1, len(DATASTORES) + 1)],
+            default="1",
+        )
+
+        # Convert choice number to datastore type
+        datastore_type = list(DATASTORES.keys())[int(choice) - 1]
+        return datastore_type
+
+    # Otherwise, proceed with normal flow
     template_path = (
         pathlib.Path(__file__).parent.parent.parent.parent
         / "agents"
@@ -203,26 +237,76 @@ def prompt_data_ingestion(agent_name: str) -> bool:
     config = load_template_config(template_path)
 
     if config:
-        # If requires_data_ingestion is true, return True without prompting
+        # If requires_data_ingestion is true, prompt for datastore type without asking if they want it
         if config.get("settings", {}).get("requires_data_ingestion"):
-            return True
+            console.print("\n> This agent includes a data ingestion pipeline.")
+            console.print("> Please select a datastore type for your data:")
 
-        # Only prompt if the agent has optional data processing support
-        if "data_ingestion" in config.get("settings", {}):
-            from rich.prompt import Prompt
+            # Display options with descriptions
+            for i, (_key, info) in enumerate(DATASTORES.items(), 1):
+                console.print(
+                    f"{i}. [bold]{info['name']}[/] - [dim]{info['description']}[/]"
+                )
+            choice = Prompt.ask(
+                "\nEnter the number of your choice",
+                choices=[str(i) for i in range(1, len(DATASTORES) + 1)],
+                default="1",
+            )
 
-            return (
+            # Convert choice number to datastore type
+            datastore_type = list(DATASTORES.keys())[int(choice) - 1]
+            return datastore_type
+
+        # Only prompt if the agent has optional data ingestion support
+        if "requires_data_ingestion" in config.get("settings", {}):
+            include = (
                 Prompt.ask(
-                    "\n> This agent supports a data pipeline. Would you like to include it?",
+                    "\n> This agent supports data ingestion. Would you like to include a data pipeline?",
                     choices=["y", "n"],
                     default="n",
                 ).lower()
                 == "y"
             )
-    return False
+
+            if include:
+                console.print("\n> Please select a datastore type for your data:")
+
+                # Display options with descriptions
+                for i, (_key, info) in enumerate(DATASTORES.items(), 1):
+                    console.print(
+                        f"{i}. [bold]{info['name']}[/] - [dim]{info['description']}[/]"
+                    )
+
+                choice = Prompt.ask(
+                    "\nEnter the number of your choice",
+                    choices=[str(i) for i in range(1, len(DATASTORES) + 1)],
+                    default="1",
+                )
+
+                # Convert choice number to datastore type
+                datastore_type = list(DATASTORES.keys())[int(choice) - 1]
+                return datastore_type
+
+    # If we get here, we need to prompt for datastore selection for explicit --include-data-ingestion flag
+    console.print(
+        "\n> Please select a datastore type for your data ingestion pipeline:"
+    )
+    # Display options with descriptions
+    for i, (_key, info) in enumerate(DATASTORES.items(), 1):
+        console.print(f"{i}. [bold]{info['name']}[/] - [dim]{info['description']}[/]")
+
+    choice = Prompt.ask(
+        "\nEnter the number of your choice",
+        choices=[str(i) for i in range(1, len(DATASTORES) + 1)],
+        default="1",
+    )
+
+    # Convert choice number to datastore type
+    datastore_type = list(DATASTORES.keys())[int(choice) - 1]
+    return datastore_type
 
 
-def get_template_path(agent_name: str, debug: bool = False) -> str:
+def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
     """Get the absolute path to the agent template directory."""
     current_dir = pathlib.Path(__file__).parent.parent.parent.parent
     template_path = current_dir / "agents" / agent_name / "template"
@@ -235,14 +319,17 @@ def get_template_path(agent_name: str, debug: bool = False) -> str:
     if not template_path.exists():
         raise ValueError(f"Template directory not found at {template_path}")
 
-    return str(template_path)
+    return template_path
 
 
-def copy_data_ingestion_files(project_template: pathlib.Path) -> None:
-    """Copy data processing files to the project template.
+def copy_data_ingestion_files(
+    project_template: pathlib.Path, datastore_type: str
+) -> None:
+    """Copy data processing files to the project template for cookiecutter templating.
 
     Args:
         project_template: Path to the project template directory
+        datastore_type: Type of datastore to use for data ingestion
     """
     data_ingestion_src = pathlib.Path(__file__).parent.parent.parent / "data_ingestion"
     data_ingestion_dst = project_template / "data_ingestion"
@@ -251,7 +338,10 @@ def copy_data_ingestion_files(project_template: pathlib.Path) -> None:
         logging.debug(
             f"Copying data processing files from {data_ingestion_src} to {data_ingestion_dst}"
         )
+
         copy_files(data_ingestion_src, data_ingestion_dst, overwrite=True)
+
+        logging.debug(f"Data ingestion files prepared for datastore: {datastore_type}")
     else:
         logging.warning(
             f"Data processing source directory not found at {data_ingestion_src}"
@@ -260,10 +350,11 @@ def copy_data_ingestion_files(project_template: pathlib.Path) -> None:
 
 def process_template(
     agent_name: str,
-    template_dir: str,
+    template_dir: pathlib.Path,
     project_name: str,
     deployment_target: str | None = None,
     include_data_ingestion: bool = False,
+    datastore: str | None = None,
     output_dir: pathlib.Path | None = None,
 ) -> None:
     """Process the template directory and create a new project.
@@ -278,11 +369,11 @@ def process_template(
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
-    logging.debug(f"Include pipeline: {include_data_ingestion}")
+    logging.debug(f"Include pipeline: {datastore}")
     logging.debug(f"Output directory: {output_dir}")
 
     # Get paths
-    agent_path = pathlib.Path(template_dir).parent  # Get parent of template dir
+    agent_path = template_dir.parent  # Get parent of template dir
     logging.debug(f"agent path: {agent_path}")
     logging.debug(f"agent path exists: {agent_path.exists()}")
     logging.debug(
@@ -340,19 +431,15 @@ def process_template(
                     )
 
             # 3. Copy data ingestion files if needed
-            template_config = load_template_config(pathlib.Path(template_dir))
-            requires_data_ingestion = template_config.get("settings", {}).get(
-                "requires_data_ingestion", False
-            )
-            should_include_data_ingestion = (
-                include_data_ingestion or requires_data_ingestion
-            )
-
-            if should_include_data_ingestion:
-                logging.debug("3. Including data processing files")
-                copy_data_ingestion_files(project_template)
+            if include_data_ingestion and datastore:
+                logging.debug(
+                    f"3. Including data processing files with datastore: {datastore}"
+                )
+                copy_data_ingestion_files(project_template, datastore)
 
             # 4. Process frontend files
+            # Load template config
+            template_config = load_template_config(pathlib.Path(template_dir))
             frontend_type = template_config.get("settings", {}).get(
                 "frontend_type", DEFAULT_FRONTEND
             )
@@ -399,18 +486,11 @@ def process_template(
             template_config = load_template_config(pathlib.Path(template_dir))
 
             # Check if data processing should be included
-            requires_data_ingestion = template_config.get("settings", {}).get(
-                "requires_data_ingestion", False
-            )
-            should_include_data_ingestion = (
-                include_data_ingestion or requires_data_ingestion
-            )
-
-            if should_include_data_ingestion:
+            if include_data_ingestion and datastore:
                 logging.debug(
-                    "Including data processing files based on template config or user request"
+                    f"Including data processing files with datastore: {datastore}"
                 )
-                copy_data_ingestion_files(project_template)
+                copy_data_ingestion_files(project_template, datastore)
 
             # Create cookiecutter.json in the template root
             # Process extra dependencies
@@ -427,12 +507,14 @@ def process_template(
             cookiecutter_config = {
                 "project_name": "my-project",
                 "agent_name": agent_name,
+                "package_version": get_current_version(),
                 "agent_description": template_config.get("description", ""),
                 "deployment_target": deployment_target or "",
                 "frontend_type": frontend_type,
                 "extra_dependencies": [extra_deps],
                 "otel_instrumentations": otel_instrumentations,
-                "data_ingestion": should_include_data_ingestion,
+                "data_ingestion": include_data_ingestion,  # Use explicit flag for cookiecutter
+                "datastore_type": datastore if datastore else "",
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files

@@ -44,7 +44,7 @@ resource "google_project_iam_member" "other_projects_roles" {
   member     = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
 }
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{% if cookiecutter.deployment_target == 'cloud_run' %}
 # 3. Allow Cloud Run service SA to pull containers stored in the CICD project
 resource "google_project_iam_member" "cicd_run_invoker_artifact_registry_reader" {
   for_each = local.deploy_project_ids
@@ -71,7 +71,7 @@ resource "google_project_iam_member" "cloud_run_app_sa_roles" {
   member     = "serviceAccount:${google_service_account.cloud_run_app_sa[split(",", each.key)[0]].email}"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
 }
-{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+{% elif cookiecutter.deployment_target == 'agent_engine' %}
 resource "google_project_service_identity" "vertex_sa" {
   for_each = local.deploy_project_ids
   provider = google-beta
@@ -94,7 +94,7 @@ resource "google_project_iam_member" "vertex_ai_sa_permissions" {
   member      = "serviceAccount:service-${data.google_project.projects[split("_", each.key)[0]].number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
   depends_on  = [resource.google_project_service.shared_services, resource.google_project_service_identity.vertex_sa]
 }
-{%- endif %}
+{% endif %}
 
 # Special assignment: Allow the CICD SA to create tokens
 resource "google_service_account_iam_member" "cicd_run_invoker_token_creator" {

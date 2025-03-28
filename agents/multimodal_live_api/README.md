@@ -28,3 +28,10 @@ Explore these resources to learn more about the Multimodal Live API and see exam
 - [Google Cloud Multimodal Live API demos and samples](https://github.com/GoogleCloudPlatform/generative-ai/tree/main/gemini/multimodal-live-api): Collection of code samples and demo applications leveraging multimodal live API in Vertex AI
 - [Gemini 2 Cookbook](https://github.com/google-gemini/cookbook/tree/main/gemini-2): Practical examples and tutorials for working with Gemini 2
 - [Multimodal Live API Web Console](https://github.com/google-gemini/multimodal-live-api-web-console): Interactive React-based web interface for testing and experimenting with Gemini Multimodal Live API.
+
+## Current Status & Future Work
+
+This pattern is under active development. Key areas planned for future enhancement include:
+
+*   **Observability:** Implementing comprehensive monitoring and tracing features.
+*   **Load Testing:** Integrating load testing capabilities.

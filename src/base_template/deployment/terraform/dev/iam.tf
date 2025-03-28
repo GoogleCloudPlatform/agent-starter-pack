@@ -32,7 +32,14 @@ resource "google_project_iam_member" "default_compute_sa_storage_object_creator"
   depends_on = [resource.google_project_service.services]
 }
 
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{% if cookiecutter.deployment_target == 'cloud_run' %}
+resource "google_service_account" "cloud_run_app_sa" {
+  account_id   = "${var.project_name}-cr"
+  display_name = "${var.project_name} Cloud Run App Service Account"
+  project      = var.dev_project_id
+  depends_on   = [resource.google_project_service.services]
+}
+
 # Grant Cloud Run SA the required permissions to run the application
 resource "google_project_iam_member" "cloud_run_app_sa_roles" {
   for_each = {
@@ -48,7 +55,7 @@ resource "google_project_iam_member" "cloud_run_app_sa_roles" {
   member     = "serviceAccount:${google_service_account.cloud_run_app_sa.email}"
   depends_on = [resource.google_project_service.services]
 }
-{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+{% elif cookiecutter.deployment_target == 'agent_engine' %}
 # Grant required permissions to Vertex AI service account
 resource "google_project_iam_member" "vertex_ai_sa_permissions" {
   for_each = {
@@ -61,13 +68,13 @@ resource "google_project_iam_member" "vertex_ai_sa_permissions" {
   member  = google_project_service_identity.vertex_sa.member
   depends_on = [resource.google_project_service.services]
 }
-{%- endif %}
-{%- if cookiecutter.data_ingestion %}
+{% endif %}
+{% if cookiecutter.data_ingestion %}
 # Service account to run Vertex AI pipeline
 resource "google_service_account" "vertexai_pipeline_app_sa" {
   for_each = local.project_ids
 
-  account_id   = var.vertexai_pipeline_sa_name
+  account_id   = "${var.project_name}-rag"
   display_name = "Vertex AI Pipeline app SA"
   project      = each.value
   depends_on   = [resource.google_project_service.services]
@@ -87,4 +94,4 @@ resource "google_project_iam_member" "vertexai_pipeline_sa_roles" {
   member     = "serviceAccount:${google_service_account.vertexai_pipeline_app_sa[split(",", each.key)[0]].email}"
   depends_on = [resource.google_project_service.services]
 }
-{%- endif %}
+{% endif %}

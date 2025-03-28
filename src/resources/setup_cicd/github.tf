@@ -46,12 +46,13 @@ locals {
 
 # Try to get existing repo
 data "github_repository" "existing_repo" {
+  count = var.repository_exists ? 1 : 0
   full_name = "${var.repository_owner}/${var.repository_name}"
 }
 
 # Only create GitHub repo if it doesn't already exist
 resource "github_repository" "repo" {
-  count       = data.github_repository.existing_repo.repo_id == null ? 1 : 0
+  count       = var.repository_exists ? 0 : 1
   name        = var.repository_name
   description = "Repository created by Terraform"
   visibility  = "private"
@@ -80,6 +81,7 @@ resource "google_cloudbuildv2_repository" "repo" {
     resource.google_project_service.cicd_services,
     resource.google_project_service.shared_services,
     data.github_repository.existing_repo,
-    github_repository.repo
+    github_repository.repo,
+    google_cloudbuildv2_connection.github_connection,
   ]
 }

@@ -1,6 +1,6 @@
-# Agentic RAG with Vertex AI Search
+# Agentic RAG
 
-This agent enhances the Gen AI App Starter Pack with a production-ready data ingestion pipeline, enriching your Retrieval Augmented Generation (RAG) applications. Using Vertex AI Search's state-of-the-art search capabilities, you can ingest, process, and embed custom data, improving the relevance and context of your generated responses.
+This agent enhances the Agent Starter Pack with a production-ready data ingestion pipeline, enriching your Retrieval Augmented Generation (RAG) applications. You will be able to ingest, process, and embed custom data, improving the relevance and context of your generated responses. You can choose between different datastore options including Vertex AI Search and Vertex AI Vector Search depending on your specific needs.
 
 The agent provides the infrastructure to create a Vertex AI Pipeline with your custom code. Because it's built on Vertex AI Pipelines, you benefit from features like scheduled runs, recurring executions, and on-demand triggers. For processing terabyte-scale data, we recommend combining Vertex AI Pipelines with data analytics tools like BigQuery or Dataflow.
 
@@ -14,7 +14,7 @@ The agent implements the following architecture:
 
 ### Key Features
 
-- **Vertex AI Search Integration:** Utilizes Vertex AI Search for efficient data storage and retrieval.
+- **Flexible Datastore Options:** Choose between Vertex AI Search or Vertex AI Vector Search for efficient data storage and retrieval based on your specific needs.
 - **Automated Data Ingestion Pipeline:** Automates the process of ingesting data from input sources.
 - **Custom Embeddings:** Generates embeddings using Vertex AI Embeddings and incorporates them into your data for enhanced semantic search.
 - **Terraform Deployment:** Ingestion pipeline is instantiated with Terraform alongside the rest of the infrastructure of the starter pack.

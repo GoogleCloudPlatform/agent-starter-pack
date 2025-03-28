@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import importlib.util
 import json
 import logging
 import os
+import sys
 from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
-from google.auth import exceptions as google_auth_exceptions
 from google.auth.credentials import Credentials
 from langchain_core.messages import HumanMessage
 
@@ -65,36 +64,14 @@ def sample_input_chat() -> InputChat:
     )
 
 
-@pytest.fixture(autouse=True)
-def mock_dependencies() -> Generator[None, None, None]:
-    """
-    Mock Vertex AI dependencies for testing.
-    Patches VertexAIEmbeddings (if defined) and ChatVertexAI.
-    """
-    patches = []
-    try:
-        try:
-            importlib.util.find_spec("app.agent.VertexAIEmbeddings")
-        except (ModuleNotFoundError, google_auth_exceptions.DefaultCredentialsError):
-            pass
-        else:
-            patches.append(patch("app.agent.VertexAIEmbeddings"))
-        patches.append(patch("app.agent.ChatVertexAI"))
-
-        for patch_item in patches:
-            mock = patch_item.start()
-            mock.return_value = MagicMock()
-
-        yield
-    except google_auth_exceptions.GoogleAuthError:
-        yield
-
-
 def test_redirect_root_to_docs() -> None:
     """
     Test that the root endpoint (/) redirects to the Swagger UI documentation.
     """
-    with patch("app.server.agent") as _:
+    # Mock the agent module before importing server
+    mock_agent = MagicMock()
+    with patch.dict(sys.modules, {"app.agent": mock_agent}):
+        # Now import server after the mock is in place
         from app.server import app
 
         client = TestClient(app)
@@ -109,8 +86,6 @@ async def test_stream_chat_events() -> None:
     Test the stream endpoint to ensure it correctly handles
     streaming responses and generates the expected events.
     """
-    from app.server import app
-
     input_data = {
         "input": {
             "messages": [
@@ -124,11 +99,18 @@ async def test_stream_chat_events() -> None:
 
     mock_events = [{"content": "Mocked response"}, {"content": "Additional response"}]
 
-    with patch("app.server.agent") as mock_agent:
-        mock_agent.stream.return_value = mock_events
+    # Create a mock agent module
+    mock_agent_module = MagicMock()
+    mock_agent_module.agent = MagicMock()
+    mock_agent_module.agent.stream.return_value = mock_events
+
+    # Patch the module import
+    with patch.dict(sys.modules, {"app.agent": mock_agent_module}):
+        # Import server after the mock is in place
+        from app.server import app
 
         client = TestClient(app)
-        response = client.post("stream_messages", json=input_data)
+        response = client.post("/stream_messages", json=input_data)
 
         assert response.status_code == 200
 

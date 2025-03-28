@@ -22,4 +22,6 @@ RUN pip install --no-cache-dir \
     "google-cloud-aiplatform>=1.80.0" \
     "kfp>=1.4.0" \
     "google-cloud-discoveryengine==0.13.6" \
-    "backoff==2.2.1"
+    "backoff==2.2.1" \
+    "google-cloud-pipeline-components==2.19.0" \
+    "langchain-google-vertexai==2.0.13"

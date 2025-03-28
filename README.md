@@ -46,7 +46,7 @@ agent-starter-pack create my-agent -d agent_engine -a langgraph_base_react
 | Agent Name                  | Description                                                                                                                       |
 |-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `langgraph_base_react`      | A agent implementing a base ReAct agent using LangGraph |
-| `agentic_rag_vertexai_search` | A RAG agent using Vertex AI Search and LangGraph for document retrieval and Q&A       |
+| `agentic_rag` | A RAG agent using Vertex AI Search and LangGraph for document retrieval and Q&A       |
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |
 | `multimodal_live_api`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
 
@@ -74,7 +74,7 @@ This starter pack covers all aspects of Agent development, from prototyping and 
 This project represents the next evolution of the [e2e-gen-ai-app-starter-pack](goo.gle/e2e-gen-ai-app-starter-pack).  Building on the foundation of the original, we've made significant improvements:
 
 *   **Streamlined CLI:**  A new command-line interface (`agent-starter-pack`) simplifies project creation, template selection, and deployment.
-*   **Expanded Agent Options:**  Support for a wider variety of agent frameworks (LangGraph, CrewAI, and the Google GenAI SDK) and deployment targets (including Vertex AI Agent Engine).
+*   **Expanded Agent Options:** Support for a wider variety of agent frameworks (LangGraph, CrewAI, and the Google GenAI SDK) and deployment targets (including Vertex AI Agent Engine).
 *   **Simplified setup**: Integrated gcloud authentication and projects and region configurations
 
 ---

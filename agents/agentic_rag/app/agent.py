@@ -31,11 +31,6 @@ from app.templates import format_docs, inspect_conversation_template, rag_templa
 EMBEDDING_MODEL = "text-embedding-005"
 LOCATION = "us-central1"
 LLM = "gemini-2.0-flash-001"
-EMBEDDING_COLUMN = "embedding"
-TOP_K = 5
-
-data_store_region = os.getenv("DATA_STORE_REGION", "us")
-data_store_id = os.getenv("DATA_STORE_ID", "sample-datastore")
 
 # Initialize Google Cloud and Vertex AI
 credentials, project_id = google.auth.default()
@@ -45,6 +40,13 @@ embedding = VertexAIEmbeddings(
     project=project_id, location=LOCATION, model_name=EMBEDDING_MODEL
 )
 
+{% if cookiecutter.datastore_type == "vertex_ai_search" %}
+EMBEDDING_COLUMN = "embedding"
+TOP_K = 5
+
+data_store_region = os.getenv("DATA_STORE_REGION", "us")
+data_store_id = os.getenv("DATA_STORE_ID", "sample-datastore")
+
 retriever = get_retriever(
     project_id=project_id,
     data_store_id=data_store_id,
@@ -53,6 +55,20 @@ retriever = get_retriever(
     embedding_column=EMBEDDING_COLUMN,
     max_documents=10,
 )
+{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+vector_search_index = os.getenv("VECTOR_SEARCH_INDEX")
+vector_search_index_endpoint = os.getenv("VECTOR_SEARCH_INDEX_ENDPOINT")
+vector_search_bucket = os.getenv("VECTOR_SEARCH_BUCKET")
+
+retriever = get_retriever(
+    project_id=project_id,
+    region=LOCATION,
+    vector_search_bucket=vector_search_bucket,
+    vector_search_index=vector_search_index,
+    vector_search_index_endpoint=vector_search_index_endpoint,
+    embedding=embedding,
+)
+{% endif %}
 compressor = get_compressor(
     project_id=project_id,
 )

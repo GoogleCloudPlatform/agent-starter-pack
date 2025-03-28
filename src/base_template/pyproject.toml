@@ -18,7 +18,7 @@ dependencies = [
     "fastapi~=0.115.8",
     "uvicorn~=0.34.0"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-    "google-cloud-aiplatform[evaluation,langchain,reasoningengine]~=1.81.0"
+    "google-cloud-aiplatform[evaluation,reasoningengine]~=1.81.0"
 {%- endif %}
 ]
 {% if cookiecutter.deployment_target == 'cloud_run' %}
@@ -108,6 +108,7 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 pythonpath = "."
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.hatch.build.targets.wheel]
 packages = ["app","frontend"]

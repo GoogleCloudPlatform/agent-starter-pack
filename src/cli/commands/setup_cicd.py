@@ -22,6 +22,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import backoff
 import click
 from rich.console import Console
 
@@ -164,11 +165,12 @@ def update_build_triggers(tf_dir: Path) -> None:
 
 def prompt_for_repository_details(
     repository_name: str | None = None, repository_owner: str | None = None
-) -> tuple[str, str]:
+) -> tuple[str, str, bool]:
     """Interactive prompt for repository details with option to use existing repo."""
     # Get current GitHub username as default owner
     result = run_command(["gh", "api", "user", "--jq", ".login"], capture_output=True)
     default_owner = result.stdout.strip()
+    repository_exists = False
 
     if not (repository_name and repository_owner):
         console.print("\n📦 Repository Configuration", style="bold blue")
@@ -192,6 +194,7 @@ def prompt_for_repository_details(
                 )
         else:
             # Existing repository
+            repository_exists = True
             while True:
                 repo_url = click.prompt(
                     "Enter existing repository URL (e.g., https://github.com/owner/repo)"
@@ -233,10 +236,12 @@ def prompt_for_repository_details(
 
     if repository_name is None or repository_owner is None:
         raise ValueError("Repository name and owner must be provided")
-    return repository_name, repository_owner
+    return repository_name, repository_owner, repository_exists
 
 
-def setup_terraform_backend(tf_dir: Path, project_id: str, region: str) -> None:
+def setup_terraform_backend(
+    tf_dir: Path, project_id: str, region: str, repository_name: str
+) -> None:
     """Setup terraform backend configuration with GCS bucket"""
     console.print("\n🔧 Setting up Terraform backend...")
 
@@ -273,7 +278,7 @@ def setup_terraform_backend(tf_dir: Path, project_id: str, region: str) -> None:
         if dir_path.exists():
             # Use different state prefixes for dev and prod
             is_dev_dir = str(dir_path).endswith("/dev")
-            state_prefix = "dev" if is_dev_dir else "prod"
+            state_prefix = f"{repository_name}/{(is_dev_dir and 'dev') or 'prod'}"
 
             backend_file = dir_path / "backend.tf"
             backend_content = f'''terraform {{
@@ -383,6 +388,18 @@ console = Console()
     is_flag=True,
     help="Skip confirmation prompts and proceed automatically",
 )
+@click.option(
+    "--repository-exists",
+    is_flag=True,
+    default=False,
+    help="Flag indicating if the repository already exists",
+)
+@backoff.on_exception(
+    backoff.expo,
+    (subprocess.CalledProcessError, click.ClickException),
+    max_tries=3,
+    jitter=backoff.full_jitter,
+)
 def setup_cicd(
     dev_project: str | None,
     staging_project: str,
@@ -398,6 +415,7 @@ def setup_cicd(
     local_state: bool,
     debug: bool,
     auto_approve: bool,
+    repository_exists: bool,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
 
@@ -482,12 +500,12 @@ def setup_cicd(
 
     # Only prompt for repository details if not provided via CLI
     if not (repository_name and repository_owner):
-        repository_name, repository_owner = prompt_for_repository_details(
-            repository_name, repository_owner
+        repository_name, repository_owner, repository_exists = (
+            prompt_for_repository_details(repository_name, repository_owner)
         )
     # Set default host connection name if not provided
     if not host_connection_name:
-        host_connection_name = "github-connection"
+        host_connection_name = f"git-{repository_name}"
     # Check and enable required APIs regardless of auth method
     required_apis = ["secretmanager.googleapis.com", "cloudbuild.googleapis.com"]
     ensure_apis_enabled(cicd_project, required_apis)
@@ -548,6 +566,7 @@ def setup_cicd(
         github_pat=github_pat,
         github_app_installation_id=github_app_installation_id,
         git_provider=git_provider,
+        repository_exists=repository_exists,
     )
 
     tf_dir = Path("deployment/terraform")
@@ -562,7 +581,12 @@ def setup_cicd(
     # Setup Terraform backend if not using local state
     if not local_state:
         console.print("\n🔧 Setting up remote Terraform backend...")
-        setup_terraform_backend(tf_dir, cicd_project, region)
+        setup_terraform_backend(
+            tf_dir=tf_dir,
+            project_id=cicd_project,
+            region=region,
+            repository_name=repository_name,
+        )
         console.print("✅ Remote Terraform backend configured")
     else:
         console.print("\n📝 Using local Terraform state (remote backend disabled)")
@@ -600,6 +624,7 @@ def setup_cicd(
     new_vars["connection_exists"] = (
         "true" if detected_mode == "interactive" else "false"
     )
+    new_vars["repository_exists"] = "true" if config.repository_exists else "false"
 
     # Update or append variables
     with open(env_vars_path, "w") as f:
@@ -649,16 +674,35 @@ def setup_cicd(
             else:
                 run_command(["terraform", "init"], cwd=dev_tf_dir)
 
-            run_command(
-                [
-                    "terraform",
-                    "apply",
-                    "-auto-approve",
-                    "--var-file",
-                    "vars/env.tfvars",
-                ],
-                cwd=dev_tf_dir,
-            )
+            try:
+                run_command(
+                    [
+                        "terraform",
+                        "apply",
+                        "-auto-approve",
+                        "--var-file",
+                        "vars/env.tfvars",
+                    ],
+                    cwd=dev_tf_dir,
+                )
+            except subprocess.CalledProcessError as e:
+                if "Error acquiring the state lock" in str(e):
+                    console.print(
+                        "[yellow]State lock error detected, retrying without lock...[/yellow]"
+                    )
+                    run_command(
+                        [
+                            "terraform",
+                            "apply",
+                            "-auto-approve",
+                            "--var-file",
+                            "vars/env.tfvars",
+                            "-lock=false",
+                        ],
+                        cwd=dev_tf_dir,
+                    )
+                else:
+                    raise
 
             console.print("✅ Dev environment Terraform configuration applied")
     elif dev_tf_dir.exists():
@@ -673,10 +717,35 @@ def setup_cicd(
         else:
             run_command(["terraform", "init"], cwd=tf_dir)
 
-        run_command(
-            ["terraform", "apply", "-auto-approve", "--var-file", "vars/env.tfvars"],
-            cwd=tf_dir,
-        )
+        try:
+            run_command(
+                [
+                    "terraform",
+                    "apply",
+                    "-auto-approve",
+                    "--var-file",
+                    "vars/env.tfvars",
+                ],
+                cwd=tf_dir,
+            )
+        except subprocess.CalledProcessError as e:
+            if "Error acquiring the state lock" in str(e):
+                console.print(
+                    "[yellow]State lock error detected, retrying without lock...[/yellow]"
+                )
+                run_command(
+                    [
+                        "terraform",
+                        "apply",
+                        "-auto-approve",
+                        "--var-file",
+                        "vars/env.tfvars",
+                        "-lock=false",
+                    ],
+                    cwd=tf_dir,
+                )
+            else:
+                raise
 
         console.print("✅ Prod/Staging Terraform configuration applied")
 

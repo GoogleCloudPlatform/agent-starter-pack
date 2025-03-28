@@ -1,6 +1,6 @@
 [project]
 name = "agent-starter-pack"
-version = "0.1.7"
+version = "0.2.0"
 description = "CLI tool to create GCP-based AI agent projects from templates"
 authors = [
     { name = "Google LLC", email = "agent-starter-pack@google.com" },
@@ -59,7 +59,7 @@ lint = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "src/frontends/streamlit", "src", "agents/agentic_rag_vertexai_search"]
+pythonpath = [".", "src/frontends/streamlit", "src", "agents/agentic_rag"]
 testpaths = ["tests"]
 addopts = "-s -v --ignore=tests/integration/test_template_linting.py --ignore=tests/integration/test_templated_patterns.py"
 log_cli = true
@@ -70,7 +70,8 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-include = ["./agents/**/*.py", "src/cli/**/*.py", "tests/**/*.py", "src/data_ingestion/**/*.py", "src/frontends/streamlit/**/*.py"]
+include = ["./agents/**/*.py", "src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py"]
+exclude = ["./agents/agentic_rag/**/*.py"]
 
 [tool.ruff.lint]
 select = [
@@ -103,6 +104,9 @@ follow_imports = "silent"
 ignore_missing_imports = true
 explicit_package_bases = true
 disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
+exclude = '''(?x)(
+    ^agents/agentic_rag/.*$  # exclude all files under agentic_rag directory
+)'''
 
 [tool.codespell]
 ignore-words-list = "rouge"

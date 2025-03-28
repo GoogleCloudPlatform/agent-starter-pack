@@ -14,16 +14,16 @@
 
 steps:
   # Sync dependencies
-  - name: "ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: install-dependencies
     entrypoint: /bin/bash
     args:
       - "-c"
       - |
-        uv sync --dev --frozen
+        uv sync --frozen
 
   # Run unit tests using pytest
-  - name: "ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: test-templated-agents
     entrypoint: /bin/bash
     args:
@@ -36,4 +36,3 @@ options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
   env:
     - "_TEST_AGENT_COMBINATION=${_TEST_AGENT_COMBINATION}"
-    - "INTEGRATION_TEST=TRUE"

@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-resource "google_service_account" "cloud_run_app_sa" {
-  account_id   = var.cloud_run_app_sa_name
-  display_name = "Cloud Run Generative AI app SA"
-  project      = var.dev_project_id
-  depends_on   = [resource.google_project_service.services]
-}
+description: "A RAG agent using LangGraph for document retrieval and Q&A. It includes a data pipeline for refreshing your grounding data."
+settings:
+  requires_data_ingestion: true
+  deployment_targets: ["agent_engine", "cloud_run"]
+  extra_dependencies: [
+    "langchain-google-vertexai~=2.0.7",
+    "langchain~=0.3.14",
+    "langgraph~=0.3.21",
+    "langchain-community~=0.3.17",
+    "langchain-openai~=0.3.5",
+    "langchain-google-community[vertexaisearch]~=2.0.7",
+  ]

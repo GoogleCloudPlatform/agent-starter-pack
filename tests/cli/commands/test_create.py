@@ -82,13 +82,6 @@ def mock_prompt_deployment_target() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def mock_prompt_data_ingestion() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.prompt_data_ingestion") as mock:
-        mock.return_value = True
-        yield mock
-
-
-@pytest.fixture
 def mock_verify_vertex_connection() -> Generator[MagicMock, None, None]:
     with patch("src.cli.commands.create.verify_vertex_connection") as mock:
         mock.return_value = None  # Success
@@ -205,6 +198,8 @@ class TestCreateCommand:
                     "--deployment-target",
                     "cloud_run",
                     "--include-data-ingestion",
+                    "--datastore",
+                    "vertex_ai_vector_search",
                     "--auto-approve",
                     "--region",
                     "us-central1",
@@ -245,7 +240,6 @@ class TestCreateCommand:
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_prompt_data_ingestion: MagicMock,
         mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
@@ -302,7 +296,6 @@ class TestCreateCommand:
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_prompt_data_ingestion: MagicMock,
         mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
@@ -352,7 +345,6 @@ class TestCreateCommand:
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_prompt_data_ingestion: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,

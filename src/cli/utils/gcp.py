@@ -14,7 +14,6 @@
 
 # ruff: noqa: E722
 import subprocess
-from importlib import metadata
 
 import google.auth
 from google.api_core.client_options import ClientOptions
@@ -27,14 +26,13 @@ from google.cloud.aiplatform_v1beta1.types.prediction_service import (
     CountTokensRequest,
 )
 
+from src.cli.utils.version import PACKAGE_NAME, get_current_version
+
 
 def get_user_agent() -> tuple[str, str]:
     """Returns custom user agent header tuple (version, agent string)."""
-    try:
-        version = metadata.version(distribution_name="ags")
-    except metadata.PackageNotFoundError:
-        version = "0.0.0"
-    return version, f"ags/{version}"
+    version = get_current_version()
+    return version, f"{PACKAGE_NAME}/{version}"
 
 
 def get_client_info() -> ClientInfo:

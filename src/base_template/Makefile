@@ -34,18 +34,23 @@ ui:
 setup-dev-env:
 	@if [ -z "$$PROJECT_ID" ]; then echo "Error: PROJECT_ID environment variable is not set"; exit 1; fi
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-
+	
 {%- if cookiecutter.data_ingestion%}
 data-ingestion:
 	@if [ -z "$$PROJECT_ID" ]; then echo "Error: PROJECT_ID environment variable is not set"; exit 1; fi
 	$(MAKE) install
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
 		--project-id=$$PROJECT_ID \
-		--data-store-id="sample-datastore" \
 		--region="us-central1" \
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+		--data-store-id="{{cookiecutter.project_name}}-datastore" \
 		--data-store-region="us" \
-		--service-account="vertexai-pipelines-sa@$$PROJECT_ID.iam.gserviceaccount.com" \
-		--pipeline-root="gs://$$PROJECT_ID-pipeline-artifacts" \
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+		--vector-search-index="{{cookiecutter.project_name}}-vector-search" \
+		--vector-search-index-endpoint="{{cookiecutter.project_name}}-vector-search-endpoint" \
+{%- endif %}
+		--service-account="{{cookiecutter.project_name}}-rag@$$PROJECT_ID.iam.gserviceaccount.com" \
+		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \
 		--pipeline-name="data-ingestion-pipeline")
 {%- endif %}
 

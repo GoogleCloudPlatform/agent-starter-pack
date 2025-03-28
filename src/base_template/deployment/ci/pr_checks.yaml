@@ -46,6 +46,6 @@ steps:
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
-logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
+logsBucket: gs://${PROJECT_ID}-{{cookiecutter.project_name}}-logs-data/build-logs
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

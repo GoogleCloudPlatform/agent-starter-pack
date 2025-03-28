@@ -12,17 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A RAG agent using Vertex AI Search and LangGraph for document retrieval and Q&A"
-settings:
-  requires_data_ingestion: true
-  deployment_targets: ["agent_engine", "cloud_run"]
-  extra_dependencies: [
-    "langchain-google-vertexai~=2.0.7",
-    "langchain~=0.3.14",
-    "langgraph~=0.2.63",
-    "langchain-google-vertexai~=2.0.7",
-    "langchain~=0.3.14",
-    "langchain-community~=0.3.17",
-    "langchain-openai~=0.3.5",
-    "langchain-google-community[vertexaisearch]~=2.0.2",
-  ]
+# Enable Cloud Resource Manager API for each project in e2e_test_project_mapping
+resource "google_project_service" "cloud_resource_manager_api" {
+  for_each = {
+    "dev"     = var.e2e_test_project_mapping.dev
+    "staging" = var.e2e_test_project_mapping.staging
+    "prod"    = var.e2e_test_project_mapping.prod
+  }
+
+  project            = each.value
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}

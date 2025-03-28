@@ -22,13 +22,15 @@ from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
+from ..utils.datastores import DATASTORE_TYPES
 from ..utils.gcp import verify_credentials, verify_vertex_connection
 from ..utils.logging import handle_cli_error
 from ..utils.template import (
     get_available_agents,
     get_template_path,
+    load_template_config,
     process_template,
-    prompt_data_ingestion,
+    prompt_datastore_selection,
     prompt_deployment_target,
 )
 
@@ -46,7 +48,16 @@ console = Console()
     help="Deployment target name",
 )
 @click.option(
-    "--include-data-ingestion", "-i", is_flag=True, help="Include data pipeline"
+    "--include-data-ingestion",
+    "-i",
+    is_flag=True,
+    help="Include data ingestion pipeline in the project",
+)
+@click.option(
+    "--datastore",
+    "-ds",
+    type=click.Choice(DATASTORE_TYPES),
+    help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
 )
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option(
@@ -76,6 +87,7 @@ def create(
     agent: str | None,
     deployment_target: str | None,
     include_data_ingestion: bool,
+    datastore: str | None,
     debug: bool,
     output_dir: str | None,
     auto_approve: bool,
@@ -90,6 +102,23 @@ def create(
         console.print(
             "This tool will help you create an end-to-end production-ready AI agent in GCP!\n"
         )
+        # Validate project name
+        if len(project_name) > 26:
+            console.print(
+                f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
+                style="bold red",
+            )
+            return
+
+        # Convert project name to lowercase
+        if any(char.isupper() for char in project_name):
+            original_name = project_name
+            project_name = project_name.lower()
+            console.print(
+                f"Warning: Project name '{original_name}' contains uppercase characters. "
+                f"Converting to lowercase: '{project_name}'",
+                style="bold yellow",
+            )
 
         # Setup debug logging if enabled
         if debug:
@@ -136,6 +165,38 @@ def create(
         if debug:
             logging.debug(f"Selected agent: {agent}")
 
+        # Data ingestion and datastore selection
+        if include_data_ingestion or datastore:
+            # If datastore is specified but include_data_ingestion is not, set it to True
+            include_data_ingestion = True
+
+            # If include_data_ingestion is True but no datastore is specified, prompt for it
+            if not datastore:
+                # Pass a flag to indicate this is from explicit CLI flag
+                datastore = prompt_datastore_selection(final_agent, from_cli_flag=True)
+
+            if debug:
+                logging.debug(f"Data ingestion enabled: {include_data_ingestion}")
+                logging.debug(f"Selected datastore type: {datastore}")
+        else:
+            # Check if the agent requires data ingestion
+            template_path = (
+                pathlib.Path(__file__).parent.parent.parent.parent
+                / "agents"
+                / final_agent
+                / "template"
+            )
+            config = load_template_config(template_path)
+            if config and config.get("settings", {}).get("requires_data_ingestion"):
+                include_data_ingestion = True
+                datastore = prompt_datastore_selection(final_agent)
+
+                if debug:
+                    logging.debug(
+                        f"Data ingestion required by agent: {include_data_ingestion}"
+                    )
+                    logging.debug(f"Selected datastore type: {datastore}")
+
         # Deployment target selection
         final_deployment = (
             deployment_target
@@ -145,12 +206,6 @@ def create(
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
-        # Data pipeline selection
-        include_data_ingestion = include_data_ingestion or prompt_data_ingestion(
-            final_agent
-        )
-        if debug:
-            logging.debug(f"Include data pipeline: {include_data_ingestion}")
         # Region confirmation (if not explicitly passed)
         if (
             not auto_approve
@@ -164,7 +219,6 @@ def create(
         logging.debug("Setting up GCP...")
 
         creds_info = {}
-        # Check for uv installation if not skipping checks
         if not skip_checks:
             # Set up GCP environment
             try:
@@ -208,12 +262,16 @@ def create(
             project_name,
             deployment_target=final_deployment,
             include_data_ingestion=include_data_ingestion,
+            datastore=datastore,
             output_dir=destination_dir,
         )
 
+        # Replace region in all files if a different region was specified
+        if region != "us-central1":
+            replace_region_in_files(project_path, region, debug=debug)
+
         project_path = destination_dir / project_name
-        # Determine the correct path to display to the user
-        display_path = str(project_path) if output_dir else project_name
+        cd_path = project_path if output_dir else project_name
 
         if include_data_ingestion:
             project_id = creds_info.get("project", "")
@@ -222,23 +280,25 @@ def create(
                 f"This agent uses a datastore for grounded responses.\n"
                 f"The agent will work without data, but for optimal results:\n"
                 f"1. Set up dev environment:\n"
-                f"   [white italic]`export PROJECT_ID={project_id} && cd {display_path} && make setup-dev-env`[/white italic]\n\n"
+                f"   [white italic]`export PROJECT_ID={project_id} && cd {cd_path} && make setup-dev-env`[/white italic]\n\n"
                 f"   See deployment/README.md for more info\n"
                 f"2. Run the data ingestion pipeline:\n"
-                f"   [white italic]`export PROJECT_ID={project_id} && cd {display_path} && make data-ingestion`[/white italic]\n\n"
+                f"   [white italic]`export PROJECT_ID={project_id} && cd {cd_path} && make data-ingestion`[/white italic]\n\n"
                 f"   See data_ingestion/README.md for more info\n"
                 f"[bold white]=================================[/bold white]\n"
             )
         console.print("\n> 👍 Done. Execute the following command to get started:")
 
-        # Show the command to get started
+        console.print("\n> Success! Your agent project is ready.")
         console.print(
-            f"[bold bright_green]cd {display_path} && make install && make playground[/]"
+            "\n📖 For more information on project structure, usage, and deployment, check out the README:"
         )
-
-        # Replace region in all files if a different region was specified
-        if region != "us-central1":
-            replace_region_in_files(project_path, region, debug=debug)
+        console.print(f"   [cyan]cat {cd_path}/README.md[/]")
+        # Determine the correct path to display based on whether output_dir was specified
+        console.print("\n🚀 To get started, run the following command:")
+        console.print(
+            f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
+        )
     except Exception:
         if debug:
             logging.exception(

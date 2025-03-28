@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# mypy: disable-error-code="return-value"
 
 """
 End-to-end deployment tests for CICD pipelines.
@@ -37,7 +38,7 @@ Note:
     The tests also clean up any existing test repositories before starting.
 """
 
-# mypy: disable-error-code="return-value"
+import hashlib
 import json
 import logging
 import os
@@ -47,8 +48,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+import vertexai
+from vertexai.preview import reasoning_engines
 
-# Define constants
 DEFAULT_REGION = "europe-west1"
 
 
@@ -58,39 +60,71 @@ class CICDTestConfig:
 
     agent: str
     deployment_target: str
+    extra_params: str
 
 
-# Define test matrix with different agent and deployment target combinations
-CICD_TEST_MATRIX: list[CICDTestConfig] = [
-    # CICDTestConfig(
-    #     agent="langgraph_base_react",
-    #     deployment_target="agent_engine",
-    # ),
-    # CICDTestConfig(
-    #     agent="langgraph_base_react",
-    #     deployment_target="cloud_run",
-    # ),
-    # CICDTestConfig(
-    #     agent="crewai_coding_crew",
-    #     deployment_target="cloud_run",
-    # ),
-    # CICDTestConfig(
-    #     agent="crewai_coding_crew",
-    #     deployment_target="agent_engine",
-    # ),
-    # CICDTestConfig(
-    #     agent="agentic_rag_vertexai_search",
-    #     deployment_target="agent_engine",
-    # ),
-    # CICDTestConfig(
-    #     agent="agentic_rag_vertexai_search",
-    #     deployment_target="cloud_run",
-    # ),
-    # CICDTestConfig(
-    #     agent="multimodal_live_api",
-    #     deployment_target="cloud_run",
-    # ),
-]
+def get_test_matrix() -> list[CICDTestConfig]:
+    """
+    Get the test matrix to run, either from environment or predefined combinations.
+
+    If _TEST_AGENT_COMBINATION environment variable is set with format "agent,deployment_target[,extra_params]",
+    returns a matrix with just that combination. Otherwise returns the full test matrix.
+    """
+    if os.environ.get("_TEST_AGENT_COMBINATION"):
+        env_combo_parts = os.environ.get("_TEST_AGENT_COMBINATION", "").split(",")
+        if len(env_combo_parts) >= 2:
+            extra_params = ""
+            if len(env_combo_parts) > 2:
+                extra_params = ",".join(env_combo_parts[2:])
+
+            env_combo = CICDTestConfig(
+                agent=env_combo_parts[0],
+                deployment_target=env_combo_parts[1],
+                extra_params=extra_params,
+            )
+            logging.info(f"Running test for combination from environment: {env_combo}")
+            return [env_combo]
+        else:
+            logging.warning(
+                f"Invalid environment combination format: {env_combo_parts}"
+            )
+
+    # Define default test matrix with different agent and deployment target combinations
+    return [
+        # CICDTestConfig(
+        #     agent="langgraph_base_react",
+        #     deployment_target="agent_engine",
+        # ),
+        # CICDTestConfig(
+        #     agent="langgraph_base_react",
+        #     deployment_target="cloud_run",
+        # ),
+        # CICDTestConfig(
+        #     agent="crewai_coding_crew",
+        #     deployment_target="cloud_run",
+        # ),
+        # CICDTestConfig(
+        #     agent="crewai_coding_crew",
+        #     deployment_target="agent_engine",
+        # ),
+        CICDTestConfig(
+            agent="agentic_rag",
+            deployment_target="agent_engine",
+            extra_params="--include-data-ingestion,--datastore,vertex_ai_vector_search",
+        ),
+        # CICDTestConfig(
+        #     agent="agentic_rag",
+        #     deployment_target="cloud_run",
+        # ),
+        # CICDTestConfig(
+        #     agent="multimodal_live_api",
+        #     deployment_target="cloud_run",
+        # ),
+    ]
+
+
+# Get the test matrix based on environment or defaults
+CICD_TEST_MATRIX: list[CICDTestConfig] = get_test_matrix()
 
 
 def run_command(
@@ -102,6 +136,17 @@ def run_command(
     """Run a command and display it to the user with enhanced error handling and real-time streaming"""
     # Format command for display
     cmd_str = " ".join(cmd)
+
+    # Mask sensitive information in the displayed command
+    display_cmd = cmd_str
+    if "GITHUB_PAT" in display_cmd or "--github-pat" in display_cmd:
+        # Find the position of the token in the command
+        for i, arg in enumerate(cmd):
+            if arg == "--github-pat" and i + 1 < len(cmd):
+                cmd_str = cmd_str.replace(cmd[i + 1], "[REDACTED]")
+            elif "GITHUB_PAT" in arg:
+                cmd_str = cmd_str.replace(arg, "[REDACTED]")
+
     logger.info(f"\n🔄 Running command: {cmd_str}")
     if cwd:
         logger.info(f"📂 In directory: {cwd}")
@@ -267,14 +312,24 @@ class TestE2EDeployment:
             raise Exception(f"Build {build_id} failed: {failure_detail}")
 
     def monitor_deployment(
-        self, project_id: str, region: str, environment: str, max_wait_minutes: int = 1
+        self,
+        project_id: str,
+        region: str,
+        environment: str,
+        max_wait_minutes: int = 1,
+        repo_owner: str | None = None,
+        repo_name: str | None = None,
     ) -> None:
         """Monitor deployment for either staging or production, handling both running and pending states"""
         logger.info(f"\n🔍 Monitoring {environment} deployment...")
 
         start_time = time.time()
+        build_found = False
+
         while (time.time() - start_time) < (max_wait_minutes * 60):
-            # Check for both WORKING and PENDING builds
+            # Check for both WORKING and PENDING builds with source filter if available
+            filter_cmd = "status=WORKING OR status=PENDING"
+
             result = run_command(
                 [
                     "gcloud",
@@ -283,7 +338,7 @@ class TestE2EDeployment:
                     f"--project={project_id}",
                     f"--region={region}",
                     "--filter",
-                    "status=WORKING OR status=PENDING",
+                    filter_cmd,
                     "--format=json",
                 ],
                 capture_output=True,
@@ -301,8 +356,22 @@ class TestE2EDeployment:
             for build in builds:
                 if "id" not in build:
                     continue
+                # Filter builds by repository if repo information is provided
+                if repo_owner and repo_name:
+                    # Check if this build is from our target repository
+                    source = build.get("source", {})
+                    git_source = source.get("gitSource", {})
+                    repo_url = git_source.get("url", "")
+
+                    # Skip builds not from our target repository
+                    if f"github.com/{repo_owner}/{repo_name}" not in repo_url:
+                        logger.debug(
+                            f"Skipping build from different repository: {repo_url}"
+                        )
+                        continue
 
                 active_builds = True
+                build_found = True
                 build_id = build["name"]
                 build_status = build.get("status")
                 trigger_id = build.get("buildTriggerId", "")
@@ -364,42 +433,242 @@ class TestE2EDeployment:
                 logger.info("⏳ No relevant builds found, waiting...")
                 time.sleep(30)  # Wait 30 seconds before checking again
 
-    def cleanup_test_repos(self) -> None:
-        """Delete all GitHub repositories that start with 'test-'"""
-        logger.info("\n🧹 Cleaning up existing test repositories...")
+        # If we've waited the maximum time and never found a build, raise an error
+        if not build_found:
+            raise Exception(
+                f"No {environment} deployment builds found after waiting {max_wait_minutes} minutes"
+            )
+
+    def cleanup_resources(
+        self,
+        new_project_dir: Path,
+        project_name: str,
+        cicd_project: str,
+        region: str,
+        deployment_target: str = "cloud_run",
+    ) -> None:
+        """Clean up all resources created during the test"""
+        logger.info("\n🧹 Cleaning up resources...")
 
         try:
-            # List all repositories and filter for ones starting with "test-"
-            result = run_command(
-                ["gh", "repo", "list", "--json", "name", "--limit", "1000"],
-                capture_output=True,
-                check=True,
+            # 1. Try to manually delete Cloud Run service or Agent Engine service based on deployment target
+            for env_project in [
+                os.environ.get("E2E_DEV_PROJECT"),
+                os.environ.get("E2E_STAGING_PROJECT"),
+                os.environ.get("E2E_PROD_PROJECT"),
+            ]:
+                if not env_project:
+                    continue
+
+                if deployment_target == "cloud_run":
+                    logger.info(
+                        f"Checking for Cloud Run service {project_name} in project {env_project}..."
+                    )
+                    try:
+                        # Delete the service with the project name directly
+                        logger.info(f"Deleting Cloud Run service: {project_name}")
+                        run_command(
+                            [
+                                "gcloud",
+                                "run",
+                                "services",
+                                "delete",
+                                project_name,
+                                f"--project={env_project}",
+                                f"--region={region}",
+                                "--quiet",
+                            ],
+                            check=False,
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Error cleaning up Cloud Run service {project_name}: {e}"
+                        )
+                elif deployment_target == "agent_engine":
+                    logger.info(
+                        f"Checking for Agent Engine service {project_name} in project {env_project}..."
+                    )
+                    try:
+                        # Initialize Vertex AI
+                        vertexai.init(project=env_project, location=region)
+
+                        # List all reasoning engines with the given display name
+                        logger.info(
+                            f"Listing Agent Engine services with name: {project_name}"
+                        )
+                        engines = reasoning_engines.ReasoningEngine.list(
+                            filter=f"display_name={project_name}"
+                        )
+
+                        # Delete each matching engine
+                        for engine in engines:
+                            logger.info(
+                                f"Deleting Agent Engine: {engine.resource_name}"
+                            )
+                            engine.delete()
+                            logger.info(
+                                f"Successfully deleted Agent Engine: {engine.resource_name}"
+                            )
+
+                    except Exception as e:
+                        logger.error(
+                            f"Error cleaning up Agent Engine service {project_name}: {e}"
+                        )
+
+            # 2. Try to manually delete specific BigQuery datasets (feedback and telemetry)
+            for env_project in [
+                os.environ.get("E2E_DEV_PROJECT"),
+                os.environ.get("E2E_STAGING_PROJECT"),
+                os.environ.get("E2E_PROD_PROJECT"),
+            ]:
+                if not env_project:
+                    continue
+
+                logger.info(
+                    f"Cleaning up specific BigQuery datasets in project {env_project}..."
+                )
+                try:
+                    # Define the specific datasets to delete
+                    project_name_underscore = project_name.replace("-", "_").lower()
+                    datasets_to_delete = [
+                        f"{project_name_underscore}_feedback",
+                        f"{project_name_underscore}_telemetry",
+                    ]
+
+                    for dataset_name in datasets_to_delete:
+                        logger.info(f"Deleting BigQuery dataset: {dataset_name}")
+                        # Force delete with the -f flag
+                        run_command(
+                            [
+                                "bq",
+                                "rm",
+                                "-f",
+                                "-r",
+                                f"--project_id={env_project}",
+                                dataset_name,
+                            ],
+                            check=False,
+                        )
+                except Exception as e:
+                    logger.error(f"Error cleaning up BigQuery datasets: {e}")
+            # 3. Try to manually delete Cloud Build repositories and connection
+            logger.info(
+                f"Cleaning up Cloud Build repositories and connection in project {cicd_project}..."
             )
-            repos = json.loads(result.stdout)
+            try:
+                connection_name = f"git-{project_name}"
 
-            test_repos = [
-                repo["name"] for repo in repos if repo["name"].startswith("test-")
-            ]
-
-            if not test_repos:
-                logger.info("No test repositories found to clean up")
-                return
-
-            logger.info(f"Found {len(test_repos)} test repositories to delete")
-
-            for repo in test_repos:
-                logger.info(f"Deleting repository: {repo}")
-                run_command(
-                    ["gh", "repo", "delete", repo, "--yes"],
-                    check=False,  # Don't fail if repo doesn't exist
+                # List all repositories for the connection
+                logger.info(f"Listing repositories for connection: {connection_name}")
+                repos_result = run_command(
+                    [
+                        "gcloud",
+                        "builds",
+                        "repositories",
+                        "list",
+                        f"--connection={connection_name}",
+                        f"--project={cicd_project}",
+                        f"--region={region}",
+                        "--format=json",
+                    ],
+                    capture_output=True,
+                    check=False,
                 )
 
-            logger.info("✅ Cleanup completed")
+                # Delete each repository
+                if repos_result.returncode == 0 and repos_result.stdout:
+                    try:
+                        repos = json.loads(repos_result.stdout)
+                        for repo in repos:
+                            repo_name = repo.get("name", "").split("/")[-1]
+                            if repo_name:
+                                logger.info(f"Deleting repository: {repo_name}")
+                                run_command(
+                                    [
+                                        "gcloud",
+                                        "builds",
+                                        "repositories",
+                                        "delete",
+                                        repo_name,
+                                        f"--connection={connection_name}",
+                                        f"--project={cicd_project}",
+                                        f"--region={region}",
+                                        "--quiet",
+                                    ],
+                                    check=False,
+                                )
+                    except json.JSONDecodeError:
+                        logger.error("Failed to parse repositories JSON output")
+
+                # Delete the connection after repositories are deleted
+                logger.info(f"Deleting Cloud Build connection: {connection_name}")
+                run_command(
+                    [
+                        "gcloud",
+                        "builds",
+                        "connections",
+                        "delete",
+                        connection_name,
+                        f"--project={cicd_project}",
+                        f"--region={region}",
+                        "--quiet",
+                    ],
+                    check=False,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error cleaning up Cloud Build repositories and connection: {e}"
+                )
+            # 4. Delete GitHub repository
+            logger.info(f"Deleting GitHub repository: {project_name}")
+            try:
+                run_command(
+                    ["gh", "repo", "delete", project_name, "--yes"], check=False
+                )
+            except Exception as e:
+                logger.error(f"Error deleting GitHub repository: {e}")
+
+            # 5. Finally, destroy terraform resources in dev environment
+            logger.info("Destroying dev terraform resources...")
+            dev_tf_dir = new_project_dir / "deployment" / "terraform" / "dev"
+            if dev_tf_dir.exists():
+                try:
+                    run_command(
+                        [
+                            "terraform",
+                            "destroy",
+                            "-auto-approve",
+                            "-var-file=vars/env.tfvars",
+                        ],
+                        cwd=dev_tf_dir,
+                        check=False,  # Don't fail if destroy fails
+                    )
+                except Exception as e:
+                    logger.error(f"Error destroying dev terraform resources: {e}")
+
+            # 6. Then destroy terraform resources in prod/staging environment
+            logger.info("Destroying prod/staging terraform resources...")
+            prod_tf_dir = new_project_dir / "deployment" / "terraform"
+            if prod_tf_dir.exists():
+                try:
+                    run_command(
+                        [
+                            "terraform",
+                            "destroy",
+                            "-auto-approve",
+                            "-var-file=vars/env.tfvars",
+                        ],
+                        cwd=prod_tf_dir,
+                        check=False,  # Don't fail if destroy fails
+                    )
+                except Exception as e:
+                    logger.error(
+                        f"Error destroying prod/staging terraform resources: {e}"
+                    )
 
         except Exception as e:
-            logger.error(f"⚠️ Error during cleanup: {e}")
-            # Don't fail the test if cleanup fails
-            pass
+            logger.error(f"Error during cleanup: {e}")
+            # Don't re-raise, as we want to continue with other cleanup steps
 
     def get_project_root(self) -> Path:
         """Get the project root directory"""
@@ -449,7 +718,10 @@ class TestE2EDeployment:
 
             logger.info("✅ Updated datastore name in prod/staging env.tfvars")
 
-    @pytest.mark.parametrize("config", CICD_TEST_MATRIX)
+    @pytest.mark.parametrize(
+        "config",
+        get_test_matrix(),
+    )
     def test_deployment_pipeline(
         self, config: CICDTestConfig, request: pytest.FixtureRequest
     ) -> None:
@@ -469,10 +741,8 @@ class TestE2EDeployment:
                 "Skipping test: GITHUB_PAT and GITHUB_APP_INSTALLATION_ID environment variables are required"
             )
 
-        # Clean up any existing test repositories
-        self.cleanup_test_repos()
-
-        unique_id = f"{config.agent[:10].replace('_', '-')}-{int(time.time())}"
+        agent_hash = hashlib.sha1(config.agent.encode("utf-8")).hexdigest()[:8]
+        unique_id = f"{agent_hash}-{int(time.time())}"
         logger.info(
             f"\n🚀 Starting E2E deployment test for {config.agent} + {config.deployment_target} with ID: {unique_id}"
         )
@@ -496,24 +766,32 @@ class TestE2EDeployment:
             logger.info("\n🏗️ Creating project using CLI...")
             project_name = f"test-{unique_id}"
             new_project_dir = project_root / "target" / project_name
+            # Create base command
+            cmd = [
+                "python",
+                "-m",
+                "src.cli.main",
+                "create",
+                project_name,
+                "--agent",
+                config.agent,
+                "--deployment-target",
+                config.deployment_target,
+                "--output-dir",
+                "target",
+                "--auto-approve",
+                "--region",
+                region,
+                "--skip-checks",
+            ]
+
+            # Add any extra parameters if they exist
+            if hasattr(config, "extra_params") and config.extra_params:
+                extra_params = config.extra_params.split(",")
+                cmd.extend(extra_params)
 
             run_command(
-                [
-                    "python",
-                    "-m",
-                    "src.cli.main",
-                    "create",
-                    project_name,
-                    "--agent",
-                    config.agent,
-                    "--deployment-target",
-                    config.deployment_target,
-                    "--output-dir",
-                    "target",
-                    "--auto-approve",
-                    "--region",
-                    region,
-                ],
+                cmd,
                 cwd=project_root,
             )
             # Update datastore name in terraform variables to avoid conflicts
@@ -555,7 +833,7 @@ class TestE2EDeployment:
                         "--repository-owner",
                         github_username,
                         "--host-connection-name",
-                        "git-connection-test",
+                        f"git-{project_name}",
                         "--git-provider",
                         "github",
                         "--github-pat",
@@ -574,11 +852,47 @@ class TestE2EDeployment:
                 logger.error(f"Standard output:\n{e.output}")
                 raise
 
+            time.sleep(60)
+
+            # Configure git remote with authentication
+            logger.info("\n🔄 Setting up git remote with authentication...")
+            github_repo_url = f"https://{github_username}:{github_pat}@github.com/{github_username}/{project_name}.git"
+
+            # Initialize git repo if not already initialized
+            if not (new_project_dir / ".git").exists():
+                run_command(["git", "init"], cwd=new_project_dir)
+
+            # Check if remote exists and remove it if it does
+            try:
+                run_command(
+                    ["git", "remote", "remove", "origin"],
+                    cwd=new_project_dir,
+                    check=False,
+                )
+            except subprocess.CalledProcessError:
+                pass
+
+            # Add the authenticated remote
+            run_command(
+                ["git", "remote", "add", "origin", github_repo_url], cwd=new_project_dir
+            )
+
+            # Verify remote is set correctly (without printing the token)
+            logger.info(
+                f"Remote set to: https://{github_username}@github.com/{github_username}/{project_name}.git"
+            )
             # Create example commits to test CI/CD
             logger.info("\n📝 Creating example commits to showcase CI/CD...")
 
             # Initialize git repo and set remote
             logger.info("\n🔄 Initializing git repository...")
+            # Configure git identity for the test
+            run_command(
+                ["git", "config", "user.email", "test@example.com"], cwd=new_project_dir
+            )
+            run_command(
+                ["git", "config", "user.name", "Test User"], cwd=new_project_dir
+            )
             # Add remote and push initial commit
             run_command(["git", "add", "."], cwd=new_project_dir)
             run_command(["git", "commit", "-m", "Initial commit"], cwd=new_project_dir)
@@ -635,20 +949,40 @@ def dummy_function():
 
             # Monitor staging deployment
             self.monitor_deployment(
-                project_id=cicd_project, region=region, environment="staging"
+                project_id=cicd_project,
+                region=region,
+                environment="staging",
+                repo_owner=github_username,
+                repo_name=project_name,
             )
             time.sleep(5)
             # Monitor production deployment
             self.monitor_deployment(
-                project_id=cicd_project, region=region, environment="production"
+                project_id=cicd_project,
+                region=region,
+                environment="production",
+                repo_owner=github_username,
+                repo_name=project_name,
             )
 
             logger.info("\n✅ E2E deployment test completed successfully!")
         except Exception as e:
-            logger.error(f"\n❌ Test failed with error: {e!s}")
+            logger.error(f"\n❌ Test failed with error: {e}")
             logger.error("See above logs for detailed error information")
-            pytest.fail(f"E2E deployment test failed: {e!s}")
+            pytest.fail(f"E2E deployment test failed {e}")
 
         finally:
             logger.info(f"Project Directory: {new_project_dir}")
             logger.info(f"GitHub Repository: {project_name}")
+
+            # Clean up all resources
+            try:
+                self.cleanup_resources(
+                    new_project_dir,
+                    project_name,
+                    str(cicd_project),
+                    region,
+                    config.deployment_target,
+                )
+            except Exception as e:
+                logger.error(f"Error during cleanup: {e}")

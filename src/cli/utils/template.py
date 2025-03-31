@@ -617,10 +617,10 @@ def process_template(
 
 def should_exclude_path(path: pathlib.Path, agent_name: str) -> bool:
     """Determine if a path should be excluded based on the agent type."""
-    if agent_name == "multimodal_live_api":
-        # Exclude the unit test utils folder and app/utils folder for multimodal_live_api
+    if agent_name == "live_api":
+        # Exclude the unit test utils folder and app/utils folder for live_api
         if "tests/unit/test_utils" in str(path) or "app/utils" in str(path):
-            logging.debug(f"Excluding path for multimodal_live_api: {path}")
+            logging.debug(f"Excluding path for live_api: {path}")
             return True
     return False
 

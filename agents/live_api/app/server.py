@@ -121,8 +121,9 @@ class GeminiSession:
         """
         while result := await self.session._ws.recv(decode=False):
             await self.websocket.send_bytes(result)
-            message = types.LiveServerMessage.model_validate(json.loads(result))
-            if message.tool_call:
+            raw_message = json.loads(result)
+            if "toolCall" in raw_message:
+                message = types.LiveServerMessage.model_validate(raw_message)
                 tool_call = LiveServerToolCall.model_validate(message.tool_call)
                 await self._handle_tool_call(self.session, tool_call)
 

@@ -7,7 +7,7 @@
   - [`langgraph_base_react`](../agents/langgraph_base_react/README.md)
   - [`agentic_rag_vertexai_search`](../agents/agentic_rag_vertexai_search/README.md)
   - [`crewai_coding_crew`](../agents/crewai_coding_crew/README.md)
-  - [`multimodal_live_api`](../agents/multimodal_live_api/README.md)
+  - [`live_api`](../agents/live_api/README.md)
 
 ## Features
 

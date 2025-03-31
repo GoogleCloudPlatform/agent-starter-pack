@@ -19,9 +19,7 @@ import vertexai
 from google import genai
 from google.genai.types import (
     Content,
-    FunctionDeclaration,
     LiveConnectConfig,
-    Tool,
 )
 from langchain_google_vertexai import VertexAIEmbeddings
 
@@ -32,7 +30,7 @@ from app.vector_store import get_vector_store
 VERTEXAI = os.getenv("VERTEXAI", "true").lower() == "true"
 LOCATION = "us-central1"
 EMBEDDING_MODEL = "text-embedding-004"
-MODEL_ID = "gemini-2.0-flash-001"
+MODEL_ID = "gemini-2.0-flash-exp"
 URLS = [
     "https://cloud.google.com/architecture/deploy-operate-generative-ai-applications"
 ]
@@ -70,17 +68,11 @@ def retrieve_docs(query: str) -> dict[str, str]:
     return {"output": formatted_docs}
 
 
-# Configure tools and live connection
-retrieve_docs_tool = Tool(
-    function_declarations=[
-        FunctionDeclaration.from_callable(client=genai_client, callable=retrieve_docs)
-    ]
-)
-
+# Configure tools available to the agent and live connection
 tool_functions = {"retrieve_docs": retrieve_docs}
 
 live_connect_config = LiveConnectConfig(
     response_modalities=["AUDIO"],
-    tools=[retrieve_docs_tool],
+    tools=[retrieve_docs],
     system_instruction=Content(parts=[{"text": SYSTEM_INSTRUCTION}]),
 )

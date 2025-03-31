@@ -78,7 +78,7 @@ def test_template_linting(
     timestamp = datetime.now().strftime("%m%d%H%M")
     project_name = f"{agent[:10]}_{deployment_target[:5]}_{timestamp}"
     project_path = pathlib.Path(TARGET_DIR) / project_name
-    region = "us-central1" if agent == "multimodal_live_api" else "europe-west4"
+    region = "us-central1" if agent == "live_api" else "europe-west4"
 
     try:
         # Create target directory if it doesn't exist

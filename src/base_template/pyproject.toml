@@ -87,7 +87,7 @@ follow_imports = "silent"
 ignore_missing_imports = true
 explicit_package_bases = true
 disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
-{% if cookiecutter.agent_name == 'multimodal_live_api' %}
+{% if cookiecutter.agent_name == 'live_api' %}
 exclude = [".venv","./frontend"]
 {% else %}
 exclude = [".venv"]
@@ -95,7 +95,7 @@ exclude = [".venv"]
 
 [tool.codespell]
 ignore-words-list = "rouge"
-{% if cookiecutter.agent_name == 'multimodal_live_api' %}
+{% if cookiecutter.agent_name == 'live_api' %}
 skip = "./locust_env/*,uv.lock,.venv,./frontend,**/*.ipynb"
 {% else %}
 skip = "./locust_env/*,uv.lock,.venv,**/*.ipynb"

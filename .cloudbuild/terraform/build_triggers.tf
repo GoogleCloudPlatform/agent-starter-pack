@@ -73,8 +73,8 @@ locals {
       value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
     },
     {
-      name  = "multimodal_live_api-cloud_run"
-      value = "multimodal_live_api,cloud_run"
+      name  = "live_api-cloud_run"
+      value = "live_api,cloud_run"
     },
   ]
 
@@ -107,8 +107,8 @@ locals {
       value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
     },
     {
-      name  = "multimodal_live_api-cloud_run"
-      value = "multimodal_live_api,cloud_run"
+      name  = "live_api-cloud_run"
+      value = "live_api,cloud_run"
     },
   ]
   

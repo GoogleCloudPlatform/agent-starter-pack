@@ -48,7 +48,7 @@ agent-starter-pack create my-agent -d agent_engine -a langgraph_base_react
 | `langgraph_base_react`      | A agent implementing a base ReAct agent using LangGraph |
 | `agentic_rag` | A RAG agent using Vertex AI Search and LangGraph for document retrieval and Q&A       |
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |
-| `multimodal_live_api`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
+| `live_api`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
 
 **More agents are on the way!** We are continuously expanding our [agent library](./agents/).  Have a specific agent type in mind?  [Contribute!](#contributing)
 

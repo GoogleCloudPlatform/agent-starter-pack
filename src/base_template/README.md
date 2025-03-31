@@ -60,7 +60,7 @@ make install && make playground
 
 For full command options and usage, refer to the [Makefile](Makefile).
 
-{% if cookiecutter.agent_name == 'multimodal_live_api' %}
+{% if cookiecutter.agent_name == 'live_api' %}
 ## Usage
 
 This template follows a "bring your own agent" approach - you focus on your business logic in `app/agent.py`, and the template handles the surrounding components (UI, infrastructure, deployment, monitoring).
@@ -170,7 +170,7 @@ gcloud run deploy genai-app-sample \
   --memory "4Gi" \
 ```
 Replace `YOUR_PROJECT_ID` with your Google Cloud project ID and `YOUR_GCP_REGION` with the desired region (e.g., `us-central1`). Adjust memory and other flags as needed for your environment.
-{% if cookiecutter.agent_name == 'multimodal_live_api' %}
+{% if cookiecutter.agent_name == 'live_api' %}
 **Accessing the Deployed Backend Locally:**
 
 To connect your local frontend (`make ui`) to the backend deployed on Cloud Run, use the `gcloud` proxy:
@@ -193,7 +193,7 @@ See [deployment/README.md](deployment/README.md) for instructions.
 
 The repository includes a Terraform configuration for the setup of a production Google Cloud project. Refer to [deployment/README.md](deployment/README.md) for detailed instructions on how to deploy the infrastructure and application.
 
-{% if cookiecutter.agent_name != 'multimodal_live_api' %}
+{% if cookiecutter.agent_name != 'live_api' %}
 ## Monitoring and Observability
 
 > You can use [this Looker Studio dashboard](https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.

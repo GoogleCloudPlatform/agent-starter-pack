@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses"
+description: "A real-time multimodal RAG agent powered by Gemini Live API, supporting audio/video/text chat with vector DB-backed responses"
 settings:
   requires_data_ingestion: false
   frontend_type: "live_api_react"

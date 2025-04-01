@@ -530,6 +530,7 @@ def setup_cicd(
             repository_name=repository_name,
             repository_owner=repository_owner,
         )
+        repository_exists = True
     elif git_provider == "github" and detected_mode == "programmatic":
         oauth_token_secret_id = "github-pat"
 

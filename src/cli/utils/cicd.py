@@ -567,7 +567,7 @@ def create_github_repository(repository_owner: str, repository_name: str) -> Non
                     f"{repository_owner}/{repository_name}",
                     "--private",
                     "--description",
-                    "Repository created by Terraform",
+                    "Repository with goo.gle/agent-starter-pack",
                 ]
             )
             console.print("✅ GitHub repository created")

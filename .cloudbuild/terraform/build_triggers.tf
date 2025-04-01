@@ -136,6 +136,27 @@ locals {
   }
 }
 
+resource "google_cloudbuild_trigger" "pr_build_use_wheel" {
+  name            = "pr-build-use-wheel"
+  project         = var.cicd_runner_project_id
+  location        = var.region
+  description     = "Trigger for testing wheel build and installation"
+  service_account = resource.google_service_account.cicd_runner_sa.id
+
+  repository_event_config {
+    repository = local.repository_path
+    pull_request {
+      branch          = "main"
+      comment_control = "COMMENTS_ENABLED_FOR_EXTERNAL_CONTRIBUTORS_ONLY"
+    }
+  }
+
+  filename       = ".cloudbuild/ci/build_use_wheel.yaml"
+  included_files = local.common_included_files
+  ignored_files  = local.common_ignored_files
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
+}
+
 # a. Create PR Tests checks trigger
 resource "google_cloudbuild_trigger" "pr_tests" {
   name            = "pr-tests"

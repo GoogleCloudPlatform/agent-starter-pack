@@ -19,7 +19,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 The following options will be prompted interactively if not provided via the command line:
 - `--agent`, `-a`: Agent name or number to use. Lists available agents if omitted.
 - `--deployment-target`, `-d`: Deployment target (`agent_engine` or `cloud_run`). Prompts if omitted.
-- `--datastore`, `-ds`: Type of datastore to use (`vertex_ai_search`, `alloy_db`, `cloud_sql`). Prompted if `--include-data-ingestion` is specified or if the selected agent requires data ingestion, and this option is omitted. Available choices depend on the selected agent.
+- `--datastore`, `-ds`: Type of datastore to use (`vertex_ai_search`, `vertex_ai_vector_search`). Prompted if `--include-data-ingestion` is specified or if the selected agent requires data ingestion, and this option is omitted.
 - `--region`: GCP region for deployment. Defaults to `us-central1`. Prompts for confirmation if not specified and `--auto-approve` is not used.
 
 GCP account and project ID are detected automatically. You will be prompted to confirm or change them unless `--auto-approve` is used.

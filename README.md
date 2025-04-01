@@ -46,7 +46,7 @@ agent-starter-pack create my-agent -d agent_engine -a langgraph_base_react
 | Agent Name                  | Description                                                                                                                       |
 |-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `langgraph_base_react`      | A agent implementing a base ReAct agent using LangGraph |
-| `agentic_rag` | A RAG agent using Vertex AI Search and LangGraph for document retrieval and Q&A       |
+| `agentic_rag` | A RAG agent using LangGraph for document retrieval and Q&A. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).       |
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |
 | `live_api`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
 
@@ -58,7 +58,7 @@ agent-starter-pack create my-agent -d agent_engine -a langgraph_base_react
 The `agent-starter-pack` offers two key features to accelerate and simplify the development of your agent:
 
 - **🔄 [CI/CD Automation (Experimental)](docs/cli/setup_cicd.md)** - One command to set up a complete GitHub + Cloud Build pipeline for all environments
-- **📥 [Data Pipeline for RAG with Vertex AI Search and Terraform/CI-CD](docs/data-ingestion.md)** - Seamlessly integrate a data pipeline to process embeddings for RAG into your agent system.
+- **📥 [Data Pipeline for RAG with Terraform/CI-CD](docs/data-ingestion.md)** - Seamlessly integrate a data pipeline to process embeddings for RAG into your agent system. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).
 
 
 ## High-Level Architecture

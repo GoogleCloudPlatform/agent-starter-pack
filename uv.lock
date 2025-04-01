@@ -14,6 +14,7 @@ name = "agent-starter-pack"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "backoff" },
     { name = "click" },
     { name = "cookiecutter" },
     { name = "google-cloud-aiplatform" },
@@ -64,6 +65,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "backoff", specifier = ">=2.2.1" },
     { name = "click", specifier = "~=8.1.7" },
     { name = "codespell", marker = "extra == 'lint'", specifier = "~=2.2.0" },
     { name = "cookiecutter", specifier = "~=2.5.0" },

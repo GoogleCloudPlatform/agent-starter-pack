@@ -429,21 +429,30 @@ class TestSetupCICD:
         assert result.exit_code != 0
         assert "must be run from the project root directory" in result.output
 
-    def test_setup_cicd_missing_required_args(self, mock_cwd: MagicMock) -> None:
-        """Test setup fails with missing required arguments"""
+    def test_setup_cicd_interactive_prompt_for_missing_args(
+        self, mock_cwd: MagicMock
+    ) -> None:
+        """Test setup prompts for missing required arguments interactively"""
         runner = CliRunner()
 
-        with patch("pathlib.Path.exists", return_value=True):
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "src.cli.utils.cicd.run_command",
+                side_effect=subprocess.CalledProcessError(1, "gcloud"),
+            ),
+        ):
+            # Simulate user entering "test-prod" when prompted
             result = runner.invoke(
                 setup_cicd,
                 [
                     "--staging-project",
-                    "test-staging",  # Missing prod and cicd projects
+                    "test-staging",  # Missing prod project, should prompt for it
                 ],
+                input="test-prod\n",  # Simulate user input for prod project
             )
 
-        assert result.exit_code != 0
-        assert "Missing option" in result.output
+        assert "Enter your production project ID" in result.output
 
     def test_setup_cicd_with_github_pat(
         self,

@@ -1,7 +1,5 @@
 # Deployment
 
-> **Note:** For an automated setup of a basic CI/CD pipeline, see the [`setup-cicd` CLI command documentation](../docs/cli/setup_cicd.md). The automated setup is experimental and recommended primarily for development and testing. For production, follow the manual steps below.
-
 The templated agent leverages [**Terraform**](http://terraform.io) to define and provision the underlying infrastructure, while [**Cloud Build**](https://cloud.google.com/build/) orchestrates the continuous integration and continuous deployment (CI/CD) pipeline.
 
 ## Deployment Workflow
@@ -28,6 +26,8 @@ The templated agent leverages [**Terraform**](http://terraform.io) to define and
    - Deploys to production environment
 
 ## Setup
+
+> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](./cli/setup_cicd.md). Currently only supporting Github.
 
 **Prerequisites:**
 
@@ -58,6 +58,7 @@ The templated agent leverages [**Terraform**](http://terraform.io) to define and
 
    | Variable               | Description                                                     | Required |
    | ---------------------- | --------------------------------------------------------------- | :------: |
+   | project_name           | Project name used as a base for resource naming                 |   Yes    |
    | prod_project_id        | **Production** Google Cloud Project ID for resource deployment. |   Yes    |
    | staging_project_id     | **Staging** Google Cloud Project ID for resource deployment.    |   Yes    |
    | cicd_runner_project_id | Google Cloud Project ID where CI/CD pipelines will execute.     |   Yes    |
@@ -65,7 +66,7 @@ The templated agent leverages [**Terraform**](http://terraform.io) to define and
    | host_connection_name   | Name of the host connection you created in Cloud Build          |   Yes    |
    | repository_name        | Name of the repository you added to Cloud Build                 |   Yes    |
 
-   Other optional variables include: telemetry and feedback BigQuery dataset IDs, log filters, sink names, service account names, bucket name suffixes, artifact registry repository name, and various role assignments.
+   Other optional variables may include: telemetry and feedback log filters, service account roles, and for projects requiring data ingestion: pipeline cron schedule, pipeline roles, and datastore-specific configurations.
 
 4. **Deploy Infrastructure with Terraform**
 
@@ -96,28 +97,3 @@ After completing these steps, your infrastructure will be set up and ready for d
 For End-to-end testing of the application, including tracing and feedback sinking to BigQuery, without the need to trigger a CI/CD pipeline.
 
 First, enable required Google Cloud APIs:
-
-```bash
-gcloud config set project <your-dev-project-id>
-gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com
-```
-
-After you edited the relative [`env.tfvars` file](../terraform/dev/vars/env.tfvars), follow the following instructions:
-
-```bash
-cd deployment/terraform/dev
-terraform init
-terraform apply --var-file vars/env.tfvars
-```
-
-Then deploy the application using the following command (from the root of the repository):
-
-```bash
-make backend
-```
-
-### End-to-end Demo video
-
-<a href="https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/template_deployment_demo.mp4">
-  <img src="https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/preview_video.png" alt="Watch the video" width="300"/>
-</a>

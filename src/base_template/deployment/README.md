@@ -29,6 +29,8 @@ The application leverages [**Terraform**](http://terraform.io) to define and pro
 
 ## Setup
 
+> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/cli/setup_cicd.md). Currently only supporting Github.
+
 **Prerequisites:**
 
 1. A set of Google Cloud projects:
@@ -58,6 +60,7 @@ The application leverages [**Terraform**](http://terraform.io) to define and pro
 
    | Variable               | Description                                                     | Required |
    | ---------------------- | --------------------------------------------------------------- | :------: |
+   | project_name           | Project name used as a base for resource naming                 |   Yes    |
    | prod_project_id        | **Production** Google Cloud Project ID for resource deployment. |   Yes    |
    | staging_project_id     | **Staging** Google Cloud Project ID for resource deployment.    |   Yes    |
    | cicd_runner_project_id | Google Cloud Project ID where CI/CD pipelines will execute.     |   Yes    |
@@ -65,7 +68,7 @@ The application leverages [**Terraform**](http://terraform.io) to define and pro
    | host_connection_name   | Name of the host connection you created in Cloud Build          |   Yes    |
    | repository_name        | Name of the repository you added to Cloud Build                 |   Yes    |
 
-   Other optional variables include: telemetry and feedback BigQuery dataset IDs, log filters, sink names, service account names, bucket name suffixes, artifact registry repository name, and various role assignments.
+   Other optional variables may include: telemetry and feedback log filters, service account roles, and for projects requiring data ingestion: pipeline cron schedule, pipeline roles, and datastore-specific configurations.
 
 4. **Deploy Infrastructure with Terraform**
 

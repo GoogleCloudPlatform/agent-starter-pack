@@ -356,9 +356,11 @@ console = Console()
 
 @click.command()
 @click.option("--dev-project", help="Development project ID")
-@click.option("--staging-project", required=True, help="Staging project ID")
-@click.option("--prod-project", required=True, help="Production project ID")
-@click.option("--cicd-project", required=True, help="CICD project ID")
+@click.option("--staging-project", help="Staging project ID")
+@click.option("--prod-project", help="Production project ID")
+@click.option(
+    "--cicd-project", help="CICD project ID (defaults to prod project if not specified)"
+)
 @click.option("--region", default="us-central1", help="GCP region")
 @click.option("--repository-name", help="Repository name (optional)")
 @click.option(
@@ -402,9 +404,9 @@ console = Console()
 )
 def setup_cicd(
     dev_project: str | None,
-    staging_project: str,
-    prod_project: str,
-    cicd_project: str,
+    staging_project: str | None,
+    prod_project: str | None,
+    cicd_project: str | None,
     region: str,
     repository_name: str | None,
     repository_owner: str | None,
@@ -425,6 +427,20 @@ def setup_cicd(
             "This command must be run from the project root directory containing pyproject.toml. "
             "Make sure you are in the folder created by agent-starter-pack."
         )
+
+    # Prompt for staging and prod projects if not provided
+    if staging_project is None:
+        staging_project = click.prompt(
+            "Enter your staging project ID (where tests will be run)", type=str
+        )
+
+    if prod_project is None:
+        prod_project = click.prompt("Enter your production project ID", type=str)
+
+    # If cicd_project is not provided, default to prod_project
+    if cicd_project is None:
+        cicd_project = prod_project
+        console.print(f"Using production project '{prod_project}' for CI/CD resources")
 
     console.print(
         "\n⚠️  WARNING: The setup-cicd command is experimental and may have unexpected behavior.",

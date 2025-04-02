@@ -1,4 +1,4 @@
-# CLI Commands
+# `create`
 
 The Agent Starter Pack provides CLI commands to help you create and manage AI agent projects.
 

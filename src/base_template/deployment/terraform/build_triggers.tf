@@ -38,6 +38,7 @@ resource "google_cloudbuild_trigger" "pr_checks" {
     "data_ingestion/**",
   {% endif %}
   ]
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
 }
 
@@ -64,6 +65,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
     "deployment/**",
     "uv.lock"
   ]
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   substitutions = {
     _STAGING_PROJECT_ID            = var.staging_project_id
     _BUCKET_NAME_LOAD_TEST_RESULTS = resource.google_storage_bucket.bucket_load_test_results.name
@@ -104,6 +106,7 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
     repository = "projects/${var.cicd_runner_project_id}/locations/${var.region}/connections/${var.host_connection_name}/repositories/${var.repository_name}"
   }
   filename = "deployment/cd/deploy-to-prod.yaml"
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   approval_config {
     approval_required = true
   }

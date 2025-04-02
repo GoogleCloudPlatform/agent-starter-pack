@@ -76,7 +76,7 @@ def test_template_linting(
 ) -> None:
     """Test linting for a specific agent template"""
     timestamp = datetime.now().strftime("%m%d%H%M%S")
-    project_name = f"{agent[:8]}_{deployment_target[:5]}_{timestamp}"
+    project_name = f"{agent[:8]}-{deployment_target[:5]}-{timestamp}".replace("_", "-")
     project_path = pathlib.Path(TARGET_DIR) / project_name
     region = "us-central1" if agent == "live_api" else "europe-west4"
 

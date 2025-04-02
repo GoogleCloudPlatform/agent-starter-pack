@@ -452,3 +452,55 @@ class TestCreateCommand:
 
         assert result == "langgraph_base_react"
         mock_get_available_agents.assert_called_once()
+
+    def test_normalize_project_name(self, mock_console: MagicMock) -> None:
+        """Test the normalize_project_name function directly"""
+        from src.cli.commands.create import normalize_project_name
+
+        # Test with uppercase characters
+        result = normalize_project_name("TestProject")
+        assert result == "testproject"
+        mock_console.print.assert_any_call(
+            "Note: Project names are normalized (lowercase, hyphens only) for better compatibility with cloud resources and tools.",
+            style="dim",
+        )
+        mock_console.print.assert_any_call(
+            "Info: Converting to lowercase for compatibility: 'TestProject' -> 'testproject'",
+            style="bold yellow",
+        )
+
+        # Reset mock for next test
+        mock_console.reset_mock()
+
+        # Test with underscores
+        result = normalize_project_name("test_project")
+        assert result == "test-project"
+        mock_console.print.assert_any_call(
+            "Info: Replacing underscores with hyphens for compatibility: 'test_project' -> 'test-project'",
+            style="yellow",
+        )
+
+        # Reset mock for next test
+        mock_console.reset_mock()
+
+        # Test with both uppercase and underscores
+        result = normalize_project_name("Test_Project")
+        assert result == "test-project"
+        mock_console.print.assert_any_call(
+            "Note: Project names are normalized (lowercase, hyphens only) for better compatibility with cloud resources and tools.",
+            style="dim",
+        )
+        mock_console.print.assert_any_call(
+            "Info: Converting to lowercase for compatibility: 'Test_Project' -> 'test_project'",
+            style="bold yellow",
+        )
+        mock_console.print.assert_any_call(
+            "Info: Replacing underscores with hyphens for compatibility: 'test_project' -> 'test-project'",
+            style="yellow",
+        )
+
+        # Test with already normalized name
+        mock_console.reset_mock()
+        result = normalize_project_name("test-project")
+        assert result == "test-project"
+        mock_console.print.assert_not_called()

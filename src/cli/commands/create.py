@@ -37,6 +37,40 @@ from ..utils.template import (
 console = Console()
 
 
+def normalize_project_name(project_name: str) -> str:
+    """Normalize project name for better compatibility with cloud resources and tools."""
+
+    needs_normalization = (
+        any(char.isupper() for char in project_name) or "_" in project_name
+    )
+
+    if needs_normalization:
+        normalized_name = project_name
+        console.print(
+            "Note: Project names are normalized (lowercase, hyphens only) for better compatibility with cloud resources and tools.",
+            style="dim",
+        )
+        if any(char.isupper() for char in normalized_name):
+            normalized_name = normalized_name.lower()
+            console.print(
+                f"Info: Converting to lowercase for compatibility: '{project_name}' -> '{normalized_name}'",
+                style="bold yellow",
+            )
+
+        if "_" in normalized_name:
+            # Capture the name state before this specific change
+            name_before_hyphenation = normalized_name
+            normalized_name = normalized_name.replace("_", "-")
+            console.print(
+                f"Info: Replacing underscores with hyphens for compatibility: '{name_before_hyphenation}' -> '{normalized_name}'",
+                style="yellow",
+            )
+
+        return normalized_name
+
+    return project_name
+
+
 @click.command()
 @click.pass_context
 @click.argument("project_name")
@@ -110,15 +144,7 @@ def create(
             )
             return
 
-        # Convert project name to lowercase
-        if any(char.isupper() for char in project_name):
-            original_name = project_name
-            project_name = project_name.lower()
-            console.print(
-                f"Warning: Project name '{original_name}' contains uppercase characters. "
-                f"Converting to lowercase: '{project_name}'",
-                style="bold yellow",
-            )
+        project_name = normalize_project_name(project_name)
 
         # Setup debug logging if enabled
         if debug:

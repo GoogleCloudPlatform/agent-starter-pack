@@ -69,16 +69,6 @@ This starter pack covers all aspects of Agent development, from prototyping and 
 
 ---
 
-#### From `e2e-gen-ai-app-starter-pack` to `agent-starter-pack`
-
-This project represents the next evolution of the [e2e-gen-ai-app-starter-pack](goo.gle/e2e-gen-ai-app-starter-pack).  Building on the foundation of the original, we've made significant improvements:
-
-*   **Streamlined CLI:**  A new command-line interface (`agent-starter-pack`) simplifies project creation, template selection, and deployment.
-*   **Expanded Agent Options:** Support for a wider variety of agent frameworks (LangGraph, CrewAI, and the Google GenAI SDK) and deployment targets (including Vertex AI Agent Engine).
-*   **Simplified setup**: Integrated gcloud authentication and projects and region configurations
-
----
-
 ## 🔧 Requirements
 
 - Python 3.10+
@@ -101,6 +91,10 @@ See the [documentation](docs/) for more details:
 
 - **March 6, 2025**: A [120 Minute livestream video demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s) of the new `agent-starter-pack` were we build 3 Agents under 30 minutes!
 - **Oct 29, 2024**: A [20-Minute Video Walkthrough](https://youtu.be/kwRG7cnqSu0) is available, showcasing the previous `agent-starter-pack`.
+
+## Explore More Generative AI Resources
+
+Looking for more examples and resources for Generative AI on Google Cloud? Check out the [GoogleCloudPlatform/generative-ai](https://github.com/GoogleCloudPlatform/generative-ai) repository for notebooks, code samples, and more!
 
 ## Contributing
 

@@ -159,7 +159,7 @@ class Client:
             if self.authenticate_request:
                 headers["Authorization"] = f"Bearer {self.id_token}"
             with requests.post(
-                self.url, json=data, headers=headers, stream=True, timeout=10
+                self.url, json=data, headers=headers, stream=True, timeout=60
             ) as response:
                 for line in response.iter_lines():
                     if line:

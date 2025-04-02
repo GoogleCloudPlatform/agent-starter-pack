@@ -124,6 +124,8 @@ class AgentEngineApp:
         **kwargs: Any,
     ) -> Any:
         """Process a single input and return the agent's response."""
+        config = ensure_valid_config(config)
+        self.set_tracing_properties(config=config)
         return dumpd(self.runnable.invoke(input=input, config=config, **kwargs))
 
     def register_operations(self) -> Mapping[str, Sequence]:

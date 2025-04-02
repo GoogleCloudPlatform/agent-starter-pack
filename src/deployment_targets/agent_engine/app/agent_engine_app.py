@@ -26,15 +26,11 @@ import vertexai
 from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
-from vertexai.preview import reasoning_engines
+from vertexai import agent_engines
 
 from app.utils.gcs import create_bucket_if_not_exists
 from app.utils.tracing import CloudTraceLoggingSpanExporter
 from app.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
-
-logging.basicConfig(
-    level=logging.INFO,
-)
 
 
 class AgentEngineApp:
@@ -153,7 +149,7 @@ def deploy_agent_engine_app(
     requirements_file: str = ".requirements.txt",
     extra_packages: list[str] = ["./app"],
     env_vars: dict[str, str] | None = None,
-) -> reasoning_engines.ReasoningEngine:
+) -> agent_engines.AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
     staging_bucket = f"gs://{project}-agent-engine"
@@ -171,7 +167,7 @@ def deploy_agent_engine_app(
 
     # Common configuration for both create and update operations
     agent_config = {
-        "reasoning_engine": agent,
+        "agent_engine": agent,
         "display_name": agent_name,
         "description": "This is a sample custom application in Agent Engine that uses LangGraph",
         "extra_packages": extra_packages,
@@ -180,10 +176,7 @@ def deploy_agent_engine_app(
     agent_config["requirements"] = requirements
 
     # Check if an agent with this name already exists
-    existing_agents = reasoning_engines.ReasoningEngine.list(
-        filter=f"display_name={agent_name}"
-    )
-
+    existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))
     if existing_agents:
         # Update the existing agent with new configuration
         logging.info(f"Updating existing agent: {agent_name}")
@@ -191,7 +184,7 @@ def deploy_agent_engine_app(
     else:
         # Create a new agent if none exists
         logging.info(f"Creating new agent: {agent_name}")
-        remote_agent = reasoning_engines.ReasoningEngine.create(**agent_config)
+        remote_agent = agent_engines.create(**agent_config)
 
     config = {
         "remote_agent_engine_id": remote_agent.resource_name,

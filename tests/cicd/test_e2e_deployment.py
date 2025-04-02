@@ -49,7 +49,7 @@ from pathlib import Path
 
 import pytest
 import vertexai
-from vertexai.preview import reasoning_engines
+from vertexai import agent_engines
 
 DEFAULT_REGION = "europe-west1"
 
@@ -496,7 +496,7 @@ class TestE2EDeployment:
                         logger.info(
                             f"Listing Agent Engine services with name: {project_name}"
                         )
-                        engines = reasoning_engines.ReasoningEngine.list(
+                        engines = agent_engines.AgentEngine.list(
                             filter=f"display_name={project_name}"
                         )
 

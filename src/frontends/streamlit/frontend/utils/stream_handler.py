@@ -28,7 +28,7 @@ import streamlit as st
 import vertexai
 from google.auth.exceptions import DefaultCredentialsError
 from langchain_core.messages import AIMessage, ToolMessage
-from vertexai.preview import reasoning_engines
+from vertexai import agent_engines
 
 from frontend.utils.multimodal_utils import format_content
 
@@ -43,7 +43,7 @@ def get_remote_agent(remote_agent_engine_id: str) -> Any:
     project_id = parts[1]
     location = parts[3]
     vertexai.init(project=project_id, location=location)
-    return reasoning_engines.ReasoningEngine(remote_agent_engine_id)
+    return agent_engines.AgentEngine(remote_agent_engine_id)
 
 
 @st.cache_resource

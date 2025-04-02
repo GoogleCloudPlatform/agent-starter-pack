@@ -69,7 +69,7 @@ requires-dist = [
     { name = "click", specifier = "~=8.1.7" },
     { name = "codespell", marker = "extra == 'lint'", specifier = "~=2.2.0" },
     { name = "cookiecutter", specifier = "~=2.5.0" },
-    { name = "google-cloud-aiplatform", specifier = "~=1.81.0" },
+    { name = "google-cloud-aiplatform", specifier = "~=1.87.0" },
     { name = "ipykernel", marker = "extra == 'jupyter'", specifier = ">=6.29.5" },
     { name = "jupyter", marker = "extra == 'jupyter'" },
     { name = "mypy", marker = "extra == 'lint'", specifier = "~=1.15.0" },
@@ -1344,7 +1344,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.81.0"
+version = "1.87.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -1360,9 +1360,9 @@ dependencies = [
     { name = "shapely" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c3/9b/1a2012018f9a47c6057f45190a85f4053847511eea7d14592d42c942c16e/google_cloud_aiplatform-1.81.0.tar.gz", hash = "sha256:1398be33bfc2725dde47555e559b89e8cb3b2d676a47a9802d9f33a89f1630bf", size = 8702664 }
+sdist = { url = "https://files.pythonhosted.org/packages/31/a2/687b70ad2f6c4c3ac007f0c61454cc00174e15cdbf78d39198093c41a7b9/google_cloud_aiplatform-1.87.0.tar.gz", hash = "sha256:3628c573d677d72c7ad62e9c898ff7073c915241e86fd563ff2ee581d281e494", size = 9029058 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/18/74/59afe8abef2610f3e882ab8721f4c93fbc0365cadc4837d90e5344326318/google_cloud_aiplatform-1.81.0-py2.py3-none-any.whl", hash = "sha256:e4b6745dfd1f6215d690e9589239d2e7ae2553e39bf9c24c7b7581af0f2f6a68", size = 7266935 },
+    { url = "https://files.pythonhosted.org/packages/a2/c9/973f7618c29938c90f442031d23b221159032cd83e5d6e2b7b5a3b0e60fa/google_cloud_aiplatform-1.87.0-py2.py3-none-any.whl", hash = "sha256:23421cb288550e1b35c5a81f471618e0c34c32dfc73db895498ac01c9a5fa46c", size = 7539298 },
 ]
 
 [[package]]

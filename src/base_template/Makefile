@@ -1,5 +1,5 @@
 install:
-	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/install.sh | sh; source ~/.bashrc; }
+	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf ttps://astral.sh/uv/0.6.11/install.sh | sh; source ~/.bashrc; }
 	uv sync --dev {% if cookiecutter.agent_name != 'live_api' %}--extra streamlit{%- endif %} --extra jupyter --frozen{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
 
 test:
@@ -19,7 +19,9 @@ backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-	uv export --no-hashes --no-sources --no-header --no-emit-project --frozen > .requirements.txt && uv run app/agent_engine_app.py
+	# Export dependencies to requirements file using uv export (preferred method), otherwise fall back to uv pip freeze
+	uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --frozen > .requirements.txt 2>/dev/null || \
+	uv pip freeze --exclude-editable > .requirements.txt && uv run app/agent_engine_app.py
 {%- endif %}
 
 {% if cookiecutter.deployment_target == 'cloud_run' -%}

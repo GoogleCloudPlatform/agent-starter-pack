@@ -84,8 +84,8 @@ def _run_agent_test(
 ) -> None:
     """Common test logic for both deployment targets"""
     # Generate a shorter project name to avoid exceeding character limits
-    timestamp = datetime.now().strftime("%m%d%H%M")
-    project_name = f"{agent[:10]}_{deployment_target[:5]}_{timestamp}"
+    timestamp = datetime.now().strftime("%m%d%H%M%S")
+    project_name = f"{agent[:8]}_{deployment_target[:5]}_{timestamp}"
     project_path = pathlib.Path(TARGET_DIR) / project_name
     region = "us-central1" if agent == "live_api" else "europe-west4"
     try:

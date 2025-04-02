@@ -20,7 +20,7 @@ steps:
     args:
       - -c
       - |
-        cd data_ingestion && pip install uv --user && uv sync --frozen && \
+        cd data_ingestion && pip install uv==0.6.11 --user && uv sync --frozen && \
         uv run python data_ingestion_pipeline/submit_pipeline.py
     env:
       - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT}"
@@ -75,7 +75,7 @@ steps:
     args:
       - "-c"
       - |
-        pip install uv --user && uv sync --frozen
+        pip install uv==0.6.11 --user && uv sync --frozen
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
@@ -85,7 +85,7 @@ steps:
     args:
       - "-c"
       - |
-        uv export --no-hashes --no-sources --no-header --no-emit-project --frozen > .requirements.txt
+        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --frozen > .requirements.txt
         uv run app/agent_engine_app.py \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \

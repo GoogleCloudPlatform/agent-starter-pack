@@ -1994,7 +1994,7 @@ wheels = [
 
 [[package]]
 name = "langchain-core"
-version = "0.3.49"
+version = "0.3.50"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonpatch" },
@@ -2005,9 +2005,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/bd/db939ba59f28a4ac73fa64281e21f5011ce61fd694c03b88946a554d8442/langchain_core-0.3.49.tar.gz", hash = "sha256:d9dbff9bac0021463a986355c13864d6a68c41f8559dbbd399a68e1ebd9b04b9", size = 536469 }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/af/19315212ba44db8062a394bc3a44de72292e8df11802e8b6d341eee20149/langchain_core-0.3.50.tar.gz", hash = "sha256:8e141b89f2be6020e94c32d7d5141fc6eb5acf1e04e4d80ebd2c74bf30de9f77", size = 542071 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/35/27164f5f23517be8639b518130e6235293dae52c41988790e0b50dd7ba11/langchain_core-0.3.49-py3-none-any.whl", hash = "sha256:893ee42c9af13bf2a2d8c2ec15ba00a5c73cccde21a2bd005234ee0e78a2bdf8", size = 420102 },
+    { url = "https://files.pythonhosted.org/packages/01/78/39209de2ccc45a18e4bfa644a9846ec72831b464172b27dee156a622b599/langchain_core-0.3.50-py3-none-any.whl", hash = "sha256:76b7ff99125d160427801ea47c4b5202363856603e8382208a889fdd914d7d4d", size = 423393 },
 ]
 
 [[package]]
@@ -2042,7 +2042,7 @@ wheels = [
 
 [[package]]
 name = "langsmith"
-version = "0.3.22"
+version = "0.3.23"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -2053,9 +2053,9 @@ dependencies = [
     { name = "requests-toolbelt" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/6b/073fa75f4f90d82ba5b04a2eb2ce28c5267d7cffab073ed198a981704bee/langsmith-0.3.22.tar.gz", hash = "sha256:68a9ff000025e565526cb17acac150b986b3d766ab12fcabd2a64d4d3ee13afe", size = 337704 }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/d9/34d78d0afe9545d25ec9bbe276d7ea73af320d6b91cac59b84a3e7be0784/langsmith-0.3.23.tar.gz", hash = "sha256:d0a1807b62158c98e69b4c250d25b68fe3464a09c780ed4b2b597cd659d0164e", size = 337923 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/00/bfbc109003d26f183141252d7ab9230955908eeff8bdfdc9e4f2887c9ccb/langsmith-0.3.22-py3-none-any.whl", hash = "sha256:ca8a58ab6b0ef831226027ca73c216f0edb2419f02579a4ce8ae167ecaeea192", size = 352414 },
+    { url = "https://files.pythonhosted.org/packages/b6/7c/de5bc6486d1116097c0b3b7fc89322ddf7854d07899daf2086047a8c26a0/langsmith-0.3.23-py3-none-any.whl", hash = "sha256:c195868b42a6fc78e6d1dca760f674eb8bc9e8bf5c7cd417703edb5317bf1139", size = 352617 },
 ]
 
 [[package]]

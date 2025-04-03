@@ -2033,7 +2033,7 @@ wheels = [
 
 [[package]]
 name = "langchain-core"
-version = "0.3.49"
+version = "0.3.50"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonpatch" },
@@ -2044,9 +2044,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/bd/db939ba59f28a4ac73fa64281e21f5011ce61fd694c03b88946a554d8442/langchain_core-0.3.49.tar.gz", hash = "sha256:d9dbff9bac0021463a986355c13864d6a68c41f8559dbbd399a68e1ebd9b04b9", size = 536469 }
+sdist = { url = "https://files.pythonhosted.org/packages/eb/af/19315212ba44db8062a394bc3a44de72292e8df11802e8b6d341eee20149/langchain_core-0.3.50.tar.gz", hash = "sha256:8e141b89f2be6020e94c32d7d5141fc6eb5acf1e04e4d80ebd2c74bf30de9f77", size = 542071 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dd/35/27164f5f23517be8639b518130e6235293dae52c41988790e0b50dd7ba11/langchain_core-0.3.49-py3-none-any.whl", hash = "sha256:893ee42c9af13bf2a2d8c2ec15ba00a5c73cccde21a2bd005234ee0e78a2bdf8", size = 420102 },
+    { url = "https://files.pythonhosted.org/packages/01/78/39209de2ccc45a18e4bfa644a9846ec72831b464172b27dee156a622b599/langchain_core-0.3.50-py3-none-any.whl", hash = "sha256:76b7ff99125d160427801ea47c4b5202363856603e8382208a889fdd914d7d4d", size = 423393 },
 ]
 
 [[package]]
@@ -2117,7 +2117,7 @@ wheels = [
 
 [[package]]
 name = "langgraph"
-version = "0.3.23"
+version = "0.3.24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
@@ -2126,22 +2126,22 @@ dependencies = [
     { name = "langgraph-sdk" },
     { name = "xxhash" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2e/73/d4700fa35229618dfbb9bf1313eff8f31a43fc253bf1a989bb14e8e35dff/langgraph-0.3.23.tar.gz", hash = "sha256:054e64636be453626ea6e97be9172b2bae10d643253d0db313a0233f6a34f9dd", size = 117715 }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/3c/26e4b5c4ad448d4c74f1977a2908e3e8cd5202e9b46621a248d139775c84/langgraph-0.3.24.tar.gz", hash = "sha256:7d286b9f5b374c8527559a86b2fb5a9f9af19e065de4b41e85f74793e5336195", size = 118534 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/3b/86c67f1df41e321c545d19ace9eb1272ea461c091aead5cf6a6024a86278/langgraph-0.3.23-py3-none-any.whl", hash = "sha256:b089f360c8a7d7891689c04fd2918e1c1bd288b231d1e33f205d6ad2c9c5d727", size = 139736 },
+    { url = "https://files.pythonhosted.org/packages/ac/c9/f4e5aba33ca0ab10ebb2248c95e9cadcee21db12427e059afc1483627591/langgraph-0.3.24-py3-none-any.whl", hash = "sha256:c8e029ee82502df27d1c8bc0b18001907ccac82eb8ded15e174f660e09d89792", size = 140493 },
 ]
 
 [[package]]
 name = "langgraph-checkpoint"
-version = "2.0.23"
+version = "2.0.24"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "ormsgpack" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a3/86/cca9b5d05c0ea64b03cd9e845da6b37f83a22ea13abb7b328ca5dfe48474/langgraph_checkpoint-2.0.23.tar.gz", hash = "sha256:38bd1fe451b569b773fef6e3daecdeb85f3deac2d94f7551bfd20f1818042c8a", size = 37268 }
+sdist = { url = "https://files.pythonhosted.org/packages/0d/df/bacef68562ba4c391ded751eecda8e579ec78a581506064cf625e0ebd93a/langgraph_checkpoint-2.0.24.tar.gz", hash = "sha256:9596dad332344e7e871257be464df8a07c2e9bac66143081b11b9422b0167e5b", size = 37328 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/8d/e23bc15809c4a29e83efab34e7ff1ffb6dadac26b87aca98242ac6033934/langgraph_checkpoint-2.0.23-py3-none-any.whl", hash = "sha256:e54d070124f685eab095bd87e4df35dc5eca11d1e28553d5803c28c5f571b4e0", size = 41941 },
+    { url = "https://files.pythonhosted.org/packages/bc/60/30397e8fd2b7dead3754aa79d708caff9dbb371f30b4cd21802c60f6b921/langgraph_checkpoint-2.0.24-py3-none-any.whl", hash = "sha256:3836e2909ef2387d1fa8d04ee3e2a353f980d519fd6c649af352676dc73d66b8", size = 42028 },
 ]
 
 [[package]]
@@ -2159,20 +2159,20 @@ wheels = [
 
 [[package]]
 name = "langgraph-sdk"
-version = "0.1.60"
+version = "0.1.61"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "orjson" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/04/15/ddd7c35c7fdfc287938dc04c58fb10b19f47bd1c4089c887eda5d41854a5/langgraph_sdk-0.1.60.tar.gz", hash = "sha256:7857a4a2a20a6a4c9934d1e7b5145eda92e3bc7286121813de2464d071050f88", size = 43967 }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/c6/a11de2c770e1ac2774e2f19fdbd982b8df079e4206376456e14af395a3f0/langgraph_sdk-0.1.61.tar.gz", hash = "sha256:87dd1f07ab82da8875ac343268ece8bf5414632017ebc9d1cef4b523962fd601", size = 44136 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/79/95/70f58cdf34a0f46131424ff16f1e3f52e196cbfc0802048475a7640f093e/langgraph_sdk-0.1.60-py3-none-any.whl", hash = "sha256:953df85b0a6cc3a106f0496ce8f950a65d88b3ba8198c3b4bb58a54469b256a9", size = 47095 },
+    { url = "https://files.pythonhosted.org/packages/fb/2b/85e796d8b4aad892c5d2bccc0def124fcdc2c9852dfa121adadfc41085b2/langgraph_sdk-0.1.61-py3-none-any.whl", hash = "sha256:f2d774b12497c428862993090622d51e0dbc3f53e0cee3d74a13c7495d835cc6", size = 47249 },
 ]
 
 [[package]]
 name = "langsmith"
-version = "0.3.22"
+version = "0.3.23"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
@@ -2183,9 +2183,9 @@ dependencies = [
     { name = "requests-toolbelt" },
     { name = "zstandard" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c7/6b/073fa75f4f90d82ba5b04a2eb2ce28c5267d7cffab073ed198a981704bee/langsmith-0.3.22.tar.gz", hash = "sha256:68a9ff000025e565526cb17acac150b986b3d766ab12fcabd2a64d4d3ee13afe", size = 337704 }
+sdist = { url = "https://files.pythonhosted.org/packages/bf/d9/34d78d0afe9545d25ec9bbe276d7ea73af320d6b91cac59b84a3e7be0784/langsmith-0.3.23.tar.gz", hash = "sha256:d0a1807b62158c98e69b4c250d25b68fe3464a09c780ed4b2b597cd659d0164e", size = 337923 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/00/bfbc109003d26f183141252d7ab9230955908eeff8bdfdc9e4f2887c9ccb/langsmith-0.3.22-py3-none-any.whl", hash = "sha256:ca8a58ab6b0ef831226027ca73c216f0edb2419f02579a4ce8ae167ecaeea192", size = 352414 },
+    { url = "https://files.pythonhosted.org/packages/b6/7c/de5bc6486d1116097c0b3b7fc89322ddf7854d07899daf2086047a8c26a0/langsmith-0.3.23-py3-none-any.whl", hash = "sha256:c195868b42a6fc78e6d1dca760f674eb8bc9e8bf5c7cd417703edb5317bf1139", size = 352617 },
 ]
 
 [[package]]

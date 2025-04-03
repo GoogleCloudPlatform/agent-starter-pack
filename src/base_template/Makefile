@@ -1,5 +1,5 @@
 install:
-	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf ttps://astral.sh/uv/0.6.11/install.sh | sh; source ~/.bashrc; }
+	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf ttps://astral.sh/uv/0.6.12/install.sh | sh; source ~/.bashrc; }
 	uv sync --dev {% if cookiecutter.agent_name != 'live_api' %}--extra streamlit{%- endif %} --extra jupyter --frozen{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
 
 test:

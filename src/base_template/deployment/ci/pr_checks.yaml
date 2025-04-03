@@ -20,7 +20,7 @@ steps:
     args:
       - "-c"
       - |
-        pip install uv==0.6.11 --user && uv sync --frozen
+        pip install uv==0.6.12 --user && uv sync --frozen
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 

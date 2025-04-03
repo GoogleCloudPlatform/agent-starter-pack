@@ -56,6 +56,10 @@ make install && make playground
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
+| `make setup-dev-env` | Set up development environment resources using Terraform                                    |
+{%- if cookiecutter.data_ingestion %}
+| `make data-ingestion`| Run data ingestion pipeline in the Dev environment                                           |
+{%- endif %}
 | `uv run jupyter lab` | Launch Jupyter notebook                                                                     |
 
 For full command options and usage, refer to the [Makefile](Makefile).

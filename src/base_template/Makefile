@@ -1,5 +1,5 @@
 install:
-	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf ttps://astral.sh/uv/0.6.12/install.sh | sh; source ~/.bashrc; }
+	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source ~/.bashrc; }
 	uv sync --dev {% if cookiecutter.agent_name != 'live_api' %}--extra streamlit{%- endif %} --extra jupyter --frozen{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
 
 test:
@@ -36,8 +36,7 @@ ui:
 setup-dev-env:
 	@if [ -z "$$PROJECT_ID" ]; then echo "Error: PROJECT_ID environment variable is not set"; exit 1; fi
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-	
-{%- if cookiecutter.data_ingestion%}
+{% if cookiecutter.data_ingestion %}
 data-ingestion:
 	@if [ -z "$$PROJECT_ID" ]; then echo "Error: PROJECT_ID environment variable is not set"; exit 1; fi
 	$(MAKE) install
@@ -50,6 +49,7 @@ data-ingestion:
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 		--vector-search-index="{{cookiecutter.project_name}}-vector-search" \
 		--vector-search-index-endpoint="{{cookiecutter.project_name}}-vector-search-endpoint" \
+		--vector-search-data-bucket-name="$$PROJECT_ID-{{cookiecutter.project_name}}-vs" \
 {%- endif %}
 		--service-account="{{cookiecutter.project_name}}-rag@$$PROJECT_ID.iam.gserviceaccount.com" \
 		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \

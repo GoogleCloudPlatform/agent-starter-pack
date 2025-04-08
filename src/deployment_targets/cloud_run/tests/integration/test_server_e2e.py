@@ -116,18 +116,38 @@ def server_fixture(request: Any) -> Iterator[subprocess.Popen[str]]:
 def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     """Test the chat stream functionality."""
     logger.info("Starting chat stream test")
-
+{% if "adk" in cookiecutter.tags %}
+    data = {
+        "message": {
+            "parts": [{"text": "What's the weather in San Francisco?"}],
+            "role": "user",
+        },
+        "events": [
+            {
+                "content": {"parts": [{"text": "Test message"}], "role": "user"},
+                "author": "user",
+            },
+            {
+                "content": {
+                    "parts": [{"text": "I'm happy to help with your test message"}],
+                    "role": "model",
+                },
+                "author": "root_agent",
+            },
+        ],
+    }
+{% else %}
     data = {
         "input": {
             "messages": [
                 {"type": "human", "content": "Hello, AI!"},
                 {"type": "ai", "content": "Hello!"},
-                {"type": "human", "content": "What is the weather in NY?"},
+                {"type": "human", "content": "Who are you?"},
             ]
         },
         "config": {"metadata": {"user_id": "test-user", "session_id": "test-session"}},
     }
-
+{% endif %}
     response = requests.post(
         STREAM_URL, headers=HEADERS, json=data, stream=True, timeout=10
     )
@@ -136,6 +156,21 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     events = [json.loads(line) for line in response.iter_lines() if line]
     assert events, "No events received from stream"
 
+{%- if "adk" in cookiecutter.tags %}
+    # Check for valid content in the response
+    has_text_content = False
+    for event in events:
+        content = event.get("content")
+        if (
+            content is not None
+            and content.get("parts")
+            and any(part.get("text") for part in content["parts"])
+        ):
+            has_text_content = True
+            break
+
+    assert has_text_content, "Expected at least one event with text content"
+{%- else %}
     # Verify each event is a tuple of message and metadata
     for event in events:
         assert isinstance(event, list), "Event should be a list"
@@ -155,12 +190,12 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
             has_content = True
             break
     assert has_content, "At least one message should have content"
+{%- endif %}
 
 
 def test_chat_stream_error_handling(server_fixture: subprocess.Popen[str]) -> None:
     """Test the chat stream error handling."""
     logger.info("Starting chat stream error handling test")
-
     data = {
         "input": {"messages": [{"type": "invalid_type", "content": "Cause an error"}]}
     }
@@ -182,7 +217,11 @@ def test_collect_feedback(server_fixture: subprocess.Popen[str]) -> None:
     # Create sample feedback data
     feedback_data = {
         "score": 4,
+{%- if "adk" in cookiecutter.tags %}
+        "invocation_id": str(uuid.uuid4()),
+{%- else %}
         "run_id": str(uuid.uuid4()),
+{%- endif %}
         "text": "Great response!",
     }
 

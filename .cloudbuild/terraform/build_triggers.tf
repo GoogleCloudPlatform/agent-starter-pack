@@ -49,6 +49,14 @@ locals {
   # Define a local variable for agent/deployment combinations
   agent_testing_combinations = [
     {
+      name  = "adk_base-agent_engine"
+      value = "adk_base,agent_engine"
+    },
+    {
+      name  = "adk_base-cloud_run"
+      value = "adk_base,cloud_run"
+    },
+    {
       name  = "langgraph_base_react-agent_engine"
       value = "langgraph_base_react,agent_engine"
     },
@@ -94,6 +102,14 @@ locals {
     ]
   }
   e2e_agent_deployment_combinations = [
+    {
+      name  = "adk_base-agent_engine"
+      value = "adk_base,agent_engine"
+    },
+    {
+      name  = "adk_base-cloud_run"
+      value = "adk_base,cloud_run"
+    },
     {
       name = "langgraph_base_react-agent_engine"
       value = "langgraph_base_react,agent_engine"

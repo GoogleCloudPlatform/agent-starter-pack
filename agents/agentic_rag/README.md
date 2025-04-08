@@ -12,7 +12,7 @@ The agent implements the following architecture:
 
 ![architecture diagram](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/agentic_rag_vertex_ai_search_architecture.png)
 
-### Key Features
+### Key ≈
 
 - **Flexible Datastore Options:** Choose between Vertex AI Search or Vertex AI Vector Search for efficient data storage and retrieval based on your specific needs.
 - **Automated Data Ingestion Pipeline:** Automates the process of ingesting data from input sources.

@@ -71,7 +71,7 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-include = ["./agents/**/*.py", "src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py"]
+include = ["./agents/**/*.py", "src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py", "src/frontends/streamlit_adk/**/*.py"]
 exclude = ["./agents/agentic_rag/**/*.py"]
 
 [tool.ruff.lint]

@@ -45,7 +45,7 @@ def get_dummy_request(project_id: str, location: str) -> CountTokensRequest:
     """Creates a simple test request for Gemini."""
     return CountTokensRequest(
         contents=[{"role": "user", "parts": [{"text": "Hi"}]}],
-        endpoint=f"projects/{project_id}/locations/{location}/publishers/google/models/gemini-1.5-flash-002",
+        endpoint=f"projects/{project_id}/locations/{location}/publishers/google/models/gemini-2.0-flash",
     )
 
 

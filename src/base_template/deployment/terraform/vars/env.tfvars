@@ -19,10 +19,6 @@ repository_name = "repo-{{cookiecutter.project_name}}"
 # The Google Cloud region you will use to deploy the infrastructure
 region = "us-central1"
 
-telemetry_logs_filter = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"{{cookiecutter.project_name}}\""
-
-feedback_logs_filter = "jsonPayload.log_type=\"feedback\""
-
 {%- if cookiecutter.data_ingestion %}
 pipeline_cron_schedule = "0 0 * * 0"
 

@@ -35,7 +35,7 @@ For more installation options, see the [Installation Guide](docs/installation.md
  🆕 The starter pack offers full support for Agent Engine, a new fully managed solution to deploy agents. Simply run this command to get started:
 
 ```bash
-agent-starter-pack create my-agent -d agent_engine -a langgraph_base_react
+agent-starter-pack create my-agent -d agent_engine -a adk_base
 ```
 
 
@@ -45,13 +45,17 @@ agent-starter-pack create my-agent -d agent_engine -a langgraph_base_react
 
 | Agent Name                  | Description                                                                                                                       |
 |-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| `langgraph_base_react`      | A agent implementing a base ReAct agent using LangGraph |
-| `agentic_rag` | A RAG agent using LangGraph for document retrieval and Q&A. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).       |
+| `adk_base`      | An agent implementing a base ReAct agent using Google's [Agent Development Kit](https://github.com/google/adk-python)
+| `agentic_rag` | A RAG agent for document retrieval and Q&A. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).       |
+| `langgraph_base_react`      | An agent implementing a base ReAct agent using LangGraph |
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |
 | `live_api`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
 
 **More agents are on the way!** We are continuously expanding our [agent library](./agents/).  Have a specific agent type in mind?  [Contribute!](#contributing)
 
+**🔍 ADK Samples**
+
+Looking to explore more ADK examples? Check out the [ADK Samples Repository](https://github.com/google/adk-samples) for additional examples and use cases demonstrating ADK's capabilities.
 
 #### Extra Features
 

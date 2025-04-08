@@ -54,7 +54,34 @@ class ChatStreamUser(HttpUser):
         """Simulates a chat stream interaction."""
         headers = {"Content-Type": "application/json"}
         headers["Authorization"] = f"Bearer {os.environ['_AUTH_TOKEN']}"
-
+{% if "adk" in cookiecutter.tags %}
+        data = {
+            "input": {
+                "message": {
+                    "parts": [{"text": "What's the weather in San Francisco?"}],
+                    "role": "user",
+                },
+                "events": [
+                    {
+                        "content": {
+                            "parts": [{"text": "Test message"}],
+                            "role": "user",
+                        },
+                        "author": "user",
+                    },
+                    {
+                        "content": {
+                            "parts": [
+                                {"text": "I'm happy to help with your test message"}
+                            ],
+                            "role": "model",
+                        },
+                        "author": "root_agent",
+                    },
+                ],
+            }
+        }
+{% else %}
         data = {
             "input": {
                 "input": {
@@ -69,7 +96,7 @@ class ChatStreamUser(HttpUser):
                 },
             }
         }
-
+{% endif %}
         start_time = time.time()
         with self.client.post(
             url_path,

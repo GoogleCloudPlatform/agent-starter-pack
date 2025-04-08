@@ -12,16 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "An agent implementing a base ReAct agent using LangGraph"
-settings:
-  requires_data_ingestion: false
-  deployment_targets: ["agent_engine", "cloud_run"]
-  extra_dependencies: [
-    "langchain-google-vertexai~=2.0.7",
-    "langchain~=0.3.14",
-    "langgraph~=0.2.63",
-    "langchain-google-vertexai~=2.0.7",
-    "langchain~=0.3.14", 
-    "langchain-community~=0.3.17",
-    "langchain-openai~=0.3.5",
-  ]
+MARKDOWN_STR = """
+<style>
+button[kind="primary"] {
+    background: none!important;
+    border: 0;
+    padding: 20!important;
+    color: grey !important;
+    text-decoration: none;
+    cursor: pointer;
+    border: none !important;
+    # float: right;
+}
+button[kind="primary"]:hover {
+    text-decoration: none;
+    color: white !important;
+}
+button[kind="primary"]:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    color:  !important;
+}
+</style>
+"""

@@ -135,9 +135,6 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# ruff
-.ruff_cache
-
 # macOS
 .DS_Store
 
@@ -188,13 +185,13 @@ testem.log
 Thumbs.db
 *.vscode*
 
+# Starter pack specific
+.persist_vector_store
+tests/load_test/.results/*.html
+tests/load_test/.results/*.csv
+locust_env
+my_env.tfvars
+.streamlit_chats
 .saved_chats
-.aider*
-target
-set_projects.sh
-delete_genai_repos.sh
-cleanup_e2e_projects.sh
-.cloudbuild/terraform/backend.tf
-.cloudbuild/terraform/vars/env.tfvars
-*/package-lock.json
-lighthouse-auditor/uv.lock
+.env
+.requirements.txt

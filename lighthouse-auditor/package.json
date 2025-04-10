@@ -1,0 +1,13 @@
+{
+  "name": "lighthouse-auditor",
+  "version": "1.0.0",
+  "description": "Lighthouse auditor for web performance analysis",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "lighthouse": "^12.5.1",
+    "chrome-launcher": "^1.1.0"
+  }
+}

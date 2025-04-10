@@ -17,10 +17,12 @@ settings:
   requires_data_ingestion: true
   deployment_targets: ["agent_engine", "cloud_run"]
   extra_dependencies: [
+    "google-adk~=0.1.0",
     "langchain-google-vertexai~=2.0.7",
     "langchain~=0.3.14",
-    "langgraph~=0.3.21",
     "langchain-community~=0.3.17",
     "langchain-openai~=0.3.5",
     "langchain-google-community[vertexaisearch]~=2.0.7",
   ]
+  tags: ["adk"]
+  frontend_type: "streamlit_adk"

@@ -15,43 +15,50 @@
 # mypy: disable-error-code="union-attr"
 from unittest.mock import MagicMock, patch
 
-from app.agent import agent
+from google.adk.agents.run_config import RunConfig, StreamingMode
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
+
+from app.agent import root_agent
 
 
 @patch(
-    "app.agent.retrieve_docs.func",
-    return_value=("dummy content", [{"page_content": "Test document content"}]),
+    "app.agent.retrieve_docs",
+    return_value="dummy content",
 )
 def test_agent_stream(mock_retrieve: MagicMock) -> None:
     """
     Integration test for the agent stream functionality.
     Tests that the agent returns valid streaming responses.
     """
-    input_dict = {
-        "messages": [
-            {"type": "human", "content": "Hi"},
-            {"type": "ai", "content": "Hi there!"},
-            {
-                "type": "human",
-                "content": "How to split a string with pattern 'alphabet/alphabet' and not split 'number/number' in same string",
-            },
-        ]
-    }
 
-    events = [
-        message for message, _ in agent.stream(input_dict, stream_mode="messages")
-    ]
+    session_service = InMemorySessionService()
 
-    # Verify we get a reasonable number of messages
+    session = session_service.create_session(user_id="test_user", app_name="test")
+    runner = Runner(agent=root_agent, session_service=session_service, app_name="test")
+
+    message = types.Content(
+        role="user", parts=[types.Part.from_text(text="Why is the sky blue?")]
+    )
+
+    events = list(
+        runner.run(
+            new_message=message,
+            user_id="test_user",
+            session_id=session.id,
+            run_config=RunConfig(streaming_mode=StreamingMode.SSE),
+        )
+    )
     assert len(events) > 0, "Expected at least one message"
 
-    # First message should be an AI message
-    assert events[0].type == "AIMessageChunk"
-
-    # At least one message should have content
-    has_content = False
+    has_text_content = False
     for event in events:
-        if hasattr(event, "content") and event.content:
-            has_content = True
+        if (
+            event.content
+            and event.content.parts
+            and any(part.text for part in event.content.parts)
+        ):
+            has_text_content = True
             break
-    assert has_content, "Expected at least one message with content"
+    assert has_text_content, "Expected at least one message with text content"

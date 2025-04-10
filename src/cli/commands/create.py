@@ -647,6 +647,14 @@ def replace_region_in_files(
                     "_DATA_STORE_REGION: us", f"_DATA_STORE_REGION: {data_store_region}"
                 )
                 modified = True
+            elif '"DATA_STORE_REGION", "us"' in content:
+                if debug:
+                    logging.debug(f"Replacing DATA_STORE_REGION in {file_path}")
+                content = content.replace(
+                    '"DATA_STORE_REGION", "us"',
+                    f'"DATA_STORE_REGION", "{data_store_region}"',
+                )
+                modified = True
 
             if modified:
                 file_path.write_text(content)

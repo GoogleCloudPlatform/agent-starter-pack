@@ -42,7 +42,7 @@ EMBEDDING_COLUMN = "embedding"
 TOP_K = 5
 
 data_store_region = os.getenv("DATA_STORE_REGION", "us")
-data_store_id = os.getenv("DATA_STORE_ID", "sample-datastore")
+data_store_id = os.getenv("DATA_STORE_ID", "{{cookiecutter.project_name}}-datastore")
 
 retriever = get_retriever(
     project_id=project_id,
@@ -53,9 +53,15 @@ retriever = get_retriever(
     max_documents=10,
 )
 {% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-vector_search_index = os.getenv("VECTOR_SEARCH_INDEX")
-vector_search_index_endpoint = os.getenv("VECTOR_SEARCH_INDEX_ENDPOINT")
-vector_search_bucket = os.getenv("VECTOR_SEARCH_BUCKET")
+vector_search_index = os.getenv(
+    "VECTOR_SEARCH_INDEX", "{{cookiecutter.project_name}}-vector-search"
+)
+vector_search_index_endpoint = os.getenv(
+    "VECTOR_SEARCH_INDEX_ENDPOINT", "{{cookiecutter.project_name}}-vector-search-endpoint"
+)
+vector_search_bucket = os.getenv(
+    "VECTOR_SEARCH_BUCKET", f"{project_id}-{{cookiecutter.project_name}}-vs"
+)
 
 retriever = get_retriever(
     project_id=project_id,
@@ -99,7 +105,8 @@ def retrieve_docs(query: str) -> str:
 
 instruction = """You are an AI assistant for question-answering tasks.
 Answer to the best of your ability using the context provided.
-Leverage the Tools you are provided to answer questions."""
+Leverage the Tools you are provided to answer questions.
+If you already know the answer to a question, you can respond directly without using the tools."""
 
 root_agent = Agent(
     name="root_agent",

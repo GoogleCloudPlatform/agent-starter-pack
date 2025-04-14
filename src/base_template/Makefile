@@ -10,7 +10,7 @@ playground:
 	@echo "+-----------------------------------------------------------------------------+"
 	@echo "| Starting ADK Web Server via 'adk web' command.                              |"
 	@echo "|                                                                             |"
-	@echo "| Please select the app folder to start interacting with your agent.         |"
+	@echo "| Please select the app folder to start interacting with your agent.          |"
 	@echo "+-----------------------------------------------------------------------------+"
 	uv run adk web
 {%- else %}

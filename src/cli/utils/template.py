@@ -83,7 +83,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
     PRIORITY_AGENTS = ["adk_base", "agentic_rag", "langgraph_base_react"]
 
     agents_list = []
-    priority_agents = []
+    priority_agents_dict = dict.fromkeys(PRIORITY_AGENTS)  # Track priority agents
     agents_dir = pathlib.Path(__file__).parent.parent.parent.parent / "agents"
 
     for agent_dir in agents_dir.iterdir():
@@ -110,16 +110,21 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
 
                     # Add to priority list or regular list based on agent name
                     if agent_name in PRIORITY_AGENTS:
-                        priority_agents.append(agent_info)
+                        priority_agents_dict[agent_name] = agent_info
                     else:
                         agents_list.append(agent_info)
                 except Exception as e:
                     logging.warning(f"Could not load agent from {agent_dir}: {e}")
 
-    # Only sort the non-priority agents
+    # Sort the non-priority agents
     agents_list.sort(key=lambda x: x["name"])
 
-    # Combine priority agents with regular agents (no sorting of priority_agents)
+    # Create priority agents list in the exact order specified
+    priority_agents = [
+        info for name, info in priority_agents_dict.items() if info is not None
+    ]
+
+    # Combine priority agents with regular agents
     combined_agents = priority_agents + agents_list
 
     # Convert to numbered dictionary starting from 1

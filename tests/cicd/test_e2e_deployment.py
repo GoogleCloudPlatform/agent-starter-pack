@@ -128,6 +128,7 @@ def get_test_matrix() -> list[CICDTestConfig]:
 CICD_TEST_MATRIX: list[CICDTestConfig] = get_test_matrix()
 
 
+@backoff.on_exception(backoff.expo, subprocess.CalledProcessError, max_tries=2)
 def run_command(
     cmd: list[str],
     check: bool = True,

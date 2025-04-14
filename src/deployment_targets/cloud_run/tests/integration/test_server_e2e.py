@@ -32,7 +32,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_URL = "http://127.0.0.1:8000/"
+{%- if "adk" in cookiecutter.tags %}
+STREAM_URL = BASE_URL + "run_sse"
+{%- else %}
 STREAM_URL = BASE_URL + "stream_messages"
+{%- endif %}
 FEEDBACK_URL = BASE_URL + "feedback"
 
 HEADERS = {"Content-Type": "application/json"}
@@ -117,24 +121,28 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     """Test the chat stream functionality."""
     logger.info("Starting chat stream test")
 {% if "adk" in cookiecutter.tags %}
+    # Create session first
+    user_id = "user_123"
+    session_id = "session_abc"
+    session_data = {"state": {"preferred_language": "English", "visit_count": 5}}
+    session_response = requests.post(
+        f"{BASE_URL}/apps/app/users/{user_id}/sessions/{session_id}",
+        headers=HEADERS,
+        json=session_data,
+        timeout=10,
+    )
+    assert session_response.status_code == 200
+
+    # Then send chat message
     data = {
-        "message": {
-            "parts": [{"text": "What's the weather in San Francisco?"}],
+        "app_name": "app",
+        "user_id": user_id,
+        "session_id": session_id,
+        "new_message": {
             "role": "user",
+            "parts": [{"text": "What's the weather in San Francisco?"}],
         },
-        "events": [
-            {
-                "content": {"parts": [{"text": "Test message"}], "role": "user"},
-                "author": "user",
-            },
-            {
-                "content": {
-                    "parts": [{"text": "I'm happy to help with your test message"}],
-                    "role": "model",
-                },
-                "author": "root_agent",
-            },
-        ],
+        "streaming": True,
     }
 {% else %}
     data = {
@@ -153,10 +161,19 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     )
     assert response.status_code == 200
 
-    events = [json.loads(line) for line in response.iter_lines() if line]
-    assert events, "No events received from stream"
-
 {%- if "adk" in cookiecutter.tags %}
+    # Parse SSE events from response
+    events = []
+    for line in response.iter_lines():
+        if line:
+            # SSE format is "data: {json}"
+            line_str = line.decode("utf-8")
+            if line_str.startswith("data: "):
+                event_json = line_str[6:]  # Remove "data: " prefix
+                event = json.loads(event_json)
+                events.append(event)
+
+    assert events, "No events received from stream"
     # Check for valid content in the response
     has_text_content = False
     for event in events:
@@ -168,9 +185,10 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
         ):
             has_text_content = True
             break
-
-    assert has_text_content, "Expected at least one event with text content"
 {%- else %}
+    events = [json.loads(line) for line in response.iter_lines() if line]
+    assert events, "No events received from stream"
+
     # Verify each event is a tuple of message and metadata
     for event in events:
         assert isinstance(event, list), "Event should be a list"

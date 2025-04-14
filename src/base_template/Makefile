@@ -6,6 +6,14 @@ test:
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 playground:
+{%- if "adk" in cookiecutter.tags %}
+	@echo "+-----------------------------------------------------------------------------+"
+	@echo "| Starting ADK Web Server via 'adk web' command.                              |"
+	@echo "|                                                                             |"
+	@echo "| Please select the app folder to start interacting with your agent.         |"
+	@echo "+-----------------------------------------------------------------------------+"
+	uv run adk web
+{%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload &
 {%- endif %}
@@ -13,6 +21,7 @@ playground:
 	npm --prefix frontend start
 {%- else %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
+{%- endif %}
 {%- endif %}
 
 backend:

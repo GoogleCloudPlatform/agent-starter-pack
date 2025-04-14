@@ -815,6 +815,9 @@ def setup_cicd(
 
         repo_url = f"https://github.com/{github_username}/{config.repository_name}"
         cloud_build_url = f"https://console.cloud.google.com/cloud-build/builds?project={config.cicd_project_id}"
+        # Sleep to allow resources to propagate
+        console.print("\n⏳ Waiting for resources to propagate...")
+        time.sleep(10)
 
         # Print final summary
         print_cicd_summary(config, github_username, repo_url, cloud_build_url)

@@ -57,28 +57,8 @@ class ChatStreamUser(HttpUser):
 {% if "adk" in cookiecutter.tags %}
         data = {
             "input": {
-                "message": {
-                    "parts": [{"text": "What's the weather in San Francisco?"}],
-                    "role": "user",
-                },
-                "events": [
-                    {
-                        "content": {
-                            "parts": [{"text": "Test message"}],
-                            "role": "user",
-                        },
-                        "author": "user",
-                    },
-                    {
-                        "content": {
-                            "parts": [
-                                {"text": "I'm happy to help with your test message"}
-                            ],
-                            "role": "model",
-                        },
-                        "author": "root_agent",
-                    },
-                ],
+                "message": "What's the weather in San Francisco?",
+                "user_id": "test",
             }
         }
 {% else %}

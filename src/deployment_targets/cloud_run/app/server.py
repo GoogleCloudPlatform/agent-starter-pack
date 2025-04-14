@@ -12,21 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 {% if "adk" in cookiecutter.tags %}
-from collections.abc import Iterable
+import os
 
 from fastapi import FastAPI
-from fastapi.responses import RedirectResponse, StreamingResponse
-from google.adk.agents.run_config import RunConfig, StreamingMode
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
+from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
 
-from app.agent import root_agent
 from app.utils.tracing import CloudTraceLoggingSpanExporter
-from app.utils.typing import Feedback, Request
-{% else %}
+from app.utils.typing import Feedback
+
+logging_client = google_cloud_logging.Client()
+logger = logging_client.logger(__name__)
+
+provider = TracerProvider()
+processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+app: FastAPI = get_fast_api_app(agent_dir=AGENT_DIR, web=False)
+
+app.title = "{{cookiecutter.project_name}}"
+app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
+{%- else %}
 import logging
 import os
 from collections.abc import Generator
@@ -40,7 +50,7 @@ from traceloop.sdk import Instruments, Traceloop
 from app.agent import agent
 from app.utils.tracing import CloudTraceLoggingSpanExporter
 from app.utils.typing import Feedback, InputChat, Request, dumps, ensure_valid_config
-{% endif %}
+
 # Initialize FastAPI app and logging
 app = FastAPI(
     title="{{cookiecutter.project_name}}",
@@ -48,12 +58,7 @@ app = FastAPI(
 )
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
-{% if "adk" in cookiecutter.tags %}
-provider = TracerProvider()
-processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
-{% else %}
+
 # Initialize Telemetry
 try:
     Traceloop.init(
@@ -81,55 +86,8 @@ def set_tracing_properties(config: RunnableConfig) -> None:
             "commit_sha": os.environ.get("COMMIT_SHA", "None"),
         }
     )
-{% endif %}
-{% if "adk" in cookiecutter.tags %}
-def stream_messages(request: Request) -> Iterable[str]:
-    """Stream responses from the agent for a given input."""
-    # Set up stateless session service
-    session_service = InMemorySessionService()
-    session = session_service.create_session(
-        app_name=app.title,
-        user_id=request.user_id,
-        session_id=request.session_id,
-    )
-
-    # Append each historical event to the session
-    for event in request.events:
-        session_service.append_event(session=session, event=event)
-
-    # Initialize runner with the agent
-    runner = Runner(
-        app_name=app.title,
-        agent=root_agent,
-        session_service=session_service,
-    )
-
-    # Stream responses
-    for event in runner.run(
-        user_id=request.user_id,
-        session_id=request.session_id,
-        new_message=request.message,
-        run_config=RunConfig(streaming_mode=StreamingMode.SSE),
-    ):
-        yield event.model_dump_json() + "\n"
 
 
-@app.post("/stream_messages")
-def stream_chat_events(request: Request) -> StreamingResponse:
-    """Stream chat events in response to an input request.
-
-    Args:
-        request: The chat request containing input and config
-
-    Returns:
-        Streaming response of chat events
-    """
-    return StreamingResponse(
-        stream_messages(request=request),
-        media_type="text/event-stream",
-    )
-
-{%- else %}
 def stream_messages(
     input: InputChat,
     config: RunnableConfig | None = None,
@@ -151,6 +109,13 @@ def stream_messages(
         yield dumps(data) + "\n"
 
 
+# Routes
+@app.get("/", response_class=RedirectResponse)
+def redirect_root_to_docs() -> RedirectResponse:
+    """Redirect the root URL to the API documentation."""
+    return RedirectResponse(url="/docs")
+
+
 @app.post("/stream_messages")
 def stream_chat_events(request: Request) -> StreamingResponse:
     """Stream chat events in response to an input request.
@@ -166,13 +131,6 @@ def stream_chat_events(request: Request) -> StreamingResponse:
         media_type="text/event-stream",
     )
 {%- endif %}
-
-
-# Routes
-@app.get("/", response_class=RedirectResponse)
-def redirect_root_to_docs() -> RedirectResponse:
-    """Redirect the root URL to the API documentation."""
-    return RedirectResponse(url="/docs")
 
 
 @app.post("/feedback")

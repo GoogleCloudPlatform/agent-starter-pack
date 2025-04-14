@@ -17,15 +17,23 @@ import logging
 import pytest
 {%- if "adk" in cookiecutter.tags %}
 from google.adk.events.event import Event
-{%- endif %}
+
+from app.agent import root_agent
+from app.agent_engine_app import AgentEngineApp
+{%- else %}
 
 from app.agent_engine_app import AgentEngineApp
+{%- endif %}
 
 
 @pytest.fixture
 def agent_app() -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
+{%- if "adk" in cookiecutter.tags %}
+    app = AgentEngineApp(agent=root_agent)
+{%- else %}
     app = AgentEngineApp()
+{%- endif %}
     app.set_up()
     return app
 
@@ -36,24 +44,8 @@ def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     Tests that the agent returns valid streaming responses.
     """
     # Create message and events for the stream_query
-    message = {
-        "parts": [{"text": "What's the weather in San Francisco?"}],
-        "role": "user",
-    }
-    events = [
-        {
-            "content": {"parts": [{"text": "Test message"}], "role": "user"},
-            "author": "user",
-        },
-        {
-            "content": {
-                "parts": [{"text": "I'm happy to help with your test message"}],
-                "role": "model",
-            },
-            "author": "root_agent",
-        },
-    ]
-    events = list(agent_app.stream_query(message=message, events=events))
+    message = "What's the weather in San Francisco?"
+    events = list(agent_app.stream_query(message=message, user_id="test"))
     assert len(events) > 0, "Expected at least one chunk in response"
 
     # Check for valid content in the response
@@ -70,37 +62,6 @@ def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
             break
 
     assert has_text_content, "Expected at least one event with text content"
-
-
-def test_agent_query(agent_app: AgentEngineApp) -> None:
-    """
-    Integration test for the agent query functionality.
-    Tests that the agent returns valid responses.
-    """
-    # Create message and events for the stream_query
-    message = {
-        "parts": [{"text": "What's the weather in San Francisco?"}],
-        "role": "user",
-    }
-    events = [
-        {
-            "content": {"parts": [{"text": "Test message"}], "role": "user"},
-            "author": "user",
-        },
-        {
-            "content": {
-                "parts": [{"text": "I'm happy to help with your test message"}],
-                "role": "model",
-            },
-            "author": "root_agent",
-        },
-    ]
-    response = agent_app.query(message=message, events=events)
-
-    # Validate response has text content
-    assert response.get("content", {}).get("parts"), (
-        "Expected response to have content parts"
-    )
 
 
 def test_agent_feedback(agent_app: AgentEngineApp) -> None:

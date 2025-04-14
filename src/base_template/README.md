@@ -47,10 +47,7 @@ make install && make playground
 | -------------------- | ------------------------------------------------------------------------------------------- |
 | `make install`       | Install all required dependencies using uv                                                  |
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-| `make playground`    | Launch local development environment with backend and frontend |
-{%- if "adk" in cookiecutter.tags %}
-| `adk web`            | Launch official ADK web playground |
-{%- endif %}
+| `make playground`    | Launch local development environment with backend and frontend{%- if "adk" in cookiecutter.tags %} - leveraging `adk web` command. {%- endif %}|
 | `make backend`       | Start backend server only |
 | `make ui`            | Launch Streamlit frontend without local backend |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}

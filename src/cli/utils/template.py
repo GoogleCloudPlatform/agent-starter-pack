@@ -29,6 +29,9 @@ from src.cli.utils.version import get_current_version
 
 from .datastores import DATASTORES
 
+ADK_FILES = ["app/__init__.py"]
+NON_ADK_FILES: list[str] = []
+
 
 @dataclass
 class TemplateConfig:
@@ -561,6 +564,17 @@ def process_template(
                     shutil.rmtree(final_destination)
                 shutil.copytree(output_dir, final_destination, dirs_exist_ok=True)
                 logging.debug(f"Project successfully created at {final_destination}")
+
+                # Delete appropriate files based on ADK tag
+                if "adk" in tags:
+                    files_to_delete = [final_destination / f for f in NON_ADK_FILES]
+                else:
+                    files_to_delete = [final_destination / f for f in ADK_FILES]
+
+                for file_path in files_to_delete:
+                    if file_path.exists():
+                        file_path.unlink()
+                        logging.debug(f"Deleted {file_path}")
 
                 # After copying template files, handle the lock file
                 if deployment_target:

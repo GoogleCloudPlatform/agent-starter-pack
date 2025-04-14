@@ -306,10 +306,10 @@ def create(
                 f"This agent uses a datastore for grounded responses.\n"
                 f"The agent will work without data, but for optimal results:\n"
                 f"1. Set up dev environment:\n"
-                f"   [white italic]`export PROJECT_ID={project_id} && cd {cd_path} && make setup-dev-env`[/white italic]\n\n"
+                f"   [white italic]export PROJECT_ID={project_id} && cd {cd_path} && make setup-dev-env[/white italic]\n\n"
                 f"   See deployment/README.md for more info\n"
                 f"2. Run the data ingestion pipeline:\n"
-                f"   [white italic]`export PROJECT_ID={project_id} && cd {cd_path} && make data-ingestion`[/white italic]\n\n"
+                f"   [white italic]export PROJECT_ID={project_id} && cd {cd_path} && make data-ingestion[/white italic]\n\n"
                 f"   See data_ingestion/README.md for more info\n"
                 f"[bold white]=================================[/bold white]\n"
             )

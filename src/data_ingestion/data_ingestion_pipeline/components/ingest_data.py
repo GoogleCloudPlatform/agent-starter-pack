@@ -109,7 +109,8 @@ def ingest_data(
         operation = schema_client.update_schema(
             request=discoveryengine.UpdateSchemaRequest(
                 schema=new_schema, allow_missing=True
-            )
+            ),
+            timeout=1800,
         )
         logging.info(f"Waiting for schema update operation: {operation.operation.name}")
         operation.result()

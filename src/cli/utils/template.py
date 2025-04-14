@@ -690,6 +690,11 @@ def copy_files(
 
 def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> None:
     """Copy files from the specified frontend folder directly to project root."""
+    # Skip copying if frontend_type is "None"
+    if frontend_type == "None":
+        logging.debug("Frontend type is 'None', skipping frontend files")
+        return
+
     # Use default frontend if none specified
     frontend_type = frontend_type or DEFAULT_FRONTEND
 

@@ -127,11 +127,6 @@ def _run_agent_test(
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
-        # Check frontend folder exists and is not empty
-        frontend_path = project_path / "frontend"
-        assert frontend_path.exists(), "Frontend folder missing"
-        assert any(frontend_path.iterdir()), "Frontend folder is empty"
-
         # Install dependencies
         run_command(
             [

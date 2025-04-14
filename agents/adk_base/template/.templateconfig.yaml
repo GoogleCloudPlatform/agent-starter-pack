@@ -18,4 +18,4 @@ settings:
   deployment_targets: ["agent_engine", "cloud_run"]
   extra_dependencies: ["google-adk~=0.1.0"]
   tags: ["adk"]
-  frontend_type: "streamlit_adk"
+  frontend_type: "None"

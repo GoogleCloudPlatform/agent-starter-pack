@@ -25,4 +25,4 @@ settings:
     "langchain-google-community[vertexaisearch]~=2.0.7",
   ]
   tags: ["adk"]
-  frontend_type: "streamlit_adk"
+  frontend_type: "None"

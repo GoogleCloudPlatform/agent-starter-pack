@@ -14,9 +14,11 @@
 
 # mypy: disable-error-code="attr-defined"
 {%- if "adk" in cookiecutter.tags %}
+import copy
 import datetime
 import json
 import logging
+import os
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -41,7 +43,11 @@ class AgentEngineApp(AdkApp):
         logging_client = google_cloud_logging.Client()
         self.logger = logging_client.logger(__name__)
         provider = TracerProvider()
-        processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
+        processor = export.BatchSpanProcessor(
+            CloudTraceLoggingSpanExporter(
+                project_id=os.environ.get("GOOGLE_CLOUD_PROJECT")
+            )
+        )
         provider.add_span_processor(processor)
         trace.set_tracer_provider(provider)
 
@@ -58,6 +64,19 @@ class AgentEngineApp(AdkApp):
         operations = super().register_operations()
         operations[""] = operations[""] + ["register_feedback"]
         return operations
+
+    def clone(self) -> "AgentEngineApp":
+        """Returns a clone of the ADK application."""
+        template_attributes = self._tmpl_attrs
+        return self.__class__(
+            agent=copy.deepcopy(template_attributes.get("agent")),
+            enable_tracing=template_attributes.get("enable_tracing"),
+            session_service_builder=template_attributes.get("session_service_builder"),
+            artifact_service_builder=template_attributes.get(
+                "artifact_service_builder"
+            ),
+            env_vars=template_attributes.get("env_vars"),
+        )
 {%- else %}
 import datetime
 import json
@@ -211,7 +230,8 @@ def deploy_agent_engine_app(
         requirements = f.read().strip().split("\n")
 {% if "adk" in cookiecutter.tags %}
     agent_engine = AgentEngineApp(
-        agent=root_agent, env_vars=env_vars, enable_tracing=True
+        agent=root_agent,
+        env_vars=env_vars,
     )
 {% else %}
     agent_engine = AgentEngineApp(project_id=project, env_vars=env_vars)

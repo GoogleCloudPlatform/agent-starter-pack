@@ -1,6 +1,6 @@
 [project]
 name = "agent-starter-pack"
-version = "0.3.1"
+version = "0.3.2"
 description = "CLI tool to create GCP-based AI agent projects from templates"
 authors = [
     { name = "Google LLC", email = "agent-starter-pack@google.com" },

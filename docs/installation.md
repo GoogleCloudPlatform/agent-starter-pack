@@ -1,6 +1,6 @@
 # Installation
 
-There are several ways to install the Agent Starter Pack. Choose the method that works best for your workflow.
+There are several ways to install the Agent Starter Pack. Choose the method that works best for your workflow. You can also [try it in Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fid), a cloud-based development environment with zero setup. 
 
 ## Using pipx (Recommended)
 

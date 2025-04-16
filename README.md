@@ -5,14 +5,14 @@
   <picture>
     <source
       media="(prefers-color-scheme: dark)"
-      srcset="https://cdn.firebasestudio.dev/btn/try_dark_20.svg">
+      srcset="https://cdn.firebasestudio.dev/btn/open_dark_20.svg">
     <source
       media="(prefers-color-scheme: light)"
-      srcset="https://cdn.firebasestudio.dev/btn/try_light_20.svg">
+      srcset="https://cdn.firebasestudio.dev/btn/open_light_20.svg">
     <img
       height="20"
-      alt="Try in Firebase Studio"
-      src="https://cdn.firebasestudio.dev/btn/try_blue_20.svg">
+      alt="Open in Firebase Studio"
+      src="https://cdn.firebasestudio.dev/btn/open_blue_20.svg">
   </picture>
 </a>
 
@@ -52,7 +52,7 @@ agent-starter-pack create my-agent -d agent_engine -a adk_base
 ```
 
 
-*See the [full list of options](docs/cli/create.md) for details.* You can also try it in [Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fid) with zero setup.
+*See the [full list of options](docs/cli/create.md) for details.* You can also try it in [Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx) with zero setup.
 ## 🤖 Agents
 
 | Agent Name                  | Description                                                                                                                       |

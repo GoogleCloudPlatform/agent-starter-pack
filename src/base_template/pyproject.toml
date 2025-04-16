@@ -37,12 +37,14 @@ dev = [
 ]
 
 [project.optional-dependencies]
+{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %}
 streamlit = [
     "streamlit~=1.42.0",
     "streamlit-extras~=0.4.3",
     "extra-streamlit-components~=0.1.71",
     "streamlit-feedback~=0.1.3",
 ]
+{% endif %}
 jupyter = [
     "jupyter~=1.0.0",
 ]

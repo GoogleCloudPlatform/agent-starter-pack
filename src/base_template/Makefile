@@ -7,11 +7,11 @@ test:
 
 playground:
 {%- if "adk" in cookiecutter.tags %}
-	@echo "+-----------------------------------------------------------------------------+"
-	@echo "| Starting ADK Web Server via 'adk web' command.                              |"
-	@echo "|                                                                             |"
-	@echo "| Please select the app folder to start interacting with your agent.          |"
-	@echo "+-----------------------------------------------------------------------------+"
+	@echo "\033[1;32m===============================================================================\033[0m"
+	@echo "\033[1;32m| Starting ADK Web Server via 'adk web' command.                              |\033[0m"
+	@echo "\033[1;32m|                                                                             |\033[0m"
+	@echo "\033[1;32m| IMPORTANT: You must select the 'app' folder to interact with your agent.    |\033[0m"
+	@echo "\033[1;32m===============================================================================\033[0m"
 	uv run adk web
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}

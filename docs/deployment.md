@@ -96,4 +96,32 @@ After completing these steps, your infrastructure will be set up and ready for d
 
 For End-to-end testing of the application, including tracing and feedback sinking to BigQuery, without the need to trigger a CI/CD pipeline.
 
+
 First, enable required Google Cloud APIs:
+
+```bash
+gcloud config set project <your-dev-project-id>
+gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com
+```
+
+After you edited the relative [`env.tfvars` file](../terraform/dev/vars/env.tfvars), follow the following instructions:
+
+```bash
+cd deployment/terraform/dev
+terraform init
+terraform apply --var-file vars/env.tfvars
+```
+
+Then deploy the application using the following command (from the root of the repository):
+
+```bash
+make backend
+```
+
+> Note: the Makefile also offers a command to automate the dev terraform apply setup. `make setup-dev-env`
+
+### End-to-end Demo video
+
+<a href="https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/template_deployment_demo.mp4">
+  <img src="https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/preview_video.png" alt="Watch the video" width="300"/>
+</a>

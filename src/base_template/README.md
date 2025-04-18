@@ -166,16 +166,39 @@ gcloud config set project <your-dev-project-id>
 make backend
 ```
 {%- elif cookiecutter.deployment_target == 'cloud_run' %}
-Deploy the application directly to Cloud Run from your source code using the following `gcloud` command:
+Deploy the application directly to Cloud Run from your source code using the following command ([docs](https://google.github.io/adk-docs/deploy/cloud-run/#command-usage)):
+
+Change to the directory containing your agent's source code:
 
 ```bash
-gcloud run deploy genai-app-sample \
-  --source . \
-  --project YOUR_PROJECT_ID \
-  --region YOUR_GCP_REGION \
-  --memory "4Gi" \
+cd app
 ```
-Replace `YOUR_PROJECT_ID` with your Google Cloud project ID and `YOUR_GCP_REGION` with the desired region (e.g., `us-central1`). Adjust memory and other flags as needed for your environment.
+
+Minimal command
+```bash
+adk deploy cloud_run \
+--project=$GOOGLE_CLOUD_PROJECT \
+--region=$GOOGLE_CLOUD_LOCATION \
+$AGENT_PATH
+```
+
+Full command with optional flags
+```bash
+adk deploy cloud_run \
+--project=$GOOGLE_CLOUD_PROJECT \
+--region=$GOOGLE_CLOUD_LOCATION \
+--service_name=$SERVICE_NAME \
+--app_name=$APP_NAME \
+--with_ui \
+$AGENT_PATH
+```
+
+Replace `GOOGLE_CLOUD_PROJECT` with your Google Cloud project ID and `GOOGLE_CLOUD_LOCATION` with the desired region (e.g., `us-central1`). Adjust memory and other flags as needed for your environment.
+
+`AGENT_PATH`: (Required) Positional argument specifying the path to the directory containing your agent's source code (e.g., $AGENT_PATH in the examples, or capital_agent/). This directory must contain at least an __init__.py and your main agent file (e.g., agent.py).
+
+`SERVICE_NAME`: (Optional) The name for the Cloud Run service (e.g., $SERVICE_NAME). Defaults to `adk-default-service-name`
+
 {% if cookiecutter.agent_name == 'live_api' %}
 **Accessing the Deployed Backend Locally:**
 

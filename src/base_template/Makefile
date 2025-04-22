@@ -26,29 +26,42 @@ playground:
 
 backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	gcloud run deploy {{cookiecutter.project_name}} \
+		--source . \
+		--memory "4Gi" \
+		--project $$PROJECT_ID \
+		--region "us-central1" \
+		--no-allow-unauthenticated \
+		--labels "created-by=adk" \
+		--set-env-vars \
+		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-	# Export dependencies to requirements file using uv export (preferred method), otherwise fall back to uv pip freeze
+	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --frozen > .requirements.txt 2>/dev/null || \
-	uv pip freeze --exclude-editable > .requirements.txt && uv run app/agent_engine_app.py
+	uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --frozen > .requirements.txt && uv run app/agent_engine_app.py
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
-{% if cookiecutter.deployment_target == 'cloud_run' -%}
-ui:
+local-backend:
+	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
+{%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}
+
+ui:
 	npm --prefix frontend start
-{%- else %}
-	uv run streamlit run streamlit/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 {%- endif %}
 {%- endif %}
 
 setup-dev-env:
-	@if [ -z "$$PROJECT_ID" ]; then echo "Error: PROJECT_ID environment variable is not set"; exit 1; fi
+	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-{% if cookiecutter.data_ingestion %}
+
+{%- if cookiecutter.data_ingestion %}
+
 data-ingestion:
-	@if [ -z "$$PROJECT_ID" ]; then echo "Error: PROJECT_ID environment variable is not set"; exit 1; fi
-	$(MAKE) install
+	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
 		--project-id=$$PROJECT_ID \
 		--region="us-central1" \

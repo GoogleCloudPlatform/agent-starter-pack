@@ -10,9 +10,9 @@ playground:
 	@echo "\033[1;32m===============================================================================\033[0m"
 	@echo "\033[1;32m| Starting ADK Web Server via 'adk web' command.                              |\033[0m"
 	@echo "\033[1;32m|                                                                             |\033[0m"
-	@echo "\033[1;32m| IMPORTANT: You must select the 'app' folder to interact with your agent.    |\033[0m"
+	@echo "\033[1;32m| IMPORTANT: Select the 'app' folder to interact with your agent.             |\033[0m"
 	@echo "\033[1;32m===============================================================================\033[0m"
-	uv run adk web
+	uv run adk web --port 8501
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload &

@@ -163,24 +163,12 @@ This template follows a "bring your own agent" approach - you focus on your busi
 
 ### Dev Environment
 
-{%- if cookiecutter.deployment_target == 'agent_engine' %}
 You can test deployment towards a Dev Environment using the following command:
 
 ```bash
 gcloud config set project <your-dev-project-id>
 make backend
 ```
-{%- elif cookiecutter.deployment_target == 'cloud_run' %}
-Deploy the application directly to Cloud Run from your source code using the following `gcloud` command:
-
-```bash
-gcloud run deploy genai-app-sample \
-  --source . \
-  --project YOUR_PROJECT_ID \
-  --region YOUR_GCP_REGION \
-  --memory "4Gi" \
-```
-Replace `YOUR_PROJECT_ID` with your Google Cloud project ID and `YOUR_GCP_REGION` with the desired region (e.g., `us-central1`). Adjust memory and other flags as needed for your environment.
 {% if cookiecutter.agent_name == 'live_api' %}
 **Accessing the Deployed Backend Locally:**
 
@@ -195,7 +183,6 @@ To connect your local frontend (`make ui`) to the backend deployed on Cloud Run,
 
 2.  **Connect Frontend:** Your deployed backend is now accessible locally at `http://localhost:8000`. Point your Streamlit UI to this address.
 {%- endif %}
-{%- endif %}
 
 The repository includes a Terraform configuration for the setup of the Dev Google Cloud project.
 See [deployment/README.md](deployment/README.md) for instructions.
@@ -206,8 +193,8 @@ The repository includes a Terraform configuration for the setup of a production 
 
 {% if cookiecutter.agent_name != 'live_api' %}
 ## Monitoring and Observability
-
-> You can use [this Looker Studio dashboard](https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.
+> You can use [this Looker Studio dashboard]({%- if "adk" in cookiecutter.tags %}https://lookerstudio.google.com/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC{%- else %}https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC{%- endif %}
+) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.
 
 The application uses OpenTelemetry for comprehensive observability with all events being sent to Google Cloud Trace and Logging for monitoring and to BigQuery for long term storage. 
 {%- endif %}

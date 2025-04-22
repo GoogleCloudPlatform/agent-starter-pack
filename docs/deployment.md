@@ -103,8 +103,7 @@ First, enable required Google Cloud APIs:
 gcloud config set project <your-dev-project-id>
 gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com
 ```
-
-After you edited the relative [`env.tfvars` file](../terraform/dev/vars/env.tfvars), follow the following instructions:
+After you have edited the relative env.tfvars file, located in <your-project-name>/terraform/dev/vars/env.tfvars, run the command:
 
 ```bash
 cd deployment/terraform/dev

@@ -721,6 +721,16 @@ class TestE2EDeployment:
 
             logger.info("✅ Updated datastore name in prod/staging env.tfvars")
 
+    @backoff.on_exception(
+        backoff.expo,
+        Exception,
+        max_tries=3,
+        jitter=backoff.full_jitter,
+        on_backoff=lambda details: logger.warning(
+            f"Retrying test after failure. Attempt {details['tries']}/3. "
+            f"Waiting {details['wait']:.2f} seconds..."
+        ),
+    )
     @pytest.mark.parametrize(
         "config",
         get_test_matrix(),

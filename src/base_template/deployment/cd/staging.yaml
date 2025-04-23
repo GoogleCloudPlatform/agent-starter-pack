@@ -20,8 +20,9 @@ steps:
     args:
       - -c
       - |
-        cd data_ingestion && pip install uv==0.6.12 --user && uv sync --frozen && \
-        uv run python data_ingestion_pipeline/submit_pipeline.py
+        # cd data_ingestion && pip install uv==0.6.12 --user && cd data_ingestion_pipeline && \
+        # uv sync --frozen && uv run python submit_pipeline.py
+        echo placeholder
     env:
       - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT}"
       - "REGION=${_REGION}"

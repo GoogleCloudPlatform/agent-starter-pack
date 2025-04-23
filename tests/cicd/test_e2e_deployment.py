@@ -721,16 +721,7 @@ class TestE2EDeployment:
 
             logger.info("✅ Updated datastore name in prod/staging env.tfvars")
 
-    @backoff.on_exception(
-        backoff.expo,
-        Exception,
-        max_tries=3,
-        jitter=backoff.full_jitter,
-        on_backoff=lambda details: logger.warning(
-            f"Retrying test after failure. Attempt {details['tries']}/3. "
-            f"Waiting {details['wait']:.2f} seconds..."
-        ),
-    )
+    @pytest.mark.flaky(reruns=2)
     @pytest.mark.parametrize(
         "config",
         get_test_matrix(),
@@ -739,7 +730,10 @@ class TestE2EDeployment:
         self, config: CICDTestConfig, request: pytest.FixtureRequest
     ) -> None:
         """Test full deployment pipeline using CLI and CICD setup"""
-        if request.session.testsfailed:
+        if (
+            request.session.testsfailed
+            and request.node.get_closest_marker("flaky") is None
+        ):
             pytest.skip("Skipping test: Previous test failed in the session")
 
         # Set region based on agent type

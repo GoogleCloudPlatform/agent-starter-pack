@@ -45,7 +45,7 @@ def ensure_lock_dir() -> pathlib.Path:
 
 
 def generate_pyproject(
-    template_path: pathlib.Path, deployment_target: str, extra_dependencies: list[str]
+    template_path: pathlib.Path, deployment_target: str, config: dict
 ) -> str:
     """Generate pyproject.toml content from template.
 
@@ -62,10 +62,8 @@ def generate_pyproject(
         "cookiecutter": {
             "project_name": "locked-template",
             "deployment_target": deployment_target,
-            # Ensure extra_dependencies is a list
-            "extra_dependencies": list(extra_dependencies)
-            if extra_dependencies
-            else [],
+            "extra_dependencies": list(config.get("extra_dependencies",[])),
+            "tags": list(config.get("tags",[])),
         }
     }
 
@@ -115,14 +113,14 @@ def main(template: pathlib.Path) -> None:
     agent_configs = get_agent_configs()
 
     for agent_name, config in agent_configs.items():
-        for target in config.targets:
+        for target in config["deployment_targets"]:
             print(f"Generating lock file for {agent_name} with {target}...")
 
             # Generate pyproject content
             content = generate_pyproject(
                 template,
                 deployment_target=target,
-                extra_dependencies=config.dependencies,
+                config=config,
             )
 
             # Generate lock file

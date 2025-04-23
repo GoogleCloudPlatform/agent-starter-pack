@@ -55,10 +55,7 @@ def get_agent_configs(
         agent_name = agent_dir.name
         settings = config.get("settings", {})
 
-        agent_configs[agent_name] = AgentConfig(
-            targets=set(settings.get("deployment_targets", [])),
-            dependencies=settings.get("extra_dependencies", []),
-        )
+        agent_configs[agent_name] = settings
 
     return agent_configs
 

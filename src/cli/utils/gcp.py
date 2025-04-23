@@ -29,16 +29,16 @@ from google.cloud.aiplatform_v1beta1.types.prediction_service import (
 from src.cli.utils.version import PACKAGE_NAME, get_current_version
 
 
-def get_user_agent() -> tuple[str, str]:
+def get_user_agent() -> str:
     """Returns custom user agent header tuple (version, agent string)."""
     version = get_current_version()
-    return version, f"{PACKAGE_NAME}/{version}"
+    return f"{PACKAGE_NAME}/{version}-{PACKAGE_NAME}"
 
 
 def get_client_info() -> ClientInfo:
     """Returns ClientInfo with custom user agent."""
-    version, agent = get_user_agent()
-    return ClientInfo(client_library_version=version, user_agent=agent)
+    user_agent = get_user_agent()
+    return ClientInfo(client_library_version=user_agent, user_agent=user_agent)
 
 
 def get_dummy_request(project_id: str, location: str) -> CountTokensRequest:

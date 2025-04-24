@@ -102,20 +102,12 @@ from app.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
 class AgentEngineApp:
     """Class for managing agent engine functionality."""
 
-    def __init__(
-        self, project_id: str | None = None, env_vars: dict[str, str] | None = None
-    ) -> None:
+    def __init__(self, project_id: str | None = None) -> None:
         """Initialize the AgentEngineApp variables"""
         self.project_id = project_id
-        self.env_vars = env_vars if env_vars is not None else {}
 
     def set_up(self) -> None:
         """The set_up method is used to define application initialization logic"""
-        import os
-
-        for k, v in self.env_vars.items():
-            os.environ[k] = v
-
         # Lazy import agent at setup time to avoid deployment dependencies
         from app.agent import agent
 
@@ -214,7 +206,7 @@ def deploy_agent_engine_app(
     agent_name: str | None = None,
     requirements_file: str = ".requirements.txt",
     extra_packages: list[str] = ["./app"],
-    env_vars: dict[str, str] | None = None,
+    env_vars: dict[str, str] = {},
 ) -> agent_engines.AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
@@ -229,19 +221,20 @@ def deploy_agent_engine_app(
     with open(requirements_file) as f:
         requirements = f.read().strip().split("\n")
 {% if "adk" in cookiecutter.tags %}
-    agent_engine = AgentEngineApp(
-        agent=root_agent,
-        env_vars=env_vars,
-    )
+    agent_engine = AgentEngineApp(agent=root_agent)
 {% else %}
-    agent_engine = AgentEngineApp(project_id=project, env_vars=env_vars)
+    agent_engine = AgentEngineApp(project_id=project)
 {% endif %}
+    # Set worker parallelism to 1
+    env_vars["NUM_WORKERS"] = "1"
+
     # Common configuration for both create and update operations
     agent_config = {
         "agent_engine": agent_engine,
         "display_name": agent_name,
         "description": "{{cookiecutter.agent_description}}",
         "extra_packages": extra_packages,
+        "env_vars": env_vars,
     }
     logging.info(f"Agent config: {agent_config}")
     agent_config["requirements"] = requirements
@@ -308,9 +301,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Parse environment variables if provided
-    env_vars = None
+    env_vars = {}
     if args.set_env_vars:
-        env_vars = {}
         for pair in args.set_env_vars.split(","):
             key, value = pair.split("=", 1)
             env_vars[key] = value

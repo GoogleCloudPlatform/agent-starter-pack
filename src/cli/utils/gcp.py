@@ -32,7 +32,7 @@ from src.cli.utils.version import PACKAGE_NAME, get_current_version
 def get_user_agent() -> str:
     """Returns custom user agent header tuple (version, agent string)."""
     version = get_current_version()
-    return f"{PACKAGE_NAME}/{version}-{PACKAGE_NAME}"
+    return f"{version}-{PACKAGE_NAME}/{version}-{PACKAGE_NAME}"
 
 
 def get_client_info() -> ClientInfo:

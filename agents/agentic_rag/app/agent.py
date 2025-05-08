@@ -24,12 +24,13 @@ from app.retrievers import get_compressor, get_retriever
 from app.templates import format_docs
 
 EMBEDDING_MODEL = "text-embedding-005"
+LLM_LOCATION = "global"
 LOCATION = "us-central1"
 LLM = "gemini-2.0-flash-001"
 
 credentials, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", LOCATION)
+os.environ.setdefault("GOOGLE_CLOUD_LOCATION", LLM_LOCATION)
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 vertexai.init(project=project_id, location=LOCATION)

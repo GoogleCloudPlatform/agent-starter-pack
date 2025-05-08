@@ -20,7 +20,7 @@ settings:
     "langchain-google-vertexai~=2.0.7",
     "langchain~=0.3.14",
     "langgraph~=0.2.63",
-    "langchain-google-vertexai~=2.0.7",
+    "langchain-google-vertexai~=2.0.22",
     "langchain~=0.3.14", 
     "langchain-community~=0.3.17",
     "langchain-openai~=0.3.5",

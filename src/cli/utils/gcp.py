@@ -41,11 +41,11 @@ def get_client_info() -> ClientInfo:
     return ClientInfo(client_library_version=user_agent, user_agent=user_agent)
 
 
-def get_dummy_request(project_id: str, location: str) -> CountTokensRequest:
+def get_dummy_request(project_id: str) -> CountTokensRequest:
     """Creates a simple test request for Gemini."""
     return CountTokensRequest(
         contents=[{"role": "user", "parts": [{"text": "Hi"}]}],
-        endpoint=f"projects/{project_id}/locations/{location}/publishers/google/models/gemini-2.0-flash",
+        endpoint=f"projects/{project_id}/locations/global/publishers/google/models/gemini-2.0-flash",
     )
 
 
@@ -63,7 +63,7 @@ def verify_vertex_connection(
         client_info=get_client_info(),
         transport=initializer.global_config._api_transport,
     )
-    request = get_dummy_request(project_id=project_id, location=location)
+    request = get_dummy_request(project_id=project_id)
     client.count_tokens(request=request)
 
 

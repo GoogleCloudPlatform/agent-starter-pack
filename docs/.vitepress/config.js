@@ -31,6 +31,7 @@ export default defineConfig({
         items: [
           { text: 'Getting Started', link: '/guide/getting-started' },
           { text: 'Why Starter Pack?', link: '/guide/why_starter_pack' },
+          { text: 'Video Tutorials', link: '/guide/video-tutorials' },
           { text: 'Installation', link: '/guide/installation' },
           { text: 'Deployment', link: '/guide/deployment' },
           { text: 'Data Ingestion', link: '/guide/data-ingestion' },

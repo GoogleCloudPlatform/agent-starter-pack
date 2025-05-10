@@ -11,8 +11,8 @@ hero:
       text: Get Started Guide
       link: /guide/getting-started
     - theme: alt
-      text: View on GitHub
-      link: https://github.com/GoogleCloudPlatform/agent-starter-pack
+      text: Watch Demo Video
+      link: https://www.youtube.com/embed/eZ-8UQ_t4YM?start=2791
 
 features:
   - icon: ⚡️

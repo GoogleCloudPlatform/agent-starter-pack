@@ -1,6 +1,6 @@
 # 🚀 Agent Starter Pack
 
-![Version](https://img.shields.io/pypi/v/agent-starter-pack?color=blue) [![1-Minute Video Overview](https://img.shields.io/badge/1--Minute%20Overview-gray)](https://youtu.be/jHt-ZVD660g) [![Docs](https://img.shields.io/badge/Documentation-gray)](./docs/README.md) <a href="https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx">
+![Version](https://img.shields.io/pypi/v/agent-starter-pack?color=blue) [![1-Minute Video Overview](https://img.shields.io/badge/1--Minute%20Overview-gray)](https://youtu.be/jHt-ZVD660g) [![Docs](https://img.shields.io/badge/Documentation-gray)](https://googlecloudplatform.github.io/agent-starter-pack/) <a href="https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx">
   <picture>
     <source
       media="(prefers-color-scheme: dark)"
@@ -21,7 +21,7 @@ It accelerates development by providing a holistic, production-ready solution, a
 
 | ⚡️ Launch | 🧪 Experiment  | ✅ Deploy | 🛠️ Customize |
 |---|---|---|---|
-| [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live Multimodal API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](./docs/observability.md), and [CI/CD](./docs/deployment.md) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. |
+| [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability), and [CI/CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. |
 
 ---
  
@@ -41,7 +41,7 @@ agent-starter-pack create my-awesome-agent
 ```
 
 **That's it!** You now have a fully functional agent project—complete with backend, frontend, and deployment infrastructure—ready for you to explore and customize.
-For more installation options, see the [Installation Guide](docs/installation.md).  You can also [try it in Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx) with zero setup.
+For more installation options, see the [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/installation). You can also [try it in Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx) with zero setup.
 
 ---
 
@@ -51,7 +51,7 @@ For more installation options, see the [Installation Guide](docs/installation.md
 agent-starter-pack create my-agent -d agent_engine -a adk_base
 ```
 
-*See the [full list of options](docs/cli/create.md) for details.*
+*See the [full list of options](https://googlecloudplatform.github.io/agent-starter-pack/cli/create) for details.*
 
 ## 🤖 Agents
 
@@ -63,7 +63,7 @@ agent-starter-pack create my-agent -d agent_engine -a adk_base
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |
 | `live_api`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
 
-**More agents are on the way!** We are continuously expanding our [agent library](./agents/).  Have a specific agent type in mind?  [Contribute!](#contributing)
+**More agents are on the way!** We are continuously expanding our [agent library](https://googlecloudplatform.github.io/agent-starter-pack/agents/overview). Have a specific agent type in mind? [Raise an issue as a feature request!](https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/new?labels=enhancement)
 
 **🔍 ADK Samples**
 
@@ -72,9 +72,8 @@ Looking to explore more ADK examples? Check out the [ADK Samples Repository](htt
 #### Extra Features
 
 The `agent-starter-pack` offers two key features to accelerate and simplify the development of your agent:
-
-- **🔄 [CI/CD Automation (Experimental)](docs/cli/setup_cicd.md)** - One command to set up a complete GitHub + Cloud Build pipeline for all environments
-- **📥 [Data Pipeline for RAG with Terraform/CI-CD](docs/data-ingestion.md)** - Seamlessly integrate a data pipeline to process embeddings for RAG into your agent system. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).
+- **🔄 [CI/CD Automation (Experimental)](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd)** - One command to set up a complete GitHub + Cloud Build pipeline for all environments
+- **📥 [Data Pipeline for RAG with Terraform/CI-CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/data-ingestion)** - Seamlessly integrate a data pipeline to process embeddings for RAG into your agent system. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).
 
 
 ## High-Level Architecture
@@ -93,18 +92,21 @@ This starter pack covers all aspects of Agent development, from prototyping and 
 
 
 ## 📚 Documentation
-See the [documentation](docs/) for more details:
 
-- [Why Use the Starter Pack?](docs/why_starter_pack.md)
-- [Installation](docs/installation.md)
-- [Deployment](docs/deployment.md)
-- [Data Ingestion](docs/data-ingestion.md)
-- [Observability](docs/observability.md)
-- [CLI Reference](docs/cli/README.md)
-- [Troubleshooting](docs/troubleshooting.md)
+Visit our [documentation site](https://googlecloudplatform.github.io/agent-starter-pack/) for comprehensive guides and references!
+
+- [Getting Started Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/getting-started) - First steps with agent-starter-pack
+- [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/installation) - Setting up your environment
+- [Deployment Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) - Taking your agent to production
+- [Agent Templates Overview](https://googlecloudplatform.github.io/agent-starter-pack/agents/overview) - Explore available agent patterns
+- [CLI Reference](https://googlecloudplatform.github.io/agent-starter-pack/cli/) - Command-line tool documentation
+
 
 ### Video Walkthrough:
 
+## Video Tutorials
+
+- **April 2024**: A [6-minute introduction video](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791) Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 - **March 6, 2025**: A [120 Minute livestream video demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s) of the new `agent-starter-pack` were we build 3 Agents under 30 minutes!
 - **Oct 29, 2024**: A [20-Minute Video Walkthrough](https://youtu.be/kwRG7cnqSu0) is available, showcasing the previous `agent-starter-pack`.
 

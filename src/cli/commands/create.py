@@ -335,11 +335,10 @@ def create(
 
 def prompt_region_confirmation(default_region: str = "us-central1") -> str:
     """Prompt user to confirm or change the default region."""
-    console.print(f"\n> Default GCP region is '{default_region}'")
     new_region = Prompt.ask(
-        "Enter desired GCP region (leave blank for default). Gemini uses global endpoint by default.",
-        default="",
-        show_default=False,
+        "\nEnter desired GCP region (Gemini uses global endpoint by default)",
+        default=default_region,
+        show_default=True,
     )
 
     return new_region if new_region else default_region

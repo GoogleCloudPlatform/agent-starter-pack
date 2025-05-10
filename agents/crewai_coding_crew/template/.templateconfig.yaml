@@ -24,3 +24,4 @@ settings:
     "langgraph~=0.2.63",
     "crewai~=0.119.0"
   ]
+example_question: "How can I implement a function to sort a list in Python?"

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 description: "ADK RAG agent for document retrieval and Q&A. Includes a data pipeline for ingesting and indexing documents into Vertex AI Search or Vector Search."
+example_question: "How to save a pandas dataframe to CSV?"
 settings:
   requires_data_ingestion: true
   deployment_targets: ["agent_engine", "cloud_run"]

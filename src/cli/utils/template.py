@@ -513,11 +513,14 @@ def process_template(
                 "agent_name": agent_name,
                 "package_version": get_current_version(),
                 "agent_description": template_config.get("description", ""),
+                "example_question": template_config.get("example_question", "").ljust(
+                    61
+                ),
                 "tags": tags,
                 "deployment_target": deployment_target or "",
                 "frontend_type": frontend_type,
                 "extra_dependencies": [extra_deps],
-                "data_ingestion": include_data_ingestion,  # Use explicit flag for cookiecutter
+                "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks

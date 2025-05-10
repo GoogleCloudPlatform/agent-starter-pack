@@ -6,12 +6,16 @@ test:
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 playground:
+	@echo "==============================================================================="
+	@echo "| 🚀 Starting your agent playground...                                        |"
+	@echo "|                                                                             |"
+	@echo "| 💡 Try asking: {{cookiecutter.example_question}}|"
 {%- if "adk" in cookiecutter.tags %}
-	@echo "\033[1;32m===============================================================================\033[0m"
-	@echo "\033[1;32m| Starting ADK Web Server via 'adk web' command.                              |\033[0m"
-	@echo "\033[1;32m|                                                                             |\033[0m"
-	@echo "\033[1;32m| IMPORTANT: Select the 'app' folder to interact with your agent.             |\033[0m"
-	@echo "\033[1;32m===============================================================================\033[0m"
+	@echo "|                                                                             |"
+	@echo "| 🔍 IMPORTANT: Select the 'app' folder to interact with your agent.          |"
+{%- endif %}
+	@echo "==============================================================================="
+{%- if "adk" in cookiecutter.tags %}
 	uv run adk web --port 8501
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}

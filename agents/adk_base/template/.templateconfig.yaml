@@ -13,6 +13,7 @@
 # limitations under the License.
 
 description: "A base ReAct agent built with Google's Agent Development Kit (ADK)"
+example_question: "What's the weather in San Francisco?"
 settings:
   requires_data_ingestion: false
   deployment_targets: ["agent_engine", "cloud_run"]

@@ -16,6 +16,6 @@ description: "A base ReAct agent built with Google's Agent Development Kit (ADK)
 settings:
   requires_data_ingestion: false
   deployment_targets: ["agent_engine", "cloud_run"]
-  extra_dependencies: ["google-adk~=0.2.0"]
+  extra_dependencies: ["google-adk~=0.5.0"]
   tags: ["adk"]
   frontend_type: "None"

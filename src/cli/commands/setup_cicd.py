@@ -74,6 +74,28 @@ def display_production_note() -> None:
     console.print("- Advanced CI/CD pipeline customization\n")
 
 
+def check_gh_cli_installed() -> bool:
+    """Check if GitHub CLI is installed.
+
+    Returns:
+        bool: True if GitHub CLI is installed, False otherwise
+    """
+    try:
+        run_command(["gh", "--version"], capture_output=True, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def prompt_gh_cli_installation() -> None:
+    """Display instructions for installing GitHub CLI and exit."""
+    console.print("\n❌ GitHub CLI not found", style="bold red")
+    console.print("This command requires the GitHub CLI (gh) to be installed.")
+    console.print("\nPlease install GitHub CLI from: https://cli.github.com/")
+    console.print("\nAfter installation, run this command again.")
+    sys.exit(1)
+
+
 def setup_git_repository(config: ProjectConfig) -> str:
     """Set up Git repository and remote.
 
@@ -476,6 +498,11 @@ def setup_cicd(
         if not click.confirm("\nDo you want to continue with the setup?", default=True):
             console.print("\n🛑 Setup cancelled by user", style="bold yellow")
             return
+
+    # Check if GitHub CLI is installed
+    if git_provider == "github" or git_provider is None:
+        if not check_gh_cli_installed():
+            prompt_gh_cli_installation()
     console.print(
         "This command helps set up a basic CI/CD pipeline for development and testing purposes."
     )

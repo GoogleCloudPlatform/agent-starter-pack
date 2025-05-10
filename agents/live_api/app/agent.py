@@ -17,10 +17,7 @@ import os
 import google.auth
 import vertexai
 from google import genai
-from google.genai.types import (
-    Content,
-    LiveConnectConfig,
-)
+from google.genai import types
 
 # Constants
 VERTEXAI = os.getenv("VERTEXAI", "true").lower() == "true"
@@ -40,7 +37,7 @@ else:
     genai_client = genai.Client(http_options={"api_version": "v1alpha"})
 
 
-def get_weather(query: str) -> str:
+def get_weather(query: str) -> dict:
     """Simulates a web search. Use it get information on weather.
 
     Args:
@@ -50,21 +47,23 @@ def get_weather(query: str) -> str:
         A string with the simulated weather information for the queried location.
     """
     if "sf" in query.lower() or "san francisco" in query.lower():
-        return "It's 60 degrees and foggy."
-    return "It's 90 degrees and sunny."
+        return {"output": "It's 60 degrees and foggy."}
+    return {"output": "It's 90 degrees and sunny."}
 
 
 # Configure tools available to the agent and live connection
 tool_functions = {"get_weather": get_weather}
 
-live_connect_config = LiveConnectConfig(
-    response_modalities=["AUDIO"],
+live_connect_config = types.LiveConnectConfig(
+    response_modalities=[types.Modality.AUDIO],
     tools=[get_weather],
-    system_instruction=Content(
+    # Change to desired language code (e.g., "es-ES" for Spanish, "fr-FR" for French)
+    speech_config=types.SpeechConfig(language_code="en-US"),
+    system_instruction=types.Content(
         parts=[
-            {
-                "text": """You are a helpful AI assistant designed to provide accurate and useful information."""
-            }
+            types.Part(
+                text="""You are a helpful AI assistant designed to provide accurate and useful information."""
+            )
         ]
     ),
 )

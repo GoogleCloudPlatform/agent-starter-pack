@@ -89,9 +89,11 @@ class GeminiSession:
                 logging.error(f"Error receiving from client {self.user_id}: {e!s}")
                 break
 
-    def _get_func(self, action_label: str) -> Callable | None:
+    def _get_func(self, action_label: str | None) -> Callable | None:
         """Get the tool function for a given action label."""
-        return None if action_label == "" else self.tool_functions.get(action_label)
+        if action_label is None or action_label == "":
+            return None
+        return self.tool_functions.get(action_label)
 
     async def _handle_tool_call(
         self, session: Any, tool_call: LiveServerToolCall
@@ -102,9 +104,20 @@ class GeminiSession:
             session: The Gemini session
             tool_call: Tool call request from Gemini
         """
+        # Handle case where function_calls might be None
+        if tool_call.function_calls is None:
+            logging.debug("No function calls in tool_call")
+            return
+
         for fc in tool_call.function_calls:
             logging.debug(f"Calling tool function: {fc.name} with args: {fc.args}")
-            response = self._get_func(fc.name)(**fc.args)
+            func = self._get_func(fc.name)
+            if func is None:
+                logging.error(f"Function {fc.name} not found")
+                continue
+            args = fc.args if fc.args is not None else {}
+            response = func(**args)
+
             tool_response = types.LiveClientToolResponse(
                 function_responses=[
                     types.FunctionResponse(name=fc.name, id=fc.id, response=response)

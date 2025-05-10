@@ -19,11 +19,5 @@ settings:
   deployment_targets: ["cloud_run"]
   extra_dependencies: [
     "backoff~=2.2.1",
-    "beautifulsoup4~=4.12.3",
-    "google-genai~=1.8.0",
-    "jinja2~=3.1.4",
-    "langchain~=0.3.13",
-    "langchain-community~=0.3.13",
-    "langchain-google-vertexai~=2.0.9",
-    "scikit-learn>=1.0.0,<2.0.0",
+    "google-genai~=1.14.0",
   ]

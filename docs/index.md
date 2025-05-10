@@ -6,6 +6,9 @@ hero:
   name: Agent Starter Pack
   text: Production-Ready  Agents on Google Cloud, faster
   tagline: Go from idea to deployment faster with pre-built templates & tools.
+  image:
+    src: /images/logo.png
+    alt: Agent Starter Pack Logo
   actions:
     - theme: brand
       text: Get Started Guide

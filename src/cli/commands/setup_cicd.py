@@ -203,12 +203,19 @@ def prompt_for_repository_details(
         choice = click.prompt(
             "Select option", type=click.Choice(["1", "2"]), default="1"
         )
-
         if choice == "1":
             # New repository
             if not repository_name:
+                # Get project name from pyproject.toml
+                with open("pyproject.toml") as f:
+                    for line in f:
+                        if line.strip().startswith("name ="):
+                            default_name = line.split("=")[1].strip().strip("\"'")
+                            break
+                    else:
+                        default_name = f"genai-app-{int(time.time())}"
                 repository_name = click.prompt(
-                    "Enter new repository name", default=f"genai-app-{int(time.time())}"
+                    "Enter new repository name", default=default_name
                 )
             if not repository_owner:
                 repository_owner = click.prompt(
@@ -499,10 +506,6 @@ def setup_cicd(
             console.print("\n🛑 Setup cancelled by user", style="bold yellow")
             return
 
-    # Check if GitHub CLI is installed
-    if git_provider == "github" or git_provider is None:
-        if not check_gh_cli_installed():
-            prompt_gh_cli_installation()
     console.print(
         "This command helps set up a basic CI/CD pipeline for development and testing purposes."
     )
@@ -535,6 +538,10 @@ def setup_cicd(
 
     # Check GitHub authentication if GitHub is selected
     if git_provider == "github" and not (github_pat and github_app_installation_id):
+        # Check if GitHub CLI is installed
+        if git_provider == "github" or git_provider is None:
+            if not check_gh_cli_installed():
+                prompt_gh_cli_installation()
         if not is_github_authenticated():
             console.print("\n⚠️ Not authenticated with GitHub CLI", style="yellow")
             handle_github_authentication()

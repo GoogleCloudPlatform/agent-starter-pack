@@ -25,7 +25,7 @@ agent-starter-pack setup-cicd \
 *   **Production Use:** For production environments, we **strongly recommend** following the detailed instructions in `deployment/README.md`. Manual setup offers greater control over security and configuration. This automated command is best suited for development and testing.
 *   **GitHub Only:** Currently, only GitHub is supported as a Git provider.
 
-### Prerequisites
+## Prerequisites
 
 1.  **Run from Project Root:** Execute the command from the root directory of your `agent-starter-pack` project (where `pyproject.toml` is located).
 2.  **Install Tools:**
@@ -35,7 +35,7 @@ agent-starter-pack setup-cicd \
 3.  **Google Cloud Projects:** You need at least two Google Cloud projects: one for staging and one for production. The command will prompt you for their IDs if you don't provide the `--staging-project` and `--prod-project` flags. You also need a project to host the CI/CD resources (Cloud Build, Artifact Registry, Terraform state). You can specify this using `--cicd-project`. If omitted, the production project will be used for CI/CD resources.
 4.  **Permissions:** The user or service account running this command must have the `Owner` role on the specified Google Cloud projects (staging, production, CI/CD if specified, development if specified). This is necessary for creating resources and assigning IAM roles.
 
-### How it Works
+## How it Works
 
 The `setup-cicd` command automates the following:
 
@@ -48,7 +48,7 @@ The `setup-cicd` command automates the following:
 5.  **Resource Deployment:** Runs `terraform apply` to create the necessary resources in Google Cloud and configure the GitHub repository connection.
 6.  **Local Git Setup:** Initializes a Git repository locally (if needed) and adds the GitHub repository as the `origin` remote.
 
-### Running the Command
+## Running the Command
 
 ```bash
 agent-starter-pack setup-cicd \
@@ -78,7 +78,7 @@ agent-starter-pack setup-cicd \
 
 *(For advanced/programmatic use with pre-existing connections, see options like `--github-pat`, `--github-app-installation-id`, `--host-connection-name` by running `agent-starter-pack setup-cicd --help`)*
 
-### After Running the Command
+## After Running the Command
 
 1.  **Commit and Push:** This is crucial to trigger the pipeline.
     ```bash
@@ -88,6 +88,6 @@ agent-starter-pack setup-cicd \
     ```
 2.  **Verify:** Check your GitHub repository and Google Cloud projects (Cloud Build > Triggers, Secret Manager, IAM) to see the created resources.
 
-### Manual CI/CD Setup (Recommended for Production)
+## Manual CI/CD Setup (Recommended for Production)
 
-For robust, production-ready deployments with fine-grained control over security, customization, and advanced CI/CD practices, please follow the [manual setup guide](../deployment.md).
+For robust, production-ready deployments with fine-grained control over security, customization, and advanced CI/CD practices, please follow the [manual setup guide](../guide/deployment.md).

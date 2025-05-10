@@ -1,5 +1,9 @@
 # Deployment
 
+::: tip ⭐ Streamlined Deployment
+For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](../cli/setup_cicd). Currently only supporting Github.
+:::
+
 The templated agent leverages [**Terraform**](http://terraform.io) to define and provision the underlying infrastructure, while [**Cloud Build**](https://cloud.google.com/build/) orchestrates the continuous integration and continuous deployment (CI/CD) pipeline.
 
 ## Deployment Workflow
@@ -27,8 +31,6 @@ The templated agent leverages [**Terraform**](http://terraform.io) to define and
 
 ## Setup
 
-> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](./cli/setup_cicd.md). Currently only supporting Github.
-
 **Prerequisites:**
 
 1. A set of Google Cloud projects:
@@ -54,7 +56,7 @@ The templated agent leverages [**Terraform**](http://terraform.io) to define and
 
 3. **Configure Terraform Variables**
 
-   - Edit [`deployment/terraform/vars/env.tfvars`](../terraform/vars/env.tfvars) with your Google Cloud settings.
+   - Edit `deployment/terraform/vars/env.tfvars` with your Google Cloud settings.
 
    | Variable               | Description                                                     | Required |
    | ---------------------- | --------------------------------------------------------------- | :------: |
@@ -103,7 +105,8 @@ First, enable required Google Cloud APIs:
 gcloud config set project <your-dev-project-id>
 gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com
 ```
-After you have edited the relative env.tfvars file, located in <your-project-name>/terraform/dev/vars/env.tfvars, run the command:
+
+After you edited the relative `terraform/dev/vars/env.tfvars` file, follow the following instructions:
 
 ```bash
 cd deployment/terraform/dev

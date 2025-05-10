@@ -1,6 +1,6 @@
 # CLI Reference
 
-This document provides an overview of the available CLI commands for managing your generative AI applications.
+The Agent Starter Pack provides a command-line interface (CLI) to create and setup Generative AI Agent templates in Google Cloud. 
 
 ## Available Commands
 

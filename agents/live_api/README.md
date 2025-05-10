@@ -1,15 +1,15 @@
 # Multimodal Live Agent
 
-This pattern showcases a real-time conversational RAG agent powered by Google Gemini. The agent handles audio, video, and text interactions while leveraging tool calling with a vector DB for grounded responses.
+This pattern showcases a real-time conversational agent powered by Google Gemini. The agent handles audio, video, and text interactions while leveraging tool calling capabilities for enhanced responses.
 
 ![live_api_diagram](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/live_api_diagram.png)
 
 **Key components:**
 
-- **Python Backend** (in `app/` folder): A production-ready server built with [FastAPI](https://fastapi.tiangolo.com/) and [google-genai](https://googleapis.github.io/python-genai/) that features:
+- **Python Backend** (in `app/` folder): A production-ready server built with [FastAPI](https://fastapi.tiangolo.com/) and [google-genai](https://googleapis.github.io/python-python-genai/) that features:
 
   - **Real-time bidirectional communication** via WebSockets between the frontend and Gemini model
-  - **Integrated tool calling** with vector database support for contextual document retrieval
+  - **Integrated tool calling** with a weather information tool for demonstrating external data retrieval
   - **Production-grade reliability** with retry logic and automatic reconnection capabilities
   - **Deployment flexibility** supporting both AI Studio and Vertex AI endpoints
   - **Feedback logging endpoint** for collecting user interactions
@@ -18,7 +18,7 @@ This pattern showcases a real-time conversational RAG agent powered by Google Ge
 
 ![live api demo](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/live_api_pattern_demo.gif)
 
-Once both the backend and frontend are running, click the play button in the frontend UI to establish a connection with the backend. You can now interact with the Multimodal Live Agent! You can try asking questions such as "Using the tool you have, define Governance in the context MLOPs" to allow the agent to use the [documentation](https://cloud.google.com/architecture/deploy-operate-generative-ai-applications) it was provided to.
+Once both the backend and frontend are running, click the play button in the frontend UI to establish a connection with the backend. You can now interact with the Multimodal Live Agent! You can try asking questions such as "What's the weather like in San Francisco?" to see the agent use its weather information tool.
 
 ## Additional Resources for Multimodal Live API
 

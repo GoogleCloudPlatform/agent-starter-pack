@@ -23,3 +23,6 @@ clean:
 
 install:
 	uv sync --dev --extra lint --frozen
+
+docs-dev:
+	cd docs && npm install && NODE_OPTIONS="--no-warnings" npm run docs:dev

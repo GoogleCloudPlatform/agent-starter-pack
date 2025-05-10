@@ -56,7 +56,7 @@ tool_functions = {"get_weather": get_weather}
 
 live_connect_config = types.LiveConnectConfig(
     response_modalities=[types.Modality.AUDIO],
-    tools=[get_weather],
+    tools=list(tool_functions.values()),
     # Change to desired language code (e.g., "es-ES" for Spanish, "fr-FR" for French)
     speech_config=types.SpeechConfig(language_code="en-US"),
     system_instruction=types.Content(

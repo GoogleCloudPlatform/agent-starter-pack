@@ -16,7 +16,7 @@ Let's look at the reality of deploying GenAI agents:
 ## The "Last Mile" Challenges
 
 
-Based on our experience and feedback from developers, the difficulty lies not in the initial AI experimentation, but in the comprehensive requirements for production deployment – the "last mile" that actually delivers business value:
+Based on our experience and feedback from developers, the real challenge isn't in the initial AI experimentation, but rather in meeting the comprehensive requirements for production deployment – the "last mile" that ultimately delivers business value:
 
 ![why_starter_pack](../images/why_starter_pack.png)
 
@@ -46,7 +46,7 @@ Recognizing these common, time-consuming hurdles, we created the **Agent Starter
 The core idea is simple: **You focus on your core Agent code** – the unique logic, prompts, and tools that define *your* specific AI application – while **we provide the template foundation** for everything else needed to run it reliably in production.
 
 
-![why_starter_pack](../images/why_starter_pack.png)
+![why_starter_pack](../images/why_sp_edited.png)
 
 
 Think of it like this:

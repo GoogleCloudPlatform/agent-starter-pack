@@ -104,13 +104,12 @@ Visit our [documentation site](https://googlecloudplatform.github.io/agent-start
 
 ### Video Walkthrough:
 
-## Video Tutorials
+- **[Exploring the Agent Starter Pack](https://www.youtube.com/watch?v=9zqwym-N3lg)**: A comprehensive tutorial demonstrating how to rapidly deploy AI Agents using the Agent Starter Pack, covering architecture, templates, and step-by-step deployment.
 
-- **April 2024**: A [6-minute introduction video](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791) Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
-- **March 6, 2025**: A [120 Minute livestream video demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s) of the new `agent-starter-pack` were we build 3 Agents under 30 minutes!
-- **Oct 29, 2024**: A [20-Minute Video Walkthrough](https://youtu.be/kwRG7cnqSu0) is available, showcasing the previous `agent-starter-pack`.
+- **[6-minute introduction](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791)** (April 2024): Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 
-## Explore More Generative AI Resources
+- **[120-minute livestream demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s)** (March 6, 2025): Watch us build 3 Agents in under 30 minutes using the `agent-starter-pack`!
+
 
 Looking for more examples and resources for Generative AI on Google Cloud? Check out the [GoogleCloudPlatform/generative-ai](https://github.com/GoogleCloudPlatform/generative-ai) repository for notebooks, code samples, and more!
 

@@ -15,7 +15,7 @@ hero:
       link: /guide/getting-started
     - theme: alt
       text: Watch Demo Video
-      link: https://www.youtube.com/embed/eZ-8UQ_t4YM?start=2791
+      link: https://www.youtube.com/watch?v=9zqwym-N3lg
 
 features:
   - icon: ⚡️

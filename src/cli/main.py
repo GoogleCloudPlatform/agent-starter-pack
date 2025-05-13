@@ -19,6 +19,7 @@ from rich.console import Console
 
 from .commands.create import create
 from .commands.setup_cicd import setup_cicd
+from .utils import display_update_message
 
 console = Console()
 
@@ -45,7 +46,8 @@ def print_version(ctx: click.Context, param: click.Parameter, value: bool) -> No
     help="Show the version and exit.",
 )
 def cli() -> None:
-    pass
+    # Check for updates at startup
+    display_update_message()
 
 
 # Register commands

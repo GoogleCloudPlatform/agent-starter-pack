@@ -1,6 +1,6 @@
 # LangGraph Base React Agent
 
-A minimal example demonstrating how to build a reactive agent using LangGraph. This agent serves as an excellent starting point for developers looking to implement LangGraph-based solutions.
+A minimal example demonstrating how to build a ReAct agent using LangGraph. This agent serves as an excellent starting point for developers looking to implement LangGraph-based solutions.
 
 ## Key Features
 

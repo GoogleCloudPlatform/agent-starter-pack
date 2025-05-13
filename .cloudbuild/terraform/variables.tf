@@ -32,3 +32,12 @@ variable "repository_name" {
   description = "Name of the repository you'd like to connect to Cloud Build"
   type        = string
 }
+
+variable "e2e_test_project_mapping" {
+  description = "Mapping of project IDs for different environments"
+  type = object({
+    dev     = string
+    prod    = string
+    staging = string
+  })
+}

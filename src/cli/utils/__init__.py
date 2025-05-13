@@ -12,24 +12,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .datastores import DATASTORE_TYPES, get_datastore_info
 from .gcp import verify_credentials
 from .logging import handle_cli_error
 from .template import (
     get_available_agents,
     get_deployment_targets,
     get_template_path,
+    load_template_config,
     process_template,
-    prompt_data_ingestion,
+    prompt_datastore_selection,
     prompt_deployment_target,
 )
+from .version import display_update_message
 
 __all__ = [
+    "DATASTORE_TYPES",
+    "display_update_message",
     "get_available_agents",
+    "get_datastore_info",
     "get_deployment_targets",
     "get_template_path",
     "handle_cli_error",
+    "load_template_config",
     "process_template",
-    "prompt_data_ingestion",
+    "prompt_datastore_selection",
     "prompt_deployment_target",
     "verify_credentials",
 ]

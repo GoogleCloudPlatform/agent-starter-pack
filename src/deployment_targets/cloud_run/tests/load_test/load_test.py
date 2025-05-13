@@ -15,9 +15,20 @@
 import json
 import os
 import time
+{%- if "adk" in cookiecutter.tags %}
+import uuid
+
+import requests
+from locust import HttpUser, between, task
+{%- else %}
 
 from locust import HttpUser, between, task
-
+{%- endif %}
+{% if "adk" in cookiecutter.tags %}
+ENDPOINT = "/run_sse"
+{% else %}
+ENDPOINT = "/stream_messages"
+{% endif %}
 
 class ChatStreamUser(HttpUser):
     """Simulates a user interacting with the chat stream API."""
@@ -30,7 +41,30 @@ class ChatStreamUser(HttpUser):
         headers = {"Content-Type": "application/json"}
         if os.environ.get("_ID_TOKEN"):
             headers["Authorization"] = f"Bearer {os.environ['_ID_TOKEN']}"
+{%- if "adk" in cookiecutter.tags %}
+        # Create session first
+        user_id = f"user_{uuid.uuid4()}"
+        session_id = f"session_{uuid.uuid4()}"
+        session_data = {"state": {"preferred_language": "English", "visit_count": 5}}
+        requests.post(
+            f"{self.client.base_url}/apps/app/users/{user_id}/sessions/{session_id}",
+            headers=headers,
+            json=session_data,
+            timeout=10,
+        )
 
+        # Send chat message
+        data = {
+            "app_name": "app",
+            "user_id": user_id,
+            "session_id": session_id,
+            "new_message": {
+                "role": "user",
+                "parts": [{"text": "What's the weather in San Francisco?"}],
+            },
+            "streaming": True,
+        }
+{%- else %}
         data = {
             "input": {
                 "messages": [
@@ -43,43 +77,42 @@ class ChatStreamUser(HttpUser):
                 "metadata": {"user_id": "test-user", "session_id": "test-session"}
             },
         }
-
+{%- endif %}
         start_time = time.time()
 
         with self.client.post(
-            "/stream_messages",
+            ENDPOINT,
+            name=f"{ENDPOINT} message",
             headers=headers,
             json=data,
             catch_response=True,
-            name="/stream_messages first message",
             stream=True,
+            params={"alt": "sse"},
         ) as response:
             if response.status_code == 200:
                 events = []
                 for line in response.iter_lines():
                     if line:
+{%- if "adk" in cookiecutter.tags %}
+                        # SSE format is "data: {json}"
+                        line_str = line.decode("utf-8")
+                        if line_str.startswith("data: "):
+                            event_json = line_str[6:]  # Remove "data: " prefix
+                            event = json.loads(event_json)
+                            events.append(event)
+{%- else %}
                         event = json.loads(line)
                         events.append(event)
-                        for chunk in event:
-                            if (
-                                isinstance(chunk, dict)
-                                and chunk.get("type") == "constructor"
-                            ):
-                                if not chunk.get("kwargs", {}).get("content"):
-                                    continue
-                                response.success()
-                                end_time = time.time()
-                                total_time = end_time - start_time
-                                self.environment.events.request.fire(
-                                    request_type="POST",
-                                    name="/stream_messages end",
-                                    response_time=total_time
-                                    * 1000,  # Convert to milliseconds
-                                    response_length=len(json.dumps(events)),
-                                    response=response,
-                                    context={},
-                                )
-                                return
-                response.failure("No valid response content received")
+{%- endif %}
+                end_time = time.time()
+                total_time = end_time - start_time
+                self.environment.events.request.fire(
+                    request_type="POST",
+                    name=f"{ENDPOINT} end",
+                    response_time=total_time * 1000,  # Convert to milliseconds
+                    response_length=len(json.dumps(events)),
+                    response=response,
+                    context={},
+                )
             else:
                 response.failure(f"Unexpected status code: {response.status_code}")

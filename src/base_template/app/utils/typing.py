@@ -12,6 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+import uuid
+from typing import (
+    Literal,
+)
+
+from google.adk.events.event import Event
+from google.genai.types import Content
+from pydantic import (
+    BaseModel,
+    Field,
+)
+{%- else %}
+from typing import (
+    Literal,
+)
+
+from pydantic import (
+    BaseModel,
+)
+{%- endif %}
+{%- else %}
 import json
 import uuid
 from typing import (
@@ -31,6 +54,24 @@ from pydantic import (
     BaseModel,
     Field,
 )
+{%- endif %}
+
+
+{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+
+
+class Request(BaseModel):
+    """Represents the input for a chat request with optional configuration."""
+
+    message: Content
+    events: list[Event]
+    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+
+    model_config = {"extra": "allow"}
+{%- endif %}
+{%- else %}
 
 
 class InputChat(BaseModel):
@@ -42,7 +83,7 @@ class InputChat(BaseModel):
         ..., description="The chat messages representing the current conversation."
     )
 
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+
 class Request(BaseModel):
     """Represents the input for a chat request with optional configuration.
 
@@ -54,15 +95,23 @@ class Request(BaseModel):
     input: InputChat
     config: RunnableConfig | None = None
 
-{% endif %}
+{%- endif %}
+
+
 class Feedback(BaseModel):
     """Represents feedback for a conversation."""
 
     score: int | float
     text: str | None = ""
+{%- if "adk" in cookiecutter.tags %}
+    invocation_id: str
+{%- else %}
     run_id: str
+{%- endif %}
     log_type: Literal["feedback"] = "feedback"
-
+    service_name: Literal["{{cookiecutter.project_name}}"] = "{{cookiecutter.project_name}}"
+    user_id: str = ""
+{% if "adk" not in cookiecutter.tags %}
 
 def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:
     """Ensures a valid RunnableConfig by setting defaults for missing fields."""
@@ -98,7 +147,8 @@ def dumps(obj: Any) -> str:
         JSON string representation of the object
     """
     return json.dumps(obj, default=default_serialization)
-{% if cookiecutter.deployment_target == 'agent_engine' %}
+{%- if cookiecutter.deployment_target == 'agent_engine' %}
+
 
 def dumpd(obj: Any) -> Any:
     """
@@ -112,4 +162,5 @@ def dumpd(obj: Any) -> Any:
         Dict/list representation of the object that can be JSON serialized
     """
     return json.loads(dumps(obj))
+{%- endif %}
 {% endif %}

@@ -79,14 +79,14 @@ def test_init_side_bar_local_agent(
 def test_init_side_bar_remote_engine_id(
     mock_exists: MagicMock, mock_streamlit: MagicMock
 ) -> None:
-    """Test sidebar initialization with remote engine ID"""
+    """Test sidebar initialization with remote agent engine ID"""
     mock_exists.return_value = False
     sidebar = SideBar(mock_streamlit)
 
     mock_streamlit.sidebar.__enter__ = MagicMock(return_value=mock_streamlit.sidebar)
     mock_streamlit.sidebar.__exit__ = MagicMock(return_value=None)
 
-    mock_streamlit.selectbox.return_value = "Remote Engine ID"
+    mock_streamlit.selectbox.return_value = "Remote Agent Engine ID"
     mock_streamlit.text_input.return_value = "test-engine-id"
 
     sidebar.init_side_bar()

@@ -1,3 +1,6 @@
+# Project name used for resource naming
+project_name = "{{ cookiecutter.project_name | replace('_', '-') }}"
+
 # Your Production Google Cloud project id
 prod_project_id = "your-production-project-id"
 
@@ -8,36 +11,24 @@ staging_project_id = "your-staging-project-id"
 cicd_runner_project_id = "your-cicd-project-id"
 
 # Name of the host connection you created in Cloud Build
-host_connection_name = "your-host-connection-name"
+host_connection_name = "git-{{cookiecutter.project_name}}"
 
 # Name of the repository you added to Cloud Build
-repository_name = "your-repository-name"
+repository_name = "repo-{{cookiecutter.project_name}}"
 
 # The Google Cloud region you will use to deploy the infrastructure
 region = "us-central1"
 
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-cloud_run_app_sa_name = "{{cookiecutter.project_name}}-cr"
-{%- endif %}
-
-telemetry_bigquery_dataset_id = "telemetry_genai_app_sample_sink"
-telemetry_sink_name = "telemetry_logs_genai_app_sample"
-telemetry_logs_filter = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"{{cookiecutter.project_name}}\""
-
-feedback_bigquery_dataset_id = "feedback_genai_app_sample_sink"
-feedback_sink_name = "feedback_logs_genai_app_sample"
-feedback_logs_filter = "jsonPayload.log_type=\"feedback\""
-
-cicd_runner_sa_name = "cicd-runner"
-
-suffix_bucket_name_load_test_results = "cicd-load-test-results"
-
 {%- if cookiecutter.data_ingestion %}
-search_engine_name = "sample-search-engine"
-datastore_name = "sample-datastore"
-vertexai_pipeline_sa_name = "vertexai-pipelines-sa"
 pipeline_cron_schedule = "0 0 * * 0"
 
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
 #The value can only be one of "global", "us" and "eu".
 data_store_region = "us"
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+vector_search_shard_size = "SHARD_SIZE_SMALL"
+vector_search_machine_type = "e2-standard-2"
+vector_search_min_replica_count = 1
+vector_search_max_replica_count = 1
+{%- endif %}
 {%- endif %}

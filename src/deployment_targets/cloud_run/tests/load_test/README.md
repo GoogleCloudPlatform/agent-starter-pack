@@ -28,7 +28,7 @@ Trigger the Locust load test with the following command:
 locust -f tests/load_test/load_test.py \
 -H http://127.0.0.1:8000 \
 --headless \
--t 30s -u 60 -r 2 \
+-t 30s -u 10 -r 2 \
 --csv=tests/load_test/.results/results \
 --html=tests/load_test/.results/report.html
 ```

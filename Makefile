@@ -13,7 +13,7 @@ generate-lock:
 lint:
 	uv run ruff check . --config pyproject.toml --diff
 	uv run ruff format . --check  --config pyproject.toml --diff
-	uv run mypy --config-file pyproject.toml ./agents ./src/cli ./tests ./src/data_ingestion ./src/frontends/streamlit
+	uv run mypy --config-file pyproject.toml ./agents ./src/cli ./tests ./src/frontends/streamlit ./src/frontends/streamlit_adk
 
 lint-templated-agents:
 	uv run tests/integration/test_template_linting.py
@@ -23,3 +23,6 @@ clean:
 
 install:
 	uv sync --dev --extra lint --frozen
+
+docs-dev:
+	cd docs && npm install && NODE_OPTIONS="--no-warnings" npm run docs:dev

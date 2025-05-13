@@ -40,6 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--region", default=os.getenv("REGION"), help="Vertex AI Pipelines region"
     )
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     parser.add_argument(
         "--data-store-region",
         default=os.getenv("DATA_STORE_REGION"),
@@ -48,6 +49,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--data-store-id", default=os.getenv("DATA_STORE_ID"), help="Data store ID"
     )
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+    parser.add_argument(
+        "--vector-search-index",
+        default=os.getenv("VECTOR_SEARCH_INDEX"),
+        help="Vector Search Index",
+    )
+    parser.add_argument(
+        "--vector-search-index-endpoint",
+        default=os.getenv("VECTOR_SEARCH_INDEX_ENDPOINT"),
+        help="Vector Search Index Endpoint",
+    )
+    parser.add_argument(
+        "--vector-search-data-bucket-name",
+        default=os.getenv("VECTOR_SEARCH_BUCKET"),
+        help="Vector Search Data Bucket Name",
+    )
+{%- endif %}
     parser.add_argument(
         "--service-account",
         default=os.getenv("SERVICE_ACCOUNT"),
@@ -85,12 +103,22 @@ def parse_args() -> argparse.Namespace:
     required_params = {
         "project_id": parsed_args.project_id,
         "region": parsed_args.region,
-        "data_store_region": parsed_args.data_store_region,
-        "data_store_id": parsed_args.data_store_id,
         "service_account": parsed_args.service_account,
         "pipeline_root": parsed_args.pipeline_root,
         "pipeline_name": parsed_args.pipeline_name,
     }
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+    required_params["data_store_region"] = parsed_args.data_store_region
+    required_params["data_store_id"] = parsed_args.data_store_id
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+    required_params["vector_search_index"] = parsed_args.vector_search_index
+    required_params["vector_search_index_endpoint"] = (
+        parsed_args.vector_search_index_endpoint
+    )
+    required_params["vector_search_data_bucket_name"] = (
+        parsed_args.vector_search_data_bucket_name
+    )
+{%- endif %}
 
     for param_name, param_value in required_params.items():
         if param_value is None:
@@ -118,16 +146,9 @@ if __name__ == "__main__":
     # Print configuration
     logging.info("\nConfiguration:")
     logging.info("--------------")
-    logging.info(f"project_id: {args.project_id}")
-    logging.info(f"region: {args.region}")
-    logging.info(f"region_data_store: {args.data_store_region}")
-    logging.info(f"data_store_id: {args.data_store_id}")
-    logging.info(f"service_account: {args.service_account}")
-    logging.info(f"pipeline_root: {args.pipeline_root}")
-    logging.info(f"cron_schedule: {args.cron_schedule}")
-    logging.info(f"pipeline_name: {args.pipeline_name}")
-    logging.info(f"disable_caching: {args.disable_caching}")
-    logging.info(f"schedule_only: {args.schedule_only}")
+    # Print all arguments dynamically
+    for arg_name, arg_value in vars(args).items():
+        logging.info(f"{arg_name}: {arg_value}")
     logging.info("--------------\n")
 
     compiler.Compiler().compile(pipeline_func=pipeline, package_path=PIPELINE_FILE_NAME)
@@ -142,10 +163,24 @@ if __name__ == "__main__":
         "parameter_values": {
             "project_id": args.project_id,
             "location": args.region,
-            "data_store_region": args.data_store_region,
-            "data_store_id": args.data_store_id,
         },
     }
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+    pipeline_job_params["parameter_values"]["data_store_region"] = (
+        args.data_store_region
+    )
+    pipeline_job_params["parameter_values"]["data_store_id"] = args.data_store_id
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+    pipeline_job_params["parameter_values"]["vector_search_index"] = (
+        args.vector_search_index
+    )
+    pipeline_job_params["parameter_values"]["vector_search_index_endpoint"] = (
+        args.vector_search_index_endpoint
+    )
+    pipeline_job_params["parameter_values"]["vector_search_data_bucket_name"] = (
+        args.vector_search_data_bucket_name
+    )
+{%- endif %}
 
     # Create pipeline job instance
     job = aiplatform.PipelineJob(**pipeline_job_params)

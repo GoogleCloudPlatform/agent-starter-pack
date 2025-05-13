@@ -14,7 +14,7 @@
 
 steps:
   # Sync dependencies
-  - name: "ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: install-dependencies
     entrypoint: /bin/bash
     args:
@@ -23,7 +23,7 @@ steps:
         uv sync --dev --frozen
 
   # Run unit tests using pytest
-  - name: "ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: unit-tests
     entrypoint: /bin/bash
     args:

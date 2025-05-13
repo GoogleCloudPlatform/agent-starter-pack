@@ -22,17 +22,53 @@ from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
+from ..utils.datastores import DATASTORE_TYPES
 from ..utils.gcp import verify_credentials, verify_vertex_connection
 from ..utils.logging import handle_cli_error
 from ..utils.template import (
     get_available_agents,
     get_template_path,
+    load_template_config,
     process_template,
-    prompt_data_ingestion,
+    prompt_datastore_selection,
     prompt_deployment_target,
 )
 
 console = Console()
+
+
+def normalize_project_name(project_name: str) -> str:
+    """Normalize project name for better compatibility with cloud resources and tools."""
+
+    needs_normalization = (
+        any(char.isupper() for char in project_name) or "_" in project_name
+    )
+
+    if needs_normalization:
+        normalized_name = project_name
+        console.print(
+            "Note: Project names are normalized (lowercase, hyphens only) for better compatibility with cloud resources and tools.",
+            style="dim",
+        )
+        if any(char.isupper() for char in normalized_name):
+            normalized_name = normalized_name.lower()
+            console.print(
+                f"Info: Converting to lowercase for compatibility: '{project_name}' -> '{normalized_name}'",
+                style="bold yellow",
+            )
+
+        if "_" in normalized_name:
+            # Capture the name state before this specific change
+            name_before_hyphenation = normalized_name
+            normalized_name = normalized_name.replace("_", "-")
+            console.print(
+                f"Info: Replacing underscores with hyphens for compatibility: '{name_before_hyphenation}' -> '{normalized_name}'",
+                style="yellow",
+            )
+
+        return normalized_name
+
+    return project_name
 
 
 @click.command()
@@ -46,7 +82,16 @@ console = Console()
     help="Deployment target name",
 )
 @click.option(
-    "--include-data-ingestion", "-i", is_flag=True, help="Include data pipeline"
+    "--include-data-ingestion",
+    "-i",
+    is_flag=True,
+    help="Include data ingestion pipeline in the project",
+)
+@click.option(
+    "--datastore",
+    "-ds",
+    type=click.Choice(DATASTORE_TYPES),
+    help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
 )
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option(
@@ -76,6 +121,7 @@ def create(
     agent: str | None,
     deployment_target: str | None,
     include_data_ingestion: bool,
+    datastore: str | None,
     debug: bool,
     output_dir: str | None,
     auto_approve: bool,
@@ -90,6 +136,15 @@ def create(
         console.print(
             "This tool will help you create an end-to-end production-ready AI agent in GCP!\n"
         )
+        # Validate project name
+        if len(project_name) > 26:
+            console.print(
+                f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
+                style="bold red",
+            )
+            return
+
+        project_name = normalize_project_name(project_name)
 
         # Setup debug logging if enabled
         if debug:
@@ -136,6 +191,38 @@ def create(
         if debug:
             logging.debug(f"Selected agent: {agent}")
 
+        # Data ingestion and datastore selection
+        if include_data_ingestion or datastore:
+            # If datastore is specified but include_data_ingestion is not, set it to True
+            include_data_ingestion = True
+
+            # If include_data_ingestion is True but no datastore is specified, prompt for it
+            if not datastore:
+                # Pass a flag to indicate this is from explicit CLI flag
+                datastore = prompt_datastore_selection(final_agent, from_cli_flag=True)
+
+            if debug:
+                logging.debug(f"Data ingestion enabled: {include_data_ingestion}")
+                logging.debug(f"Selected datastore type: {datastore}")
+        else:
+            # Check if the agent requires data ingestion
+            template_path = (
+                pathlib.Path(__file__).parent.parent.parent.parent
+                / "agents"
+                / final_agent
+                / "template"
+            )
+            config = load_template_config(template_path)
+            if config and config.get("settings", {}).get("requires_data_ingestion"):
+                include_data_ingestion = True
+                datastore = prompt_datastore_selection(final_agent)
+
+                if debug:
+                    logging.debug(
+                        f"Data ingestion required by agent: {include_data_ingestion}"
+                    )
+                    logging.debug(f"Selected datastore type: {datastore}")
+
         # Deployment target selection
         final_deployment = (
             deployment_target
@@ -145,12 +232,6 @@ def create(
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
-        # Data pipeline selection
-        include_data_ingestion = include_data_ingestion or prompt_data_ingestion(
-            final_agent
-        )
-        if debug:
-            logging.debug(f"Include data pipeline: {include_data_ingestion}")
         # Region confirmation (if not explicitly passed)
         if (
             not auto_approve
@@ -163,11 +244,11 @@ def create(
         # GCP Setup
         logging.debug("Setting up GCP...")
 
-        # Check for uv installation if not skipping checks
+        creds_info = {}
         if not skip_checks:
             # Set up GCP environment
             try:
-                setup_gcp_environment(
+                creds_info = setup_gcp_environment(
                     auto_approve=auto_approve,
                     skip_checks=skip_checks,
                     region=region,
@@ -207,25 +288,43 @@ def create(
             project_name,
             deployment_target=final_deployment,
             include_data_ingestion=include_data_ingestion,
+            datastore=datastore,
             output_dir=destination_dir,
         )
-
-        project_path = destination_dir / project_name
-        console.print("\n> 👍 Done. Execute the following command to get started:")
-        if output_dir:
-            # If output_dir was specified, use the absolute path
-            console.print(
-                f"[bold bright_green]cd {project_path} && make install && make playground[/]"
-            )
-        else:
-            # If no output_dir specified, just use project name
-            console.print(
-                f"[bold bright_green]cd {project_name} && make install && make playground[/]"
-            )
 
         # Replace region in all files if a different region was specified
         if region != "us-central1":
             replace_region_in_files(project_path, region, debug=debug)
+
+        project_path = destination_dir / project_name
+        cd_path = project_path if output_dir else project_name
+
+        if include_data_ingestion:
+            project_id = creds_info.get("project", "")
+            console.print(
+                f"\n[bold white]===== DATA INGESTION SETUP =====[/bold white]\n"
+                f"This agent uses a datastore for grounded responses.\n"
+                f"The agent will work without data, but for optimal results:\n"
+                f"1. Set up dev environment:\n"
+                f"   [white italic]export PROJECT_ID={project_id} && cd {cd_path} && make setup-dev-env[/white italic]\n\n"
+                f"   See deployment/README.md for more info\n"
+                f"2. Run the data ingestion pipeline:\n"
+                f"   [white italic]export PROJECT_ID={project_id} && cd {cd_path} && make data-ingestion[/white italic]\n\n"
+                f"   See data_ingestion/README.md for more info\n"
+                f"[bold white]=================================[/bold white]\n"
+            )
+        console.print("\n> 👍 Done. Execute the following command to get started:")
+
+        console.print("\n> Success! Your agent project is ready.")
+        console.print(
+            "\n📖 For more information on project structure, usage, and deployment, check out the README:"
+        )
+        console.print(f"   [cyan]cat {cd_path}/README.md[/]")
+        # Determine the correct path to display based on whether output_dir was specified
+        console.print("\n🚀 To get started, run the following command:")
+        console.print(
+            f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
+        )
     except Exception:
         if debug:
             logging.exception(
@@ -236,11 +335,10 @@ def create(
 
 def prompt_region_confirmation(default_region: str = "us-central1") -> str:
     """Prompt user to confirm or change the default region."""
-    console.print(f"\n> Default GCP region is '{default_region}'")
     new_region = Prompt.ask(
-        "Enter desired GCP region (leave blank for default)",
-        default="",
-        show_default=False,
+        "\nEnter desired GCP region (Gemini uses global endpoint by default)",
+        default=default_region,
+        show_default=True,
     )
 
     return new_region if new_region else default_region
@@ -473,7 +571,16 @@ def replace_region_in_files(
         )
 
     # Define allowed file extensions
-    allowed_extensions = {".md", ".py", ".tfvars", ".yaml", ".tf", ".yml"}
+    allowed_extensions = {
+        ".md",
+        ".py",
+        ".tfvars",
+        ".yaml",
+        ".tf",
+        ".yml",
+        "Makefile",
+        "makefile",
+    }
 
     # Skip directories that shouldn't be modified
     skip_dirs = {".git", "__pycache__", "venv", ".venv", "node_modules"}
@@ -491,7 +598,10 @@ def replace_region_in_files(
         if (
             file_path.is_dir()
             or any(skip_dir in file_path.parts for skip_dir in skip_dirs)
-            or file_path.suffix not in allowed_extensions
+            or (
+                file_path.suffix not in allowed_extensions
+                and file_path.name not in allowed_extensions
+            )
         ):
             continue
 
@@ -522,11 +632,26 @@ def replace_region_in_files(
                     'data_store_region="us"', f'data_store_region="{data_store_region}"'
                 )
                 modified = True
+            elif 'data-store-region="us"' in content:
+                if debug:
+                    logging.debug(f"Replacing data-store-region in {file_path}")
+                content = content.replace(
+                    'data-store-region="us"', f'data-store-region="{data_store_region}"'
+                )
+                modified = True
             elif "_DATA_STORE_REGION: us" in content:
                 if debug:
                     logging.debug(f"Replacing _DATA_STORE_REGION in {file_path}")
                 content = content.replace(
                     "_DATA_STORE_REGION: us", f"_DATA_STORE_REGION: {data_store_region}"
+                )
+                modified = True
+            elif '"DATA_STORE_REGION", "us"' in content:
+                if debug:
+                    logging.debug(f"Replacing DATA_STORE_REGION in {file_path}")
+                content = content.replace(
+                    '"DATA_STORE_REGION", "us"',
+                    f'"DATA_STORE_REGION", "{data_store_region}"',
                 )
                 modified = True
 

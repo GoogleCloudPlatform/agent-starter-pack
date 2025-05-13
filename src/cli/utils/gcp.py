@@ -14,7 +14,6 @@
 
 # ruff: noqa: E722
 import subprocess
-from importlib import metadata
 
 import google.auth
 from google.api_core.client_options import ClientOptions
@@ -27,27 +26,26 @@ from google.cloud.aiplatform_v1beta1.types.prediction_service import (
     CountTokensRequest,
 )
 
+from src.cli.utils.version import PACKAGE_NAME, get_current_version
 
-def get_user_agent() -> tuple[str, str]:
+
+def get_user_agent() -> str:
     """Returns custom user agent header tuple (version, agent string)."""
-    try:
-        version = metadata.version(distribution_name="ags")
-    except metadata.PackageNotFoundError:
-        version = "0.0.0"
-    return version, f"ags/{version}"
+    version = get_current_version()
+    return f"{version}-{PACKAGE_NAME}/{version}-{PACKAGE_NAME}"
 
 
 def get_client_info() -> ClientInfo:
     """Returns ClientInfo with custom user agent."""
-    version, agent = get_user_agent()
-    return ClientInfo(client_library_version=version, user_agent=agent)
+    user_agent = get_user_agent()
+    return ClientInfo(client_library_version=user_agent, user_agent=user_agent)
 
 
-def get_dummy_request(project_id: str, location: str) -> CountTokensRequest:
+def get_dummy_request(project_id: str) -> CountTokensRequest:
     """Creates a simple test request for Gemini."""
     return CountTokensRequest(
         contents=[{"role": "user", "parts": [{"text": "Hi"}]}],
-        endpoint=f"projects/{project_id}/locations/{location}/publishers/google/models/gemini-1.5-flash-002",
+        endpoint=f"projects/{project_id}/locations/global/publishers/google/models/gemini-2.0-flash",
     )
 
 
@@ -65,7 +63,7 @@ def verify_vertex_connection(
         client_info=get_client_info(),
         transport=initializer.global_config._api_transport,
     )
-    request = get_dummy_request(project_id=project_id, location=location)
+    request = get_dummy_request(project_id=project_id)
     client.count_tokens(request=request)
 
 

@@ -20,14 +20,18 @@ from datetime import datetime
 import pytest
 from rich.console import Console
 
-from src.cli.utils.template import get_available_agents, get_deployment_targets
+from tests.utils.get_agents import get_test_combinations_to_run
 
 console = Console()
 TARGET_DIR = "target"
 
 
 def run_command(
-    cmd: list[str], cwd: pathlib.Path | None, message: str, stream_output: bool = True
+    cmd: list[str],
+    cwd: pathlib.Path | None,
+    message: str,
+    stream_output: bool = True,
+    env: dict | None = None,
 ) -> subprocess.CompletedProcess:
     """Helper function to run commands and stream output"""
     console.print(f"\n[bold blue]{message}...[/]")
@@ -40,6 +44,7 @@ def run_command(
             text=True,
             cwd=cwd,
             bufsize=1,  # Line-buffered
+            env=env,
         ) as process:
             if stream_output:
                 # Stream stdout
@@ -74,34 +79,42 @@ def run_command(
         raise
 
 
-def _run_agent_test(agent: str, deployment_target: str) -> None:
+def _run_agent_test(
+    agent: str, deployment_target: str, extra_params: list[str] | None = None
+) -> None:
     """Common test logic for both deployment targets"""
-    project_name = (
-        f"test_{agent}_{deployment_target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    )
+    # Generate a shorter project name to avoid exceeding character limits
+    timestamp = datetime.now().strftime("%m%d%H%M%S")
+    project_name = f"{agent[:8]}-{deployment_target[:5]}-{timestamp}".replace("_", "-")
     project_path = pathlib.Path(TARGET_DIR) / project_name
-    region = "us-central1" if agent == "multimodal_live_api" else "europe-west4"
+    region = "us-central1" if agent == "live_api" else "europe-west4"
     try:
         # Create target directory if it doesn't exist
         os.makedirs(TARGET_DIR, exist_ok=True)
 
         # Template the project
+        cmd = [
+            "python",
+            "-m",
+            "src.cli.main",
+            "create",
+            project_name,
+            "--agent",
+            agent,
+            "--deployment-target",
+            deployment_target,
+            "--region",
+            region,
+            "--auto-approve",
+            "--skip-checks",
+        ]
+
+        # Add any extra parameters
+        if extra_params:
+            cmd.extend(extra_params)
+
         run_command(
-            [
-                "python",
-                "-m",
-                "src.cli.main",
-                "create",
-                project_name,
-                "--agent",
-                agent,
-                "--deployment-target",
-                deployment_target,
-                "--region",
-                region,
-                "--auto-approve",
-                "--skip-checks",
-            ],
+            cmd,
             pathlib.Path(TARGET_DIR),
             "Templating project",
         )
@@ -114,11 +127,6 @@ def _run_agent_test(agent: str, deployment_target: str) -> None:
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
-        # Check frontend folder exists and is not empty
-        frontend_path = project_path / "frontend"
-        assert frontend_path.exists(), "Frontend folder missing"
-        assert any(frontend_path.iterdir()), "Frontend folder is empty"
-
         # Install dependencies
         run_command(
             [
@@ -126,9 +134,7 @@ def _run_agent_test(agent: str, deployment_target: str) -> None:
                 "sync",
                 "--dev",
                 "--extra",
-                "streamlit",
-                "--extra",
-                "jupyter",
+                "lint",
                 "--frozen",
             ],
             project_path,
@@ -139,10 +145,15 @@ def _run_agent_test(agent: str, deployment_target: str) -> None:
         # Run tests
         test_dirs = ["tests/unit", "tests/integration"]
         for test_dir in test_dirs:
+            # Set environment variable for integration tests
+            env = os.environ.copy()
+            env["INTEGRATION_TEST"] = "TRUE"
+
             run_command(
                 ["uv", "run", "pytest", test_dir],
                 project_path,
                 f"Running {test_dir} tests",
+                env=env,
             )
 
     except Exception as e:
@@ -150,49 +161,14 @@ def _run_agent_test(agent: str, deployment_target: str) -> None:
         raise
 
 
-def get_test_combinations() -> list[tuple[str, str]]:
-    """Generate all valid agent and deployment target combinations for testing."""
-    combinations = []
-    agents = get_available_agents()
-
-    for agent_info in agents.values():
-        agent_name = agent_info["name"]
-        # Get available deployment targets for this agent
-        targets = get_deployment_targets(agent_name)
-
-        # Add each valid combination
-        for target in targets:
-            combinations.append((agent_name, target))
-
-    return combinations
-
-
-def get_test_combinations_to_run() -> list[tuple[str, str]]:
-    """Get the test combinations to run, either from environment or all available."""
-    if os.environ.get("_TEST_AGENT_COMBINATION"):
-        env_combo_parts = os.environ.get("_TEST_AGENT_COMBINATION", "").split(",")
-        if len(env_combo_parts) == 2:
-            env_combo = (env_combo_parts[0], env_combo_parts[1])
-            console.print(
-                f"[bold blue]Running test for combination from environment:[/] {env_combo}"
-            )
-            return [env_combo]
-        else:
-            console.print(
-                f"[bold red]Invalid environment combination format:[/] {env_combo_parts}"
-            )
-
-    combos = get_test_combinations()
-    console.print(f"[bold blue]Running tests for all combinations:[/] {combos}")
-    return combos
-
-
 @pytest.mark.parametrize(
-    "agent,deployment_target",
+    "agent,deployment_target,extra_params",
     get_test_combinations_to_run(),
-    # Edit here to manually force a specific combination e.g ("langgraph_base_react", "agent_engine")
+    # Edit here to manually force a specific combination e.g [("langgraph_base_react", "agent_engine", None)]
 )
-def test_agent_deployment(agent: str, deployment_target: str) -> None:
+def test_agent_deployment(
+    agent: str, deployment_target: str, extra_params: list[str] | None
+) -> None:
     """Test agent templates with different deployment targets"""
     console.print(f"[bold cyan]Testing combination:[/] {agent}, {deployment_target}")
-    _run_agent_test(agent, deployment_target)
+    _run_agent_test(agent, deployment_target, extra_params)

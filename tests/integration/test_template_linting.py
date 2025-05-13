@@ -19,7 +19,7 @@ from datetime import datetime
 
 from rich.console import Console
 
-from src.cli.utils.template import get_available_agents, get_deployment_targets
+from tests.utils.get_agents import get_test_combinations_to_run
 
 console = Console()
 TARGET_DIR = "target"
@@ -71,29 +71,42 @@ def run_command(
             raise
 
 
-def test_template_linting(agent: str, deployment_target: str) -> None:
+def test_template_linting(
+    agent: str, deployment_target: str, extra_params: list[str] | None = None
+) -> None:
     """Test linting for a specific agent template"""
-    project_name = f"lint_test_{agent}_{deployment_target}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    timestamp = datetime.now().strftime("%m%d%H%M%S")
+    project_name = f"{agent[:8]}-{deployment_target[:5]}-{timestamp}".replace("_", "-")
     project_path = pathlib.Path(TARGET_DIR) / project_name
+    region = "us-central1" if agent == "live_api" else "europe-west4"
 
     try:
         # Create target directory if it doesn't exist
         os.makedirs(TARGET_DIR, exist_ok=True)
 
         # Template the project
+        cmd = [
+            "python",
+            "-m",
+            "src.cli.main",
+            "create",
+            project_name,
+            "--agent",
+            agent,
+            "--deployment-target",
+            deployment_target,
+            "--region",
+            region,
+            "--auto-approve",
+            "--skip-checks",
+        ]
+
+        # Add any extra parameters
+        if extra_params:
+            cmd.extend(extra_params)
+
         run_command(
-            [
-                "python",
-                "-m",
-                "src.cli.main",
-                "create",
-                project_name,
-                "--agent",
-                agent,
-                "--deployment-target",
-                deployment_target,
-                "--auto-approve",
-            ],
+            cmd,
             pathlib.Path(TARGET_DIR),
             f"Templating {agent} project with {deployment_target}",
         )
@@ -104,10 +117,6 @@ def test_template_linting(agent: str, deployment_target: str) -> None:
                 "uv",
                 "sync",
                 "--dev",
-                "--extra",
-                "streamlit",
-                "--extra",
-                "jupyter",
                 "--extra",
                 "lint",
                 "--frozen",
@@ -142,50 +151,13 @@ def test_template_linting(agent: str, deployment_target: str) -> None:
         raise
 
 
-def get_test_combinations() -> list[tuple[str, str]]:
-    """Generate all valid agent and deployment target combinations for testing."""
-    combinations = []
-    agents = get_available_agents()
-
-    for agent_info in agents.values():
-        agent_name = agent_info["name"]
-        # Get available deployment targets for this agent
-        targets = get_deployment_targets(agent_name)
-
-        # Add each valid combination
-        for target in targets:
-            combinations.append((agent_name, target))
-
-    return combinations
-
-
-def get_test_combinations_to_run() -> list[tuple[str, str]]:
-    """Get the test combinations to run, either from environment or all available."""
-    if os.environ.get("_TEST_AGENT_COMBINATION"):
-        env_combo_parts = os.environ.get("_TEST_AGENT_COMBINATION", "").split(",")
-        if len(env_combo_parts) == 2:
-            env_combo = (env_combo_parts[0], env_combo_parts[1])
-            console.print(
-                f"[bold blue]Running test for combination from environment:[/] {env_combo}"
-            )
-            return [env_combo]
-        else:
-            console.print(
-                f"[bold red]Invalid environment combination format:[/] {env_combo_parts}"
-            )
-
-    combos = get_test_combinations()
-    console.print(f"[bold blue]Running tests for all combinations:[/] {combos}")
-    return combos
-
-
 def test_all_templates() -> None:
     """Test linting for all template combinations"""
     combinations = get_test_combinations_to_run()
 
-    for agent, deployment_target in combinations:
+    for agent, deployment_target, extra_params in combinations:
         console.print(f"\n[bold cyan]Testing {agent} with {deployment_target}[/]")
-        test_template_linting(agent, deployment_target)
+        test_template_linting(agent, deployment_target, extra_params)
 
 
 if __name__ == "__main__":

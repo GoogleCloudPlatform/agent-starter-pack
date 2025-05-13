@@ -82,13 +82,6 @@ def mock_prompt_deployment_target() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def mock_prompt_data_ingestion() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.prompt_data_ingestion") as mock:
-        mock.return_value = True
-        yield mock
-
-
-@pytest.fixture
 def mock_verify_vertex_connection() -> Generator[MagicMock, None, None]:
     with patch("src.cli.commands.create.verify_vertex_connection") as mock:
         mock.return_value = None  # Success
@@ -205,6 +198,8 @@ class TestCreateCommand:
                     "--deployment-target",
                     "cloud_run",
                     "--include-data-ingestion",
+                    "--datastore",
+                    "vertex_ai_vector_search",
                     "--auto-approve",
                     "--region",
                     "us-central1",
@@ -245,7 +240,6 @@ class TestCreateCommand:
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_prompt_data_ingestion: MagicMock,
         mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
@@ -302,7 +296,6 @@ class TestCreateCommand:
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_prompt_data_ingestion: MagicMock,
         mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
@@ -352,7 +345,6 @@ class TestCreateCommand:
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_prompt_data_ingestion: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
@@ -460,3 +452,55 @@ class TestCreateCommand:
 
         assert result == "langgraph_base_react"
         mock_get_available_agents.assert_called_once()
+
+    def test_normalize_project_name(self, mock_console: MagicMock) -> None:
+        """Test the normalize_project_name function directly"""
+        from src.cli.commands.create import normalize_project_name
+
+        # Test with uppercase characters
+        result = normalize_project_name("TestProject")
+        assert result == "testproject"
+        mock_console.print.assert_any_call(
+            "Note: Project names are normalized (lowercase, hyphens only) for better compatibility with cloud resources and tools.",
+            style="dim",
+        )
+        mock_console.print.assert_any_call(
+            "Info: Converting to lowercase for compatibility: 'TestProject' -> 'testproject'",
+            style="bold yellow",
+        )
+
+        # Reset mock for next test
+        mock_console.reset_mock()
+
+        # Test with underscores
+        result = normalize_project_name("test_project")
+        assert result == "test-project"
+        mock_console.print.assert_any_call(
+            "Info: Replacing underscores with hyphens for compatibility: 'test_project' -> 'test-project'",
+            style="yellow",
+        )
+
+        # Reset mock for next test
+        mock_console.reset_mock()
+
+        # Test with both uppercase and underscores
+        result = normalize_project_name("Test_Project")
+        assert result == "test-project"
+        mock_console.print.assert_any_call(
+            "Note: Project names are normalized (lowercase, hyphens only) for better compatibility with cloud resources and tools.",
+            style="dim",
+        )
+        mock_console.print.assert_any_call(
+            "Info: Converting to lowercase for compatibility: 'Test_Project' -> 'test_project'",
+            style="bold yellow",
+        )
+        mock_console.print.assert_any_call(
+            "Info: Replacing underscores with hyphens for compatibility: 'test_project' -> 'test-project'",
+            style="yellow",
+        )
+
+        # Test with already normalized name
+        mock_console.reset_mock()
+        result = normalize_project_name("test-project")
+        assert result == "test-project"
+        mock_console.print.assert_not_called()

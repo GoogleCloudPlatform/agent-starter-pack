@@ -1,0 +1,51 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+  # Sync dependencies
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
+    id: install-dependencies
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        uv sync --dev --frozen
+
+  # Run unit tests using pytest
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
+    id: e2e-tests
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        GH_TOKEN=$$GITHUB_PAT uv run pytest tests/cicd/test_e2e_deployment.py -v
+    secretEnv: ['GITHUB_PAT', 'GITHUB_APP_INSTALLATION_ID']
+    
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/github-pat/versions/latest
+    env: 'GITHUB_PAT'
+  - versionName: projects/$PROJECT_ID/secrets/github-app-installation-id/versions/latest
+    env: 'GITHUB_APP_INSTALLATION_ID'
+logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
+options:
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  env:
+    - "_TEST_AGENT_COMBINATION=${_TEST_AGENT_COMBINATION}"
+    - "E2E_DEV_PROJECT=${_E2E_DEV_PROJECT}"
+    - "E2E_STAGING_PROJECT=${_E2E_STAGING_PROJECT}"
+    - "E2E_PROD_PROJECT=${_E2E_PROD_PROJECT}"
+    - "E2E_CICD_PROJECT=${PROJECT_ID}"
+    - "RUN_E2E_TESTS=1"
+timeout: 14400s

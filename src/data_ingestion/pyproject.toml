@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.9, <=3.13"
 dependencies = [
     "google-cloud-aiplatform>=1.80.0",
+    "google-cloud-pipeline-components>=2.19.0",
     "kfp>=1.4.0",
 ]
 

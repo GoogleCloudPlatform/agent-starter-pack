@@ -11,7 +11,32 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+{% if "adk" in cookiecutter.tags %}
+import os
 
+from fastapi import FastAPI
+from google.adk.cli.fast_api import get_fast_api_app
+from google.cloud import logging as google_cloud_logging
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider, export
+
+from app.utils.tracing import CloudTraceLoggingSpanExporter
+from app.utils.typing import Feedback
+
+logging_client = google_cloud_logging.Client()
+logger = logging_client.logger(__name__)
+
+provider = TracerProvider()
+processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+app: FastAPI = get_fast_api_app(agent_dir=AGENT_DIR, web=False)
+
+app.title = "{{cookiecutter.project_name}}"
+app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
+{%- else %}
 import logging
 import os
 from collections.abc import Generator
@@ -40,7 +65,7 @@ try:
         app_name=app.title,
         disable_batch=False,
         exporter=CloudTraceLoggingSpanExporter(),
-        instruments={% raw %}{{% endraw %}{%- for instrumentation in cookiecutter.otel_instrumentations %}{{ instrumentation }}{% if not loop.last %}, {% endif %}{%- endfor %}{% raw %}}{% endraw %},
+        instruments={Instruments.LANGCHAIN, Instruments.CREW},
     )
 except Exception as e:
     logging.error("Failed to initialize Telemetry: %s", str(e))
@@ -91,20 +116,6 @@ def redirect_root_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
 
-@app.post("/feedback")
-def collect_feedback(feedback: Feedback) -> dict[str, str]:
-    """Collect and log feedback.
-
-    Args:
-        feedback: The feedback data to log
-
-    Returns:
-        Success message
-    """
-    logger.log_struct(feedback.model_dump(), severity="INFO")
-    return {"status": "success"}
-
-
 @app.post("/stream_messages")
 def stream_chat_events(request: Request) -> StreamingResponse:
     """Stream chat events in response to an input request.
@@ -119,6 +130,21 @@ def stream_chat_events(request: Request) -> StreamingResponse:
         stream_messages(input=request.input, config=request.config),
         media_type="text/event-stream",
     )
+{%- endif %}
+
+
+@app.post("/feedback")
+def collect_feedback(feedback: Feedback) -> dict[str, str]:
+    """Collect and log feedback.
+
+    Args:
+        feedback: The feedback data to log
+
+    Returns:
+        Success message
+    """
+    logger.log_struct(feedback.model_dump(), severity="INFO")
+    return {"status": "success"}
 
 
 # Main execution

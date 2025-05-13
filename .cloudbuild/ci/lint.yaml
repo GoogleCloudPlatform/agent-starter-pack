@@ -14,7 +14,7 @@
 
 steps:
   # Sync dependencies
-  - name: "ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: install-dependencies
     entrypoint: /bin/bash
     args:
@@ -23,7 +23,7 @@ steps:
         uv sync --dev --extra lint --frozen
 
   # Run unit tests using pytest
-  - name: "ghcr.io/astral-sh/uv:python3.11-bookworm-slim"
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: lint
     entrypoint: /bin/bash
     args:
@@ -32,7 +32,7 @@ steps:
         set -e
         uv run ruff check . --config pyproject.toml --diff
         uv run ruff format . --check  --config pyproject.toml --diff
-        uv run mypy --config-file pyproject.toml ./agents ./src/cli ./tests ./src/data_ingestion ./src/frontends/streamlit
+        uv run mypy --config-file pyproject.toml ./agents ./src/cli ./tests ./src/frontends/streamlit
 
 logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
 options:

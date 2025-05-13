@@ -22,6 +22,7 @@ import tempfile
 import time
 from pathlib import Path
 
+import backoff
 import click
 from rich.console import Console
 
@@ -71,6 +72,28 @@ def display_production_note() -> None:
     console.print("- Custom deployment workflows")
     console.print("- Environment-specific settings")
     console.print("- Advanced CI/CD pipeline customization\n")
+
+
+def check_gh_cli_installed() -> bool:
+    """Check if GitHub CLI is installed.
+
+    Returns:
+        bool: True if GitHub CLI is installed, False otherwise
+    """
+    try:
+        run_command(["gh", "--version"], capture_output=True, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
+
+
+def prompt_gh_cli_installation() -> None:
+    """Display instructions for installing GitHub CLI and exit."""
+    console.print("\n❌ GitHub CLI not found", style="bold red")
+    console.print("This command requires the GitHub CLI (gh) to be installed.")
+    console.print("\nPlease install GitHub CLI from: https://cli.github.com/")
+    console.print("\nAfter installation, run this command again.")
+    sys.exit(1)
 
 
 def setup_git_repository(config: ProjectConfig) -> str:
@@ -164,11 +187,12 @@ def update_build_triggers(tf_dir: Path) -> None:
 
 def prompt_for_repository_details(
     repository_name: str | None = None, repository_owner: str | None = None
-) -> tuple[str, str]:
+) -> tuple[str, str, bool]:
     """Interactive prompt for repository details with option to use existing repo."""
     # Get current GitHub username as default owner
     result = run_command(["gh", "api", "user", "--jq", ".login"], capture_output=True)
     default_owner = result.stdout.strip()
+    repository_exists = False
 
     if not (repository_name and repository_owner):
         console.print("\n📦 Repository Configuration", style="bold blue")
@@ -179,12 +203,19 @@ def prompt_for_repository_details(
         choice = click.prompt(
             "Select option", type=click.Choice(["1", "2"]), default="1"
         )
-
         if choice == "1":
             # New repository
             if not repository_name:
+                # Get project name from pyproject.toml
+                with open("pyproject.toml") as f:
+                    for line in f:
+                        if line.strip().startswith("name ="):
+                            default_name = line.split("=")[1].strip().strip("\"'")
+                            break
+                    else:
+                        default_name = f"genai-app-{int(time.time())}"
                 repository_name = click.prompt(
-                    "Enter new repository name", default=f"genai-app-{int(time.time())}"
+                    "Enter new repository name", default=default_name
                 )
             if not repository_owner:
                 repository_owner = click.prompt(
@@ -192,6 +223,7 @@ def prompt_for_repository_details(
                 )
         else:
             # Existing repository
+            repository_exists = True
             while True:
                 repo_url = click.prompt(
                     "Enter existing repository URL (e.g., https://github.com/owner/repo)"
@@ -233,10 +265,12 @@ def prompt_for_repository_details(
 
     if repository_name is None or repository_owner is None:
         raise ValueError("Repository name and owner must be provided")
-    return repository_name, repository_owner
+    return repository_name, repository_owner, repository_exists
 
 
-def setup_terraform_backend(tf_dir: Path, project_id: str, region: str) -> None:
+def setup_terraform_backend(
+    tf_dir: Path, project_id: str, region: str, repository_name: str
+) -> None:
     """Setup terraform backend configuration with GCS bucket"""
     console.print("\n🔧 Setting up Terraform backend...")
 
@@ -273,7 +307,7 @@ def setup_terraform_backend(tf_dir: Path, project_id: str, region: str) -> None:
         if dir_path.exists():
             # Use different state prefixes for dev and prod
             is_dev_dir = str(dir_path).endswith("/dev")
-            state_prefix = "dev" if is_dev_dir else "prod"
+            state_prefix = f"{repository_name}/{(is_dev_dir and 'dev') or 'prod'}"
 
             backend_file = dir_path / "backend.tf"
             backend_content = f'''terraform {{
@@ -351,9 +385,11 @@ console = Console()
 
 @click.command()
 @click.option("--dev-project", help="Development project ID")
-@click.option("--staging-project", required=True, help="Staging project ID")
-@click.option("--prod-project", required=True, help="Production project ID")
-@click.option("--cicd-project", required=True, help="CICD project ID")
+@click.option("--staging-project", help="Staging project ID")
+@click.option("--prod-project", help="Production project ID")
+@click.option(
+    "--cicd-project", help="CICD project ID (defaults to prod project if not specified)"
+)
 @click.option("--region", default="us-central1", help="GCP region")
 @click.option("--repository-name", help="Repository name (optional)")
 @click.option(
@@ -383,11 +419,23 @@ console = Console()
     is_flag=True,
     help="Skip confirmation prompts and proceed automatically",
 )
+@click.option(
+    "--repository-exists",
+    is_flag=True,
+    default=False,
+    help="Flag indicating if the repository already exists",
+)
+@backoff.on_exception(
+    backoff.expo,
+    (subprocess.CalledProcessError, click.ClickException),
+    max_tries=3,
+    jitter=backoff.full_jitter,
+)
 def setup_cicd(
     dev_project: str | None,
-    staging_project: str,
-    prod_project: str,
-    cicd_project: str,
+    staging_project: str | None,
+    prod_project: str | None,
+    cicd_project: str | None,
     region: str,
     repository_name: str | None,
     repository_owner: str | None,
@@ -398,6 +446,7 @@ def setup_cicd(
     local_state: bool,
     debug: bool,
     auto_approve: bool,
+    repository_exists: bool,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
 
@@ -407,6 +456,20 @@ def setup_cicd(
             "This command must be run from the project root directory containing pyproject.toml. "
             "Make sure you are in the folder created by agent-starter-pack."
         )
+
+    # Prompt for staging and prod projects if not provided
+    if staging_project is None:
+        staging_project = click.prompt(
+            "Enter your staging project ID (where tests will be run)", type=str
+        )
+
+    if prod_project is None:
+        prod_project = click.prompt("Enter your production project ID", type=str)
+
+    # If cicd_project is not provided, default to prod_project
+    if cicd_project is None:
+        cicd_project = prod_project
+        console.print(f"Using production project '{prod_project}' for CI/CD resources")
 
     console.print(
         "\n⚠️  WARNING: The setup-cicd command is experimental and may have unexpected behavior.",
@@ -442,6 +505,7 @@ def setup_cicd(
         if not click.confirm("\nDo you want to continue with the setup?", default=True):
             console.print("\n🛑 Setup cancelled by user", style="bold yellow")
             return
+
     console.print(
         "This command helps set up a basic CI/CD pipeline for development and testing purposes."
     )
@@ -474,6 +538,10 @@ def setup_cicd(
 
     # Check GitHub authentication if GitHub is selected
     if git_provider == "github" and not (github_pat and github_app_installation_id):
+        # Check if GitHub CLI is installed
+        if git_provider == "github" or git_provider is None:
+            if not check_gh_cli_installed():
+                prompt_gh_cli_installation()
         if not is_github_authenticated():
             console.print("\n⚠️ Not authenticated with GitHub CLI", style="yellow")
             handle_github_authentication()
@@ -482,12 +550,12 @@ def setup_cicd(
 
     # Only prompt for repository details if not provided via CLI
     if not (repository_name and repository_owner):
-        repository_name, repository_owner = prompt_for_repository_details(
-            repository_name, repository_owner
+        repository_name, repository_owner, repository_exists = (
+            prompt_for_repository_details(repository_name, repository_owner)
         )
     # Set default host connection name if not provided
     if not host_connection_name:
-        host_connection_name = "github-connection"
+        host_connection_name = f"git-{repository_name}"
     # Check and enable required APIs regardless of auth method
     required_apis = ["secretmanager.googleapis.com", "cloudbuild.googleapis.com"]
     ensure_apis_enabled(cicd_project, required_apis)
@@ -512,6 +580,7 @@ def setup_cicd(
             repository_name=repository_name,
             repository_owner=repository_owner,
         )
+        repository_exists = True
     elif git_provider == "github" and detected_mode == "programmatic":
         oauth_token_secret_id = "github-pat"
 
@@ -548,6 +617,7 @@ def setup_cicd(
         github_pat=github_pat,
         github_app_installation_id=github_app_installation_id,
         git_provider=git_provider,
+        repository_exists=repository_exists,
     )
 
     tf_dir = Path("deployment/terraform")
@@ -562,7 +632,12 @@ def setup_cicd(
     # Setup Terraform backend if not using local state
     if not local_state:
         console.print("\n🔧 Setting up remote Terraform backend...")
-        setup_terraform_backend(tf_dir, cicd_project, region)
+        setup_terraform_backend(
+            tf_dir=tf_dir,
+            project_id=cicd_project,
+            region=region,
+            repository_name=repository_name,
+        )
         console.print("✅ Remote Terraform backend configured")
     else:
         console.print("\n📝 Using local Terraform state (remote backend disabled)")
@@ -600,6 +675,7 @@ def setup_cicd(
     new_vars["connection_exists"] = (
         "true" if detected_mode == "interactive" else "false"
     )
+    new_vars["repository_exists"] = "true" if config.repository_exists else "false"
 
     # Update or append variables
     with open(env_vars_path, "w") as f:
@@ -649,16 +725,35 @@ def setup_cicd(
             else:
                 run_command(["terraform", "init"], cwd=dev_tf_dir)
 
-            run_command(
-                [
-                    "terraform",
-                    "apply",
-                    "-auto-approve",
-                    "--var-file",
-                    "vars/env.tfvars",
-                ],
-                cwd=dev_tf_dir,
-            )
+            try:
+                run_command(
+                    [
+                        "terraform",
+                        "apply",
+                        "-auto-approve",
+                        "--var-file",
+                        "vars/env.tfvars",
+                    ],
+                    cwd=dev_tf_dir,
+                )
+            except subprocess.CalledProcessError as e:
+                if "Error acquiring the state lock" in str(e):
+                    console.print(
+                        "[yellow]State lock error detected, retrying without lock...[/yellow]"
+                    )
+                    run_command(
+                        [
+                            "terraform",
+                            "apply",
+                            "-auto-approve",
+                            "--var-file",
+                            "vars/env.tfvars",
+                            "-lock=false",
+                        ],
+                        cwd=dev_tf_dir,
+                    )
+                else:
+                    raise
 
             console.print("✅ Dev environment Terraform configuration applied")
     elif dev_tf_dir.exists():
@@ -673,10 +768,35 @@ def setup_cicd(
         else:
             run_command(["terraform", "init"], cwd=tf_dir)
 
-        run_command(
-            ["terraform", "apply", "-auto-approve", "--var-file", "vars/env.tfvars"],
-            cwd=tf_dir,
-        )
+        try:
+            run_command(
+                [
+                    "terraform",
+                    "apply",
+                    "-auto-approve",
+                    "--var-file",
+                    "vars/env.tfvars",
+                ],
+                cwd=tf_dir,
+            )
+        except subprocess.CalledProcessError as e:
+            if "Error acquiring the state lock" in str(e):
+                console.print(
+                    "[yellow]State lock error detected, retrying without lock...[/yellow]"
+                )
+                run_command(
+                    [
+                        "terraform",
+                        "apply",
+                        "-auto-approve",
+                        "--var-file",
+                        "vars/env.tfvars",
+                        "-lock=false",
+                    ],
+                    cwd=tf_dir,
+                )
+            else:
+                raise
 
         console.print("✅ Prod/Staging Terraform configuration applied")
 
@@ -729,6 +849,9 @@ def setup_cicd(
 
         repo_url = f"https://github.com/{github_username}/{config.repository_name}"
         cloud_build_url = f"https://console.cloud.google.com/cloud-build/builds?project={config.cicd_project_id}"
+        # Sleep to allow resources to propagate
+        console.print("\n⏳ Waiting for resources to propagate...")
+        time.sleep(10)
 
         # Print final summary
         print_cicd_summary(config, github_username, repo_url, cloud_build_url)

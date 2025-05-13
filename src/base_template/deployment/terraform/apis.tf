@@ -32,3 +32,9 @@ resource "google_project_service" "shared_services" {
   disable_on_destroy = false
 }
 
+# Enable Cloud Resource Manager API for the CICD runner project
+resource "google_project_service" "cicd_cloud_resource_manager_api" {
+  project            = var.cicd_runner_project_id
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}

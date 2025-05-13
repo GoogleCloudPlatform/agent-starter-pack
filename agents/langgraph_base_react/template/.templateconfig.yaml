@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A agent implementing a base ReAct agent using LangGraph"
+description: "An agent implementing a base ReAct agent using LangGraph"
 settings:
   requires_data_ingestion: false
   deployment_targets: ["agent_engine", "cloud_run"]
@@ -20,8 +20,9 @@ settings:
     "langchain-google-vertexai~=2.0.7",
     "langchain~=0.3.14",
     "langgraph~=0.2.63",
-    "langchain-google-vertexai~=2.0.7",
+    "langchain-google-vertexai~=2.0.22",
     "langchain~=0.3.14", 
     "langchain-community~=0.3.17",
     "langchain-openai~=0.3.5",
   ]
+example_question: "What's the weather in San Francisco?"

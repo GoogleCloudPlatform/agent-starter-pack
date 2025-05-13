@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+import backoff
 import click
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
@@ -309,6 +310,7 @@ class ProjectConfig:
     project_name: str | None = None
     repository_name: str | None = None
     repository_owner: str | None = None
+    repository_exists: bool | None = None
     host_connection_name: str | None = None
     github_pat: str | None = None
     github_app_installation_id: str | None = None
@@ -414,6 +416,7 @@ def ensure_apis_enabled(project_id: str, apis: list[str]) -> None:
                 project_id,
                 f"--member=serviceAccount:{cloudbuild_sa}",
                 "--role=roles/secretmanager.admin",
+                "--condition=None",
             ]
         )
         console.print("✅ Permissions granted to Cloud Build service account")
@@ -428,6 +431,15 @@ def ensure_apis_enabled(project_id: str, apis: list[str]) -> None:
     time.sleep(10)
 
 
+@backoff.on_exception(
+    backoff.expo,
+    subprocess.CalledProcessError,
+    max_tries=3,
+    max_time=60,
+    on_backoff=lambda details: console.print(
+        f"⚠️ Command failed, retrying in {details['wait']:.1f}s (attempt {details['tries']})"
+    ),
+)
 def run_command(
     cmd: list[str] | str,
     check: bool = True,
@@ -555,7 +567,7 @@ def create_github_repository(repository_owner: str, repository_name: str) -> Non
                     f"{repository_owner}/{repository_name}",
                     "--private",
                     "--description",
-                    "Repository created by Terraform",
+                    "Repository with goo.gle/agent-starter-pack",
                 ]
             )
             console.print("✅ GitHub repository created")

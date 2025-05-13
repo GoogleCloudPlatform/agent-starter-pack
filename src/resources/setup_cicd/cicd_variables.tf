@@ -34,3 +34,8 @@ variable "connection_exists" {
   default     = false
 }
 
+variable "repository_exists" {
+  description = "Flag indicating if the Git repository already exists"
+  type        = bool
+  default     = false
+}

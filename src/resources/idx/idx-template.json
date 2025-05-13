@@ -1,0 +1,21 @@
+{
+  "name": "Agent Starter Pack",
+  "description": "Production-ready Gen AI Agent templates for Google Cloud. Addressing common challenges (Deployment & Operations, Evaluation, Customization, Observability) in building and deploying GenAI agents.",
+  "icon": "https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/images/icon.png?raw=true",
+  "params": [
+    {
+      "id": "agent_name",
+      "name": "Agent Name",
+      "description": "The name of the agent being created.",
+      "type": "string",
+      "required": true
+    },
+    {
+      "id": "google_cloud_project_id",
+      "name": "Your Google Cloud Project ID",
+      "description": "The Google Cloud Platform Project ID where resources will be managed.",
+      "type": "string",
+      "required": true
+    }
+  ]
+}

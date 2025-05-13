@@ -34,12 +34,14 @@ class TemplateHandler(FileSystemEventHandler):
         deployment_target: str,
         output_dir: str | None,
         region: str,
+        extra_params: str | None = None,
     ):
         self.agent_name = agent_name
         self.project_name = project_name
         self.deployment_target = deployment_target
         self.output_dir = output_dir
         self.region = region
+        self.extra_params = extra_params
         self.last_rebuild = 0
         self.rebuild_cooldown = 1  # Seconds to wait between rebuilds
 
@@ -91,6 +93,13 @@ class TemplateHandler(FileSystemEventHandler):
                 "--region",
                 self.region,
             ]
+            
+            # Add extra parameters if provided
+            if self.extra_params:
+                # Split comma-separated parameters and add them individually
+                for param in self.extra_params.split(','):
+                    cmd.append(param.strip())
+                
             console.print(f"Executing: {' '.join(cmd)}", style="bold blue")
             subprocess.run(cmd, check=True)
 
@@ -115,6 +124,7 @@ class TemplateHandler(FileSystemEventHandler):
 )
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option("--region", default="us-central1", help="GCP region to use")
+@click.option("--extra-params", help="Additional parameters to pass to the create command")
 def watch(
     agent: str,
     project_name: str,
@@ -122,6 +132,7 @@ def watch(
     output_dir: str | None,
     debug: bool,
     region: str,
+    extra_params: str | None,
 ):
     """
     Watch a agent's template and automatically rebuild when changes are detected.
@@ -155,6 +166,8 @@ def watch(
     console.print(f"agents directory: {agents_dir}")
     console.print(f"Project name: {project_name}")
     console.print(f"Region: {region}")
+    if extra_params:
+        console.print(f"Extra parameters: {extra_params}")
 
     event_handler = TemplateHandler(
         agent_name=agent,
@@ -162,6 +175,7 @@ def watch(
         deployment_target=deployment_target,
         output_dir=output_dir,
         region=region,
+        extra_params=extra_params,
     )
 
     observer = Observer()

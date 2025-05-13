@@ -13,7 +13,7 @@
       alt="Try in Firebase Studio"
       src="https://cdn.firebasestudio.dev/btn/try_blue_20.svg">
   </picture>
-</a> ![Stars](https://img.shields.io/github/stars/GoogleCloudPlatform/agent-starter-pack?color=yellow)
+</a> [![Launch in Cloud Shell](https://img.shields.io/badge/Launch-in_Cloud_Shell-white)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Feliasecchig%2Fasp-open-in-cloud-shell&cloudshell_print=open-in-cs) ![Stars](https://img.shields.io/github/stars/GoogleCloudPlatform/agent-starter-pack?color=yellow)
 
 
 The `agent-starter-pack` is a collection of production-ready Generative AI Agent templates built for Google Cloud. <br>
@@ -41,7 +41,7 @@ agent-starter-pack create my-awesome-agent
 ```
 
 **That's it!** You now have a fully functional agent project—complete with backend, frontend, and deployment infrastructure—ready for you to explore and customize.
-For more installation options, see the [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/installation). You can also [try it in Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx) with zero setup.
+See [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/installation) for more options, or try with zero setup in [Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx) or [Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Feliasecchig%2Fasp-open-in-cloud-shell&cloudshell_print=open-in-cs).
 
 ---
 

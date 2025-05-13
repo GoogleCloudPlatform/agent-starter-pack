@@ -2,9 +2,11 @@ import { defineConfig } from 'vitepress'
 
 export default defineConfig({
   title: 'Agent Starter Pack',
-  description: 'Build Production Agents faster',
+  description: 'Build Production AI Agents faster using Agent Starter Pack',
   base: '/agent-starter-pack/',
   head: [
+    ['meta', {property: 'og:image', content: '/images/agent_starter_pack_screenshot.png'}],
+    ['meta', {property: 'og:twitter:image', content: '/images/agent_starter_pack_screenshot.png'}],
     ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
     ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
     ['link', { href: 'https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap', rel: 'stylesheet' }],

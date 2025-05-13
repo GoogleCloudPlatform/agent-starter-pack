@@ -38,6 +38,7 @@ Help us spread the word by giving us a star on GitHub!
 <a href="https://github.com/GoogleCloudPlatform/agent-starter-pack/stargazers" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 8px;"> <!-- Link the badge too! -->
   ![GitHub Stars](https://img.shields.io/github/stars/GoogleCloudPlatform/agent-starter-pack?style=social&color=yellow) <!-- Added style=social for better look -->
 </a>
+
 :::
 
 ## Quick Links

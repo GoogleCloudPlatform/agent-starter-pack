@@ -89,11 +89,7 @@ def setup_repository_name(
 
 
 def create_github_connection(
-    project_id: str,
-    region: str,
-    connection_name: str,
-    repository_name: str,
-    repository_owner: str,
+    project_id: str, region: str, connection_name: str
 ) -> tuple[str, str]:
     """Create and verify GitHub connection using gcloud command.
 
@@ -101,52 +97,11 @@ def create_github_connection(
         project_id: GCP project ID
         region: GCP region
         connection_name: Name for the GitHub connection
-        repository_name: Name of repository to create
-        repository_owner: Owner of repository
 
     Returns:
         tuple[str, str]: The OAuth token secret ID and the app installation ID
     """
     console.print("\n🔗 Creating GitHub connection...")
-
-    # Create repository if details provided
-    try:
-        # Check if repo exists
-        result = run_command(
-            [
-                "gh",
-                "repo",
-                "view",
-                f"{repository_owner}/{repository_name}",
-                "--json",
-                "name",
-            ],
-            capture_output=True,
-            check=False,
-        )
-
-        if result.returncode != 0:
-            # Repository doesn't exist, create it
-            console.print(
-                f"\n📦 Creating GitHub repository: {repository_owner}/{repository_name}"
-            )
-            run_command(
-                [
-                    "gh",
-                    "repo",
-                    "create",
-                    f"{repository_owner}/{repository_name}",
-                    "--private",
-                    "--description",
-                    "Repository created by Terraform",
-                ]
-            )
-            console.print("✅ GitHub repository created")
-        else:
-            console.print("✅ Using existing GitHub repository")
-    except subprocess.CalledProcessError as e:
-        console.print(f"❌ Failed to create/check repository: {e!s}", style="bold red")
-        raise
 
     def try_create_connection() -> subprocess.CompletedProcess[str]:
         cmd = [

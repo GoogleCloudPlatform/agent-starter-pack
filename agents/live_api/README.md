@@ -6,7 +6,7 @@ This pattern showcases a real-time conversational agent powered by Google Gemini
 
 **Key components:**
 
-- **Python Backend** (in `app/` folder): A production-ready server built with [FastAPI](https://fastapi.tiangolo.com/) and [google-genai](https://googleapis.github.io/python-python-genai/) that features:
+- **Python Backend** (in `app/` folder): A production-ready server built with [FastAPI](https://fastapi.tiangolo.com/) and [google-genai](https://googleapis.github.io/python-genai/) that features:
 
   - **Real-time bidirectional communication** via WebSockets between the frontend and Gemini model
   - **Integrated tool calling** with a weather information tool for demonstrating external data retrieval

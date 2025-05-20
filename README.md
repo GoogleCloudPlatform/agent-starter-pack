@@ -32,7 +32,12 @@ Ready to build your AI agent? Simply run this command:
 ```bash
 # Create and activate a Python virtual environment
 python -m venv venv && source venv/bin/activate
-
+```
+**Note:**  If that doesn't work (rare case in Git Bash on Windows), try: 
+```bash
+. venv/Scripts/activate
+```
+```bash
 # Install the agent starter pack
 pip install agent-starter-pack
 

@@ -318,7 +318,7 @@ def create(
         console.print("\n> Success! Your agent project is ready.")
         console.print(
             f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"
-             "\n   Online Development Guide: [link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link]"
+            "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
         # Determine the correct path to display based on whether output_dir was specified
         console.print("\n🚀 To get started, run the following command:")

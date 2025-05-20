@@ -110,7 +110,7 @@ Here’s the recommended workflow for local development:
     This launches the Streamlit application, which connects to the backend server (by default at `http://localhost:8000`).
 
 4.  **Interact and Iterate:**
-    *   Open the Streamlit UI in your browser (usually `http://localhost:3000` or `http://localhost:3001`).
+    *   Open the Streamlit UI in your browser (usually `http://localhost:8501` or `http://localhost:3001`).
     *   Click the play button in the UI to connect to the backend.
     *   Interact with the agent! Try prompts like: *"Using the tool you have, define Governance in the context MLOPs"*
     *   Modify the agent logic in `app/agent.py`. The backend server (FastAPI with `uvicorn --reload`) should automatically restart when you save changes. Refresh the frontend if needed to see behavioral changes.

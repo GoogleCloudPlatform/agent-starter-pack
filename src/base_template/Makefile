@@ -22,7 +22,7 @@ playground:
 	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload &
 {%- endif %}
 {%- if cookiecutter.agent_name == 'live_api' %}
-	npm --prefix frontend start
+	PORT=8501 npm --prefix frontend start
 {%- else %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 {%- endif %}
@@ -54,7 +54,7 @@ local-backend:
 {%- if cookiecutter.agent_name == 'live_api' %}
 
 ui:
-	npm --prefix frontend start
+	PORT=8501 npm --prefix frontend start
 {%- endif %}
 {%- endif %}
 

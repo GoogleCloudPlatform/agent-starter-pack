@@ -14,6 +14,9 @@ hero:
       text: Get Started Guide
       link: /guide/getting-started
     - theme: alt
+      text: Development Guide
+      link: /guide/development-guide
+    - theme: alt
       text: Watch Demo Video
       link: https://www.youtube.com/watch?v=9zqwym-N3lg
 

@@ -7,11 +7,7 @@ This guide quickly walks you through setting up your first agent project.
 
 ### Prerequisites
 
-Ensure you have:
-
-1.  **Python 3.10+**
-2.  **Google Cloud SDK:** [Install Guide](https://cloud.google.com/sdk/docs/install).
-3.  **Terraform:** [Install Guide](https://developer.hashicorp.com/terraform/downloads).
+**Python 3.10+** | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (automatically installed)** [Manual Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### 1. Install the Starter Pack
 

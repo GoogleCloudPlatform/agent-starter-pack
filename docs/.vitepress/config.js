@@ -32,6 +32,7 @@ export default defineConfig({
         text: 'Guide',
         items: [
           { text: 'Getting Started', link: '/guide/getting-started' },
+          { text: 'Development Guide', link: '/guide/development-guide' },
           { text: 'Why Starter Pack?', link: '/guide/why_starter_pack' },
           { text: 'Video Tutorials', link: '/guide/video-tutorials' },
           { text: 'Installation', link: '/guide/installation' },

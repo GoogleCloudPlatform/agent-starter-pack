@@ -85,12 +85,12 @@ Track your agent's performance and gather insights using integrated observabilit
     *   Non-ADK Agents: [Looker Studio Non-ADK Dashboard](https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC)
     *(Remember to follow the "Setup Instructions" within the dashboards to connect your project's data sources).*
 
-➡️ For details, see the [Observability Guide](./guide/observability.md).
+➡️ For details, see the [Observability Guide](./observability.md).
 
 ### 6. Advanced Customization & Data
 Tailor the starter pack further to meet specific needs.
 
 *   **RAG Data Ingestion**: For Retrieval Augmented Generation (RAG) agents, configure data pipelines to process your information and load embeddings into Vertex AI Search or Vector Search.
-    ➡️ See the [Data Ingestion Guide](./guide/data-ingestion.md).
+    ➡️ See the [Data Ingestion Guide](./data-ingestion.md).
 *   **Custom Terraform**: Modify Terraform configurations in `deployment/terraform/` for unique infrastructure requirements.
-    ➡️ Refer to the [Deployment Guide](./guide/deployment.md).
+    ➡️ Refer to the [Deployment Guide](./deployment.md).

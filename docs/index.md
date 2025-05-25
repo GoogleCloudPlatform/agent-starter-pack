@@ -46,8 +46,8 @@ Help us spread the word by giving us a star on GitHub!
 
 ## Quick Links
 
-- **New Users:** [Getting Started Guide](/guide/getting-started)
-- **Setup:** [Installation Guide](/guide/installation)
-- **Going Live:** [Deployment Guide](/guide/deployment)
-- **Explore Templates:** [Agent Templates Overview](/agents/overview)
-- **Command Line:** [CLI Reference](/cli/)
+- **New Users:** [Getting Started Guide](docs/guide/getting-started)
+- **Setup:** [Installation Guide](docs/guide/installation)
+- **Going Live:** [Deployment Guide](docs/guide/deployment)
+- **Explore Templates:** [Agent Templates Overview](docs/agents/overview)
+- **Command Line:** [CLI Reference](docs/cli/)

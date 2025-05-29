@@ -40,7 +40,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source $HOME/.local/bin/env 
 
 # Install the Agent Starter Pack
-uv pip install agent-starter-pack
+uv tool install agent-starter-pack
 ```
 
 ## Getting Started
@@ -70,5 +70,5 @@ To uninstall, use the same tool you used for installation:
 ```bash
 pipx uninstall agent-starter-pack # Using pipx
 pip uninstall agent-starter-pack  # Using pip
-uv pip uninstall agent-starter-pack  # Using uv
+uv tool uninstall agent-starter-pack  # Using uv
 ```

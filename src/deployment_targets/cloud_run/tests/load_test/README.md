@@ -18,7 +18,7 @@ uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 Using another terminal tab, This is suggested to avoid conflicts with the existing application python environment.
 
 ```bash
-python3 -m venv locust_env && source locust_env/bin/activate && pip install locust==2.31.1
+python3 -m venv .locust_env && source locust_env/bin/activate && pip install locust==2.31.1
 ```
 
 **3. Execute the Load Test:**
@@ -69,7 +69,7 @@ export _ID_TOKEN=$(gcloud auth print-identity-token -q)
 **3. Execute the Load Test:**
 Create virtual environment with Locust:
 ```bash
-python3 -m venv locust_env && source locust_env/bin/activate && pip install locust==2.31.1
+python3 -m venv .locust_env && source locust_env/bin/activate && pip install locust==2.31.1
 ```
 
 Execute load tests. The following command executes the same load test parameters as the local test but targets your remote Cloud Run instance.

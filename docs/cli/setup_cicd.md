@@ -4,20 +4,22 @@ The `setup-cicd` command is a powerful utility provided by `agent-starter-pack` 
 
 **⚡️ Quick Start Example:**
 
-The command is now even simpler to get started with. You can run it without any arguments, and it will prompt you for the required project IDs:
+Getting started is straightforward. We recommend using `uvx` to execute the command, as `uv` (a prerequisite, see below) will handle fetching and running the `agent-starter-pack` for you, even if it's not installed globally:
 
 ```bash
-agent-starter-pack setup-cicd
+uvx agent-starter-pack setup-cicd
 ```
 *(You will be prompted for Staging and Production project IDs)*
 
 Alternatively, you can provide the project IDs directly as flags:
 
 ```bash
-agent-starter-pack setup-cicd \
+uvx agent-starter-pack setup-cicd \
   --staging-project=your-staging-project-id \
   --prod-project=your-prod-project-id
 ```
+
+**💡 Tip:** Using `uvx` (e.g., `uvx agent-starter-pack ...`) ensures you are able to run the command without needing to install the `agent-starter-pack` package globally or in your current environment. `uv` itself must be installed.
 
 **⚠️ Important Considerations:**
 
@@ -29,6 +31,7 @@ agent-starter-pack setup-cicd \
 
 1.  **Run from Project Root:** Execute the command from the root directory of your `agent-starter-pack` project (where `pyproject.toml` is located).
 2.  **Install Tools:**
+    *   `uv`: The command will be run using `uvx`. Ensure `uv` is installed. (See [uv installation guide](https://github.com/astral-sh/uv#installation))
     *   Terraform
     *   `gh` CLI (GitHub CLI): Install and authenticate using `gh auth login`.
     *   `gcloud` CLI (Google Cloud SDK): Authenticate using `gcloud auth application-default login`.
@@ -51,7 +54,7 @@ The `setup-cicd` command automates the following:
 ## Running the Command
 
 ```bash
-agent-starter-pack setup-cicd \
+uvx agent-starter-pack setup-cicd \
     [--staging-project <YOUR_STAGING_PROJECT_ID>] \
     [--prod-project <YOUR_PROD_PROJECT_ID>] \
     [--cicd-project <YOUR_CICD_PROJECT_ID>] \
@@ -76,7 +79,7 @@ agent-starter-pack setup-cicd \
 *   `--auto-approve`: (Optional) Skip interactive prompts (including project ID prompts if flags are omitted). Use carefully.
 *   `--debug`: (Optional) Enable verbose logging.
 
-*(For advanced/programmatic use with pre-existing connections, see options like `--github-pat`, `--github-app-installation-id`, `--host-connection-name` by running `agent-starter-pack setup-cicd --help`)*
+*(For advanced/programmatic use with pre-existing connections, see options like `--github-pat`, `--github-app-installation-id`, `--host-connection-name` by running `uvx agent-starter-pack setup-cicd --help`)*
 
 ## After Running the Command
 

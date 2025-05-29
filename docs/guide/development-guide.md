@@ -54,12 +54,12 @@ For reliable, automated deployments to staging and production, a CI/CD pipeline 
 **Option 1: One-Command CI/CD Setup (Recommended for GitHub)**
 The `agent-starter-pack` CLI streamlines CI/CD setup with GitHub:
 ```bash
-agent-starter-pack setup-cicd
+uvx agent-starter-pack setup-cicd
 ```
 This automates creating a GitHub repository, connecting to Cloud Build, setting up staging/production infrastructure with Terraform, and configuring CI/CD triggers.
 
 Follow the interactive prompts. For critical systems needing granular control, consider the manual setup.
-See the [`agent-starter-pack setup-cicd` CLI reference](https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/cli/setup_cicd.md) for details. *(Note: Automated setup currently supports GitHub only).*
+See the [`agent-starter-pack setup-cicd` CLI reference](../cli/setup_cicd) for details. *(Note: Automated setup currently supports GitHub only).*
 
 **Option 2: Manual CI/CD Setup**
 For full control and compatibility with other Git providers, refer to the [manual deployment setup guide](./deployment.md).

@@ -7,9 +7,7 @@
 
   # Use https://search.nixos.org/packages to find packages
   packages = [
-    pkgs.python311
-    pkgs.python311Packages.pip
-    pkgs.python311Packages.uv
+    pkgs.uv
     pkgs.gnumake
     pkgs.terraform
     pkgs.gh
@@ -36,13 +34,8 @@
         echo "Setting gcloud project..."
         gcloud config set project $GOOGLE_CLOUD_PROJECT
 
-        echo "Creating Python virtual environment and installing packages..."
-        uv venv && uv pip install agent-starter-pack
-        echo "alias agent-starter-pack=\"~/$WS_NAME/.venv/bin/agent-starter-pack\"" >> ~/.bashrc
-        source ~/.bashrc
-
         echo "Running agent starter pack creation..."
-        uv run agent-starter-pack create $AGENT_NAME
+        uvx agent-starter-pack create $AGENT_NAME
         code ~/$WS_NAME/$AGENT_NAME/README.md
         exec bash
         '';

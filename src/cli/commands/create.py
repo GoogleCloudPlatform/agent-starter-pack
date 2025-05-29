@@ -467,11 +467,19 @@ def _handle_credential_verification(creds_info: dict) -> dict:
     # Check if running in Cloud Shell
     if os.environ.get("CLOUD_SHELL") == "true":
         if creds_info["project"] == "":
-            console.print("> It looks like you are running in Cloud Shell.")
             console.print(
-                "> You need to set up a project ID to continue, but you haven't setup a project yet."
+                "> It looks like you are running in Cloud Shell.", style="bold blue"
             )
-            new_project = Prompt.ask("\n> Enter a project ID")
+            console.print(
+                "> You need to set up a project ID to continue, but you haven't setup a project yet.",
+                style="bold blue",
+            )
+            new_project = Prompt.ask("\n> Enter a project ID", default=None)
+            while not new_project:
+                console.print(
+                    "> Project ID cannot be empty. Please try again.", style="bold red"
+                )
+                new_project = Prompt.ask("\n> Enter a project ID", default=None)
             creds_info["project"] = new_project
             set_gcp_project(creds_info["project"], set_quota_project=False)
         return creds_info

@@ -60,6 +60,7 @@ class GeminiSession:
         self.run_id = "n/a"
         self.user_id = "n/a"
         self.tool_functions = tool_functions
+        self._tool_tasks: list[asyncio.Task] = []
 
     async def receive_from_client(self) -> None:
         """Listen for and process messages from the client.
@@ -137,7 +138,10 @@ class GeminiSession:
                 message = types.LiveServerMessage.model_validate(raw_message)
                 tool_call = LiveServerToolCall.model_validate(message.tool_call)
                 # Create a separate task to handle the tool call without blocking
-                asyncio.create_task(self._handle_tool_call(self.session, tool_call))
+                task = asyncio.create_task(
+                    self._handle_tool_call(self.session, tool_call)
+                )
+                self._tool_tasks.append(task)
 
 
 def get_connect_and_run_callable(websocket: WebSocket) -> Callable:

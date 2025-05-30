@@ -156,12 +156,30 @@ def get_deployment_targets(agent_name: str) -> list:
         / agent_name
         / "template"
     )
-    config = load_template_config(template_path)
-
-    if not config:
+    # Check if agent directory exists
+    agent_dir = template_path.parent
+    if not agent_dir.exists():
+        logging.warning(f"Agent directory not found: {agent_dir}")
         return []
-
+    
+    # Check if template directory exists
+    if not template_path.exists():
+        logging.warning(f"Template directory not found: {template_path}")
+        return []
+    
+    config = load_template_config(template_path)
+    if not config:
+        logging.warning(f"Failed to load template configuration for agent: {agent_name}")
+        return []
     targets = config.get("settings", {}).get("deployment_targets", [])
+    
+    # Log the targets found
+    target_list = targets if isinstance(targets, list) else [targets]
+    if not target_list:
+        logging.warning(f"No deployment targets found for agent: {agent_name}")
+    else:
+        logging.info(f"Found deployment targets for {agent_name}: {", ".join(target_list)}")
+        
     return targets if isinstance(targets, list) else [targets]
 
 

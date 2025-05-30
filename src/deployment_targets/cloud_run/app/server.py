@@ -32,7 +32,7 @@ provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-app: FastAPI = get_fast_api_app(agent_dir=AGENT_DIR, web=False)
+app: FastAPI = get_fast_api_app(agents_dir=AGENT_DIR, web=True)
 
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"

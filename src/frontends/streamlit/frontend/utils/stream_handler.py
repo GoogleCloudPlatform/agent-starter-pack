@@ -253,10 +253,19 @@ class EventProcessor:
                         msg = f"\n\nTool response: `{content}`"
                         self.stream_handler.new_status(msg)
 
-                    # Handle AI responses
-                    elif content := message.get("content"):
-                        self.final_content += content
-                        self.stream_handler.new_token(content)
+                    # Handle incremental AI response chunks
+                    # These are partial content pieces that need to be accumulated
+                    elif (
+                        message.get("content")
+                        and message.get("type") == "AIMessageChunk"
+                    ):
+                        self.final_content += message.get("content")
+                        self.stream_handler.new_token(message.get("content"))
+
+                    # Handle complete AI responses
+                    # This is used when receiving a full message rather than chunks
+                    elif message.get("content") and message.get("type") == "ai":
+                        self.final_content = message.get("content")
 
         # Handle end of stream
         if self.final_content:

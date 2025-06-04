@@ -94,14 +94,20 @@ def test_event_processor_tool_calls() -> None:
         "kwargs": {"tool_call_id": "test_id", "content": "tool response"},
     }
 
+    ai_message_chunk = {
+        "type": "constructor",
+        "kwargs": {"content": "partial ", "type": "AIMessageChunk"},
+    }
+
     final_response_event = {
         "type": "constructor",
-        "kwargs": {"content": "final response"},
+        "kwargs": {"content": "response", "type": "AIMessageChunk"},
     }
 
     client_mock.stream_messages.return_value = [
         (tool_call_event, {}),
         (tool_response_event, {}),
+        (ai_message_chunk, {}),
         (final_response_event, {}),
     ]
 
@@ -116,11 +122,13 @@ def test_event_processor_tool_calls() -> None:
     assert processor.tool_calls[1]["content"] == "tool response"
 
     # Verify final content
-    assert processor.final_content == "final response"
+    assert processor.final_content == "partial response"
 
     # Verify stream handler updates
     assert stream_handler_mock.new_status.call_count == 2
-    assert stream_handler_mock.new_token.call_count == 1
+    assert stream_handler_mock.new_token.call_count == 2
+    stream_handler_mock.new_token.assert_any_call("partial ")
+    stream_handler_mock.new_token.assert_any_call("response")
 
 
 def test_event_processor_direct_response() -> None:
@@ -131,8 +139,20 @@ def test_event_processor_direct_response() -> None:
 
     # Mock stream events with direct response
     response_events: list[tuple[dict[str, Any], dict[str, Any]]] = [
-        ({"type": "constructor", "kwargs": {"content": "Hello"}}, {}),
-        ({"type": "constructor", "kwargs": {"content": " World"}}, {}),
+        (
+            {
+                "type": "constructor",
+                "kwargs": {"content": "Hello", "type": "AIMessageChunk"},
+            },
+            {},
+        ),
+        (
+            {
+                "type": "constructor",
+                "kwargs": {"content": " World", "type": "AIMessageChunk"},
+            },
+            {},
+        ),
     ]
 
     client_mock.stream_messages.return_value = response_events
@@ -159,15 +179,21 @@ def test_event_processor_session_state_updates(mock_uuid: MagicMock) -> None:
 
     # Mock stream events with message that should be added to session state
     client_mock.stream_messages.return_value = [
-        ({"type": "constructor", "kwargs": {"content": "test response"}}, {})
+        (
+            {
+                "type": "constructor",
+                "kwargs": {"content": "test response", "type": "ai"},
+            },
+            {},
+        )
     ]
 
     # Initialize session state with empty messages
     st_mock.session_state.user_chats["test_session"]["messages"] = []
+    st_mock.session_state["user_id"] = "test_user"
+    st_mock.session_state["session_id"] = "test_session"
 
     processor = EventProcessor(st_mock, client_mock, stream_handler_mock)
-    # Set run_id before processing events
-    st_mock.session_state["run_id"] = "test_run"
     processor.process_events()
 
     # Verify stream events call
@@ -215,7 +241,8 @@ def test_event_processor_session_state_updates_with_tools(mock_uuid: MagicMock) 
                             "name": "test_tool",
                             "args": {"arg1": "value1"},
                         }
-                    ]
+                    ],
+                    "type": "AIMessageChunk",
                 },
             },
             {},
@@ -223,26 +250,49 @@ def test_event_processor_session_state_updates_with_tools(mock_uuid: MagicMock) 
         (
             {
                 "type": "constructor",
-                "kwargs": {"tool_call_id": "test_id", "content": "tool response"},
+                "kwargs": {
+                    "tool_call_id": "test_id",
+                    "content": "tool response",
+                    "type": "tool",
+                },
             },
             {},
         ),
-        ({"type": "constructor", "kwargs": {"content": "final response"}}, {}),
+        (
+            {
+                "type": "constructor",
+                "kwargs": {
+                    "content": "partial response",
+                    "type": "AIMessageChunk",
+                },
+            },
+            {},
+        ),
+        (
+            {
+                "type": "constructor",
+                "kwargs": {
+                    "content": " final",
+                    "type": "AIMessageChunk",
+                },
+            },
+            {},
+        ),
     ]
 
     # Initialize session state with empty messages
     st_mock.session_state.user_chats["test_session"]["messages"] = []
+    st_mock.session_state["user_id"] = "test_user"
+    st_mock.session_state["session_id"] = "test_session"
 
     processor = EventProcessor(st_mock, client_mock, stream_handler_mock)
-    # Set run_id before processing events
-    st_mock.session_state["run_id"] = "test_run"
     processor.process_events()
 
     # Verify session state updates
     messages = st_mock.session_state.user_chats["test_session"]["messages"]
-    assert (
-        len(messages) == 3
-    )  # Should have tool call, tool response, and final response
+
+    # Should have tool call, tool response, and final response
+    assert len(messages) == 3
 
     # Verify tool call message
     assert messages[0]["tool_calls"][0]["name"] == "test_tool"
@@ -251,10 +301,19 @@ def test_event_processor_session_state_updates_with_tools(mock_uuid: MagicMock) 
     # Verify tool response message
     assert messages[1]["content"] == "tool response"
     assert messages[1]["tool_call_id"] == "test_id"
+    assert messages[1]["type"] == "tool"
 
     # Verify final response message
-    assert messages[2]["content"] == "final response"
+    assert messages[2]["content"] == "partial response final"
     assert messages[2]["id"] == "test_run"
 
-    # Verify run_id was updated
+    # Verify stream handler was called for tool operations and content chunks
+    stream_handler_mock.new_status.assert_any_call(
+        "\n\nCalling tool: `test_tool` with args: `{'arg1': 'value1'}`"
+    )
+    stream_handler_mock.new_status.assert_any_call("\n\nTool response: `tool response`")
+    stream_handler_mock.new_token.assert_any_call("partial response")
+    stream_handler_mock.new_token.assert_any_call(" final")
+
+    # Verify run_id was set in session state
     assert st_mock.session_state["run_id"] == "test_run"

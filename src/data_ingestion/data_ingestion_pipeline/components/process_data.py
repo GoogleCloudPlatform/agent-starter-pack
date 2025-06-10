@@ -15,7 +15,7 @@
 
 """
 This component is derived from the notebook:
-https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/use-cases/retrieval-augmented_generation/scalable_rag_with_bigframes.ipynb
+https://github.com/GoogleCloudPlatform/generative-ai/blob/main/gemini/use-cases/retrieval-augmented-generation/scalable_rag_with_bigframes.ipynb
 
 It leverages BigQuery for data processing. We also suggest looking at remote functions for enhanced scalability.
 """

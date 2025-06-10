@@ -70,7 +70,7 @@ requires-dist = [
     { name = "click", specifier = "~=8.1.7" },
     { name = "codespell", marker = "extra == 'lint'", specifier = "~=2.2.0" },
     { name = "cookiecutter", specifier = "~=2.5.0" },
-    { name = "google-cloud-aiplatform", specifier = ">=1.95.0" },
+    { name = "google-cloud-aiplatform", specifier = ">=1.87.0" },
     { name = "ipykernel", marker = "extra == 'jupyter'", specifier = ">=6.29.5" },
     { name = "jupyter", marker = "extra == 'jupyter'" },
     { name = "mypy", marker = "extra == 'lint'", specifier = "~=1.15.0" },

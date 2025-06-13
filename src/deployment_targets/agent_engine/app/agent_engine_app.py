@@ -211,18 +211,18 @@ def deploy_agent_engine_app(
 ) -> agent_engines.AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
-    staging_bucket = f"gs://{project}-agent-engine"
+    staging_bucket_uri = f"gs://{project}-agent-engine"
 {%- if "adk" in cookiecutter.tags %}
-    artifacts_bucket = f"gs://{project}-{{cookiecutter.project_name}}-logs-data"
+    artifacts_bucket_name = f"{project}-{{cookiecutter.project_name}}-logs-data"
     create_bucket_if_not_exists(
-        bucket_name=artifacts_bucket, project=project, location=location
+        bucket_name=artifacts_bucket_name, project=project, location=location
     )
 {%- endif %}
     create_bucket_if_not_exists(
-        bucket_name=staging_bucket, project=project, location=location
+        bucket_name=staging_bucket_uri, project=project, location=location
     )
 
-    vertexai.init(project=project, location=location, staging_bucket=staging_bucket)
+    vertexai.init(project=project, location=location, staging_bucket=staging_bucket_uri)
 
     # Read requirements
     with open(requirements_file) as f:
@@ -231,7 +231,7 @@ def deploy_agent_engine_app(
     agent_engine = AgentEngineApp(
         agent=root_agent,
         artifact_service_builder=lambda: GcsArtifactService(
-            bucket_name=artifacts_bucket
+            bucket_name=artifacts_bucket_name
         ),
     )
 {% else %}

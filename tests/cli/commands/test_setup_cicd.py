@@ -246,7 +246,7 @@ class TestSetupCICD:
         # Create test build_triggers.tf with initial content
         build_triggers_path = tf_dir / "build_triggers.tf"
         initial_content = """
-        depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+        depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
         repository = "projects/${var.cicd_runner_project_id}/locations/${var.region}/connections/${var.host_connection_name}/repositories/${var.repository_name}"
         """
         build_triggers_path.write_text(initial_content)
@@ -260,7 +260,7 @@ class TestSetupCICD:
         # Verify the changes
         assert "google_cloudbuildv2_repository.repo" in modified_content
         assert (
-            "depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services, google_cloudbuildv2_repository.repo]"
+            "depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services, google_cloudbuildv2_repository.repo]"
             in modified_content
         )
 

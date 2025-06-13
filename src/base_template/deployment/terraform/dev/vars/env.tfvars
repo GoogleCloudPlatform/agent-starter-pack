@@ -18,3 +18,7 @@ vector_search_min_replica_count = 1
 vector_search_max_replica_count = 1
 {%- endif %}
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+# Flag to determine whether to create the session database
+create_session_db = false
+{%- endif %}

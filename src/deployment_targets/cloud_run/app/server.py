@@ -40,8 +40,22 @@ provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+db_user = os.environ.get("DB_USER", "postgres")
+db_name = os.environ.get("DB_NAME", "postgres")
+db_pass = os.environ.get("DB_PASS")
+db_host = os.environ.get("DB_HOST")
+
+# Set session_db_url if database credentials are available
+session_db_url = ""
+if db_host and db_pass:
+    session_db_url = (
+        f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
+    )
+
 app: FastAPI = get_fast_api_app(
-    agents_dir=AGENT_DIR, web=True, artifact_storage_uri=bucket_name
+    agents_dir=AGENT_DIR, web=True, artifact_storage_uri=bucket_name,
+    session_db_url=session_db_url
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"

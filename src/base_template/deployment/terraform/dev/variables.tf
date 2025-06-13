@@ -54,6 +54,10 @@ variable "agentengine_sa_roles" {
 {% endif %}
   type        = list(string)
   default = [
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+    "roles/run.invoker",
+    "roles/secretmanager.secretAccessor",
+{%- endif %}
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
     "roles/logging.logWriter",
@@ -61,7 +65,14 @@ variable "agentengine_sa_roles" {
     "roles/storage.admin"
   ]
 }
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
+variable "create_session_db" {
+  type        = bool
+  description = "Flag to determine whether to create the session database"
+  default     = false
+}
+{%- endif %}
 {% if cookiecutter.data_ingestion %}
 
 variable "pipelines_roles" {

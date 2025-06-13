@@ -24,7 +24,11 @@ locals {
     "bigquery.googleapis.com",
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
-    "cloudtrace.googleapis.com"
+    "cloudtrace.googleapis.com",
+    "alloydb.googleapis.com",
+    "compute.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "dns.googleapis.com"
   ]
 }
 

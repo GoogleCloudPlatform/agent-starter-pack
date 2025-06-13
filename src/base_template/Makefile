@@ -1,10 +1,13 @@
+# Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source ~/.bashrc; }
 	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter --frozen{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
 
+# Run unit and integration tests
 test:
 	uv run pytest tests/unit && uv run pytest tests/integration
 
+# Launch local dev playground
 playground:
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
@@ -28,9 +31,14 @@ playground:
 {%- endif %}
 {%- endif %}
 
+# Deploy the agent remotely
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+# Usage: make backend [IAP=true] - Set IAP=true to enable Identity-Aware Proxy
+{%- endif %}
 backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	PROJECT_ID=$$(gcloud config get-value project) && \
+	IAP_FLAG=$(if $(IAP),--iap,) \
 	gcloud run deploy {{cookiecutter.project_name}} \
 		--source . \
 		--memory "4Gi" \
@@ -39,7 +47,8 @@ backend:
 		--no-allow-unauthenticated \
 		--labels "created-by=adk" \
 		--set-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}"
+		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
+		$(IAP_FLAG)
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate --frozen > .requirements.txt 2>/dev/null || \
@@ -47,23 +56,37 @@ backend:
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 
+# Launch local development server with hot-reload
 local-backend:
 	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}
 
+# Start the frontend UI for development
 ui:
 	PORT=8501 npm --prefix frontend start
 {%- endif %}
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
+# Set up development environment resources using Terraform
+# Usage: make setup-dev-env [CREATE_SESSION_DB=true] - Set CREATE_SESSION_DB=true to create a session database
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
-	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
+	DB_FLAG=$(if $(CREATE_SESSION_DB),--var="create_session_db=true",) && \
+	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var="dev_project_id=$$PROJECT_ID" $$DB_FLAG)
+{%- elif cookiecutter.deployment_target == 'agent_engine' %}
 
+# Set up development environment resources using Terraform
+# Usage: make setup-dev-env [CREATE_SESSION_DB=true] - Set CREATE_SESSION_DB=true to create a session database
+setup-dev-env:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var="dev_project_id=$$PROJECT_ID")
+{%- endif %}
 {%- if cookiecutter.data_ingestion %}
 
+# Run the data ingestion pipeline for RAG capabilities
 data-ingestion:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
@@ -82,6 +105,7 @@ data-ingestion:
 		--pipeline-name="data-ingestion-pipeline")
 {%- endif %}
 
+# Run code quality checks (codespell, ruff, mypy)
 lint:
 	uv run codespell
 	uv run ruff check . --diff

@@ -93,6 +93,11 @@ def normalize_project_name(project_name: str) -> str:
     type=click.Choice(DATASTORE_TYPES),
     help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
 )
+@click.option(
+    "--session-type",
+    type=click.Choice(["in_memory", "agent_engine", "alloydb"]),
+    help="Type of session storage to use",
+)
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option(
     "--output-dir",
@@ -122,6 +127,7 @@ def create(
     deployment_target: str | None,
     include_data_ingestion: bool,
     datastore: str | None,
+    session_type: str | None,
     debug: bool,
     output_dir: str | None,
     auto_approve: bool,

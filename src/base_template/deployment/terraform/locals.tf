@@ -23,7 +23,7 @@ locals {
     "cloudtrace.googleapis.com"
   ]
 
-  shared_services = [
+  deploy_project_services = [
     "aiplatform.googleapis.com",
     "run.googleapis.com",
     "discoveryengine.googleapis.com",
@@ -32,7 +32,12 @@ locals {
     "bigquery.googleapis.com",
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
-    "cloudtrace.googleapis.com"
+    "cloudtrace.googleapis.com",
+    "alloydb.googleapis.com",
+    "compute.googleapis.com",
+    "servicenetworking.googleapis.com",
+    "dns.googleapis.com",
+    "secretmanager.googleapis.com",
   ]
 
   deploy_project_ids = {

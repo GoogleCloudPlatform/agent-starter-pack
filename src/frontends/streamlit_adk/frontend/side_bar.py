@@ -212,3 +212,33 @@ class SideBar:
             )
 
             self.st.caption(f"Note: {HELP_MESSAGE_MULTIMODALITY}")
+
+            self.st.divider()
+            self.st.header("Custom MCP Server Configuration")
+            self.st.write("Debug: Custom MCP section loaded") # Debug message
+            
+            if "custom_mcp_config_json" not in self.st.session_state:
+                self.st.session_state.custom_mcp_config_json = json.dumps({"mcpServers": {}})
+
+            self.custom_mcp_config_input = self.st.text_area(
+                "Paste your MCP Server JSON configuration here (similar to `cline_mcp_settings.json`):",
+                value=self.st.session_state.custom_mcp_config_json,
+                height=300,
+                help="Define your MCP servers. Example: {'mcpServers': {'my-server': {'command': 'node', 'args': ['server.js']}}}"
+            )
+
+            if self.st.button("Apply MCP Configuration"):
+                try:
+                    # Attempt to parse the JSON to validate it
+                    parsed_config = json.loads(self.custom_mcp_config_input)
+                    if "mcpServers" not in parsed_config or not isinstance(parsed_config["mcpServers"], dict):
+                        self.st.error("Invalid MCP configuration: 'mcpServers' key not found or not a dictionary.")
+                    else:
+                        # Store the compact JSON string
+                        self.st.session_state.custom_mcp_config_json = json.dumps(parsed_config)
+                        self.st.success("MCP Configuration Applied!")
+                        self.st.rerun()
+                except json.JSONDecodeError:
+                    self.st.error("Invalid JSON format. Please check your input.")
+                except Exception as e:
+                    self.st.error(f"An unexpected error occurred: {e}")

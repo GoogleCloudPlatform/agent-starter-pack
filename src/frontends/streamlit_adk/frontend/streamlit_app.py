@@ -67,6 +67,8 @@ def initialize_session_state() -> None:
             "title": EMPTY_CHAT_NAME,
             "messages": [],
         }
+        if "custom_mcp_config_json" not in st.session_state:
+            st.session_state.custom_mcp_config_json = json.dumps({"mcpServers": {}})
 
 
 def display_messages() -> None:
@@ -228,6 +230,7 @@ def handle_user_input(side_bar: SideBar) -> None:
             agent_callable_path=side_bar.agent_callable_path,
             url=side_bar.url_input_field,
             authenticate_request=side_bar.should_authenticate_request,
+            custom_mcp_config_json=side_bar.custom_mcp_config_input,
         )
         update_chat_title()
         if len(parts) > 1:
@@ -248,6 +251,7 @@ def generate_ai_response(
     agent_callable_path: str | None = None,
     url: str | None = None,
     authenticate_request: bool = False,
+    custom_mcp_config_json: str | None = None,
 ) -> None:
     """Generate and display the AI's response to the user's input."""
     ai_message = st.chat_message("ai")
@@ -259,6 +263,7 @@ def generate_ai_response(
             agent_callable_path=agent_callable_path,
             url=url,
             authenticate_request=authenticate_request,
+            custom_mcp_config_json=custom_mcp_config_json,
         )
         get_chain_response(st=st, client=client, stream_handler=stream_handler)
         status.update(label="Finished!", state="complete", expanded=False)

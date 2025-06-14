@@ -85,6 +85,7 @@ class Client:
         remote_agent_engine_id: str | None = None,
         url: str | None = None,
         authenticate_request: bool = False,
+        custom_mcp_config_json: str | None = None,
     ) -> None:
         """Initialize the Client with appropriate configuration.
 
@@ -100,6 +101,7 @@ class Client:
             self.authenticate_request = remote_config["authenticate_request"]
             self.creds = remote_config["creds"]
             self.id_token = remote_config["id_token"]
+            self.custom_mcp_config_json = custom_mcp_config_json
             self.agent = None
         elif remote_agent_engine_id:
             self.agent = get_remote_agent(remote_agent_engine_id)
@@ -141,6 +143,8 @@ class Client:
             }
             if self.authenticate_request:
                 headers["Authorization"] = f"Bearer {self.id_token}"
+            if self.custom_mcp_config_json:
+                headers["X-Custom-MCP-Config"] = self.custom_mcp_config_json
             requests.post(
                 url, data=json.dumps(feedback_dict), headers=headers, timeout=10
             )
@@ -160,8 +164,14 @@ class Client:
             }
             if self.authenticate_request:
                 headers["Authorization"] = f"Bearer {self.id_token}"
+
+            target_url = self.url
+            if self.custom_mcp_config_json:
+                headers["X-Custom-MCP-Config"] = self.custom_mcp_config_json
+                target_url = urljoin(self.url, "/run_sse_with_mcp")
+
             with requests.post(
-                self.url, json=data, headers=headers, stream=True, timeout=60
+                target_url, json=data, headers=headers, stream=True, timeout=60
             ) as response:
                 for line in response.iter_lines():
                     if line:
@@ -270,6 +280,8 @@ class EventProcessor:
                     )
                 # Case 3: Process text responses
                 elif part.text:
+                    self.final_content += part.text
+                    self.stream_handler.new_token(part.text)
                     if event.is_final_response():
                         # Store the final response in conversation history
                         self.st.session_state.user_chats[session]["messages"].append(
@@ -277,10 +289,6 @@ class EventProcessor:
                         )
                         # Save the invocation ID - it might be used by the feedback functionality
                         self.st.session_state["invocation_id"] = event.invocation_id
-                    else:
-                        # For streaming chunks, accumulate text and update UI
-                        self.final_content += part.text
-                        self.stream_handler.new_token(part.text)
 
 
 def get_chain_response(st: Any, client: Client, stream_handler: StreamHandler) -> None:

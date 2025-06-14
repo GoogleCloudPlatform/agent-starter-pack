@@ -91,9 +91,17 @@ class TitleGenerator:
                 ]
                 text_content = "\n".join(text_parts)
                 if text_content.strip():
+                    author = event.get("author", "user")
+                    if author == "system":
+                        role = "model"
+                    elif author == "user":
+                        role = "user"
+                    else:
+                        role = "model"
+
                     contents.append(
                         Content(
-                            role=event["content"].get("role", "user"),
+                            role=role, #role=event["content"].get("role", "user"),
                             parts=[Part.from_text(text=text_content)],
                         )
                     )

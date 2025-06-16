@@ -41,7 +41,7 @@ trace.set_tracer_provider(provider)
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app: FastAPI = get_fast_api_app(
-    agents_dir=AGENT_DIR, web=True, artifact_storage_uri=bucket_name
+    agents_dir=AGENT_DIR, web=True, artifact_service_uri=bucket_name
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"

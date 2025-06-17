@@ -84,7 +84,7 @@ Here’s the recommended workflow for local development:
 2.  **Start the Backend Server:**
     Open a terminal and run:
     ```bash
-    make backend
+    make local-backend
     ```
     The backend is ready when you see `INFO:     Application startup complete.` Wait for this message before starting the frontend.
 
@@ -96,7 +96,7 @@ Here’s the recommended workflow for local development:
     ```bash
     export VERTEXAI=false
     export GOOGLE_API_KEY="your-google-api-key" # Replace with your actual key
-    make backend
+    make local-backend
     ```
     Ensure `GOOGLE_API_KEY` is set correctly in your environment.
     </details>
@@ -130,7 +130,7 @@ To run the agent using Google Cloud Shell:
 2.  **Start the Backend:**
     Open a *new* Cloud Shell tab. Set your project: `gcloud config set project [PROJECT_ID]`. Then run:
     ```bash
-    make backend
+    make local-backend
     ```
 
 3.  **Configure Backend Web Preview:**

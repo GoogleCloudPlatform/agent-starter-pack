@@ -256,6 +256,8 @@ research_evaluator = LlmAgent(
     Your response must be a single, raw JSON object validating against the 'Feedback' schema.
     """,
     output_schema=Feedback,
+    disallow_transfer_to_parent=True,
+    disallow_transfer_to_peers=True,
     output_key="research_evaluation",
 )
 

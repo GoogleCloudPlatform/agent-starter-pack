@@ -82,7 +82,7 @@ export default function App() {
 
   const createSession = async (): Promise<{userId: string, sessionId: string, appName: string}> => {
     const generatedSessionId = uuidv4();
-    const response = await fetch(`http://0.0.0.0:8000/apps/app/users/u_999/sessions/${generatedSessionId}`, {
+    const response = await fetch(`/api/apps/app/users/u_999/sessions/${generatedSessionId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -104,7 +104,7 @@ export default function App() {
   const checkBackendHealth = async (): Promise<boolean> => {
     try {
       // Use the docs endpoint or root endpoint to check if backend is ready
-      const response = await fetch("http://0.0.0.0:8000/docs", {
+      const response = await fetch("/api/docs", {
         method: "GET",
         headers: {
           "Content-Type": "application/json"
@@ -323,7 +323,7 @@ export default function App() {
 
       // Send the message with retry logic
       const sendMessage = async () => {
-        const response = await fetch("http://0.0.0.0:8000/run_sse", {
+        const response = await fetch("/api/run_sse", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

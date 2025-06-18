@@ -26,12 +26,16 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 # --- Structured Output Models ---
 class SearchQuery(BaseModel):
+    """Model representing a specific search query for web search."""
+
     search_query: str = Field(
         description="A highly specific and targeted query for web search."
     )
 
 
 class Feedback(BaseModel):
+    """Model for providing evaluation feedback on research quality."""
+
     grade: Literal["pass", "fail"] = Field(
         description="Evaluation result. 'pass' if the research is sufficient, 'fail' if it needs revision."
     )
@@ -46,6 +50,17 @@ class Feedback(BaseModel):
 
 # --- Callbacks ---
 def collect_research_sources_callback(callback_context: CallbackContext) -> None:
+    """Collects and organizes web-based research sources and their supported claims from agent events.
+
+    This function processes the agent's `session.events` to extract web source details (URLs,
+    titles, domains from `grounding_chunks`) and associated text segments with confidence scores
+    (from `grounding_supports`). The aggregated source information and a mapping of URLs to short
+    IDs are cumulatively stored in `callback_context.state`.
+
+    Args:
+        callback_context (CallbackContext): The context object providing access to the agent's
+            session events and persistent state.
+    """
     session = callback_context._invocation_context.session
     url_to_short_id = callback_context.state.get("url_to_short_id", {})
     sources = callback_context.state.get("sources", {})
@@ -99,6 +114,18 @@ def collect_research_sources_callback(callback_context: CallbackContext) -> None
 def citation_replacement_callback(
     callback_context: CallbackContext,
 ) -> genai_types.Content:
+    """Replaces citation tags in a report with Markdown-formatted links.
+
+    Processes 'final_cited_report' from context state, converting tags like
+    `<cite source="src-N"/>` into hyperlinks using source information from
+    `callback_context.state["sources"]`. Also fixes spacing around punctuation.
+
+    Args:
+        callback_context (CallbackContext): Contains the report and source information.
+
+    Returns:
+        genai_types.Content: The processed report with Markdown citation links.
+    """
     final_report = callback_context.state.get("final_cited_report", "")
     sources = callback_context.state.get("sources", {})
 

@@ -45,7 +45,7 @@ This command uses the [Agent Starter Pack](goo.gle/agent-starter-pack) to create
 python -m venv .venv && source .venv/bin/activate # On Windows: .venv\Scripts\activate
 
 # Install the starter pack and create your project
-pip install agent-starter-pack
+pip install --upgrade agent-starter-pack
 agent-starter-pack create my-fullstack-agent -a adk_gemini_fullstack
 ```
 

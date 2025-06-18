@@ -75,6 +75,30 @@ Your agent should now be running!
 *   Backend API: `http://localhost:8000`
 *   Frontend UI: `http://localhost:5173`
 
+## 🔑 Using Google AI Studio API Keys
+
+If you prefer to use [AI Studio](https://aistudio.google.com/) API keys:
+
+1. Create a `.env` file in the `/app` directory with:
+   ```
+   GOOGLE_GENAI_USE_VERTEXAI=FALSE
+   GOOGLE_API_KEY=YOUR_AI_STUDIO_API_KEY
+   ```
+   
+   <details>
+   <summary>Or export the variables directly</summary>
+   
+   ```bash
+   export GOOGLE_GENAI_USE_VERTEXAI=FALSE
+   export GOOGLE_API_KEY=YOUR_AI_STUDIO_API_KEY
+   ```
+   </details>
+   
+
+2. Replace `YOUR_AI_STUDIO_API_KEY` with your actual key from [AI Studio](https://aistudio.google.com/app/apikey)
+
+3. This setting will use your API key instead of the default Vertex AI configuration.
+
 ## ☁️ Deployment
 
 You can quickly deploy your agent to a **development environment** on Google Cloud. You can deploy your latest code at any time with:

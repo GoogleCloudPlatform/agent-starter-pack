@@ -14,12 +14,10 @@
 
 import datetime
 import logging
-import os
 import re
 from collections.abc import AsyncGenerator
 from typing import Literal
 
-import google.auth
 from google.adk.agents import BaseAgent, LlmAgent, LoopAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
 from google.adk.agents.invocation_context import InvocationContext
@@ -31,11 +29,6 @@ from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
 from .config import config
-
-_, project_id = google.auth.default()
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 
 
 # --- Structured Output Models ---

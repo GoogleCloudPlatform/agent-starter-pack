@@ -84,6 +84,14 @@ locals {
       name  = "live_api-cloud_run"
       value = "live_api,cloud_run"
     },
+    {
+      name  = "adk_gemini_fullstack-agent_engine"
+      value = "adk_gemini_fullstack,agent_engine"
+    },
+    {
+      name  = "adk_gemini_fullstack-cloud_run"
+      value = "adk_gemini_fullstack,cloud_run"
+    },
   ]
 
   agent_testing_included_files = { for combo in local.agent_testing_combinations :
@@ -126,8 +134,11 @@ locals {
       name  = "live_api-cloud_run"
       value = "live_api,cloud_run"
     },
+    {
+      name  = "adk_gemini_fullstack-agent_engine"
+      value = "adk_gemini_fullstack,agent_engine"
+    },
   ]
-  
   # Create a safe trigger name by replacing underscores with hyphens and dots with hyphens
   # This ensures we have valid trigger names that don't exceed character limits
   trigger_name_safe = { for combo in local.agent_testing_combinations :

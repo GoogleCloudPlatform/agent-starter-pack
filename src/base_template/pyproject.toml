@@ -99,11 +99,8 @@ exclude = [".venv"]
 
 [tool.codespell]
 ignore-words-list = "rouge"
-{% if cookiecutter.agent_name == 'live_api' %}
 skip = "./locust_env/*,uv.lock,.venv,./frontend,**/*.ipynb"
-{% else %}
-skip = "./locust_env/*,uv.lock,.venv,**/*.ipynb"
-{%- endif %}
+
 
 [build-system]
 requires = ["hatchling"]

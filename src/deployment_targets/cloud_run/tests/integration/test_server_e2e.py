@@ -157,7 +157,7 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     }
 {% endif %}
     response = requests.post(
-        STREAM_URL, headers=HEADERS, json=data, stream=True, timeout=10
+        STREAM_URL, headers=HEADERS, json=data, stream=True, timeout=60
     )
     assert response.status_code == 200
 

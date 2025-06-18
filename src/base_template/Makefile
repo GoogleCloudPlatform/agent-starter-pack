@@ -1,11 +1,26 @@
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source ~/.bashrc; }
 	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter --frozen{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
+{%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %} && {{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}{%- endif %}
+{%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
+{%- for cmd_name, cmd_value in cookiecutter.settings.get("commands", {}).get("extra", {}).items() %}
 
-test:
-	uv run pytest tests/unit && uv run pytest tests/integration
+{{ cmd_name }}:
+{%- if cmd_value is mapping %}
+{%- if cmd_value.command is mapping and cookiecutter.deployment_target in cmd_value.command %}
+	{{ cmd_value.command[cookiecutter.deployment_target] }}
+{%- else %}
+	{{ cmd_value.command if cmd_value.command is string else "" }}
+{%- endif %}
+{%- else %}
+	{{ cmd_value }}
+{%- endif %}
+{%- endfor %}{%- endif %}
 
 playground:
+{%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("playground") %}
+	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("playground")}}
+{%- else %}
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
@@ -25,6 +40,7 @@ playground:
 	PORT=8501 npm --prefix frontend start
 {%- else %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
+{%- endif %}
 {%- endif %}
 {%- endif %}
 
@@ -81,6 +97,9 @@ data-ingestion:
 		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \
 		--pipeline-name="data-ingestion-pipeline")
 {%- endif %}
+
+test:
+	uv run pytest tests/unit && uv run pytest tests/integration
 
 lint:
 	uv run codespell

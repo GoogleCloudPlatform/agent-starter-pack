@@ -80,7 +80,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         deployment_target: Optional deployment target to filter agents
     """
     # Define priority agents that should appear first
-    PRIORITY_AGENTS = ["adk_base", "agentic_rag", "langgraph_base_react"]
+    PRIORITY_AGENTS = [
+        "adk_base",
+        "adk_gemini_fullstack",
+        "agentic_rag",
+        "langgraph_base_react",
+    ]
 
     agents_list = []
     priority_agents_dict = dict.fromkeys(PRIORITY_AGENTS)  # Track priority agents
@@ -499,15 +504,12 @@ def process_template(
                 copy_data_ingestion_files(project_template, datastore)
 
             # Create cookiecutter.json in the template root
-            # Process extra dependencies
-            extra_deps = template_config.get("settings", {}).get(
-                "extra_dependencies", []
-            )
-            # Get frontend type from template config
-            frontend_type = template_config.get("settings", {}).get(
-                "frontend_type", DEFAULT_FRONTEND
-            )
-            tags = template_config.get("settings", {}).get("tags", ["None"])
+            # Get settings from template config
+            settings = template_config.get("settings", {})
+            extra_deps = settings.get("extra_dependencies", [])
+            frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
+            tags = settings.get("tags", ["None"])
+
             cookiecutter_config = {
                 "project_name": "my-project",
                 "agent_name": agent_name,
@@ -516,6 +518,7 @@ def process_template(
                 "example_question": template_config.get("example_question", "").ljust(
                     61
                 ),
+                "settings": settings,
                 "tags": tags,
                 "deployment_target": deployment_target or "",
                 "frontend_type": frontend_type,

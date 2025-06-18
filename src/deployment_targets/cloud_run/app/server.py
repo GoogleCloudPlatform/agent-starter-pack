@@ -28,6 +28,9 @@ from app.utils.typing import Feedback
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
+allow_origins = (
+    os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
+)
 
 bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs-data"
 create_bucket_if_not_exists(
@@ -41,7 +44,10 @@ trace.set_tracer_provider(provider)
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 app: FastAPI = get_fast_api_app(
-    agents_dir=AGENT_DIR, web=True, artifact_service_uri=bucket_name
+    agents_dir=AGENT_DIR,
+    web=True,
+    artifact_service_uri=bucket_name,
+    allow_origins=allow_origins,
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"

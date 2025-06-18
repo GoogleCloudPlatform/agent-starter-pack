@@ -3,38 +3,25 @@ import logging
 import os
 import re
 from collections.abc import AsyncGenerator
-from dataclasses import dataclass
 from typing import Literal
 
 import google.auth
-from google.adk.agents import LlmAgent, LoopAgent, SequentialAgent
+from google.adk.agents import BaseAgent, LlmAgent, LoopAgent, SequentialAgent
 from google.adk.agents.callback_context import CallbackContext
+from google.adk.agents.invocation_context import InvocationContext
+from google.adk.events import Event, EventActions
 from google.adk.planners import BuiltInPlanner
 from google.adk.tools import google_search
+from google.adk.tools.agent_tool import AgentTool
 from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
-from google.adk.tools.agent_tool import AgentTool
-from google.adk.agents import BaseAgent
-from google.adk.agents.invocation_context import InvocationContext
-from google.adk.events import Event, EventActions
-
+from .config import config
 
 _, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
 os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
 os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
-
-
-# --- Centralized Configuration ---
-@dataclass
-class ResearchConfiguration:
-    critic_model: str = "gemini-2.5-pro"
-    worker_model: str = "gemini-2.5-flash"
-    max_search_iterations: int = 5
-
-
-config = ResearchConfiguration()
 
 
 # --- Structured Output Models ---
@@ -55,6 +42,7 @@ class Feedback(BaseModel):
         default=None,
         description="A list of specific, targeted follow-up search queries needed to fix research gaps. This should be null or empty if the grade is 'pass'.",
     )
+
 
 # --- Callbacks ---
 def collect_research_sources_callback(callback_context: CallbackContext) -> None:
@@ -108,9 +96,12 @@ def collect_research_sources_callback(callback_context: CallbackContext) -> None
     callback_context.state["sources"] = sources
 
 
-def citation_replacement_callback(callback_context: CallbackContext) -> genai_types.Content:
+def citation_replacement_callback(
+    callback_context: CallbackContext,
+) -> genai_types.Content:
     final_report = callback_context.state.get("final_cited_report", "")
     sources = callback_context.state.get("sources", {})
+
     def tag_replacer(match: re.Match) -> str:
         short_id = match.group(1)
         if not (source_info := sources.get(short_id)):
@@ -118,10 +109,13 @@ def citation_replacement_callback(callback_context: CallbackContext) -> genai_ty
             return ""
         display_text = source_info.get("title", source_info.get("domain", short_id))
         return f" [{display_text}]({source_info['url']})"
+
     processed_report = re.sub(
-        r'<cite\s+source\s*=\s*["\']?\s*(src-\d+)\s*["\']?\s*/>', tag_replacer, final_report
+        r'<cite\s+source\s*=\s*["\']?\s*(src-\d+)\s*["\']?\s*/>',
+        tag_replacer,
+        final_report,
     )
-    processed_report = re.sub(r'\s+([.,;:])', r'\1', processed_report)
+    processed_report = re.sub(r"\s+([.,;:])", r"\1", processed_report)
     callback_context.state["final_report_with_citations"] = processed_report
     return genai_types.Content(parts=[genai_types.Part(text=processed_report)])
 
@@ -129,21 +123,28 @@ def citation_replacement_callback(callback_context: CallbackContext) -> genai_ty
 # --- Custom Agent for Loop Control ---
 class EscalationChecker(BaseAgent):
     """Checks research evaluation and escalates to stop the loop if grade is 'pass'."""
+
     def __init__(self, name: str):
         super().__init__(name=name)
-    async def _run_async_impl(self, ctx: InvocationContext) -> AsyncGenerator[Event, None]:
+
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
         evaluation_result = ctx.session.state.get("research_evaluation")
         if evaluation_result and evaluation_result.get("grade") == "pass":
-            logging.info(f"[{self.name}] Research evaluation passed. Escalating to stop loop.")
+            logging.info(
+                f"[{self.name}] Research evaluation passed. Escalating to stop loop."
+            )
             yield Event(author=self.name, actions=EventActions(escalate=True))
         else:
-            logging.info(f"[{self.name}] Research evaluation failed or not found. Loop will continue.")
+            logging.info(
+                f"[{self.name}] Research evaluation failed or not found. Loop will continue."
+            )
             # Yielding an event without content or actions just lets the flow continue.
             yield Event(author=self.name)
 
 
 # --- AGENT DEFINITIONS ---
-
 plan_generator = LlmAgent(
     model=config.worker_model,
     name="plan_generator",
@@ -201,11 +202,11 @@ section_researcher = LlmAgent(
 
 research_evaluator = LlmAgent(
     model=config.critic_model,
-    name="research_evaluator", 
+    name="research_evaluator",
     description="Critically evaluates research and generates follow-up queries.",
     instruction=f"""
     You are a meticulous quality assurance analyst evaluating the research findings in 'section_research_findings'.
-    
+
     **CRITICAL RULES:**
     1. Assume the given research topic is correct. Do not question or try to verify the subject itself.
     2. Your ONLY job is to assess the quality, depth, and completeness of the research provided *for that topic*.
@@ -213,8 +214,8 @@ research_evaluator = LlmAgent(
     4. Do NOT fact-check or question the fundamental premise or timeline of the topic.
     5. If suggesting follow-up queries, they should dive deeper into the existing topic, not question its validity.
 
-    Be very critical about the QUALITY of research. If you find significant gaps in depth or coverage, assign a grade of "fail", 
-    write a detailed comment about what's missing, and generate 5-7 specific follow-up queries to fill those gaps. 
+    Be very critical about the QUALITY of research. If you find significant gaps in depth or coverage, assign a grade of "fail",
+    write a detailed comment about what's missing, and generate 5-7 specific follow-up queries to fill those gaps.
     If the research thoroughly covers the topic, grade "pass".
 
     Current date: {datetime.datetime.now().strftime("%Y-%m-%d")}

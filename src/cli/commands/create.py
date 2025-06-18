@@ -191,6 +191,13 @@ def create(
         if debug:
             logging.debug(f"Selected agent: {agent}")
 
+        template_path = (
+            pathlib.Path(__file__).parent.parent.parent.parent
+            / "agents"
+            / final_agent
+            / "template"
+        )
+        config = load_template_config(template_path)
         # Data ingestion and datastore selection
         if include_data_ingestion or datastore:
             # If datastore is specified but include_data_ingestion is not, set it to True
@@ -206,13 +213,6 @@ def create(
                 logging.debug(f"Selected datastore type: {datastore}")
         else:
             # Check if the agent requires data ingestion
-            template_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent
-                / "agents"
-                / final_agent
-                / "template"
-            )
-            config = load_template_config(template_path)
             if config and config.get("settings", {}).get("requires_data_ingestion"):
                 include_data_ingestion = True
                 datastore = prompt_datastore_selection(final_agent)
@@ -322,9 +322,16 @@ def create(
         )
         # Determine the correct path to display based on whether output_dir was specified
         console.print("\n🚀 To get started, run the following command:")
-        console.print(
-            f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
-        )
+
+        # Check if the agent has a 'dev' command in its settings
+        if config["settings"].get("commands", {}).get("extra", {}).get("dev"):
+            console.print(
+                f"   [bold bright_green]cd {cd_path} && make install && make dev[/]"
+            )
+        else:
+            console.print(
+                f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
+            )
     except Exception:
         if debug:
             logging.exception(

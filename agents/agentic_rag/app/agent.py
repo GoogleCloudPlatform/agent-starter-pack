@@ -26,7 +26,7 @@ from app.templates import format_docs
 EMBEDDING_MODEL = "text-embedding-005"
 LLM_LOCATION = "global"
 LOCATION = "us-central1"
-LLM = "gemini-2.0-flash-001"
+LLM = "gemini-2.5-flash"
 
 credentials, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)

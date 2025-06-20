@@ -1,6 +1,6 @@
 # Gemini Fullstack Agent Development Kit (ADK) Quickstart
 
-> 🔍 **Sample Agent**: This agent is part of the [ADK Samples](https://github.com/google/adk-samples) collection, showcasing agent implementations using the Agent Development Kit.
+> 🔍 **Sample Agent**: This agent is part of the [ADK Samples](https://github.com/google/adk-samples/tree/main/python/agents/gemini-fullstack) collection, showcasing agent implementations using the Agent Development Kit.
 
 The **Gemini Fullstack Agent Development Kit (ADK) Quickstart** is a production-ready blueprint for building a sophisticated, fullstack research agent with Gemini. It's built to demonstrate how the ADK helps structure complex agentic workflows, build modular agents, and incorporate critical Human-in-the-Loop (HITL) steps.
 
@@ -25,6 +25,3 @@ The **Gemini Fullstack Agent Development Kit (ADK) Quickstart** is a production-
     </tr>
   </tbody>
 </table>
-
-Here's a screenshot of the application in action:
-<img src="../../docs/images/adk_gemini_fullstack_preview.png" alt="Gemini Fullstack ADK Preview">

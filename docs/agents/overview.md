@@ -8,6 +8,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | Agent Name | Description | Use Case |
 |------------|-------------|----------|
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
+| `adk_gemini_fullstack` | A production-ready fullstack research agent with Gemini | Complex research and information synthesis |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
 | `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
@@ -32,6 +33,16 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Getting started with agent development on Google Cloud.
 *   Building general-purpose conversational agents.
 *   Learning the ADK framework and ReAct pattern.
+
+### ADK Gemini Fullstack (`adk_gemini_fullstack`)
+
+> 🔍 **Sample Agent**: This agent is part of the [ADK Samples](https://github.com/google/adk-samples/tree/main/python/agents/gemini-fullstack) collection, showcasing agent implementations using the Agent Development Kit.
+
+This template provides a production-ready blueprint for building a sophisticated, fullstack research agent with Gemini. It demonstrates how the ADK helps structure complex agentic workflows, build modular agents, and incorporate critical Human-in-the-Loop (HITL) steps. Key features include:
+
+*   A complete React frontend and ADK-powered FastAPI backend
+*   Advanced agentic workflow where the agent strategizes a multi-step plan, reflects on findings to identify gaps, and synthesizes a final, comprehensive report.
+*   Iterative and Human-in-the-Loop research that involves the user for plan approval, then autonomously loops through searching and refining results.
 
 ### Agentic RAG (`agentic_rag`)
 

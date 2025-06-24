@@ -13,6 +13,10 @@ export default defineConfig({
     },
   },
   server: {
+    // Makes the server accessible on the local network (e.g., for mobile testing)
+    host: true,
+    // Should be disabled or limited when deployed in untrusted network environments.
+    allowedHosts: true,
     proxy: {
       // Proxy API requests to the backend server
       "/api": {

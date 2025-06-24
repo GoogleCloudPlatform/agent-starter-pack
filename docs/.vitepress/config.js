@@ -39,6 +39,7 @@ export default defineConfig({
           { text: 'Deployment', link: '/guide/deployment' },
           { text: 'Data Ingestion', link: '/guide/data-ingestion' },
           { text: 'Observability', link: '/guide/observability' },
+          { text: 'Deploy UI', link: '/guide/deploy-ui' },
           { text: 'Troubleshooting', link: '/guide/troubleshooting' }
         ]
       },

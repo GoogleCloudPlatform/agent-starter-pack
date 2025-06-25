@@ -34,24 +34,27 @@ Ready to build your AI agent? Simply run this command:
 python -m venv .venv && source .venv/bin/activate
 
 # Install the agent starter pack
-pip install agent-starter-pack
+pip install --upgrade agent-starter-pack
 
 # Create a new agent project
 agent-starter-pack create my-awesome-agent
 ```
 
+<details>
+<summary> ✨ Alternative: Using uv</summary>
+
+If you have [`uv`](https://github.com/astral-sh/uv) installed, you can create and set up your project with a single command:
+```bash
+uvx agent-starter-pack create my-fullstack-agent
+```
+This command handles creating the project without needing to pre-install the package into a virtual environment.
+</details>
+
 **That's it!** You now have a fully functional agent project—complete with backend, frontend, and deployment infrastructure—ready for you to explore and customize.
+
 See [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/installation) for more options, or try with zero setup in [Firebase Studio](https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx) or [Cloud Shell](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Feliasecchig%2Fasp-open-in-cloud-shell&cloudshell_print=open-in-cs).
 
 ---
-
- 🆕 The starter pack offers full support for Agent Engine, a new fully managed solution to deploy agents. Simply run this command to get started:
-
-```bash
-agent-starter-pack create my-agent -d agent_engine -a adk_base
-```
-
-*See the [full list of options](https://googlecloudplatform.github.io/agent-starter-pack/cli/create) for details.*
 
 ## 🤖 Agents
 

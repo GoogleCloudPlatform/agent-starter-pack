@@ -21,7 +21,7 @@ steps:
       - -c
       - |
         cd data_ingestion && pip install uv==0.6.12 --user && cd data_ingestion_pipeline && \
-        uv sync --frozen && uv run python submit_pipeline.py
+        uv sync --locked && uv run python submit_pipeline.py
     env:
       - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT}"
       - "REGION=${_REGION}"
@@ -111,7 +111,7 @@ steps:
     args:
       - "-c"
       - |
-        pip install uv==0.6.12 --user && uv sync --frozen
+        pip install uv==0.6.12 --user && uv sync --locked
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
@@ -121,7 +121,7 @@ steps:
     args:
       - "-c"
       - |
-        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --frozen > .requirements.txt
+        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
         uv run app/agent_engine_app.py \
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
@@ -149,7 +149,7 @@ steps:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
         export _ID_TOKEN=$(cat id_token.txt)
         export _STAGING_URL=$(cat staging_url.txt)
-        pip install uv==0.6.12 --user && uv sync --frozen
+        pip install uv==0.6.12 --user && uv sync --locked
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
         export _AUTH_TOKEN=$(cat auth_token.txt)
 {%- endif %}

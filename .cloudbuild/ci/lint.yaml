@@ -20,7 +20,7 @@ steps:
     args:
       - "-c"
       - |
-        uv sync --dev --extra lint --frozen
+        uv sync --dev --extra lint --locked
 
   # Run unit tests using pytest
   - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"

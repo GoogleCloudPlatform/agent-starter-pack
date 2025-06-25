@@ -1,7 +1,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter --frozen{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
+	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %} && {{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}{%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
 {%- for cmd_name, cmd_value in cookiecutter.settings.get("commands", {}).get("extra", {}).items() %}
@@ -67,8 +67,8 @@ backend:
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
-	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate --frozen > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project --frozen > .requirements.txt && uv run app/agent_engine_app.py
+	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run app/agent_engine_app.py
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 

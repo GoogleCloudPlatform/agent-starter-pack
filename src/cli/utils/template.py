@@ -421,14 +421,6 @@ def process_template(
                 pathlib.Path(__file__).parent.parent.parent / "base_template"
             )
             copy_files(base_template_path, project_template, agent_name, overwrite=True)
-            resources_path = (
-                pathlib.Path(__file__).parent.parent.parent / "resources"
-            )
-            copy_files(resources_path, project_template / "src/resources", agent_name, overwrite=True)
-            llm_txt_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
-            )
-            shutil.copy2(llm_txt_path, project_template / ".llm.txt")
             logging.debug(f"1. Copied base template from {base_template_path}")
 
             # 2. Process deployment target if specified

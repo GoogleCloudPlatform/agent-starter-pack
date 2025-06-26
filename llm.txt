@@ -1,0 +1,381 @@
+```text
+################################################################################
+#
+# llm.txt
+#
+# Comprehensive guide for the "Agent Starter Pack" repository.
+# This file consolidates all documentation to provide a single source of
+# truth for an LLM to understand the project's purpose, features,
+# architecture, and usage.
+#
+################################################################################
+
+---
+# Section 1: Project Overview & Core Purpose
+---
+
+### Project Identity
+- **Name:** Agent Starter Pack
+- **Purpose:** Go from idea to deployment faster with production-ready Generative AI Agents on Google Cloud.
+- **Tagline:** Production-Ready Agents on Google Cloud, faster.
+
+### The Problem: The "Production Gap"
+Many developers can build a basic GenAI agent prototype (like a chatbot or RAG system) quickly. However, moving from that prototype to a robust, reliable, production-ready agent is a major challenge that typically takes 3-9 months. This "last mile" is where the real work lies.
+
+### The "Last Mile" Challenges
+1.  **Customization & Integration:** Tailoring business logic, securely grounding the agent with company data, and ensuring security/compliance.
+2.  **Rigorous Evaluation:** Defining metrics, systematically assessing agent quality and safety, and generating datasets for testing.
+3.  **Deployment & Operations (MLOps/LLMOps):** Building scalable cloud infrastructure, establishing CI/CD pipelines for rapid iteration, and integrating with UIs.
+4.  **Observability & Monitoring:** Tracking performance, collecting user interaction data, and implementing feedback loops for continuous improvement.
+
+### The Solution: Agent Starter Pack
+The Agent Starter Pack bridges this "production gap". It provides a foundational template for all the MLOps and infrastructure components, allowing developers to focus on what makes their agent unique.
+
+- **Your Focus (The Core Agent):** Prompts, LLM interactions, business logic, agent orchestration (e.g., LangGraph, CrewAI, ADK), and tool definitions.
+- **Our Foundation (The Starter Pack):**
+    - **Deployment & Ops:** API server, CI/CD pipelines, Infrastructure as Code (Terraform), testing frameworks.
+    - **Observability:** Logging, tracing, monitoring dashboards.
+    - **Evaluation:** Vertex AI Evaluation integration.
+    - **Data & UI:** Storage connections, vector stores, UI playground.
+    - **Security:** GCP security best practices.
+
+The goal is to provide production patterns from the start, saving significant setup time and letting teams concentrate on core agent logic.
+
+---
+# Section 2: Getting Started & Installation (Automated Project Creation)
+---
+
+### Prerequisites
+- Python 3.10+
+- Google Cloud SDK (`gcloud` CLI)
+- Terraform
+- `uv` (Optional, but recommended for speed, especially for `uvx` commands)
+- `gh` CLI (For automated CI/CD setup with GitHub)
+
+### Quickest Start (Zero Setup Environments)
+- **Firebase Studio:** `https://studio.firebase.google.com/new?template=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2Fagent-starter-pack%2Ftree%2Fmain%2Fsrc%2Fresources%2Fidx`
+- **Google Cloud Shell:** `https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Feliasecchig%2Fasp-open-in-cloud-shell&cloudshell_print=open-in-cs`
+
+### Installation & Project Creation
+The primary action is to use the `create` command. This command is designed to be run interactively or, for full automation, by providing all necessary flags.
+
+**Method 1: `uvx` for Automated, Zero-Install Project Creation (Recommended)**
+This single command downloads and runs the latest version, perfect for scripting or quick, non-interactive setup.
+
+```bash
+# AUTOMATED PROJECT CREATION EXAMPLE:
+# Create a new project named 'my-automated-agent'
+# -a adk_base: Uses the 'adk_base' agent template.
+# -d cloud_run: Sets the deployment target to 'Cloud Run'.
+# --region us-central1: Specifies the Google Cloud region.
+# --auto-approve: Skips all interactive prompts, assuming default GCP config.
+
+uvx agent-starter-pack create my-automated-agent \
+  -a adk_base \
+  -d cloud_run \
+  --region us-central1 \
+  --auto-approve
+```
+
+**Method 2: Virtual Environment (`pip` or `uv`)**
+This is a standard Python workflow. You can still use the `--auto-approve` flag here.
+```bash
+# 1. Create and activate a virtual environment
+python -m venv .venv
+source .venv/bin/activate
+
+# 2. Install the package
+pip install agent-starter-pack
+
+# 3. Run the create command with full automation
+agent-starter-pack create my-automated-agent \
+  -a adk_base \
+  -d cloud_run \
+  --region us-central1 \
+  --auto-approve
+```
+
+**Method 3: Persistent CLI Install (`pipx` or `uv tool`)**
+This installs the `agent-starter-pack` command globally in an isolated environment. The `create` command can then be run with full automation as shown above.
+
+### Exploring and Running Locally
+After creating your project, follow these steps:
+1.  Navigate into the new directory: `cd my-automated-agent` (or whatever `PROJECT_NAME` you chose)
+2.  Install dependencies and launch the local UI playground:
+    ```bash
+    make install && make playground
+    ```
+3.  Explore the generated project structure:
+    - `app/`: Your core backend agent code. **This is where you'll do most of your work.**
+    - `deployment/`: Terraform infrastructure and CI/CD pipeline definitions.
+    - `frontend/`: (If applicable) Web UI for your agent.
+    - `tests/`: Unit and integration tests.
+    - `notebooks/`: Jupyter notebooks for prototyping and evaluation.
+    - `README.md`: **Project-specific instructions.** Always read this first!
+
+---
+# Section 3: Development & Automated Deployment Workflow
+---
+
+This section describes the end-to-end lifecycle of an agent, with emphasis on automation.
+
+### 1. Local Development & Iteration
+The local development loop is designed for rapid experimentation.
+1.  **Prototype:** Use Jupyter notebooks in the `notebooks/` directory to quickly test new prompts, tools, or logic.
+2.  **Integrate:** Move your successful prototype code into the main application, typically by editing `app/agent.py` and other files in the `app/` directory.
+3.  **Test:** Run the interactive UI playground to test your changes live. The playground features hot-reloading, chat history, and feedback mechanisms.
+    ```bash
+    make install && make playground
+    ```
+
+### 2. Deploying to a Cloud Development Environment
+Before setting up full CI/CD, you can deploy to a personal cloud dev environment for testing.
+*(Run these `make` commands from the project root)*
+
+1.  **Set Project:** `gcloud config set project YOUR_DEV_PROJECT_ID`
+2.  **Provision Resources:** This uses Terraform to create necessary resources in your dev project.
+    ```bash
+    make setup-dev-env
+    ```
+3.  **Deploy Backend:** This builds and deploys your agent's backend code to the cloud.
+    ```bash
+    make backend
+    ```
+
+### 3. Automated Production-Ready Deployment with CI/CD
+For reliable, automated deployments to staging and production environments, the `setup-cicd` command streamlines the entire process.
+
+**AUTOMATED CI/CD SETUP EXAMPLE (Recommended for GitHub)**
+The `setup-cicd` command automates the entire setup. It creates a GitHub repo, connects it to Cloud Build, provisions staging/prod infrastructure, and configures deployment triggers. Provide all necessary parameters to run it non-interactively.
+
+```bash
+# AUTOMATED CI/CD SETUP EXAMPLE:
+# This command sets up your entire CI/CD pipeline and infrastructure without interactive prompts.
+# --staging-project: The Google Cloud Project ID for your staging environment.
+# --prod-project: The Google Cloud Project ID for your production environment.
+# --repository-name: The name for the new GitHub repository that will be created.
+# --repository-owner: Your GitHub username or organization where the repo will be created.
+# --git-provider: The Git provider to use (github, gitlab, etc.). Only "github" is supported
+# --auto-approve: Skips all interactive confirmation prompts.
+
+# The following command ensures there is no interactive prompt in the execution:
+
+uvx agent-starter-pack setup-cicd \
+  --staging-project t-starter-staging \
+  --prod-project t-starter-prod \
+  --repository-name my-adk-project-repo \
+  --repository-owner eliasecchig \
+  --git-provider github \
+  --auto-approve
+```
+
+**Manual CI/CD Setup (For greater control or non-GitHub providers)**
+For full control or non-GitHub providers, follow these steps:
+1.  **Create a Git Repository:** At your chosen provider (GitHub, GitLab, etc.).
+2.  **Connect Repo to Cloud Build:** In the GCP console, connect your repository to Cloud Build.
+3.  **Configure Terraform:** Edit `deployment/terraform/vars/env.tfvars` with your project IDs (staging, prod, cicd), region, and repository details.
+4.  **Deploy Infrastructure:** Run Terraform to provision the CI/CD pipelines, IAM roles, and other resources.
+    ```bash
+    cd deployment/terraform
+    terraform init
+    terraform apply --var-file vars/env.tfvars
+    ```
+
+**CI/CD Workflow Logic:**
+- **On Pull Request:** A CI pipeline runs unit and integration tests (`deployment/ci/pr_checks.yaml`).
+- **On Merge to `main`:** A CD pipeline builds the container, pushes it to Artifact Registry, deploys to the staging environment, and runs load tests (`deployment/cd/staging.yaml`).
+- **Manual Approval:** After successful staging deployment, a manual approval step is required to trigger the production deployment (`deployment/cd/deploy-to-prod.yaml`).
+
+### 4. Monitoring Your Deployed Agent
+The starter pack includes built-in observability using OpenTelemetry.
+- **Traces & Logs:** All interactions are sent to Google Cloud Trace and Cloud Logging. You can inspect request flows, latencies, and full prompt/response payloads.
+- **BigQuery:** Data is routed to BigQuery via a Log Router for long-term storage and advanced analytics.
+- **Looker Studio Dashboards:** Use pre-built templates to visualize agent performance.
+    - ADK Agents: `https://lookerstudio.google.com/c/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC`
+    - Non-ADK Agents: `https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC`
+
+---
+# Section 4: Agent Templates
+---
+
+The starter pack provides several templates to kickstart development.
+
+| Agent Name             | Description                                                  | Use Case                                  | Framework/Pattern |
+| ---------------------- | ------------------------------------------------------------ | ----------------------------------------- | ----------------- |
+| `adk_base`             | A base ReAct agent implemented using Google's Agent Development Kit (ADK). | General purpose conversational agent.     | ADK, ReAct        |
+| `adk_gemini_fullstack` | A production-ready fullstack research agent with Gemini.     | Complex research and information synthesis. | ADK, FastAPI, React |
+| `agentic_rag`          | A RAG agent for document retrieval and Q&A.                  | Document search and question answering.   | ADK, RAG          |
+| `langgraph_base_react` | A base ReAct agent using LangGraph.                          | Graph-based conversational agent.         | LangGraph, ReAct  |
+| `crewai_coding_crew`   | A multi-agent system implemented with CrewAI.                | Collaborative coding assistance.          | CrewAI, LangGraph |
+| `live_api`             | A real-time multimodal RAG agent.                            | Audio/video/text chat with knowledge base. | Live API, WebSockets |
+
+You can customize any template by modifying the agent logic, prompts, tools, and data sources in the `app/` directory.
+
+---
+# Section 5: Key Features & Customization
+---
+
+### Data Ingestion for RAG
+For agents that need to search over custom documents (like `agentic_rag`), you can include a data ingestion pipeline.
+- **What it does:** Automates loading data, chunking documents, generating embeddings with Vertex AI, and storing them in a vector database.
+- **Supported Datastores:** Vertex AI Search, Vertex AI Vector Search.
+- **How to enable (automated via flags):**
+    ```bash
+    # Example using Vertex AI Search with automation:
+    uvx agent-starter-pack create my-rag-agent \
+      -a agentic_rag \
+      -d cloud_run \
+      -i \
+      -ds vertex_ai_search \
+      --auto-approve
+    ```
+- **Setup:** After creation, follow the `data_ingestion/README.md` to deploy the required Terraform infrastructure before running the pipeline.
+
+### Deploying with a User Interface (UI)
+- **Unified Deployment (for Dev/Test):** The backend and frontend are packaged and served from a single Cloud Run service, secured with Identity-Aware Proxy (IAP). This is the simplest approach for development.
+- **How to deploy a built-in UI (like ADK's playground):**
+  ```bash
+  make backend IAP=true
+  ```
+- **How to deploy a custom frontend (e.g., React dev server):**
+  1.  Modify the `Dockerfile` to install Node.js and run both the backend and frontend servers.
+  2.  Deploy to Cloud Run, specifying the frontend's port.
+      ```bash
+      # If your frontend runs on port 5173
+      make backend IAP=true PORT=5173
+      ```
+- **Access Control:** After deploying with IAP, you must grant users the `IAP-secured Web App User` role in IAM to give them access.
+
+### Monitoring & Observability
+- **Technology:** Uses OpenTelemetry to emit events to Google Cloud Trace and Logging.
+- **Custom Tracer:** A custom `CloudTraceSpanExporter` in `app/utils/tracing.py` handles large payloads (>256KB) by storing them in a GCS bucket and linking them back to the trace, overcoming default service limits.
+- **Infrastructure:** A Log Router to sink data to BigQuery is provisioned by Terraform in `deployment/terraform`.
+
+---
+# Section 6: CLI Reference (Automated Usage)
+---
+
+### `agent-starter-pack create`
+Creates a new agent project from a template. This command is designed for both interactive and fully automated use.
+
+**Usage:**
+```bash
+agent-starter-pack create PROJECT_NAME [OPTIONS]
+```
+
+**Arguments:**
+- `PROJECT_NAME`: The name for your new project directory.
+
+**Key Options (for automation):**
+- `-a, --agent`: The agent template to use (e.g., `adk_base`, `agentic_rag`).
+- `-d, --deployment-target`: The deployment target (`cloud_run` or `agent_engine`).
+- `-ds, --datastore`: For RAG agents, the datastore to use (`vertex_ai_search` or `vertex_ai_vector_search`).
+- `-i, --include-data-ingestion`: Manually include a data ingestion pipeline.
+- `--region`: GCP region for deployment (e.g., `us-central1`).
+- `-o, --output-dir`: Output directory for the new project.
+- `--auto-approve`: **Crucial for automation.** Skips all interactive confirmation prompts for GCP credentials and region.
+
+**Automated Example:**
+```bash
+# Fully automated creation of an 'adk_base' agent targeting Cloud Run in 'us-central1'
+# All prompts skipped via --auto-approve
+uvx agent-starter-pack create my-automated-project \
+  -a adk_base \
+  -d cloud_run \
+  --region us-central1 \
+  --auto-approve
+```
+
+### `agent-starter-pack setup-cicd`
+Automates the entire CI/CD setup for a project on GitHub, including repository creation, Cloud Build connections, and Terraform infrastructure deployment.
+
+**Usage:**
+```bash
+# Recommended to run with uvx for zero-install automation
+uvx agent-starter-pack setup-cicd [OPTIONS]
+```
+
+**What it does:**
+1.  Creates/connects a GitHub repository.
+2.  Sets up a Cloud Build connection to the repo.
+3.  Configures and applies Terraform to provision CI/CD resources (triggers, IAM, etc.) in your GCP projects.
+4.  Sets up remote Terraform state in a GCS bucket.
+5.  Initializes the local git repository and adds the remote origin.
+
+**Prerequisites for Automation:**
+- Run from the project root directory.
+- `uv`, `gh` CLI, `gcloud` CLI, and `terraform` must be installed and authenticated.
+- You must have `Owner` role on the GCP projects used.
+
+**Key Options (for automation):**
+- `--staging-project`: Your GCP staging project ID.
+- `--prod-project`: Your GCP production project ID.
+- `--cicd-project`: (Optional) Project to host CI/CD resources. Defaults to the prod project.
+- `--dev-project`: (Optional) Project for a dedicated dev environment managed by Terraform.
+- `--region`: (Optional) GCP region (default: `us-central1`).
+- `--repository-name`: The name for the GitHub repository.
+- `--repository-owner`: Your GitHub username or organization where the repo will be created.
+- `--auto-approve`: **Crucial for automation.** Skips all interactive confirmation prompts.
+
+**Automated Example:**
+```bash
+# Fully automated setup of CI/CD for a project using 't-starter-staging' and 't-starter-prod'
+# as GCP project IDs, creating 'my-adk-project-repo' under 'eliasecchig' on GitHub.
+# All prompts skipped via --auto-approve.
+uvx agent-starter-pack setup-cicd \
+  --staging-project t-starter-staging \
+  --prod-project t-starter-prod \
+  --repository-name my-adk-project-repo \
+  --repository-owner eliasecchig \
+  --auto-approve
+```
+
+**Important:** This command is powerful but currently experimental. For production deployments requiring fine-grained control and advanced CI/CD practices, the manual setup is recommended.
+
+---
+# Section 7: Troubleshooting
+---
+
+### Authentication Issues
+- **Error: "Could not find credentials" or "Could not find project"**
+  - Run `gcloud auth login --update-adc`
+  - Run `gcloud config set project YOUR_PROJECT_ID`
+  - Run `gcloud auth application-default set-quota-project YOUR_PROJECT_ID`
+- **Error: Vertex AI API Not Enabled**
+  - Run `gcloud services enable aiplatform.googleapis.com`
+- **Error: "Permission denied"**
+  - Ensure your user or service account has the necessary IAM roles (e.g., `roles/aiplatform.user`).
+
+### Installation / Command Issues
+- **Error: "Command not found: agent-starter-pack"**
+  - Verify installation with `pip list | grep agent-starter-pack`.
+  - Check that your shell's `PATH` includes the Python scripts directory (e.g., `~/.local/bin`).
+  - If using `pipx`, run `pipx ensurepath`.
+
+### Project Creation Issues
+- **Error: `agent-starter-pack create` fails**
+  - Check error messages for clues.
+  - Ensure you have write permissions in the target directory.
+  - Use a valid project name (lowercase letters, numbers, hyphens).
+  - Rerun with the `--debug` flag for detailed logs.
+
+### Getting More Help
+If issues persist, search for existing issues or file a new one in the project's GitHub repository. Provide a detailed description, steps to reproduce, error messages (with `--debug`), and your environment details (OS, Python version, etc.).
+
+### Key Operational Guidelines & Workflow for Coding Agents
+
+Here are essential guidelines for interacting with the Agent Starter Pack project:
+
+*   **Standard Workflow:** The validated and recommended end-to-end process is: `create` -> `test` -> `setup-cicd` -> push to deploy. Trust this high-level workflow as the default for developing and shipping agents.
+*   **Testing Agents Programmatically:**
+    *   Avoid using `make playground` unless specifically instructed; it is designed for human interaction.
+    *   Instead, create a Python script named `test_agent.py` in the project's root directory.
+    *   This script should programmatically invoke the agent with sample input, gather the output, and print it for inspection.
+    *   Assertions are not required in `test_agent.py`.
+    *   You do not need to run `make test` to execute this specific script.
+    *   Refer to the example tests located in the `/tests` directory for guidance on how to structure `test_agent.py`.
+*   **Running Python Commands:**
+    *   Always use `uv` to execute Python commands within this repository (e.g., `uv run test_agent.py`).
+    *   Ensure project dependencies are installed by running `make install` before executing scripts.
+    *   Consult the project's Makefile and Readme for other useful development commands.
+*   **Default Deployment Target:** If a deployment target is not explicitly specified, assume `agent_engine` as the default.

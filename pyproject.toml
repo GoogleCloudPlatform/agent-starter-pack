@@ -122,7 +122,7 @@ build-backend = "hatchling.build"
 agent-starter-pack = "src.cli.main:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src", "agents"]
+packages = ["src", "agents", "llm.txt"]
 
 [tool.uv.workspace]
 members = ["temp"]

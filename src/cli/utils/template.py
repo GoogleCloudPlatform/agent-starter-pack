@@ -421,6 +421,14 @@ def process_template(
                 pathlib.Path(__file__).parent.parent.parent / "base_template"
             )
             copy_files(base_template_path, project_template, agent_name, overwrite=True)
+            resources_path = (
+                pathlib.Path(__file__).parent.parent.parent / "resources"
+            )
+            copy_files(resources_path, project_template / "src/resources", agent_name, overwrite=True)
+            llm_txt_path = (
+                pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
+            )
+            shutil.copy2(llm_txt_path, project_template / ".llm.txt")
             logging.debug(f"1. Copied base template from {base_template_path}")
 
             # 2. Process deployment target if specified
@@ -510,6 +518,15 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
+            # Load adk-cheatsheet.md and llm.txt for injection
+            adk_cheatsheet_path = pathlib.Path(__file__).parent.parent.parent / "resources" / "docs" / "adk-cheatsheet.md"
+            with open(adk_cheatsheet_path, "r") as f:
+                adk_cheatsheet_content = f.read()
+            
+            llm_txt_path = pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
+            with open(llm_txt_path, "r") as f:
+                llm_txt_content = f.read()
+
             cookiecutter_config = {
                 "project_name": "my-project",
                 "agent_name": agent_name,
@@ -525,6 +542,8 @@ def process_template(
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
+                "adk_cheatsheet": adk_cheatsheet_content,
+                "llm_txt": llm_txt_content,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files

@@ -204,21 +204,27 @@ uvx agent-starter-pack setup-cicd [OPTIONS]
 ```
 **Prerequisites:** Run from the project root. `uv`, `gh` CLI, `gcloud` CLI, and `terraform` must be installed and authenticated. Requires `Owner` role on the GCP projects.
 
-**Key Automation Options:**
-*   `--staging-project`, `--prod-project`, `--cicd-project`, `--dev-project`
-*   `--region`, `--repository-name`, `--repository-owner`
-*   `--auto-approve`: **Crucial for automation.** Skips all interactive prompts.
+**Automated CI/CD Setup Options:**
+*   `--staging-project`: (REQUIRED) The Google Cloud Project ID for your staging environment.
+*   `--prod-project`: (REQUIRED) The Google Cloud Project ID for your production environment.
+*   `--repository-name`: (REQUIRED) The name for the new GitHub repository that will be created.
+*   `--repository-owner`: (REQUIRED) Your GitHub username or organization where the repo will be created.
+*   `--git-provider`: (REQUIRED) The Git provider to use (github, gitlab, etc.). Only "github" is supported. 
+*   `--auto-approve`: Skips all interactive confirmation prompts.
+
 
 **Automated Example:**
 ```bash
 uvx agent-starter-pack setup-cicd \
-  --staging-project t-starter-staging \
-  --prod-project t-starter-prod \
-  --repository-name my-adk-project-repo \
-  --repository-owner eliasecchig \
+  --staging-project the-user-staging-project \
+  --prod-project the-user-prod-project \
+  --repository-name the-user-repo-name \
+  --repository-owner the-username \
+  --git-provider github \
   --auto-approve
 ```
-
+* Note: As a coding agent, you must run this command non-interactively. Before executing, you must ask the user to provide the following required flags: `--staging-project`, `--prod-project`, `--repository-name`, `--repository-owner`, and `--git-provider`. Once you have these values, you can construct and run the command with the `--auto-approve` flag.
+* Note: If the user tells that `setup-cicd` is not a viable option or it wants to use a different git provider, you must not use this command. Instead, you should look at the `deployment/README.md` to get instructions on how to manually deploy the agent.
 ---
 ### Section 6: Operational Guidelines for Coding Agents
 

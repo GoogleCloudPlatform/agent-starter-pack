@@ -547,7 +547,6 @@ def process_template(
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files
                     "frontend/*",  # Don't render frontend directory
-                    # "tests/*",  # Don't render tests directory
                     "notebooks/*",  # Don't render notebooks directory
                     ".git/*",  # Don't render git directory
                     "__pycache__/*",  # Don't render cache
@@ -555,9 +554,8 @@ def process_template(
                     ".pytest_cache/*",
                     ".venv/*",
                     "*templates.py",  # Don't render templates files
-                    "!*.py",  # render Python files
-                    "!Makefile",  # DO render Makefile
-                    "!README.md",  # DO render README.md
+                    # Don't render agent.py unless it's agentic_rag
+                    "app/agent.py" if agent_name != "agentic_rag" else "",
                 ],
             }
 

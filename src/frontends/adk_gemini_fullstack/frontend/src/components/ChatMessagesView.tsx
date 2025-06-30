@@ -5,6 +5,7 @@ import { InputForm } from "@/components/InputForm";
 import { Button } from "@/components/ui/button";
 import { useState, ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from 'remark-gfm';
 import { cn } from "@/utils";
 import { Badge } from "@/components/ui/badge";
 import { ActivityTimeline } from "@/components/ActivityTimeline";
@@ -148,7 +149,7 @@ const HumanMessageBubble: React.FC<HumanMessageBubbleProps> = ({
 }) => {
   return (
     <div className="text-white rounded-3xl break-words min-h-7 bg-neutral-700 max-w-[100%] sm:max-w-[90%] px-4 pt-3 rounded-br-lg">
-      <ReactMarkdown components={mdComponents}>
+      <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
         {message.content}
       </ReactMarkdown>
     </div>
@@ -204,7 +205,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         )}
         <div className="flex items-start gap-3">
           <div className="flex-1">
-            <ReactMarkdown components={mdComponents}>
+            <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>
           </div>
@@ -236,7 +237,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
         {message.content && message.content.trim() && agent !== "interactive_planner_agent" && (
           <div className="flex items-start gap-3 mt-2">
             <div className="flex-1">
-              <ReactMarkdown components={mdComponents}>
+              <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
                 {message.content}
               </ReactMarkdown>
             </div>
@@ -260,7 +261,7 @@ const AiMessageBubble: React.FC<AiMessageBubbleProps> = ({
       <div className="relative break-words flex flex-col w-full">
         <div className="flex items-start gap-3">
           <div className="flex-1">
-            <ReactMarkdown components={mdComponents}>
+            <ReactMarkdown components={mdComponents} remarkPlugins={[remarkGfm]}>
               {message.content}
             </ReactMarkdown>
           </div>

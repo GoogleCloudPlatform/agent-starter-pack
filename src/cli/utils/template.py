@@ -510,6 +510,22 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
+            # Load adk-cheatsheet.md and llm.txt for injection
+            adk_cheatsheet_path = (
+                pathlib.Path(__file__).parent.parent.parent
+                / "resources"
+                / "docs"
+                / "adk-cheatsheet.md"
+            )
+            with open(adk_cheatsheet_path) as f:
+                adk_cheatsheet_content = f.read()
+
+            llm_txt_path = (
+                pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
+            )
+            with open(llm_txt_path) as f:
+                llm_txt_content = f.read()
+
             cookiecutter_config = {
                 "project_name": "my-project",
                 "agent_name": agent_name,
@@ -525,6 +541,8 @@ def process_template(
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
+                "adk_cheatsheet": adk_cheatsheet_content,
+                "llm_txt": llm_txt_content,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files

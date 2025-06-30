@@ -21,7 +21,7 @@ It accelerates development by providing a holistic, production-ready solution, a
 
 | ⚡️ Launch | 🧪 Experiment  | ✅ Deploy | 🛠️ Customize |
 |---|---|---|---|
-| [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability), and [CI/CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. |
+| [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability), and [CI/CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. 🆕 Now integrating with [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 
 ---
  
@@ -78,7 +78,7 @@ Looking to explore more ADK examples? Check out the [ADK Samples Repository](htt
 The `agent-starter-pack` offers two key features to accelerate and simplify the development of your agent:
 - **🔄 [CI/CD Automation (Experimental)](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd)** - One command to set up a complete GitHub + Cloud Build pipeline for all environments
 - **📥 [Data Pipeline for RAG with Terraform/CI-CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/data-ingestion)** - Seamlessly integrate a data pipeline to process embeddings for RAG into your agent system. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).
-
+* **🤖 Gemini CLI Integration** - Use the [Gemini CLI](https://github.com/google-gemini/gemini-cli) and the included `GEMINI.md` context file to ask questions about your template, agent architecture, and the path to production. Get instant guidance and code examples directly in your terminal.
 
 ## High-Level Architecture
 

@@ -1,4 +1,3 @@
-
 # Development Guide
 
 This guide walks you through the entire lifecycle of creating, developing, deploying, and monitoring your agent project.
@@ -39,12 +38,18 @@ cd my-awesome-agent
 
 Inside, you'll find a complete project structure:
 
+::: tip Leveraging AI Tools (like Gemini CLI)
+The starter pack includes a `GEMINI.md` file with guidance formatted for AI interaction. Tools like the [Gemini CLI](https://github.com/google-gemini/gemini-cli) can leverage this file when used within your project directory, providing context for questions about your template.
+:::
+
 *   `app/`: Backend agent code (prompts, tools, business logic).
 *   `deployment/`: Terraform infrastructure code.
 *   `tests/`: Unit and integration tests.
 *   `notebooks/`: Jupyter notebooks for prototyping and evaluation.
 *   `frontend/`: (If applicable) Web UI for interacting with your agent.
 *   `README.md`: **Project-specific instructions for your chosen template.**
+*   `GEMINI.md`: Use this file with AI tools (like [Gemini CLI](https://github.com/google-gemini/gemini-cli)) to ask questions about the template, ADK concepts, or project structure.
+
 
 Your development loop will look like this:
 

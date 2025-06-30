@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
 import logging
 import os
 import pathlib
@@ -23,7 +24,7 @@ from typing import Any
 import yaml
 from cookiecutter.main import cookiecutter
 from rich.console import Console
-from rich.prompt import Prompt
+from rich.prompt import IntPrompt, Prompt
 
 from src.cli.utils.version import get_current_version
 
@@ -196,8 +197,6 @@ def prompt_deployment_target(agent_name: str) -> str:
         display_name = info.get("display_name", target)
         description = info.get("description", "")
         console.print(f"{idx}. [bold]{display_name}[/] - [dim]{description}[/]")
-
-    from rich.prompt import IntPrompt
 
     choice = IntPrompt.ask(
         "\nEnter the number of your deployment target choice",
@@ -560,8 +559,6 @@ def process_template(
             }
 
             with open(cookiecutter_template / "cookiecutter.json", "w") as f:
-                import json
-
                 json.dump(cookiecutter_config, f, indent=4)
 
             logging.debug(f"Template structure created at {cookiecutter_template}")

@@ -212,7 +212,10 @@ def create_github_connection(
                 return secret_id, app_installation_id
             elif status == "PENDING_USER_OAUTH" or status == "PENDING_INSTALL_APP":
                 if attempt < max_retries - 1:  # Don't print waiting on last attempt
-                    console.print("⏳ Waiting for GitHub authorization...")
+                    console.print("⏳ Waiting for authorization...")
+                    print(
+                        f"Console: https://console.cloud.google.com/cloud-build/repositories?project={project_id}"
+                    )
                     # Extract and print the action URI for user authentication
                     try:
                         action_uri = (

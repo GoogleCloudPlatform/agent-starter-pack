@@ -467,15 +467,6 @@ def process_template(
                             agent_folder, project_folder, agent_name, overwrite=True
                         )
 
-            # Copy agent README.md if it exists
-            agent_readme = agent_path / "README.md"
-            if agent_readme.exists():
-                agent_readme_dest = project_template / "agent_README.md"
-                shutil.copy2(agent_readme, agent_readme_dest)
-                logging.debug(
-                    f"Copied agent README from {agent_readme} to {agent_readme_dest}"
-                )
-
             # Load and validate template config first
             template_path = pathlib.Path(template_dir)
             config = load_template_config(template_path)

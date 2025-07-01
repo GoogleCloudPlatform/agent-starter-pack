@@ -21,6 +21,7 @@ This project is organized as follows:
 ├── notebooks/           # Jupyter notebooks for prototyping and evaluation
 ├── tests/               # Unit, integration, and load tests
 ├── Makefile             # Makefile for common commands
+├── GEMINI.md            # AI-assisted development guide
 └── pyproject.toml       # Project dependencies and configuration
 ```
 
@@ -160,6 +161,8 @@ This template follows a "bring your own agent" approach - you focus on your busi
 3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
 4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently only supporting Github.
 5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
+
+The project includes a `GEMINI.md` file that provides context for AI tools like Gemini CLI when asking questions about your template.
 {% endif %}
 
 ## Deployment

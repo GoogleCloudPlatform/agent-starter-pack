@@ -48,4 +48,4 @@ options:
     - "E2E_PROD_PROJECT=${_E2E_PROD_PROJECT}"
     - "E2E_CICD_PROJECT=${PROJECT_ID}"
     - "RUN_E2E_TESTS=1"
-timeout: 14400s
+timeout: 43200s

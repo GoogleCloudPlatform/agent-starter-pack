@@ -795,6 +795,17 @@ class TestE2EDeployment:
                 extra_params = config.extra_params.split(",")
                 cmd.extend(extra_params)
 
+            # Add default session type for cloud_run deployment if not explicitly set
+            if config.deployment_target == "cloud_run":
+                # Check if session-type is already in extra_params
+                has_session_type = False
+                if hasattr(config, "extra_params") and config.extra_params:
+                    has_session_type = "--session-type" in config.extra_params
+
+                if not has_session_type:
+                    # Default to in_memory session type for cloud_run
+                    cmd.extend(["--session-type", "in_memory"])
+
             run_command(
                 cmd,
                 cwd=project_root,

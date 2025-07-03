@@ -122,16 +122,19 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     logger.info("Starting chat stream test")
 {% if "adk" in cookiecutter.tags %}
     # Create session first
-    user_id = "user_123"
-    session_id = "session_abc"
-    session_data = {"state": {"preferred_language": "English", "visit_count": 5}}
+    user_id = "test_user_123"
+    session_data = {"state": {"preferred_language": "English", "visit_count": 1}}
+
+    session_url = f"{BASE_URL}/apps/app/users/{user_id}/sessions"
     session_response = requests.post(
-        f"{BASE_URL}/apps/app/users/{user_id}/sessions/{session_id}",
+        session_url,
         headers=HEADERS,
         json=session_data,
-        timeout=10,
+        timeout=60,
     )
     assert session_response.status_code == 200
+    logger.info(f"Session creation response: {session_response.json()}")
+    session_id = session_response.json()["id"]
 
     # Then send chat message
     data = {

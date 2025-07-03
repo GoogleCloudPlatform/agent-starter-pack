@@ -23,7 +23,7 @@ resource "google_storage_bucket" "bucket_load_test_results" {
   project                     = var.cicd_runner_project_id
   uniform_bucket_level_access = true
   force_destroy               = true
-  depends_on                  = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on                  = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 resource "google_storage_bucket" "logs_data_bucket" {
@@ -34,7 +34,7 @@ resource "google_storage_bucket" "logs_data_bucket" {
   uniform_bucket_level_access = true
   force_destroy               = true
 
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 {% if cookiecutter.deployment_target == 'cloud_run' %}
 resource "google_artifact_registry_repository" "repo-artifacts-genai" {
@@ -43,7 +43,7 @@ resource "google_artifact_registry_repository" "repo-artifacts-genai" {
   description   = "Repo for Generative AI applications"
   format        = "DOCKER"
   project       = var.cicd_runner_project_id
-  depends_on    = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on    = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 {% endif %}
 
@@ -56,7 +56,7 @@ resource "google_storage_bucket" "data_ingestion_pipeline_gcs_root" {
   uniform_bucket_level_access = true
   force_destroy               = true
 
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 {% if cookiecutter.datastore_type == "vertex_ai_search" %}
@@ -71,7 +71,7 @@ resource "google_discovery_engine_data_store" "data_store_staging" {
   solution_types              = ["SOLUTION_TYPE_SEARCH"]
   create_advanced_site_search = false
   provider                    = google.staging_billing_override
-  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 resource "google_discovery_engine_search_engine" "search_engine_staging" {
@@ -97,7 +97,7 @@ resource "google_discovery_engine_data_store" "data_store_prod" {
   solution_types              = ["SOLUTION_TYPE_SEARCH"]
   create_advanced_site_search = false
   provider                    = google.prod_billing_override
-  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 resource "google_discovery_engine_search_engine" "search_engine_prod" {
@@ -122,7 +122,7 @@ resource "google_storage_bucket" "vector_search_data_bucket" {
   uniform_bucket_level_access = true
   force_destroy               = true
 
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 resource "google_vertex_ai_index" "vector_search_index_staging" {

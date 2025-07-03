@@ -206,6 +206,36 @@ def prompt_deployment_target(agent_name: str) -> str:
     return targets[choice - 1]
 
 
+def prompt_session_type_selection() -> str:
+    """Ask user to select a session type for Cloud Run deployment."""
+    console = Console()
+
+    session_types = {
+        "in_memory": {
+            "display_name": "In-memory session",
+            "description": "Session data stored in memory - ideal for stateless applications",
+        },
+        "alloydb": {
+            "display_name": "AlloyDB",
+            "description": "Use AlloyDB for session management. Comes with terraform resources for deployment.",
+        },
+    }
+
+    console.print("\n> Please select a session type:")
+    for idx, (_key, info) in enumerate(session_types.items(), 1):
+        console.print(
+            f"{idx}. [bold]{info['display_name']}[/] - [dim]{info['description']}[/]"
+        )
+
+    choice = IntPrompt.ask(
+        "\nEnter the number of your session type choice",
+        default=1,
+        show_default=True,
+    )
+
+    return list(session_types.keys())[choice - 1]
+
+
 def prompt_datastore_selection(
     agent_name: str, from_cli_flag: bool = False
 ) -> str | None:
@@ -365,6 +395,7 @@ def process_template(
     deployment_target: str | None = None,
     include_data_ingestion: bool = False,
     datastore: str | None = None,
+    session_type: str | None = None,
     output_dir: pathlib.Path | None = None,
 ) -> None:
     """Process the template directory and create a new project.
@@ -375,6 +406,8 @@ def process_template(
         project_name: Name of the project to create
         deployment_target: Optional deployment target (agent_engine or cloud_run)
         include_data_ingestion: Whether to include data pipeline components
+        datastore: Optional datastore type for data ingestion
+        session_type: Optional session type for cloud_run deployment
         output_dir: Optional output directory path, defaults to current directory
     """
     logging.debug(f"Processing template from {template_dir}")
@@ -527,6 +560,7 @@ def process_template(
                 "settings": settings,
                 "tags": tags,
                 "deployment_target": deployment_target or "",
+                "session_type": session_type or "",
                 "frontend_type": frontend_type,
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,

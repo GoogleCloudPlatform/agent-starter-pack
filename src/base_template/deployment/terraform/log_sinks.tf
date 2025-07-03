@@ -26,7 +26,7 @@ resource "google_bigquery_dataset" "feedback_dataset" {
   dataset_id    = replace("${var.project_name}_feedback", "-", "_")
   friendly_name = "${var.project_name}_feedback"
   location      = var.region
-  depends_on    = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on    = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 resource "google_bigquery_dataset" "telemetry_logs_dataset" {
@@ -35,7 +35,7 @@ resource "google_bigquery_dataset" "telemetry_logs_dataset" {
   dataset_id    = replace("${var.project_name}_telemetry", "-", "_")
   friendly_name = "${var.project_name}_telemetry"
   location      = var.region
-  depends_on    = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on    = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 module "log_export_to_bigquery" {

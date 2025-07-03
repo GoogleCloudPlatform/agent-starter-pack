@@ -16,9 +16,10 @@ description: "ADK RAG agent for document retrieval and Q&A. Includes a data pipe
 example_question: "How to save a pandas dataframe to CSV?"
 settings:
   requires_data_ingestion: true
+  requires_session: true
   deployment_targets: ["agent_engine", "cloud_run"]
   extra_dependencies: [
-    "google-adk~=1.4.2",
+    "google-adk~=1.5.0",
     "langchain-google-vertexai~=2.0.7",
     "langchain~=0.3.24",
     "langchain-core~=0.3.55",

@@ -25,7 +25,7 @@ resource "google_project_iam_member" "cicd_project_roles" {
   project    = var.cicd_runner_project_id
   role       = each.value
   member     = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 
 }
 
@@ -42,7 +42,7 @@ resource "google_project_iam_member" "other_projects_roles" {
   project    = each.value.project_id
   role       = each.value.role
   member     = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 {% if cookiecutter.deployment_target == 'cloud_run' %}
 # 3. Allow Cloud Run service SA to pull containers stored in the CICD project
@@ -52,7 +52,7 @@ resource "google_project_iam_member" "cicd_run_invoker_artifact_registry_reader"
 
   role       = "roles/artifactregistry.reader"
   member     = "serviceAccount:service-${data.google_project.projects[each.key].number}@serverless-robot-prod.iam.gserviceaccount.com"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 
 }
 
@@ -69,7 +69,7 @@ resource "google_project_iam_member" "cloud_run_app_sa_roles" {
   project    = each.value.project
   role       = each.value.role
   member     = "serviceAccount:${google_service_account.cloud_run_app_sa[split(",", each.key)[0]].email}"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 {% elif cookiecutter.deployment_target == 'agent_engine' %}
 resource "google_project_service_identity" "vertex_sa" {
@@ -92,7 +92,7 @@ resource "google_project_iam_member" "vertex_ai_sa_permissions" {
   project     = each.value.project
   role        = each.value.role
   member      = "serviceAccount:service-${data.google_project.projects[split("_", each.key)[0]].number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
-  depends_on  = [resource.google_project_service.shared_services, resource.google_project_service_identity.vertex_sa]
+  depends_on  = [resource.google_project_service.deploy_project_services, resource.google_project_service_identity.vertex_sa]
 }
 {% endif %}
 
@@ -101,14 +101,14 @@ resource "google_service_account_iam_member" "cicd_run_invoker_token_creator" {
   service_account_id = google_service_account.cicd_runner_sa.name
   role               = "roles/iam.serviceAccountTokenCreator"
   member             = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
-  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 # Special assignment: Allow the CICD SA to impersonate himself for trigger creation
 resource "google_service_account_iam_member" "cicd_run_invoker_account_user" {
   service_account_id = google_service_account.cicd_runner_sa.name
   role               = "roles/iam.serviceAccountUser"
   member             = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
-  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 {%- if cookiecutter.data_ingestion %}
@@ -125,6 +125,6 @@ resource "google_project_iam_member" "vertexai_pipeline_sa_roles" {
   project    = each.value.project
   role       = each.value.role
   member     = "serviceAccount:${google_service_account.vertexai_pipeline_app_sa[split(",", each.key)[0]].email}"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 {%- endif %}

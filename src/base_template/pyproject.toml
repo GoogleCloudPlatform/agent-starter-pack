@@ -18,7 +18,10 @@ dependencies = [
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "google-cloud-aiplatform[evaluation]~=1.99.0",
     "fastapi~=0.115.8",
-    "uvicorn~=0.34.0"
+    "uvicorn~=0.34.0",
+{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+    "psycopg2-binary>=2.9.10",
+{%- endif %}
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
     "google-cloud-aiplatform[evaluation,agent-engines]~=1.99.0"
 {%- endif %}

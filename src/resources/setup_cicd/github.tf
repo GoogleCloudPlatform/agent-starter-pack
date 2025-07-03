@@ -36,7 +36,7 @@ resource "google_cloudbuildv2_connection" "github_connection" {
       oauth_token_secret_version = "projects/${var.cicd_runner_project_id}/secrets/${var.github_pat_secret_id}/versions/latest"
     }
   }
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
 locals {
@@ -79,7 +79,7 @@ resource "google_cloudbuildv2_repository" "repo" {
   remote_uri       = "https://github.com/${var.repository_owner}/${var.repository_name}.git"
   depends_on = [
     resource.google_project_service.cicd_services,
-    resource.google_project_service.shared_services,
+    resource.google_project_service.deploy_project_services,
     data.github_repository.existing_repo,
     github_repository.repo,
     google_cloudbuildv2_connection.github_connection,

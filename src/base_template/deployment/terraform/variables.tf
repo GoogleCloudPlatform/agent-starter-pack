@@ -76,6 +76,7 @@ variable "agentengine_sa_roles" {
   default = [
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "roles/run.invoker",
+    "roles/secretmanager.secretAccessor",
 {%- endif %}
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
@@ -84,6 +85,8 @@ variable "agentengine_sa_roles" {
     "roles/storage.admin"
   ]
 }
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- endif %}
 
 variable "cicd_roles" {
   description = "List of roles to assign to the CICD runner service account in the CICD project"

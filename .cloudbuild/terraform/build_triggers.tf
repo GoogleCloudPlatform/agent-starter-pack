@@ -92,6 +92,10 @@ locals {
       name  = "adk_gemini_fullstack-cloud_run"
       value = "adk_gemini_fullstack,cloud_run"
     },
+    {
+      name  = "adk_base-cloud_run-alloydb"
+      value = "adk_base,cloud_run,--session-type,alloydb"
+    },
   ]
 
   agent_testing_included_files = { for combo in local.agent_testing_combinations :
@@ -137,6 +141,10 @@ locals {
     {
       name  = "adk_gemini_fullstack-agent_engine"
       value = "adk_gemini_fullstack,agent_engine"
+    },
+    {
+      name  = "adk_base-cloud_run-alloydb"
+      value = "adk_base,cloud_run,--session-type,alloydb"
     },
   ]
   # Create a safe trigger name by replacing underscores with hyphens and dots with hyphens

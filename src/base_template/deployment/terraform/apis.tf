@@ -19,9 +19,9 @@ resource "google_project_service" "cicd_services" {
   disable_on_destroy = false
 }
 
-resource "google_project_service" "shared_services" {
+resource "google_project_service" "deploy_project_services" {
   for_each = {
-    for pair in setproduct(keys(local.deploy_project_ids), local.shared_services) :
+    for pair in setproduct(keys(local.deploy_project_ids), local.deploy_project_services) :
     "${pair[0]}_${replace(pair[1], ".", "_")}" => {
       project = local.deploy_project_ids[pair[0]]
       service = pair[1]

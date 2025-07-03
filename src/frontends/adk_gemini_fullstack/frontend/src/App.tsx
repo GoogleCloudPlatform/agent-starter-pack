@@ -81,12 +81,11 @@ export default function App() {
   };
 
   const createSession = async (): Promise<{userId: string, sessionId: string, appName: string}> => {
-    const generatedSessionId = uuidv4();
-    const response = await fetch(`/api/apps/app/users/u_999/sessions/${generatedSessionId}`, {
+    const response = await fetch(`/api/apps/app/users/u_999/sessions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
-      }
+      },
     });
     
     if (!response.ok) {

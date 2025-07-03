@@ -54,6 +54,9 @@ variable "agentengine_sa_roles" {
 {% endif %}
   type        = list(string)
   default = [
+{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+    "roles/secretmanager.secretAccessor",
+{%- endif %}
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
     "roles/logging.logWriter",
@@ -61,7 +64,6 @@ variable "agentengine_sa_roles" {
     "roles/storage.admin"
   ]
 }
-
 {% if cookiecutter.data_ingestion %}
 
 variable "pipelines_roles" {

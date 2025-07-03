@@ -44,14 +44,18 @@ class ChatStreamUser(HttpUser):
 {%- if "adk" in cookiecutter.tags %}
         # Create session first
         user_id = f"user_{uuid.uuid4()}"
-        session_id = f"session_{uuid.uuid4()}"
-        session_data = {"state": {"preferred_language": "English", "visit_count": 5}}
-        requests.post(
-            f"{self.client.base_url}/apps/app/users/{user_id}/sessions/{session_id}",
+        session_data = {"state": {"preferred_language": "English", "visit_count": 1}}
+
+        session_url = f"{self.client.base_url}/apps/app/users/{user_id}/sessions"
+        session_response = requests.post(
+            session_url,
             headers=headers,
             json=session_data,
             timeout=10,
         )
+
+        # Get session_id from response
+        session_id = session_response.json()["id"]
 
         # Send chat message
         data = {
@@ -60,7 +64,7 @@ class ChatStreamUser(HttpUser):
             "session_id": session_id,
             "new_message": {
                 "role": "user",
-                "parts": [{"text": "What's the weather in San Francisco?"}],
+                "parts": [{"text": "Hello! Weather in New york?"}],
             },
             "streaming": True,
         }

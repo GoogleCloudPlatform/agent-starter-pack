@@ -43,11 +43,29 @@ provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+{%- if cookiecutter.session_type == "alloydb" %}
+# AlloyDB session configuration
+db_user = os.environ.get("DB_USER", "postgres")
+db_name = os.environ.get("DB_NAME", "postgres")
+db_pass = os.environ.get("DB_PASS")
+db_host = os.environ.get("DB_HOST")
+
+# Set session_service_uri if database credentials are available
+session_service_uri = None
+if db_host and db_pass:
+    session_service_uri = f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
+{%- else %}
+# In-memory session configuration - no persistent storage
+session_service_uri = None
+{%- endif %}
+
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
     web=True,
     artifact_service_uri=bucket_name,
     allow_origins=allow_origins,
+    session_service_uri=session_service_uri,
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"

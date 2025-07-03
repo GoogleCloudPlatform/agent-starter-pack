@@ -54,7 +54,7 @@ make install && make playground
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 | `make playground`    | Launch local development environment with backend and frontend{%- if "adk" in cookiecutter.tags %} - leveraging `adk web` command. {%- endif %}|
-| `make backend`       | Deploy agent to Cloud Run |
+| `make backend`       | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy) |
 | `make local-backend` | Launch local development server |
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}
@@ -67,7 +67,7 @@ make install && make playground
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
-| `make setup-dev-env` | Set up development environment resources using Terraform                                    |
+| `make setup-dev-env` | Set up development environment resources using Terraform                         |
 {%- if cookiecutter.data_ingestion %}
 | `make data-ingestion`| Run data ingestion pipeline in the Dev environment                                           |
 {%- endif %}

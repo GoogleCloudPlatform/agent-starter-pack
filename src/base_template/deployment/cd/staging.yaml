@@ -46,6 +46,8 @@ steps:
         "build",
         "-t",
         "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
+        "--build-arg",
+        "COMMIT_SHA=$COMMIT_SHA",
         ".",
       ]
   - name: "gcr.io/cloud-builders/docker"
@@ -69,22 +71,6 @@ steps:
       - "${_REGION}"
       - "--project"
       - "${_STAGING_PROJECT_ID}"
-      - "--min-instances"
-      - "1"
-      - "--no-cpu-throttling"
-      - "--cpu"
-      - "4"
-      - "--memory"
-      - "4Gi"
-      - "--concurrency"
-      - "40"
-      - "--service-account"
-      - "${_CLOUD_RUN_APP_SA_EMAIL}"
-      - "--session-affinity"
-      - "--labels"
-      - "created-by=adk"
-      - "--set-env-vars"
-      - "COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET}{%- endif %}{%- endif %}"
 
   # Fetch Staging Service URL
   - name: "gcr.io/cloud-builders/gcloud"

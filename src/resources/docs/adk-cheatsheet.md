@@ -994,7 +994,7 @@ Serverless container platform for custom web applications.
     # Ensure your agent_folder (e.g., 'my_first_agent') is in the same directory as main.py
     app: FastAPI = get_fast_api_app(
         agents_dir=os.path.dirname(os.path.abspath(__file__)),
-        session_db_url="sqlite:///./sessions.db", # In-container SQLite, for simple cases
+        session_service_uri="sqlite:///./sessions.db", # In-container SQLite, for simple cases
         # For production: use a persistent DB (Cloud SQL) or VertexAiSessionService
         allow_origins=["*"],
         web=True # Serve ADK UI

@@ -32,6 +32,7 @@ from ..utils.template import (
     process_template,
     prompt_datastore_selection,
     prompt_deployment_target,
+    prompt_session_type_selection,
 )
 
 console = Console()
@@ -93,6 +94,11 @@ def normalize_project_name(project_name: str) -> str:
     type=click.Choice(DATASTORE_TYPES),
     help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
 )
+@click.option(
+    "--session-type",
+    type=click.Choice(["in_memory", "alloydb"]),
+    help="Type of session storage to use",
+)
 @click.option("--debug", is_flag=True, help="Enable debug logging")
 @click.option(
     "--output-dir",
@@ -122,6 +128,7 @@ def create(
     deployment_target: str | None,
     include_data_ingestion: bool,
     datastore: str | None,
+    session_type: str | None,
     debug: bool,
     output_dir: str | None,
     auto_approve: bool,
@@ -232,6 +239,36 @@ def create(
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
+        # Session type validation and selection (only for agents that require session management)
+        final_session_type = session_type
+
+        # Check if agent requires session management
+        requires_session = config.get("settings", {}).get("requires_session", False)
+
+        if requires_session:
+            if final_deployment == "agent_engine" and session_type:
+                console.print(
+                    "Error: --session-type cannot be used with agent_engine deployment target. "
+                    "Agent Engine handles session management internally.",
+                    style="bold red",
+                )
+                return
+
+            if final_deployment == "cloud_run" and not session_type:
+                final_session_type = prompt_session_type_selection()
+        else:
+            # Agents that don't require session management always use in-memory sessions
+            final_session_type = "in_memory"
+            if session_type and session_type != "in_memory":
+                console.print(
+                    "Warning: Session type options are only available for agents that require session management. "
+                    "Using in-memory sessions for this agent.",
+                    style="yellow",
+                )
+
+        if debug and final_session_type:
+            logging.debug(f"Selected session type: {final_session_type}")
+
         # Region confirmation (if not explicitly passed)
         if (
             not auto_approve
@@ -289,6 +326,7 @@ def create(
             deployment_target=final_deployment,
             include_data_ingestion=include_data_ingestion,
             datastore=datastore,
+            session_type=final_session_type,
             output_dir=destination_dir,
         )
 

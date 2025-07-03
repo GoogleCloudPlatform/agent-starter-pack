@@ -168,8 +168,8 @@ def update_build_triggers(tf_dir: Path) -> None:
 
         # Add repository dependency to all trigger resources
         modified_content = content.replace(
-            "depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services]",
-            "depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.shared_services, google_cloudbuildv2_repository.repo]",
+            "depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]",
+            "depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services, google_cloudbuildv2_repository.repo]",
         )
 
         # Update repository reference in all triggers

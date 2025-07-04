@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import os
 import time
 {%- if "adk" in cookiecutter.tags %}
@@ -93,7 +92,6 @@ class ChatStreamUser(HttpUser):
             stream=True,
             params={"alt": "sse"},
         ) as response:
-            
             if response.status_code == 200:
                 events = []
                 for line in response.iter_lines():

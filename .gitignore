@@ -188,6 +188,7 @@ testem.log
 Thumbs.db
 *.vscode*
 
+.locust_env/
 .saved_chats
 .aider*
 target

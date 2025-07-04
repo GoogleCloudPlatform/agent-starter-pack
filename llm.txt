@@ -69,6 +69,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 *   `-d, --deployment-target`: Target deployment environment (`cloud_run` or `agent_engine`).
 *   `-ds, --datastore`: For RAG agents, the datastore (`vertex_ai_search` or `vertex_ai_vector_search`).
 *   `-i, --include-data-ingestion`: Include data ingestion pipeline scaffolding.
+*   `--session-type`: For agents requiring session management on Cloud Run, specifies the storage type (`in_memory` or `alloydb`).
 *   `--region`: GCP region (e.g., `us-central1`).
 *   `--auto-approve`: **Skips all interactive prompts (crucial for automation).**
 *   `--debug`: Enables debug logging during creation.
@@ -185,6 +186,12 @@ uvx agent-starter-pack setup-cicd
 *   **Unified Deployment (for Dev/Test):** The backend and frontend can be packaged and served from a single Cloud Run service, secured with Identity-Aware Proxy (IAP).
 *   **Deploying with UI:** `make backend IAP=true`
 *   **Access Control:** After deploying with IAP, grant users the `IAP-secured Web App User` role in IAM to give them access.
+
+### Session Management
+
+For stateful agents, the starter pack supports persistent sessions.
+*   **Cloud Run:** Choose between `in_memory` (for testing) and durable `alloydb` sessions using the `--session-type` flag.
+*   **Agent Engine:** Provides session management automatically.
 
 ### Monitoring & Observability
 *   **Technology:** Uses OpenTelemetry to emit events to Google Cloud Trace and Logging.

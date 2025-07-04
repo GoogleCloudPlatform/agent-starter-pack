@@ -22,6 +22,7 @@ The following options will be prompted interactively if not provided via the com
 - `--deployment-target`, `-d`: Deployment target (`agent_engine` or `cloud_run`). Prompts if omitted.
 - `--datastore`, `-ds`: Datastore for RAG agents (`vertex_ai_search` or `vertex_ai_vector_search`). Prompted if `--include-data-ingestion` is specified, or if the selected agent (e.g., `agentic_rag`) requires data ingestion, and this option is omitted.
 - `--region`: GCP region for deployment (default: `us-central1`). Prompts for confirmation if not specified and `--auto-approve` is not used.
+- `--session-type`: Type of session storage to use (`in_memory` or `alloydb`). This is only applicable for agents that require session management and when the deployment target is `cloud_run`.
 
 GCP account and project ID are detected automatically (using your active `gcloud config` settings). You will be prompted to confirm or change them unless `--auto-approve` is used.
 

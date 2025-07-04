@@ -93,28 +93,31 @@ class ChatStreamUser(HttpUser):
             stream=True,
             params={"alt": "sse"},
         ) as response:
+            
             if response.status_code == 200:
                 events = []
                 for line in response.iter_lines():
                     if line:
-{%- if "adk" in cookiecutter.tags %}
-                        # SSE format is "data: {json}"
                         line_str = line.decode("utf-8")
-                        if line_str.startswith("data: "):
-                            event_json = line_str[6:]  # Remove "data: " prefix
-                            event = json.loads(event_json)
-                            events.append(event)
-{%- else %}
-                        event = json.loads(line)
-                        events.append(event)
-{%- endif %}
+                        events.append(line_str)
+
+                        if "429 Too Many Requests" in line_str:
+                            self.environment.events.request.fire(
+                                request_type="POST",
+                                name=f"{ENDPOINT} rate_limited 429s",
+                                response_time=0,
+                                response_length=len(line),
+                                response=response,
+                                context={},
+                            )
+                            continue
                 end_time = time.time()
                 total_time = end_time - start_time
                 self.environment.events.request.fire(
                     request_type="POST",
                     name=f"{ENDPOINT} end",
                     response_time=total_time * 1000,  # Convert to milliseconds
-                    response_length=len(json.dumps(events)),
+                    response_length=len(events),
                     response=response,
                     context={},
                 )

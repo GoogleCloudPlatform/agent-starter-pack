@@ -135,12 +135,11 @@ steps:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
         export _ID_TOKEN=$(cat id_token.txt)
         export _STAGING_URL=$(cat staging_url.txt)
-        pip install uv==0.6.12 --user && uv sync --locked
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
         export _AUTH_TOKEN=$(cat auth_token.txt)
 {%- endif %}
-        uv add locust==2.32.6
-        uv run locust -f tests/load_test/load_test.py \
+        pip install locust==2.31.1 --user
+        locust -f tests/load_test/load_test.py \
         --headless \
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
         -H $$_STAGING_URL \

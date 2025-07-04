@@ -1,5 +1,7 @@
 # Agent Templates
 
-The agent implementations in this directory are templates that are meant to be used with the Agent Starter Pack templating engine. You should not clone this repository directly to use them.
+This directory contains template implementations for various agents designed to work with the Agent Starter Pack templating system.
+Feel free to browse through these folders to preview what each template offers.
+Direct cloning of this repository isn't necessary to utilize these templates.
 
-Please follow the instructions in the main [README](/README.md) to install the templating engine and get started.
+For setup instructions and getting started, please refer to the main [README](/README.md) which explains how to install and use the Agent Starter Pack.

@@ -22,6 +22,6 @@ settings:
     "langchain-community~=0.3.17", 
     "langchain-openai~=0.3.5",
     "langgraph~=0.4.8",
-    "crewai~=0.119.0"
+    "crewai~=0.140.0"
   ]
 example_question: "How can I implement a function to sort a list in Python?"

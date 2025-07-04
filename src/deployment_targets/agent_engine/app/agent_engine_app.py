@@ -12,14 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# mypy: disable-error-code="attr-defined"
+# mypy: disable-error-code="attr-defined,arg-type"
 {%- if "adk" in cookiecutter.tags %}
 import copy
 import datetime
 import json
 import logging
 import os
-from collections.abc import Mapping, Sequence
 from typing import Any
 
 import google.auth
@@ -57,7 +56,7 @@ class AgentEngineApp(AdkApp):
         feedback_obj = Feedback.model_validate(feedback)
         self.logger.log_struct(feedback_obj.model_dump(), severity="INFO")
 
-    def register_operations(self) -> Mapping[str, Sequence]:
+    def register_operations(self) -> dict[str, list[str]]:
         """Registers the operations of the Agent.
 
         Extends the base operations to include feedback registration functionality.
@@ -69,9 +68,10 @@ class AgentEngineApp(AdkApp):
     def clone(self) -> "AgentEngineApp":
         """Returns a clone of the ADK application."""
         template_attributes = self._tmpl_attrs
+
         return self.__class__(
-            agent=copy.deepcopy(template_attributes.get("agent")),
-            enable_tracing=template_attributes.get("enable_tracing"),
+            agent=copy.deepcopy(template_attributes["agent"]),
+            enable_tracing=bool(template_attributes.get("enable_tracing", False)),
             session_service_builder=template_attributes.get("session_service_builder"),
             artifact_service_builder=template_attributes.get(
                 "artifact_service_builder"
@@ -83,7 +83,7 @@ import datetime
 import json
 import logging
 import os
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import (
     Any,
 )
@@ -182,7 +182,7 @@ class AgentEngineApp:
         feedback_obj = Feedback.model_validate(feedback)
         self.logger.log_struct(feedback_obj.model_dump(), severity="INFO")
 
-    def register_operations(self) -> Mapping[str, Sequence]:
+    def register_operations(self) -> dict[str, list[str]]:
         """Registers the operations of the Agent.
 
         This mapping defines how different operation modes (e.g., "", "stream")

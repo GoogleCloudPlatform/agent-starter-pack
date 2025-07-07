@@ -91,15 +91,26 @@ class ChatStreamUser(HttpUser):
                 events = []
                 for line in response.iter_lines():
                     if line:
-                        event = json.loads(line)
-                        events.append(event)
+                        line_str = line.decode("utf-8")
+                        events.append(line_str)
+
+                        if "429 Too Many Requests" in line_str:
+                            self.environment.events.request.fire(
+                                request_type="POST",
+                                name=f"{url_path} rate_limited 429s",
+                                response_time=0,
+                                response_length=len(line),
+                                response=response,
+                                context={},
+                            )
+                            continue
                 end_time = time.time()
                 total_time = end_time - start_time
                 self.environment.events.request.fire(
                     request_type="POST",
                     name="/stream_messages end",
                     response_time=total_time * 1000,  # Convert to milliseconds
-                    response_length=len(json.dumps(events)),
+                    response_length=len(events),
                     response=response,
                     context={},
                 )

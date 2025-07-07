@@ -228,9 +228,9 @@ def create_github_connection(
                                 "\n🔑 Authentication Required:", style="bold yellow"
                             )
                             console.print(
-                                f"Please visit [link={action_uri}]this page[/link] to authenticate Cloud Build with GitHub:"
+                                f"Please visit [link={action_uri}][bold blue]this page[/bold blue][/link] to authenticate Cloud Build with GitHub:"
                             )
-                            console.print(f"{action_uri}", style="bold blue")
+                            print(f"\n{action_uri}\n")
                             console.print(
                                 "(Copy and paste the link into your browser if clicking doesn't work)"
                             )

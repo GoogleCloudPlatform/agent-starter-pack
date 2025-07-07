@@ -9,11 +9,11 @@ license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "click~=8.1.7",
-    "cookiecutter~=2.5.0",
+    "click>=8.1.7",
+    "cookiecutter~=2.6.0",
     "google-cloud-aiplatform>=1.87.0",
-    "rich~=13.7.0",
-    "pyyaml~=6.0.1",
+    "rich>=13.7.0",
+    "pyyaml>=6.0.1",
     "backoff>=2.2.1",
 ]
 

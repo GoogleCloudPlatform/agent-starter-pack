@@ -70,7 +70,7 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
     _STAGING_PROJECT_ID            = var.staging_project_id
     _BUCKET_NAME_LOAD_TEST_RESULTS = resource.google_storage_bucket.bucket_load_test_results.name
     _REGION                        = var.region
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+{% if cookiecutter.deployment_target == 'cloud_run' or cookiecutter.deployment_target == 'gke' %}
     _CONTAINER_NAME                = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
     _CLOUD_RUN_APP_SA_EMAIL         = resource.google_service_account.cloud_run_app_sa["staging"].email
@@ -113,7 +113,7 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
   substitutions = {
     _PROD_PROJECT_ID             = var.prod_project_id
     _REGION                      = var.region
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+{% if cookiecutter.deployment_target == 'cloud_run' or cookiecutter.deployment_target == 'gke' %}
     _CONTAINER_NAME              = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
     _CLOUD_RUN_APP_SA_EMAIL       = resource.google_service_account.cloud_run_app_sa["prod"].email

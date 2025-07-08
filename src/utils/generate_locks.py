@@ -113,13 +113,27 @@ def main(template: pathlib.Path) -> None:
     agent_configs = get_agent_configs()
 
     for agent_name, config in agent_configs.items():
+        targets_to_generate = set()
+        has_container_based_target = False
         for target in config["deployment_targets"]:
+            if target in ["cloud_run", "gke"]:
+                has_container_based_target = True
+            else:
+                targets_to_generate.add(target)
+
+        if has_container_based_target:
+            targets_to_generate.add("container_based")
+
+        for target in targets_to_generate:
             print(f"Generating lock file for {agent_name} with {target}...")
+
+            # Use a representative target for pyproject generation if the target is container_based
+            pyproject_target = "cloud_run" if target == "container_based" else target
 
             # Generate pyproject content
             content = generate_pyproject(
                 template,
-                deployment_target=target,
+                deployment_target=pyproject_target,
                 config=config,
             )
 

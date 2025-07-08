@@ -16,7 +16,7 @@ description: "A real-time multimodal RAG agent powered by Gemini Live API, suppo
 settings:
   requires_data_ingestion: false
   frontend_type: "live_api_react"
-  deployment_targets: ["cloud_run"]
+  deployment_targets: ["cloud_run", "gke"]
   extra_dependencies: [
     "backoff~=2.2.1",
     "google-genai~=1.16.0",

@@ -83,13 +83,85 @@ steps:
         --region ${_REGION} --project ${_STAGING_PROJECT_ID} --format="value(status.url)") > staging_url.txt
 
   # Fetch ID Token
-  - name: gcr.io/cloud-builders/gcloud
+  - name: "gcr.io/cloud-builders/gcloud"
     id: fetch-id-token
     entrypoint: /bin/bash
     args:
       - "-c"
       - |
         echo $(gcloud auth print-identity-token -q) > id_token.txt
+{%- elif cookiecutter.deployment_target == 'gke' %}
+  # Build and Push
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
+        "--build-arg",
+        "COMMIT_SHA=$COMMIT_SHA",
+        ".",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
+      ]
+
+  # Get GKE credentials
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: get-gke-credentials-staging
+    entrypoint: gcloud
+    args:
+      - "container"
+      - "clusters"
+      - "get-credentials"
+      - "{{cookiecutter.project_name}}-cluster-staging"
+      - "--region"
+      - "${_REGION}"
+      - "--project"
+      - "${_STAGING_PROJECT_ID}"
+
+  # Deploy to Staging by setting the new image
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: deploy-staging
+    entrypoint: kubectl
+    args:
+      - "set"
+      - "image"
+      - "deployment/{{cookiecutter.project_name}}-deployment"
+      - "{{cookiecutter.project_name}}=$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME"
+
+  # Fetch Staging Service URL
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: fetch-staging-url
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        # Wait for the Ingress to get an external IP
+        for i in {1..30}; do
+          IP=$(kubectl get ingress {{cookiecutter.project_name}}-ingress --namespace default --output jsonpath='{.status.loadBalancer.ingress[0].ip}');
+          if [ -n "$IP" ]; then
+            echo "http://$IP" > staging_url.txt;
+            exit 0;
+          fi;
+          echo "Waiting for Ingress external IP... ($i/30)";
+          sleep 10;
+        done;
+        echo "Failed to get external IP for the Ingress." >&2;
+        exit 1
+  # Fetch OIDC Token for IAP
+  - name: gcr.io/cloud-builders/gcloud
+    id: fetch-iap-token
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        # The audience is the IAP client ID
+        export _IAP_CLIENT_ID=$(gcloud iap oauth-clients list --project=${_STAGING_PROJECT_ID} --filter="displayName={{cookiecutter.project_name}}-iap-client-staging" --format="value(name.split('/').pop())")
+        echo $(gcloud auth print-identity-token --audiences=$_IAP_CLIENT_ID -q) > iap_token.txt
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
   - name: "python:3.11-slim" 
     id: install-dependencies
@@ -135,14 +207,17 @@ steps:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
         export _ID_TOKEN=$(cat id_token.txt)
         export _STAGING_URL=$(cat staging_url.txt)
+{%- elif cookiecutter.deployment_target == 'gke' %}
+        export _ID_TOKEN=$(cat iap_token.txt)
+        export _STAGING_URL=$(cat staging_url.txt)
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
         export _AUTH_TOKEN=$(cat auth_token.txt)
 {%- endif %}
         pip install locust==2.31.1 --user
         locust -f tests/load_test/load_test.py \
         --headless \
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-        -H $$_STAGING_URL \
+{%- if cookiecutter.deployment_target == 'cloud_run' or cookiecutter.deployment_target == 'gke' %}
+        -H $_STAGING_URL \
         -t 30s -u 10 -r 0.5 \
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
         -t 30s -u 2 -r 0.5 \

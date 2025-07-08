@@ -79,7 +79,7 @@ def normalize_project_name(project_name: str) -> str:
 @click.option(
     "--deployment-target",
     "-d",
-    type=click.Choice(["agent_engine", "cloud_run"]),
+    type=click.Choice(["agent_engine", "cloud_run", "gke"]),
     help="Deployment target name",
 )
 @click.option(

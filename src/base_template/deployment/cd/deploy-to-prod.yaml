@@ -56,6 +56,30 @@ steps:
       - "--project"
       - $_PROD_PROJECT_ID
 
+{%- elif cookiecutter.deployment_target == 'gke' %}
+  # Get GKE credentials
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: get-gke-credentials-prod
+    entrypoint: gcloud
+    args:
+      - "container"
+      - "clusters"
+      - "get-credentials"
+      - "{{cookiecutter.project_name}}-cluster-prod"
+      - "--region"
+      - "${_REGION}"
+      - "--project"
+      - "${_PROD_PROJECT_ID}"
+
+  # Deploy to Prod by setting the new image
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: trigger-deployment
+    entrypoint: kubectl
+    args:
+      - "set"
+      - "image"
+      - "deployment/{{cookiecutter.project_name}}-deployment"
+      - "{{cookiecutter.project_name}}=$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
   - name: "python:3.11-slim" 
     id: install-dependencies

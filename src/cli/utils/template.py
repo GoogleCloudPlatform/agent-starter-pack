@@ -70,7 +70,7 @@ class TemplateConfig:
 
 OVERWRITE_FOLDERS = ["app", "frontend", "tests", "notebooks"]
 TEMPLATE_CONFIG_FILE = ".templateconfig.yaml"
-DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine"]
+DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine", "gke"]
 DEFAULT_FRONTEND = "streamlit"
 
 
@@ -184,6 +184,10 @@ def prompt_deployment_target(agent_name: str) -> str:
         "cloud_run": {
             "display_name": "Cloud Run",
             "description": "GCP Serverless container execution",
+        },
+        "gke": {
+            "display_name": "GKE Autopilot",
+            "description": "Deploy to a fully managed Kubernetes cluster.",
         },
     }
 
@@ -456,22 +460,42 @@ def process_template(
             logging.debug(f"1. Copied base template from {base_template_path}")
 
             # 2. Process deployment target if specified
-            if deployment_target and deployment_target in DEPLOYMENT_FOLDERS:
-                deployment_path = (
-                    pathlib.Path(__file__).parent.parent.parent
-                    / "deployment_targets"
-                    / deployment_target
-                )
-                if deployment_path.exists():
-                    copy_files(
-                        deployment_path,
-                        project_template,
-                        agent_name=agent_name,
-                        overwrite=True,
+            if deployment_target:
+                # For container-based targets, first copy the shared 'container_based' files.
+                if deployment_target in ["cloud_run", "gke"]:
+                    container_based_path = (
+                        pathlib.Path(__file__).parent.parent.parent
+                        / "deployment_targets"
+                        / "container_based"
                     )
-                    logging.debug(
-                        f"2. Processed deployment files for target: {deployment_target}"
+                    if container_based_path.exists():
+                        copy_files(
+                            container_based_path,
+                            project_template,
+                            agent_name=agent_name,
+                            overwrite=True,
+                        )
+                        logging.debug(
+                            "2a. Copied shared container_based deployment files."
+                        )
+
+                # Then, copy the target-specific files.
+                if deployment_target in DEPLOYMENT_FOLDERS:
+                    deployment_path = (
+                        pathlib.Path(__file__).parent.parent.parent
+                        / "deployment_targets"
+                        / deployment_target
                     )
+                    if deployment_path.exists():
+                        copy_files(
+                            deployment_path,
+                            project_template,
+                            agent_name=agent_name,
+                            overwrite=True,
+                        )
+                        logging.debug(
+                            f"2b. Copied specific deployment files for target: {deployment_target}"
+                        )
 
             # 3. Copy data ingestion files if needed
             if include_data_ingestion and datastore:
@@ -627,13 +651,20 @@ def process_template(
 
                 # After copying template files, handle the lock file
                 if deployment_target:
+                    lock_file_target = deployment_target
+                    if deployment_target in ["cloud_run", "gke"]:
+                        lock_file_target = "container_based"
+                        logging.debug(
+                            f"Using container_based lock file for {deployment_target} deployment target."
+                        )
+
                     # Get the source lock file path
                     lock_path = (
                         pathlib.Path(__file__).parent.parent.parent.parent
                         / "src"
                         / "resources"
                         / "locks"
-                        / f"uv-{agent_name}-{deployment_target}.lock"
+                        / f"uv-{agent_name}-{lock_file_target}.lock"
                     )
                     logging.debug(f"Looking for lock file at: {lock_path}")
                     logging.debug(f"Lock file exists: {lock_path.exists()}")

@@ -44,22 +44,22 @@ resource "google_project_iam_member" "other_projects_roles" {
   member     = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
-{% if cookiecutter.deployment_target == 'cloud_run' %}
-# 3. Allow Cloud Run service SA to pull containers stored in the CICD project
+{% if cookiecutter.deployment_target == 'cloud_run' or cookiecutter.deployment_target == 'gke' %}
+# 3. Allow App SA to pull containers stored in the CICD project
 resource "google_project_iam_member" "cicd_run_invoker_artifact_registry_reader" {
   for_each = local.deploy_project_ids
   project  = var.cicd_runner_project_id
 
   role       = "roles/artifactregistry.reader"
-  member     = "serviceAccount:service-${data.google_project.projects[each.key].number}@serverless-robot-prod.iam.gserviceaccount.com"
+  member     = "serviceAccount:${google_service_account.app_sa[each.key].email}"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 
 }
 
-# 4. Grant Cloud Run SA the required permissions to run the application
-resource "google_project_iam_member" "cloud_run_app_sa_roles" {
+# 4. Grant App SA the required permissions to run the application
+resource "google_project_iam_member" "app_sa_roles" {
   for_each = {
-    for pair in setproduct(keys(local.deploy_project_ids), var.cloud_run_app_roles) :
+    for pair in setproduct(keys(local.deploy_project_ids), var.app_sa_roles) :
     join(",", pair) => {
       project = local.deploy_project_ids[pair[0]]
       role    = pair[1]
@@ -68,7 +68,7 @@ resource "google_project_iam_member" "cloud_run_app_sa_roles" {
 
   project    = each.value.project
   role       = each.value.role
-  member     = "serviceAccount:${google_service_account.cloud_run_app_sa[split(",", each.key)[0]].email}"
+  member     = "serviceAccount:${google_service_account.app_sa[split(",", each.key)[0]].email}"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 {% elif cookiecutter.deployment_target == 'agent_engine' %}

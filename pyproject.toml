@@ -63,7 +63,7 @@ lint = [
 [tool.pytest.ini_options]
 pythonpath = [".", "src/frontends/streamlit", "src", "agents/agentic_rag"]
 testpaths = ["tests"]
-addopts = "-s -v --ignore=tests/integration/test_template_linting.py --ignore=tests/integration/test_templated_patterns.py"
+addopts = "-s -v --ignore=tests/integration"
 log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s - %(levelname)s - %(message)s"

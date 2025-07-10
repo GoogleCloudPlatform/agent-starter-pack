@@ -45,7 +45,7 @@ def get_agent_configs(
         if not agent_dir.is_dir():
             continue
 
-        config_file = agent_dir / "template" / ".templateconfig.yaml"
+        config_file = agent_dir / ".template" / "templateconfig.yaml"
         if not config_file.exists():
             continue
 

@@ -16,65 +16,57 @@ import os
 import pathlib
 from datetime import datetime
 
-import pytest
 from rich.console import Console
 
 from tests.integration.utils import run_command
-from tests.utils.get_agents import get_test_combinations_to_run
 
 console = Console()
 TARGET_DIR = "target"
 
 
-def _run_agent_test(
-    agent: str, deployment_target: str, extra_params: list[str] | None = None
-) -> None:
-    """Common test logic for both deployment targets"""
-    # Generate a shorter project name to avoid exceeding character limits
-    timestamp = datetime.now().strftime("%m%d%H%M%S")
-    project_name = f"{agent[:8]}-{deployment_target[:5]}-{timestamp}".replace("_", "-")
-    project_path = pathlib.Path(TARGET_DIR) / project_name
-    region = "us-central1" if agent == "live_api" else "europe-west4"
+def test_remote_templating() -> None:
+    """Test creating an agent from a remote template."""
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    project_name = f"myagent-{timestamp}"
+    output_dir = pathlib.Path(TARGET_DIR)
+    project_path = output_dir / project_name
+    remote_url = "https://github.com/eliasecchig/test-adk-samples/tree/main/python/agents/gemini-fullstack"
+
     try:
         # Create target directory if it doesn't exist
-        os.makedirs(TARGET_DIR, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
 
-        # Template the project
+        # Template the project from the remote URL
         cmd = [
             "python",
             "-m",
             "src.cli.main",
             "create",
             project_name,
-            "--agent",
-            agent,
+            "-a",
+            remote_url,
             "--deployment-target",
-            deployment_target,
-            "--region",
-            region,
+            "agent_engine",
             "--auto-approve",
             "--skip-checks",
         ]
 
-        # Add any extra parameters
-        if extra_params:
-            cmd.extend(extra_params)
-
         run_command(
             cmd,
-            pathlib.Path(TARGET_DIR),
-            "Templating project",
+            output_dir,
+            f"Templating remote agent {project_name}",
         )
 
-        # Verify essential files
+        # Verify essential files are created
         essential_files = [
             "pyproject.toml",
             "app/agent.py",
+            "app/config.py",
+            "README.md",
         ]
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
-        # Install dependencies
         run_command(
             [
                 "uv",
@@ -82,7 +74,6 @@ def _run_agent_test(
                 "--dev",
                 "--extra",
                 "lint",
-                "--frozen",
             ],
             project_path,
             "Installing dependencies",
@@ -103,19 +94,10 @@ def _run_agent_test(
                 env=env,
             )
 
+        console.print(
+            f"[bold green]✓[/] Remote templating test passed for {project_name}"
+        )
+
     except Exception as e:
         console.print(f"[bold red]Error:[/] {e!s}")
         raise
-
-
-@pytest.mark.parametrize(
-    "agent,deployment_target,extra_params",
-    get_test_combinations_to_run(),
-    # Edit here to manually force a specific combination e.g [("langgraph_base_react", "agent_engine", None)]
-)
-def test_agent_deployment(
-    agent: str, deployment_target: str, extra_params: list[str] | None
-) -> None:
-    """Test agent templates with different deployment targets"""
-    console.print(f"[bold cyan]Testing combination:[/] {agent}, {deployment_target}")
-    _run_agent_test(agent, deployment_target, extra_params)

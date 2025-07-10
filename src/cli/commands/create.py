@@ -25,6 +25,13 @@ from rich.prompt import IntPrompt, Prompt
 from ..utils.datastores import DATASTORE_TYPES
 from ..utils.gcp import verify_credentials, verify_vertex_connection
 from ..utils.logging import handle_cli_error
+from ..utils.remote_template import (
+    fetch_remote_template,
+    get_base_template_name,
+    load_remote_template_config,
+    merge_template_configs,
+    parse_agent_spec,
+)
 from ..utils.template import (
     get_available_agents,
     get_template_path,
@@ -75,7 +82,11 @@ def normalize_project_name(project_name: str) -> str:
 @click.command()
 @click.pass_context
 @click.argument("project_name")
-@click.option("--agent", "-a", help="agent name or number to use")
+@click.option(
+    "--agent",
+    "-a",
+    help="Template identifier to use. Can be a local agent name (e.g., `chat_agent`), a local path (`local@/path/to/template`), an `adk-samples` shortcut (e.g., `adk@data-science`), or a remote Git URL. Both shorthand (e.g., `github.com/org/repo/path@main`) and full URLs from your browser (e.g., `https://github.com/org/repo/tree/main/path`) are supported. Lists available local templates if omitted.",
+)
 @click.option(
     "--deployment-target",
     "-d",
@@ -138,11 +149,26 @@ def create(
     """Create GCP-based AI agent projects from templates."""
     try:
         # Display welcome banner
-        console.print("\n=== GCP Agent Starter Pack :rocket:===", style="bold blue")
-        console.print("Welcome to the Agent Starter Pack!")
-        console.print(
-            "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
-        )
+        if agent and agent.startswith("adk@"):
+            console.print(
+                "\n=== Welcome to [link=https://github.com/google/adk-samples]google/adk-samples[/link]! ✨ ===",
+                style="bold blue",
+            )
+            console.print(
+                "Powered by ([link=https://goo.gle/agent-starter-pack]Google's Agent Starter Pack [/link])\n",
+            )
+            console.print(
+                "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
+            )
+        else:
+            console.print(
+                "\n=== Google Cloud Agent Starter Pack :rocket:===",
+                style="bold blue",
+            )
+            console.print("Welcome to the Agent Starter Pack!")
+            console.print(
+                "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
+            )
         # Validate project name
         if len(project_name) > 26:
             console.print(
@@ -172,23 +198,51 @@ def create(
             )
             return
 
-        # Agent selection
+        # Agent selection - handle remote templates
         selected_agent = None
+        template_source_path = None
+
         if agent:
-            agents = get_available_agents()
-            # First check if it's a valid agent name
-            if any(p["name"] == agent for p in agents.values()):
-                selected_agent = agent
+            if agent.startswith("local@"):
+                path_str = agent.split("@", 1)[1]
+                template_source_path = pathlib.Path(path_str).resolve()
+                if not template_source_path.is_dir():
+                    raise click.ClickException(
+                        f"Local path not found or not a directory: {template_source_path}"
+                    )
+                selected_agent = f"local_{template_source_path.name}"
+                console.print(f"Using local template: {template_source_path}")
             else:
-                # Try numeric agent selection if input is a number
-                try:
-                    agent_num = int(agent)
-                    if agent_num in agents:
-                        selected_agent = agents[agent_num]["name"]
+                # Check if it's a remote template specification
+                remote_spec = parse_agent_spec(agent)
+                if remote_spec:
+                    if remote_spec.is_adk_samples:
+                        console.print(
+                            f"> Fetching template: {remote_spec.template_path}",
+                            style="bold blue",
+                        )
                     else:
-                        raise ValueError(f"Invalid agent number: {agent_num}")
-                except ValueError as err:
-                    raise ValueError(f"Invalid agent name or number: {agent}") from err
+                        console.print(f"Fetching remote template: {agent}")
+                    template_source_path = fetch_remote_template(remote_spec)
+                    selected_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
+                else:
+                    # Handle local agent selection
+                    agents = get_available_agents()
+                    # First check if it's a valid agent name
+                    if any(p["name"] == agent for p in agents.values()):
+                        selected_agent = agent
+                    else:
+                        # Try numeric agent selection if input is a number
+                        try:
+                            agent_num = int(agent)
+                            if agent_num in agents:
+                                selected_agent = agents[agent_num]["name"]
+                            else:
+                                raise ValueError(f"Invalid agent number: {agent_num}")
+                        except ValueError as err:
+                            raise ValueError(
+                                f"Invalid agent name or number: {agent}"
+                            ) from err
 
         final_agent = (
             selected_agent
@@ -198,13 +252,54 @@ def create(
         if debug:
             logging.debug(f"Selected agent: {agent}")
 
-        template_path = (
-            pathlib.Path(__file__).parent.parent.parent.parent
-            / "agents"
-            / final_agent
-            / "template"
-        )
-        config = load_template_config(template_path)
+        # Load template configuration based on whether it's remote or local
+        if template_source_path:
+            # Load remote template config
+            source_config = load_remote_template_config(template_source_path)
+
+            # Check if remote template has the required structure
+            template_config_path = (
+                template_source_path / ".template" / "templateconfig.yaml"
+            )
+
+            if not template_config_path.exists():
+                console.print(
+                    "Error: Template is invalid or improperly structured.",
+                    style="bold red",
+                )
+                console.print(
+                    "Templates must contain a '.template/templateconfig.yaml' file.\n\n"
+                    "Expected structure:\n"
+                    "  your-template/\n"
+                    "  └── .template/\n"
+                    "      ├── templateconfig.yaml\n"
+                    "      └── [other template files...]",
+                    style="yellow",
+                )
+                return
+
+            # Load base template config for inheritance
+            base_template_name = get_base_template_name(source_config)
+            base_template_path = (
+                pathlib.Path(__file__).parent.parent.parent.parent
+                / "agents"
+                / base_template_name
+                / ".template"
+            )
+            base_config = load_template_config(base_template_path)
+
+            # Merge configs: remote inherits from and overrides base
+            config = merge_template_configs(base_config, source_config)
+            # For remote templates, use the template/ subdirectory as the template source
+            template_path = template_source_path / ".template"
+        else:
+            template_path = (
+                pathlib.Path(__file__).parent.parent.parent.parent
+                / "agents"
+                / final_agent
+                / ".template"
+            )
+            config = load_template_config(template_path)
         # Data ingestion and datastore selection
         if include_data_ingestion or datastore:
             # If datastore is specified but include_data_ingestion is not, set it to True
@@ -231,10 +326,20 @@ def create(
                     logging.debug(f"Selected datastore type: {datastore}")
 
         # Deployment target selection
+        # For remote templates, we need to use the base template name for deployment target selection
+        deployment_agent_name = final_agent
+        remote_config = None
+        if template_source_path:
+            # Use the base template name from remote config for deployment target selection
+            deployment_agent_name = get_base_template_name(config)
+            remote_config = config
+
         final_deployment = (
             deployment_target
             if deployment_target
-            else prompt_deployment_target(final_agent)
+            else prompt_deployment_target(
+                deployment_agent_name, remote_config=remote_config
+            )
         )
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
@@ -254,7 +359,7 @@ def create(
                 )
                 return
 
-            if final_deployment == "cloud_run" and not session_type:
+            if final_deployment in ("cloud_run") and not session_type:
                 final_session_type = prompt_session_type_selection()
         else:
             # Agents that don't require session management always use in-memory sessions
@@ -307,7 +412,10 @@ def create(
                 )
 
         # Process template
-        template_path = get_template_path(final_agent, debug=debug)
+        if not template_source_path:
+            template_path = get_template_path(final_agent, debug=debug)
+        # template_path is already set above for remote templates
+
         if debug:
             logging.debug(f"Template path: {template_path}")
             logging.debug(f"Processing template for project: {project_name}")
@@ -319,20 +427,24 @@ def create(
         if debug:
             logging.debug(f"Output directory: {destination_dir}")
 
-        process_template(
-            final_agent,
-            template_path,
-            project_name,
-            deployment_target=final_deployment,
-            include_data_ingestion=include_data_ingestion,
-            datastore=datastore,
-            session_type=final_session_type,
-            output_dir=destination_dir,
-        )
-
-        # Replace region in all files if a different region was specified
-        if region != "us-central1":
-            replace_region_in_files(project_path, region, debug=debug)
+        try:
+            # Process template (handles both local and remote templates)
+            process_template(
+                final_agent,
+                template_path,
+                project_name,
+                deployment_target=final_deployment,
+                include_data_ingestion=include_data_ingestion,
+                datastore=datastore,
+                session_type=final_session_type,
+                output_dir=destination_dir,
+                remote_template_path=template_source_path,
+                remote_config=config if template_source_path else None,
+            )
+        finally:
+            # Replace region in all files if a different region was specified
+            if region != "us-central1":
+                replace_region_in_files(project_path, region, debug=debug)
 
         project_path = destination_dir / project_name
         cd_path = project_path if output_dir else project_name

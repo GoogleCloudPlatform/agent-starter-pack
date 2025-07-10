@@ -19,56 +19,11 @@ from datetime import datetime
 
 from rich.console import Console
 
+from tests.integration.utils import run_command
 from tests.utils.get_agents import get_test_combinations_to_run
 
 console = Console()
 TARGET_DIR = "target"
-
-
-def run_command(
-    cmd: list[str], cwd: pathlib.Path | None, message: str
-) -> subprocess.CompletedProcess[bytes]:
-    """Helper function to run commands and handle output"""
-    console.print(f"\n[bold blue]{message}...[/]")
-
-    # For mypy, we want to see the output even if it fails
-    is_mypy = cmd[2] == "mypy"
-
-    if is_mypy:
-        # For mypy, run without capturing output to preserve formatting
-        mypy_result = subprocess.run(
-            cmd,
-            check=False,  # Don't check return code for mypy
-            cwd=cwd,
-        )
-
-        if mypy_result.returncode != 0:
-            console.print(
-                f"[bold red]Mypy failed with exit code: {mypy_result.returncode}[/]"
-            )
-            raise subprocess.CalledProcessError(mypy_result.returncode, cmd, None, None)
-        return mypy_result
-    else:
-        # For other commands, use capture_output
-        try:
-            result = subprocess.run(
-                cmd, check=True, capture_output=True, text=False, cwd=cwd
-            )
-
-            console.print(f"[green]✓[/] {message} completed successfully")
-            if result.stdout:
-                console.print(result.stdout.decode())
-
-            return result
-
-        except subprocess.CalledProcessError as e:
-            console.print(f"[bold red]Error: {message}[/]")
-            if e.stdout:
-                console.print(e.stdout.decode())
-            if e.stderr:
-                console.print(e.stderr.decode())
-            console.print(f"[bold red]Exit code: {e.returncode}[/]")
-            raise
 
 
 def test_template_linting(

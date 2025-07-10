@@ -23,7 +23,7 @@ settings:
   frontend_type: "adk_gemini_fullstack"
   commands:
     override:
-      install: "npm --prefix frontend install"
+      install: "uv sync --dev --extra jupyter && npm --prefix frontend install"
     extra:
       dev: 
         command: 'make dev-backend & make dev-frontend'

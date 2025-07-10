@@ -29,6 +29,9 @@ from rich.prompt import IntPrompt, Prompt
 from src.cli.utils.version import get_current_version
 
 from .datastores import DATASTORES
+from .remote_template import (
+    get_base_template_name,
+)
 
 ADK_FILES = ["app/__init__.py"]
 NON_ADK_FILES: list[str] = []
@@ -69,7 +72,7 @@ class TemplateConfig:
 
 
 OVERWRITE_FOLDERS = ["app", "frontend", "tests", "notebooks"]
-TEMPLATE_CONFIG_FILE = ".templateconfig.yaml"
+TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine"]
 DEFAULT_FRONTEND = "streamlit"
 
@@ -94,7 +97,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
 
     for agent_dir in agents_dir.iterdir():
         if agent_dir.is_dir() and not agent_dir.name.startswith("__"):
-            template_config_path = agent_dir / "template" / ".templateconfig.yaml"
+            template_config_path = agent_dir / ".template" / "templateconfig.yaml"
             if template_config_path.exists():
                 try:
                     with open(template_config_path) as f:
@@ -154,15 +157,20 @@ def load_template_config(template_dir: pathlib.Path) -> dict[str, Any]:
         return {}
 
 
-def get_deployment_targets(agent_name: str) -> list:
+def get_deployment_targets(
+    agent_name: str, remote_config: dict[str, Any] | None = None
+) -> list:
     """Get available deployment targets for the selected agent."""
-    template_path = (
-        pathlib.Path(__file__).parent.parent.parent.parent
-        / "agents"
-        / agent_name
-        / "template"
-    )
-    config = load_template_config(template_path)
+    if remote_config:
+        config = remote_config
+    else:
+        template_path = (
+            pathlib.Path(__file__).parent.parent.parent.parent
+            / "agents"
+            / agent_name
+            / ".template"
+        )
+        config = load_template_config(template_path)
 
     if not config:
         return []
@@ -171,9 +179,11 @@ def get_deployment_targets(agent_name: str) -> list:
     return targets if isinstance(targets, list) else [targets]
 
 
-def prompt_deployment_target(agent_name: str) -> str:
+def prompt_deployment_target(
+    agent_name: str, remote_config: dict[str, Any] | None = None
+) -> str:
     """Ask user to select a deployment target for the agent."""
-    targets = get_deployment_targets(agent_name)
+    targets = get_deployment_targets(agent_name, remote_config=remote_config)
 
     # Define deployment target friendly names and descriptions
     TARGET_INFO = {
@@ -272,7 +282,7 @@ def prompt_datastore_selection(
         pathlib.Path(__file__).parent.parent.parent.parent
         / "agents"
         / agent_name
-        / "template"
+        / ".template"
     )
     config = load_template_config(template_path)
 
@@ -349,7 +359,7 @@ def prompt_datastore_selection(
 def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
     """Get the absolute path to the agent template directory."""
     current_dir = pathlib.Path(__file__).parent.parent.parent.parent
-    template_path = current_dir / "agents" / agent_name / "template"
+    template_path = current_dir / "agents" / agent_name / ".template"
     if debug:
         logging.debug(f"Looking for template in: {template_path}")
         logging.debug(f"Template exists: {template_path.exists()}")
@@ -397,6 +407,8 @@ def process_template(
     datastore: str | None = None,
     session_type: str | None = None,
     output_dir: pathlib.Path | None = None,
+    remote_template_path: pathlib.Path | None = None,
+    remote_config: dict[str, Any] | None = None,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -409,14 +421,30 @@ def process_template(
         datastore: Optional datastore type for data ingestion
         session_type: Optional session type for cloud_run deployment
         output_dir: Optional output directory path, defaults to current directory
+        remote_template_path: Optional path to remote template for overlay
+        remote_config: Optional remote template configuration
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
     logging.debug(f"Include pipeline: {datastore}")
     logging.debug(f"Output directory: {output_dir}")
 
-    # Get paths
-    agent_path = template_dir.parent  # Get parent of template dir
+    # Handle remote vs local templates
+    is_remote = remote_template_path is not None
+
+    if is_remote:
+        # For remote templates, determine the base template
+        base_template_name = get_base_template_name(remote_config or {})
+        agent_path = (
+            pathlib.Path(__file__).parent.parent.parent.parent
+            / "agents"
+            / base_template_name
+        )
+        logging.debug(f"Remote template using base: {base_template_name}")
+    else:
+        # For local templates, use the existing logic
+        agent_path = template_dir.parent  # Get parent of template dir
+
     logging.debug(f"agent path: {agent_path}")
     logging.debug(f"agent path exists: {agent_path.exists()}")
     logging.debug(
@@ -489,7 +517,7 @@ def process_template(
             copy_frontend_files(frontend_type, project_template)
             logging.debug(f"4. Processed frontend files for type: {frontend_type}")
 
-            # 5. Finally, copy agent-specific files to override everything else
+            # 5. Copy agent-specific files to override base template
             if agent_path.exists():
                 for folder in OVERWRITE_FOLDERS:
                     agent_folder = agent_path / folder
@@ -500,11 +528,27 @@ def process_template(
                             agent_folder, project_folder, agent_name, overwrite=True
                         )
 
+            # 6. Finally, overlay remote template files if present
+            if is_remote and remote_template_path:
+                logging.debug(
+                    f"6. Overlaying remote template files from {remote_template_path}"
+                )
+                copy_files(
+                    remote_template_path,
+                    project_template,
+                    agent_name=agent_name,
+                    overwrite=True,
+                )
+
             # Load and validate template config first
-            template_path = pathlib.Path(template_dir)
-            config = load_template_config(template_path)
+            if is_remote:
+                config = remote_config or {}
+            else:
+                template_path = pathlib.Path(template_dir)
+                config = load_template_config(template_path)
+
             if not config:
-                raise ValueError(f"Could not load template config from {template_path}")
+                raise ValueError("Could not load template config")
 
             # Validate deployment target
             available_targets = config.get("settings", {}).get("deployment_targets", [])
@@ -516,8 +560,8 @@ def process_template(
                     f"Invalid deployment target '{deployment_target}'. Available targets: {available_targets}"
                 )
 
-            # Load template config
-            template_config = load_template_config(pathlib.Path(template_dir))
+            # Use the already loaded config
+            template_config = config
 
             # Check if data processing should be included
             if include_data_ingestion and datastore:
@@ -625,9 +669,36 @@ def process_template(
                         file_path.unlink()
                         logging.debug(f"Deleted {file_path}")
 
-                # After copying template files, handle the lock file
-                if deployment_target:
-                    # Get the source lock file path
+                # Handle pyproject.toml and uv.lock files
+                if is_remote and remote_template_path:
+                    # For remote templates, use their pyproject.toml and uv.lock if they exist
+                    remote_pyproject = remote_template_path / "pyproject.toml"
+                    remote_uv_lock = remote_template_path / "uv.lock"
+
+                    if remote_pyproject.exists():
+                        shutil.copy2(
+                            remote_pyproject, final_destination / "pyproject.toml"
+                        )
+                        logging.debug("Used pyproject.toml from remote template")
+
+                    if remote_uv_lock.exists():
+                        shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
+                        logging.debug("Used uv.lock from remote template")
+                    elif deployment_target:
+                        # Fallback to base template lock file
+                        base_template_name = get_base_template_name(remote_config or {})
+                        lock_path = (
+                            pathlib.Path(__file__).parent.parent.parent.parent
+                            / "src"
+                            / "resources"
+                            / "locks"
+                            / f"uv-{base_template_name}-{deployment_target}.lock"
+                        )
+                        if lock_path.exists():
+                            shutil.copy2(lock_path, final_destination / "uv.lock")
+                            logging.debug(f"Used fallback lock file from {lock_path}")
+                elif deployment_target:
+                    # For local templates, use the existing logic
                     lock_path = (
                         pathlib.Path(__file__).parent.parent.parent.parent
                         / "src"
@@ -706,7 +777,11 @@ def copy_files(
             return True
         if "__pycache__" in str(path) or path.name == "__pycache__":
             return True
+        if ".git" in path.parts:
+            return True
         if agent_name is not None and should_exclude_path(path, agent_name):
+            return True
+        if path.is_dir() and path.name == ".template":
             return True
         return False
 

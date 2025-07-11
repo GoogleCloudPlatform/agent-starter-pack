@@ -44,6 +44,13 @@ export default defineConfig({
         ]
       },
       {
+        text: 'Authoring Templates',
+        items: [
+          { text: 'Remote Templating', link: '/guide/remote-templating' },
+          { text: 'Template Config Reference', link: '/guide/template-config-reference' }
+        ]
+      },
+      {
         text: 'Agents',
         items: [
           { text: 'Overview', link: '/agents/overview' },

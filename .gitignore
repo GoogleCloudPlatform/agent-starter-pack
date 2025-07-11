@@ -198,3 +198,4 @@ cleanup_e2e_projects.sh
 .cloudbuild/terraform/backend.tf
 .cloudbuild/terraform/vars/env.tfvars
 docs/.vitepress/cache
+tests/cicd/delete_gcp_resources.sh

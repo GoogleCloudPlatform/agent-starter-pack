@@ -98,7 +98,7 @@ locals {
     },
   ]
 
-  agent_testing_included_files = { for combo in local.agent_testing_combinations :
+agent_testing_included_files = { for combo in local.agent_testing_combinations :
     combo.name => [
       # Only include files for the specific agent being tested
       "agents/${split(",", combo.value)[0]}/**",
@@ -154,7 +154,17 @@ locals {
     }
 
   e2e_agent_deployment_included_files = { for combo in local.agent_testing_combinations :
-    combo.name => [
+    combo.name => combo.name == "adk_base-cloud_run-alloydb" ? [
+      "src/deployment_targets/cloud_run/**",
+      "pyproject.toml",
+    ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
+      "agents/agentic_rag/**",
+      "src/data_ingestion/**",
+      "pyproject.toml",
+    ] : substr(combo.name, 0, 8) == "live_api" ? [
+      "agents/live_api/**",
+      "pyproject.toml",
+    ] : [
       # Only include files for the specific agent being tested
       "agents/${split(",", combo.value)[0]}/**",
       # Common files that affect all agents

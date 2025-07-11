@@ -1,8 +1,7 @@
 # Remote Templates
 
-A remote template is a Git repository that the agent-starter-pack CLI uses to generate new projects. It empowers you to create and share your own production-ready starter packs by packaging your custom agent logic, dependencies, and configurations. This guide covers how to build, test, and use them.
-
-This guide covers how to build, test, and use remote templates.
+A remote template is a Git repository that the agent-starter-pack CLI uses to generate new projects. It empowers you to create and share your **own production-ready starter packs** by packaging your **custom agent logic, dependencies, and configurations**. 
+This guide covers how to build, test, and use them.
 
 ## Quickstart: Creating Your First Remote Template
 

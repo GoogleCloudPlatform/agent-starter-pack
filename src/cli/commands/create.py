@@ -155,7 +155,7 @@ def create(
                 style="bold blue",
             )
             console.print(
-                "Powered by ([link=https://goo.gle/agent-starter-pack]Google's Agent Starter Pack [/link])\n",
+                "Powered by [link=https://goo.gle/agent-starter-pack]Google's Agent Starter Pack [/link]\n",
             )
             console.print(
                 "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"

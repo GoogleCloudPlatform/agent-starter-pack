@@ -696,19 +696,6 @@ def process_template(
                     if remote_uv_lock.exists():
                         shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
                         logging.debug("Used uv.lock from remote template")
-                    elif deployment_target:
-                        # Fallback to base template lock file
-                        base_template_name = get_base_template_name(remote_config or {})
-                        lock_path = (
-                            pathlib.Path(__file__).parent.parent.parent.parent
-                            / "src"
-                            / "resources"
-                            / "locks"
-                            / f"uv-{base_template_name}-{deployment_target}.lock"
-                        )
-                        if lock_path.exists():
-                            shutil.copy2(lock_path, final_destination / "uv.lock")
-                            logging.debug(f"Used fallback lock file from {lock_path}")
                 elif deployment_target:
                     # For local templates, use the existing logic
                     lock_path = (

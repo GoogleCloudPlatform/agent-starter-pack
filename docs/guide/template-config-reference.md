@@ -6,7 +6,7 @@ This document provides a detailed reference for all the available fields in the 
 
 | Field               | Type   | Required | Description                                                                                             |
 | ------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------- |
-| `base_template`     | string | Yes      | The name of the built-in agent that the remote template will inherit from (e.g., `adk_base`, `agentic_rag`). |
+| `base_template`     | string | Yes (for remote agents only)      | The name of the built-in agent that the remote template will inherit from (e.g., `adk_base`, `agentic_rag`). |
 | `name`              | string | Yes      | The display name of your template, shown in the `list` command.                                         |
 | `description`       | string | Yes      | A brief description of your template, also shown in the `list` command.                                 |
 | `example_question`  | string | No       | An example question or prompt that will be included in the generated project's `README.md`.             |

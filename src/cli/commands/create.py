@@ -15,14 +15,16 @@
 import logging
 import os
 import pathlib
+import shutil
 import subprocess
+import tempfile
 
 import click
 from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
-from ..utils.datastores import DATASTORE_TYPES
+from ..utils.datastores import DATASTORE_TYPES, DATASTORES
 from ..utils.gcp import verify_credentials, verify_vertex_connection
 from ..utils.logging import handle_cli_error
 from ..utils.remote_template import (
@@ -34,6 +36,7 @@ from ..utils.remote_template import (
 )
 from ..utils.template import (
     get_available_agents,
+    get_deployment_targets,
     get_template_path,
     load_template_config,
     process_template,
@@ -128,7 +131,7 @@ def normalize_project_name(project_name: str) -> str:
 @click.option(
     "--skip-checks",
     is_flag=True,
-    help="Skip verification checks for uv, GCP and Vertex AI",
+    help="Skip verification checks for GCP and Vertex AI",
     default=False,
 )
 @handle_cli_error
@@ -201,17 +204,28 @@ def create(
         # Agent selection - handle remote templates
         selected_agent = None
         template_source_path = None
+        temp_dir_to_clean = None
 
         if agent:
             if agent.startswith("local@"):
                 path_str = agent.split("@", 1)[1]
-                template_source_path = pathlib.Path(path_str).resolve()
-                if not template_source_path.is_dir():
+                local_path = pathlib.Path(path_str).resolve()
+                if not local_path.is_dir():
                     raise click.ClickException(
-                        f"Local path not found or not a directory: {template_source_path}"
+                        f"Local path not found or not a directory: {local_path}"
                     )
+
+                # Create a temporary directory and copy the local template to it
+                temp_dir = tempfile.mkdtemp(prefix="asp_local_template_")
+                temp_dir_to_clean = temp_dir
+                template_source_path = pathlib.Path(temp_dir) / local_path.name
+                shutil.copytree(local_path, template_source_path)
+
                 selected_agent = f"local_{template_source_path.name}"
-                console.print(f"Using local template: {template_source_path}")
+                console.print(f"Using local template: {local_path}")
+                logging.debug(
+                    f"Copied local template to temporary dir: {template_source_path}"
+                )
             else:
                 # Check if it's a remote template specification
                 remote_spec = parse_agent_spec(agent)
@@ -223,7 +237,10 @@ def create(
                         )
                     else:
                         console.print(f"Fetching remote template: {agent}")
-                    template_source_path = fetch_remote_template(remote_spec)
+                    template_source_path, temp_dir_path = fetch_remote_template(
+                        remote_spec
+                    )
+                    temp_dir_to_clean = str(temp_dir_path)
                     selected_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
                 else:
                     # Handle local agent selection
@@ -244,13 +261,17 @@ def create(
                                 f"Invalid agent name or number: {agent}"
                             ) from err
 
-        final_agent = (
-            selected_agent
-            if selected_agent
-            else display_agent_selection(deployment_target)
-        )
+        # Agent selection
+        final_agent = selected_agent
+        if not final_agent:
+            if auto_approve:
+                raise click.ClickException(
+                    "Error: --agent is required when running with --auto-approve."
+                )
+            final_agent = display_agent_selection(deployment_target)
+
         if debug:
-            logging.debug(f"Selected agent: {agent}")
+            logging.debug(f"Selected agent: {final_agent}")
 
         # Load template configuration based on whether it's remote or local
         if template_source_path:
@@ -302,14 +323,19 @@ def create(
             config = load_template_config(template_path)
         # Data ingestion and datastore selection
         if include_data_ingestion or datastore:
-            # If datastore is specified but include_data_ingestion is not, set it to True
             include_data_ingestion = True
-
-            # If include_data_ingestion is True but no datastore is specified, prompt for it
             if not datastore:
-                # Pass a flag to indicate this is from explicit CLI flag
-                datastore = prompt_datastore_selection(final_agent, from_cli_flag=True)
-
+                if auto_approve:
+                    # Default to the first available datastore in non-interactive mode
+                    datastore = next(iter(DATASTORES.keys()))
+                    console.print(
+                        f"Info: --datastore not specified. Defaulting to '{datastore}' in auto-approve mode.",
+                        style="yellow",
+                    )
+                else:
+                    datastore = prompt_datastore_selection(
+                        final_agent, from_cli_flag=True
+                    )
             if debug:
                 logging.debug(f"Data ingestion enabled: {include_data_ingestion}")
                 logging.debug(f"Selected datastore type: {datastore}")
@@ -317,8 +343,15 @@ def create(
             # Check if the agent requires data ingestion
             if config and config.get("settings", {}).get("requires_data_ingestion"):
                 include_data_ingestion = True
-                datastore = prompt_datastore_selection(final_agent)
-
+                if not datastore:
+                    if auto_approve:
+                        datastore = next(iter(DATASTORES.keys()))
+                        console.print(
+                            f"Info: --datastore not specified. Defaulting to '{datastore}' in auto-approve mode.",
+                            style="yellow",
+                        )
+                    else:
+                        datastore = prompt_datastore_selection(final_agent)
                 if debug:
                     logging.debug(
                         f"Data ingestion required by agent: {include_data_ingestion}"
@@ -334,13 +367,25 @@ def create(
             deployment_agent_name = get_base_template_name(config)
             remote_config = config
 
-        final_deployment = (
-            deployment_target
-            if deployment_target
-            else prompt_deployment_target(
+        final_deployment = deployment_target
+        if not final_deployment:
+            available_targets = get_deployment_targets(
                 deployment_agent_name, remote_config=remote_config
             )
-        )
+            if auto_approve:
+                if not available_targets:
+                    raise click.ClickException(
+                        f"Error: No deployment targets available for agent '{deployment_agent_name}'."
+                    )
+                final_deployment = available_targets[0]
+                console.print(
+                    f"Info: --deployment-target not specified. Defaulting to '{final_deployment}' in auto-approve mode.",
+                    style="yellow",
+                )
+            else:
+                final_deployment = prompt_deployment_target(
+                    deployment_agent_name, remote_config=remote_config
+                )
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
@@ -359,8 +404,19 @@ def create(
                 )
                 return
 
-            if final_deployment in ("cloud_run") and not session_type:
-                final_session_type = prompt_session_type_selection()
+            if (
+                final_deployment is not None
+                and final_deployment in ("cloud_run")
+                and not session_type
+            ):
+                if auto_approve:
+                    final_session_type = "in_memory"
+                    console.print(
+                        "Info: --session-type not specified. Defaulting to 'in_memory' in auto-approve mode.",
+                        style="yellow",
+                    )
+                else:
+                    final_session_type = prompt_session_type_selection()
         else:
             # Agents that don't require session management always use in-memory sessions
             final_session_type = "in_memory"
@@ -441,10 +497,22 @@ def create(
                 remote_template_path=template_source_path,
                 remote_config=config if template_source_path else None,
             )
-        finally:
+
             # Replace region in all files if a different region was specified
             if region != "us-central1":
                 replace_region_in_files(project_path, region, debug=debug)
+        finally:
+            # Clean up the temporary directory if one was created
+            if temp_dir_to_clean:
+                try:
+                    shutil.rmtree(temp_dir_to_clean)
+                    logging.debug(
+                        f"Successfully cleaned up temporary directory: {temp_dir_to_clean}"
+                    )
+                except OSError as e:
+                    logging.warning(
+                        f"Failed to clean up temporary directory {temp_dir_to_clean}: {e}"
+                    )
 
         project_path = destination_dir / project_name
         cd_path = project_path if output_dir else project_name
@@ -474,14 +542,12 @@ def create(
         console.print("\n🚀 To get started, run the following command:")
 
         # Check if the agent has a 'dev' command in its settings
-        if config["settings"].get("commands", {}).get("extra", {}).get("dev"):
-            console.print(
-                f"   [bold bright_green]cd {cd_path} && make install && make dev[/]"
-            )
-        else:
-            console.print(
-                f"   [bold bright_green]cd {cd_path} && make install && make playground[/]"
-            )
+        interactive_command = config.get("settings", {}).get(
+            "interactive_command", "playground"
+        )
+        console.print(
+            f"   [bold bright_green]cd {cd_path} && make install && make {interactive_command}[/]"
+        )
     except Exception:
         if debug:
             logging.exception(

@@ -67,9 +67,15 @@ def test_create_with_local_path(
     mock_process_template.assert_called_once()
     call_args, call_kwargs = mock_process_template.call_args
 
-    expected_template_path = fake_template_path / ".template"
-    assert call_args[1] == expected_template_path
-    assert call_kwargs["remote_template_path"] == fake_template_path.resolve()
+    # The template path should now be inside a temporary directory
+    actual_template_path = call_args[1]
+    assert "asp_local_template_" in str(actual_template_path)
+    assert actual_template_path.name == ".template"
+
+    # The remote_template_path should also be the temporary directory
+    actual_remote_path = call_kwargs["remote_template_path"]
+    assert "asp_local_template_" in str(actual_remote_path)
+    assert actual_remote_path.name == "my-local-template"
 
 
 def test_parse_agent_spec_ignores_local_prefix() -> None:

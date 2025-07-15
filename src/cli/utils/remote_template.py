@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import yaml
+from jinja2 import Environment
 
 
 @dataclass
@@ -112,7 +113,9 @@ def parse_agent_spec(agent_spec: str) -> RemoteTemplateSpec | None:
     return None
 
 
-def fetch_remote_template(spec: RemoteTemplateSpec) -> pathlib.Path:
+def fetch_remote_template(
+    spec: RemoteTemplateSpec,
+) -> tuple[pathlib.Path, pathlib.Path]:
     """Fetch remote template and return path to template directory.
 
     Uses Git to clone the remote repository.
@@ -121,7 +124,9 @@ def fetch_remote_template(spec: RemoteTemplateSpec) -> pathlib.Path:
         spec: Remote template specification
 
     Returns:
-        Path to the fetched template directory
+        A tuple containing:
+        - Path to the fetched template directory.
+        - Path to the top-level temporary directory that should be cleaned up.
     """
     temp_dir = tempfile.mkdtemp(prefix="asp_remote_template_")
     temp_path = pathlib.Path(temp_dir)
@@ -169,18 +174,7 @@ def fetch_remote_template(spec: RemoteTemplateSpec) -> pathlib.Path:
                 f"Template path not found in the repository: {spec.template_path}"
             )
 
-        # Exclude Makefile and README.md from remote template to avoid conflicts
-        makefile_path = template_dir / "Makefile"
-        if makefile_path.exists():
-            logging.debug(f"Removing Makefile from remote template: {makefile_path}")
-            makefile_path.unlink()
-
-        readme_path = template_dir / "README.md"
-        if readme_path.exists():
-            logging.debug(f"Removing README.md from remote template: {readme_path}")
-            readme_path.unlink()
-
-        return template_dir
+        return template_dir, temp_path
     except Exception as e:
         # Clean up on error
         shutil.rmtree(temp_path, ignore_errors=True)
@@ -252,3 +246,76 @@ def merge_template_configs(
 
     # Perform the deep merge
     return deep_merge(merged_config, remote_config)
+
+
+def render_and_merge_makefiles(
+    base_template_path: pathlib.Path,
+    final_destination: pathlib.Path,
+    cookiecutter_config: dict,
+    remote_template_path: pathlib.Path | None = None,
+) -> None:
+    """
+    Renders the base and remote Makefiles separately, then merges them.
+
+    If remote_template_path is not provided, only the base Makefile is rendered.
+    """
+
+    env = Environment()
+
+    # Render the base Makefile
+    base_makefile_path = base_template_path / "Makefile"
+    if base_makefile_path.exists():
+        with open(base_makefile_path) as f:
+            base_template = env.from_string(f.read())
+        rendered_base_makefile = base_template.render(cookiecutter=cookiecutter_config)
+    else:
+        rendered_base_makefile = ""
+
+    # Render the remote Makefile if a path is provided
+    rendered_remote_makefile = ""
+    if remote_template_path:
+        remote_makefile_path = remote_template_path / "Makefile"
+        if remote_makefile_path.exists():
+            with open(remote_makefile_path) as f:
+                remote_template = env.from_string(f.read())
+            rendered_remote_makefile = remote_template.render(
+                cookiecutter=cookiecutter_config
+            )
+
+    # Merge the rendered Makefiles
+    if rendered_base_makefile and rendered_remote_makefile:
+        # A simple merge: remote content first, then append missing commands from base
+        base_commands = set(
+            re.findall(r"^([a-zA-Z0-9_-]+):", rendered_base_makefile, re.MULTILINE)
+        )
+        remote_commands = set(
+            re.findall(r"^([a-zA-Z0-9_-]+):", rendered_remote_makefile, re.MULTILINE)
+        )
+        missing_commands = base_commands - remote_commands
+
+        if missing_commands:
+            commands_to_append = ["\n\n# --- Commands from Agent Starter Pack ---\n\n"]
+            for command in sorted(missing_commands):
+                command_block_match = re.search(
+                    rf"^{command}:.*?(?=\n\n(?:^#.*\n)*?^[a-zA-Z0-9_-]+:|" + r"\Z)",
+                    rendered_base_makefile,
+                    re.MULTILINE | re.DOTALL,
+                )
+                if command_block_match:
+                    commands_to_append.append(command_block_match.group(0))
+                    commands_to_append.append("\n\n")
+
+            final_makefile_content = rendered_remote_makefile + "".join(
+                commands_to_append
+            )
+        else:
+            final_makefile_content = rendered_remote_makefile
+    elif rendered_remote_makefile:
+        final_makefile_content = rendered_remote_makefile
+    else:
+        final_makefile_content = rendered_base_makefile
+
+    # Write the final merged Makefile
+    with open(final_destination / "Makefile", "w") as f:
+        f.write(final_makefile_content)
+    logging.debug("Rendered and merged Makefile written to final destination.")

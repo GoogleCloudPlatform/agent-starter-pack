@@ -46,6 +46,16 @@ locals {
     ".cloudbuild/**",
   ]
 
+  makefile_usability_included_files = [
+    "src/cli/**",
+    "src/base_template/**",
+    "src/deployment_targets/**",
+    "tests/integration/test_makefile_usability.py",
+    "pyproject.toml",
+    "uv.lock",
+    ".cloudbuild/**",
+  ]
+
   # Define a local variable for agent/deployment combinations
   agent_testing_combinations = [
     {
@@ -338,6 +348,28 @@ resource "google_cloudbuild_trigger" "pr_test_remote_template" {
 
   filename           = ".cloudbuild/ci/test_remote_template.yaml"
   included_files     = local.common_included_files
+  ignored_files      = local.common_ignored_files
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
+}
+
+# g. Create Makefile usability Test trigger for PR requests
+resource "google_cloudbuild_trigger" "pr_test_makefile" {
+  name            = "pr-test-makefile"
+  project         = var.cicd_runner_project_id
+  location        = var.region
+  description     = "Trigger for PR checks on Makefile usability"
+  service_account = resource.google_service_account.cicd_runner_sa.id
+
+  repository_event_config {
+    repository = local.repository_path
+    pull_request {
+      branch          = "main"
+      comment_control = "COMMENTS_ENABLED_FOR_EXTERNAL_CONTRIBUTORS_ONLY"
+    }
+  }
+
+  filename           = ".cloudbuild/ci/test_makefile.yaml"
+  included_files     = local.makefile_usability_included_files
   ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }

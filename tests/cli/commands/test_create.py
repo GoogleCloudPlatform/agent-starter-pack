@@ -98,14 +98,22 @@ def mock_subprocess() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
+def mock_get_deployment_targets() -> Generator[MagicMock, None, None]:
+    """Mock get_deployment_targets to return a list of targets."""
+    with patch("src.cli.commands.create.get_deployment_targets") as mock:
+        mock.return_value = ["cloud_run", "agent_engine"]
+        yield mock
+
+
+@pytest.fixture
 def mock_load_template_config() -> Generator[MagicMock, None, None]:
     """Mocks the template config loading to prevent file system access."""
     with patch("src.cli.commands.create.load_template_config") as mock:
         mock.return_value = {
             "name": "langgraph_base_react",
             "description": "LangGraph Base React Agent",
-            "deployment_targets": ["cloud_run", "agent_engine"],
             "settings": {
+                "deployment_targets": ["cloud_run", "agent_engine"],
                 "requires_data_ingestion": False,
                 "commands": {"extra": {"dev": "streamlit run app/main.py"}},
             },
@@ -142,6 +150,7 @@ class TestCreateCommand:
         mock_resolve: MagicMock,
         mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
     ) -> None:
         """Test create command with all options provided"""
         runner = CliRunner()
@@ -204,6 +213,7 @@ class TestCreateCommand:
         mock_resolve: MagicMock,
         mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
     ) -> None:
         """Test create command with auto-approve flag"""
         runner = CliRunner()
@@ -254,6 +264,7 @@ class TestCreateCommand:
         mock_resolve: MagicMock,
         mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
     ) -> None:
         """Test create command in interactive mode"""
         runner = CliRunner()
@@ -306,6 +317,7 @@ class TestCreateCommand:
         mock_resolve: MagicMock,
         mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
     ) -> None:
         """Test create command with GCP credential change"""
         runner = CliRunner()

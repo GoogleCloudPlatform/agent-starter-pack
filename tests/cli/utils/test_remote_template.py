@@ -26,6 +26,7 @@ from src.cli.utils.remote_template import (
     load_remote_template_config,
     merge_template_configs,
     parse_agent_spec,
+    render_and_merge_makefiles,
 )
 
 
@@ -120,49 +121,6 @@ class TestParseAgentSpec:
 
 
 class TestFetchRemoteTemplate:
-    @patch("subprocess.run")
-    @patch("tempfile.mkdtemp")
-    @patch("pathlib.Path.exists")
-    @patch("pathlib.Path.unlink")
-    def test_fetch_remote_template_success(
-        self,
-        mock_unlink: MagicMock,
-        mock_exists: MagicMock,
-        mock_mkdtemp: MagicMock,
-        mock_subprocess: MagicMock,
-    ) -> None:
-        """Test successful remote template fetching"""
-        mock_mkdtemp.return_value = "/tmp/test_dir"
-
-        mock_exists.side_effect = lambda: True
-        mock_subprocess.return_value = MagicMock(returncode=0, stderr="")
-
-        spec = RemoteTemplateSpec(
-            repo_url="https://github.com/org/repo",
-            template_path="path/to/template",
-            git_ref="main",
-        )
-
-        fetch_remote_template(spec)
-
-        # Verify git clone command
-        expected_cmd = [
-            "git",
-            "clone",
-            "--depth",
-            "1",
-            "--branch",
-            "main",
-            "https://github.com/org/repo",
-            "/tmp/test_dir/repo",
-        ]
-        mock_subprocess.assert_called_once()
-        args, _ = mock_subprocess.call_args
-        assert args[0] == expected_cmd
-
-        # Verify that unlink was called on the Makefile and README.md
-        assert mock_unlink.call_count == 2
-
     @patch("subprocess.run")
     @patch("tempfile.mkdtemp")
     @patch("shutil.rmtree")
@@ -462,3 +420,214 @@ class TestParseAgentSpecWithGitSuffix:
         assert spec.repo_url == "https://github.com/org/repo"
         assert spec.template_path == ""
         assert spec.git_ref == "main"
+
+
+class TestRenderAndMergeMakefiles:
+    """Tests for the render_and_merge_makefiles function."""
+
+    @patch("pathlib.Path.exists")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_render_and_merge_with_missing_commands(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test that missing commands are merged from base to remote."""
+        base_content = (
+            "install:\n"
+            "\t@echo 'installing {{cookiecutter.project_name}}'\n\n"
+            "lint:\n"
+            "\t@echo 'linting'\n"
+        )
+        remote_content = (
+            "install:\n\t@echo 'remote-install {{cookiecutter.project_name}}'\n"
+        )
+
+        # Mock file existence
+        mock_exists.return_value = True
+
+        # Set up mock file reads for base and remote Makefiles
+        mock_file.return_value.read.side_effect = [base_content, remote_content]
+
+        # Create mock file paths
+        base_path = pathlib.Path("base_template")
+        remote_path = pathlib.Path("remote_template")
+        dest_path = pathlib.Path("destination")
+
+        # Mock cookiecutter config
+        config = {"project_name": "test_project"}
+
+        # Run the function
+        render_and_merge_makefiles(
+            base_template_path=base_path,
+            final_destination=dest_path,
+            cookiecutter_config=config,
+            remote_template_path=remote_path,
+        )
+
+        # Check that the final Makefile was written correctly
+        mock_file.assert_called_with(dest_path / "Makefile", "w")
+        handle = mock_file()
+        written_content = handle.write.call_args[0][0]
+
+        # Assert that the remote install command is present
+        assert "remote-install test_project" in written_content
+        # Assert that the merged lint command is present
+        assert "lint:" in written_content
+        assert "@echo 'linting'" in written_content
+        # Assert that the base install command is NOT present
+        assert "@echo 'installing test_project'" not in written_content
+
+    @patch("pathlib.Path.exists")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_render_and_merge_with_no_missing_commands(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test that only remote content is used when no commands are missing."""
+        # Both base and remote have the same command, so no merging should happen
+        base_content = "install:\n\t@echo 'installing {{cookiecutter.project_name}}'\n"
+        remote_content = (
+            "install:\n\t@echo 'remote-install {{cookiecutter.project_name}}'\n"
+        )
+
+        # Mock file existence
+        mock_exists.return_value = True
+        mock_file.return_value.read.side_effect = [base_content, remote_content]
+
+        base_path = pathlib.Path("base_template")
+        remote_path = pathlib.Path("remote_template")
+        dest_path = pathlib.Path("destination")
+        config = {"project_name": "test_project"}
+
+        render_and_merge_makefiles(
+            base_template_path=base_path,
+            final_destination=dest_path,
+            cookiecutter_config=config,
+            remote_template_path=remote_path,
+        )
+
+        # Get the write calls to the destination file
+        write_calls = [
+            call for call in mock_file.return_value.write.call_args_list if call[0]
+        ]
+        assert len(write_calls) > 0
+
+        write_call = write_calls[0][0][0]
+        assert "remote-install test_project" in write_call
+        # Since both have 'install' command, no base commands should be appended
+        assert "Commands from Agent Starter Pack" not in write_call
+
+    @patch("pathlib.Path.exists")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_render_and_merge_with_empty_remote_makefile(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test that base content is used when remote Makefile is empty."""
+        base_content = "install:\n\t@echo 'installing {{cookiecutter.project_name}}'\n\nlint:\n\t@echo 'linting'\n"
+        remote_content = ""
+
+        # Mock file existence
+        mock_exists.return_value = True
+        mock_file.return_value.read.side_effect = [base_content, remote_content]
+
+        base_path = pathlib.Path("base_template")
+        remote_path = pathlib.Path("remote_template")
+        dest_path = pathlib.Path("destination")
+        config = {"project_name": "test_project"}
+
+        render_and_merge_makefiles(
+            base_template_path=base_path,
+            final_destination=dest_path,
+            cookiecutter_config=config,
+            remote_template_path=remote_path,
+        )
+
+        # Get the write calls to the destination file
+        write_calls = [
+            call for call in mock_file.return_value.write.call_args_list if call[0]
+        ]
+        assert len(write_calls) > 0
+
+        write_call = write_calls[0][0][0]
+        assert "installing test_project" in write_call
+        assert "lint:" in write_call
+
+    @patch("pathlib.Path.exists")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_render_and_merge_handles_complex_command_blocks(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test rendering and merging with multi-line, complex command blocks."""
+        base_content = (
+            "setup-dev-env:\n"
+            "\tPROJECT_ID=$(gcloud config get-value project) && \\\n"
+            "\t(cd deployment/terraform/dev && terraform init && terraform apply --auto-approve)\n\n"
+            "test:\n"
+            "\t@echo 'running tests for {{cookiecutter.project_name}}'\n"
+        )
+        remote_content = (
+            "test:\n\t@echo 'running remote tests for {{cookiecutter.project_name}}'\n"
+        )
+
+        # Mock file existence
+        mock_exists.return_value = True
+        mock_file.return_value.read.side_effect = [base_content, remote_content]
+
+        base_path = pathlib.Path("base_template")
+        remote_path = pathlib.Path("remote_template")
+        dest_path = pathlib.Path("destination")
+        config = {"project_name": "test_project"}
+
+        render_and_merge_makefiles(
+            base_template_path=base_path,
+            final_destination=dest_path,
+            cookiecutter_config=config,
+            remote_template_path=remote_path,
+        )
+
+        # Get the write calls to the destination file
+        write_calls = [
+            call for call in mock_file.return_value.write.call_args_list if call[0]
+        ]
+        assert len(write_calls) > 0
+
+        write_call = write_calls[0][0][0]
+        assert "running remote tests for test_project" in write_call
+        assert "Commands from Agent Starter Pack" in write_call
+        assert "setup-dev-env:" in write_call
+
+    @patch("pathlib.Path.exists")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_render_and_merge_with_missing_files(
+        self, mock_file: MagicMock, mock_exists: MagicMock
+    ) -> None:
+        """Test handling when base or remote Makefile doesn't exist."""
+        # Test case: base exists, remote doesn't
+        # Mock exists to return True for base Makefile, False for remote
+        mock_exists.side_effect = [
+            True,
+            False,
+        ]  # First call (base) True, second (remote) False
+
+        mock_file.return_value.read.return_value = (
+            "install:\n\t@echo 'installing {{cookiecutter.project_name}}'\n"
+        )
+
+        base_path = pathlib.Path("base_template")
+        remote_path = pathlib.Path("remote_template")
+        dest_path = pathlib.Path("destination")
+        config = {"project_name": "test_project"}
+
+        render_and_merge_makefiles(
+            base_template_path=base_path,
+            final_destination=dest_path,
+            cookiecutter_config=config,
+            remote_template_path=remote_path,
+        )
+
+        # Get the write calls to the destination file
+        write_calls = [
+            call for call in mock_file.return_value.write.call_args_list if call[0]
+        ]
+        assert len(write_calls) > 0
+
+        write_call = write_calls[0][0][0]
+        assert "installing test_project" in write_call

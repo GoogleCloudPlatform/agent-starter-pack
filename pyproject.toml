@@ -43,6 +43,8 @@ dev = [
     "sphinx-rtd-theme~=2.0.0",
     "streamlit~=1.42.0",
     "streamlit-feedback~=0.1.4",
+    "types-PyYAML",
+    "types-requests",
     "watchdog~=6.0.0",
 ]
 
@@ -53,11 +55,9 @@ jupyter = [
 ]
 
 lint = [
-    "ruff>=0.4.6",
-    "mypy~=1.15.0",
-    "codespell~=2.2.0",
-    "types-pyyaml~=6.0.12.20240917",
-    "types-requests~=2.32.0.20240914",
+    "ruff",
+    "mypy",
+    "codespell",
 ]
 
 [tool.pytest.ini_options]

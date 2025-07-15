@@ -66,6 +66,16 @@ def test_template_linting(
             f"Templating {agent} project with {deployment_target}",
         )
 
+        # Check for unrendered placeholders in Makefile
+        makefile_path = project_path / "Makefile"
+        if makefile_path.exists():
+            with open(makefile_path) as f:
+                content = f.read()
+                if "{{" in content or "}}" in content:
+                    raise ValueError(
+                        f"Found unrendered placeholders in Makefile for {agent} with {deployment_target}"
+                    )
+
         # Install dependencies
         run_command(
             [

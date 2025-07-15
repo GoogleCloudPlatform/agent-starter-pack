@@ -82,15 +82,9 @@ def list_remote_agents(remote_source: str, scan_from_root: bool = False) -> None
         # specific template directory within the repo.
         template_dir_path = fetch_remote_template(spec)
 
-        if scan_from_root:
-            # For ADK, we want to scan the entire repo. We need to find the
-            # root of the repo and scan from there.
-            scan_path = template_dir_path
-            while not (scan_path / ".git").exists() and scan_path.parent != scan_path:
-                scan_path = scan_path.parent
-        else:
-            # For other git repos, respect the path given in the URL.
-            scan_path = template_dir_path
+        # fetch_remote_template always returns a tuple of (repo_path, template_path)
+        repo_path, template_path = template_dir_path
+        scan_path = repo_path if scan_from_root else template_path
 
         display_agents_from_path(scan_path, remote_source)
 

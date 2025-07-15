@@ -141,21 +141,14 @@ You have full control over the Python dependencies. Both `pyproject.toml` and `u
 
 ## Makefile Behavior
 
-You cannot replace the `Makefile` from the `base_template`. However, you can add new commands or override existing ones via the `settings.commands` section in your `templateconfig.yaml`.
+If your remote template includes a `Makefile` at the root, it will be used as the primary `Makefile` for the generated project. The system intelligently merges it with the `base_template`'s `Makefile` to ensure that essential commands from the starter pack are not lost.
 
-**Example:**
-```yaml
-settings:
-  commands:
-    override:
-      # Replaces the default 'make install' command
-      install: "uv sync --dev --extra jupyter"
-    extra:
-      # Adds 'make custom-lint'
-      custom-lint:
-        command: "ruff check ."
-        description: "Run a custom lint check."
-```
+Here's how the merge logic works:
+- **Your Commands Take Precedence**: If a command exists in both your remote `Makefile` and the base `Makefile`, your version is kept.
+- **New Commands are Added**: Any commands from your `Makefile` are added.
+- **Base Commands are Appended**: Any commands that are in the base `Makefile` but not in yours are appended to your `Makefile`, under a clear separator comment.
+
+This allows you to completely customize the `Makefile` while still inheriting the standard functionality of the starter pack.
 
 ## Configuration Reference
 

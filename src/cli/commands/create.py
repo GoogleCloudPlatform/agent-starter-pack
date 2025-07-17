@@ -584,14 +584,108 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
             f"{num}. [bold]{agent['name']}[/] - [dim]{agent['description']}[/]"
         )
 
+    # Add special option for adk-samples
+    adk_samples_option = len(agents) + 1
+    console.print(
+        f"{adk_samples_option}. [bold]Browse agents from [link=https://github.com/google/adk-samples]google/adk-samples[/link][/] - [dim]Discover additional samples[/]"
+    )
+
     choice = IntPrompt.ask(
         "\nEnter the number of your template choice", default=1, show_default=True
     )
 
-    if choice not in agents:
+    if choice == adk_samples_option:
+        return display_adk_samples_selection()
+    elif choice in agents:
+        return agents[choice]["name"]
+    else:
         raise ValueError(f"Invalid agent selection: {choice}")
 
-    return agents[choice]["name"]
+
+def display_adk_samples_selection() -> str:
+    """Display adk-samples agents and prompt for selection."""
+
+    from ..utils.remote_template import fetch_remote_template, parse_agent_spec
+
+    console.print("\n> Fetching agents from [bold blue]google/adk-samples[/]...")
+
+    try:
+        # Parse the adk-samples repository
+        spec = parse_agent_spec("https://github.com/google/adk-samples")
+        if not spec:
+            raise RuntimeError("Failed to parse adk-samples repository")
+
+        # Fetch the repository
+        repo_path, _ = fetch_remote_template(spec)
+
+        # Scan for agents in the repository
+        adk_agents = {}
+        agent_count = 1
+
+        # Search for templateconfig.yaml files to identify agents
+        for config_path in sorted(repo_path.glob("**/templateconfig.yaml")):
+            try:
+                import yaml
+
+                with open(config_path) as f:
+                    config = yaml.safe_load(f)
+
+                agent_name = config.get("name", config_path.parent.parent.name)
+                description = config.get("description", "No description available")
+
+                # Get the relative path from repo root
+                relative_path = config_path.parent.parent.relative_to(repo_path)
+
+                adk_agents[agent_count] = {
+                    "name": agent_name,
+                    "description": description,
+                    "path": str(relative_path),
+                    "spec": f"adk@{relative_path}",
+                }
+                agent_count += 1
+
+            except Exception as e:
+                logging.warning(
+                    f"Could not load agent from {config_path.parent.parent}: {e}"
+                )
+
+        if not adk_agents:
+            console.print("No agents found in adk-samples repository", style="yellow")
+            # Fall back to local agents
+            return display_agent_selection()
+
+        console.print("\n> Available agents from [bold blue]google/adk-samples[/]:")
+        for num, agent in adk_agents.items():
+            console.print(
+                f"{num}. [bold]{agent['name']}[/] - [dim]{agent['description']}[/]"
+            )
+
+        # Add option to go back to local agents
+        back_option = len(adk_agents) + 1
+        console.print(
+            f"{back_option}. [bold]← Back to built-in agents[/] - [dim]Return to local agent selection[/]"
+        )
+
+        choice = IntPrompt.ask(
+            "\nEnter the number of your choice", default=1, show_default=True
+        )
+
+        if choice == back_option:
+            return display_agent_selection()
+        elif choice in adk_agents:
+            # Return the adk@ spec for the selected agent
+            selected_agent = adk_agents[choice]
+            console.print(
+                f"\n> Selected: [bold]{selected_agent['name']}[/] from adk-samples"
+            )
+            return selected_agent["spec"]
+        else:
+            raise ValueError(f"Invalid agent selection: {choice}")
+
+    except Exception as e:
+        console.print(f"Error fetching adk-samples agents: {e}", style="bold red")
+        console.print("Falling back to built-in agents...", style="yellow")
+        return display_agent_selection()
 
 
 def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:

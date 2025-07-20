@@ -198,7 +198,7 @@ def load_remote_template_config(template_dir: pathlib.Path) -> dict[str, Any]:
         return {}
 
     try:
-        with open(config_path) as f:
+        with open(config_path, encoding="utf-8") as f:
             config = yaml.safe_load(f)
             return config if config else {}
     except Exception as e:
@@ -265,7 +265,7 @@ def render_and_merge_makefiles(
     # Render the base Makefile
     base_makefile_path = base_template_path / "Makefile"
     if base_makefile_path.exists():
-        with open(base_makefile_path) as f:
+        with open(base_makefile_path, encoding="utf-8") as f:
             base_template = env.from_string(f.read())
         rendered_base_makefile = base_template.render(cookiecutter=cookiecutter_config)
     else:
@@ -276,7 +276,7 @@ def render_and_merge_makefiles(
     if remote_template_path:
         remote_makefile_path = remote_template_path / "Makefile"
         if remote_makefile_path.exists():
-            with open(remote_makefile_path) as f:
+            with open(remote_makefile_path, encoding="utf-8") as f:
                 remote_template = env.from_string(f.read())
             rendered_remote_makefile = remote_template.render(
                 cookiecutter=cookiecutter_config
@@ -316,6 +316,6 @@ def render_and_merge_makefiles(
         final_makefile_content = rendered_base_makefile
 
     # Write the final merged Makefile
-    with open(final_destination / "Makefile", "w") as f:
+    with open(final_destination / "Makefile", "w", encoding="utf-8") as f:
         f.write(final_makefile_content)
     logging.debug("Rendered and merged Makefile written to final destination.")

@@ -464,7 +464,7 @@ class TestRenderAndMergeMakefiles:
         )
 
         # Check that the final Makefile was written correctly
-        mock_file.assert_called_with(dest_path / "Makefile", "w")
+        mock_file.assert_called_with(dest_path / "Makefile", "w", encoding="utf-8")
         handle = mock_file()
         written_content = handle.write.call_args[0][0]
 

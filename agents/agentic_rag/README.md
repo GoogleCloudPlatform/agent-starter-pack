@@ -19,5 +19,5 @@ The agent implements the following architecture:
 - **Automated Data Ingestion Pipeline:** Automates the process of ingesting data from input sources.
 - **Custom Embeddings:** Generates embeddings using Vertex AI Embeddings and incorporates them into your data for enhanced semantic search.
 - **Terraform Deployment:** Ingestion pipeline is instantiated with Terraform alongside the rest of the infrastructure of the starter pack.
-- **Cloud Build Integration:** Deployment of ingestion pipelines is added to the CD pipelines of the starter pack.
+- **CI/CD Integration:** Deployment of ingestion pipelines is added to the CD pipelines of the starter pack.
 - **Customizable Code:** Easily adapt and customize the code to fit your specific application needs and data sources.

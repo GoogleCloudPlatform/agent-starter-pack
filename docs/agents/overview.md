@@ -52,7 +52,7 @@ Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)
 *   Flexible datastore options: [Vertex AI Search](https://cloud.google.com/vertex-ai-search-and-conversation) and [Vertex AI Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).
 *   Generation of custom embeddings for enhanced semantic search.
 *   Answer synthesis from retrieved context.
-*   Infrastructure deployment via Terraform and Cloud Build.
+*   Infrastructure deployment via Terraform and a choice of CI/CD runners (Google Cloud Build or GitHub Actions).
 
 ### LangGraph Base ReAct (`langgraph_base_react`)
 

@@ -17,6 +17,11 @@ This project is organized as follows:
 │   ├── agent_engine_app.py # Agent Engine application logic
 {%- endif %}
 │   └── utils/           # Utility functions and helpers
+{%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
+├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build
+{%- elif cookiecutter.cicd_runner == 'github_actions' %}
+├── .github/             # CI/CD pipeline configurations for GitHub Actions
+{%- endif %}
 ├── deployment/          # Infrastructure and deployment scripts
 ├── notebooks/           # Jupyter notebooks for prototyping and evaluation
 ├── tests/               # Unit, integration, and load tests
@@ -159,7 +164,7 @@ This template follows a "bring your own agent" approach - you focus on your busi
 1. **Prototype:** Build your Generative AI Agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
 2. **Integrate:** Import your agent into the app by editing `app/agent.py`.
 3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
-4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently only supporting Github.
+4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
 5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
 
 The project includes a `GEMINI.md` file that provides context for AI tools like Gemini CLI when asking questions about your template.
@@ -167,7 +172,7 @@ The project includes a `GEMINI.md` file that provides context for AI tools like 
 
 ## Deployment
 
-> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently only supporting Github.
+> **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
 
 ### Dev Environment
 

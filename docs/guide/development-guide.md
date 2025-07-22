@@ -24,7 +24,7 @@ agent-starter-pack create my-awesome-agent
 
 ```bash [⚡ uvx]
 # This single command downloads and runs the latest version
-`uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create my-awesome-agent
 ```
 :::
 
@@ -38,18 +38,15 @@ cd my-awesome-agent
 
 Inside, you'll find a complete project structure:
 
-::: tip Leveraging AI Tools (like Gemini CLI)
-The starter pack includes a `GEMINI.md` file with guidance formatted for AI interaction. Tools like the [Gemini CLI](https://github.com/google-gemini/gemini-cli) can leverage this file when used within your project directory, providing context for questions about your template.
-:::
-
 *   `app/`: Backend agent code (prompts, tools, business logic).
-*   `deployment/`: Terraform infrastructure code.
-*   `tests/`: Unit and integration tests.
+*   `.cloudbuild/`: CI/CD pipeline configurations for Google Cloud Build (if you selected Cloud Build as your CI/CD runner).
+*   `.github/`: CI/CD pipeline configurations for GitHub Actions (if you selected GitHub Actions as your CI/CD runner).
+*   `deployment/`: Terraform infrastructure-as-code files.
+*   `tests/`: Unit, integration, and load tests.
 *   `notebooks/`: Jupyter notebooks for prototyping and evaluation.
 *   `frontend/`: (If applicable) Web UI for interacting with your agent.
 *   `README.md`: **Project-specific instructions for your chosen template.**
 *   `GEMINI.md`: Use this file with AI tools (like [Gemini CLI](https://github.com/google-gemini/gemini-cli)) to ask questions about the template, ADK concepts, or project structure.
-
 
 Your development loop will look like this:
 
@@ -66,48 +63,46 @@ make install && make playground
 ## 2. Deploy to the Cloud
 
 Once you're satisfied with local testing, you are ready to deploy your agent to Google Cloud.
-
 *All `make` commands should be run from the root of your agent project (`my-awesome-agent`).*
-
 ### A. Cloud Development Environment Setup
-
 First, provision a non-production environment in the cloud for remote testing.
-
 **i. Set Google Cloud Project**
 Configure `gcloud` to target your development project.
 ```bash
 # Replace YOUR_DEV_PROJECT_ID with your actual Google Cloud Project ID
 gcloud config set project YOUR_DEV_PROJECT_ID
 ```
-
 **ii. Provision Cloud Resources**
 This command uses Terraform to set up necessary cloud resources for your dev environment.
 ```bash
 make setup-dev-env
 ```
-
 **iii. Deploy Agent Backend**
 Build and deploy your agent's backend to the dev environment.
 ```bash
 make backend
 ```
 
-### B. Production-Ready Deployment with CI/CD
+### Option 1: Automated CI/CD Setup
 
-For reliable, automated deployments, a CI/CD pipeline is essential.
-
-**Option 1: One-Command CI/CD Setup (Recommended for GitHub)**
-The `agent-starter-pack` CLI can automate the entire CI/CD setup process.
+From the root of your agent project (`my-awesome-agent`), run:
 ```bash
-uvx agent-starter-pack setup-cicd
+agent-starter-pack setup-cicd
 ```
-This command creates a GitHub repository, connects it to Cloud Build, provisions staging/production infrastructure, and configures deployment triggers. For details, see the [`setup-cicd` CLI reference](../cli/setup_cicd).
+This single command handles everything:
+- Creates a GitHub repository.
+- Connects it to your chosen CI/CD provider (Google Cloud Build or GitHub Actions).
+- Provisions all necessary infrastructure for your staging and production environments using Terraform.
+- Configures the deployment triggers.
 
-**Option 2: Manual CI/CD Setup**
+For a detailed walkthrough, see the [**`setup-cicd` CLI reference**](../cli/setup_cicd).
+
+### Option 2: Manual CI/CD Setup
+
 For full control or for other Git providers, refer to the [manual deployment setup guide](./deployment.md).
 
-**Trigger Your First Deployment**
-After CI/CD is configured, commit and push your code to trigger the pipeline.
+### Trigger Your First Deployment
+After the CI/CD setup is complete, commit and push your code to trigger the pipeline.
 ```bash
 git add -A
 git config --global user.email "you@example.com" # If not already configured
@@ -115,6 +110,7 @@ git config --global user.name "Your Name"     # If not already configured
 git commit -m "Initial commit of agent code"
 git push --set-upstream origin main
 ```
+
 
 ## 3. Monitor Your Deployed Agent
 
@@ -137,3 +133,4 @@ Tailor the starter pack further to meet your specific requirements.
     ➡️ See the [Data Ingestion Guide](./data-ingestion.md).
 *   **Custom Terraform**: Modify Terraform configurations in `deployment/terraform/` for unique infrastructure needs.
     ➡️ Refer to the [Deployment Guide](./deployment.md).
+*   **CI/CD Pipelines**: The CI/CD workflow definitions are located in the `.github/workflows` or `.cloudbuild` directories. You can customize these YAML files to add new steps, change triggers, or modify deployment logic.

@@ -41,7 +41,7 @@ Comprehensive CSV and HTML reports detailing the load test performance will be g
 
 ## Remote Load Testing (Targeting Cloud Run)
 
-This framework also supports load testing against remote targets, such as a staging Cloud Run instance. This process is seamlessly integrated into the Continuous Delivery pipeline via Cloud Build, as defined in the [pipeline file](cicd/cd/staging.yaml).
+This framework also supports load testing against remote targets, such as a staging Cloud Run instance. This process is seamlessly integrated into the Continuous Delivery (CD) pipeline.
 
 **Prerequisites:**
 

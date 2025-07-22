@@ -40,8 +40,9 @@ variable "region" {
 }
 
 variable "host_connection_name" {
-  description = "Name of the host connection you created in Cloud Build"
+  description = "Name of the host connection to create in Cloud Build"
   type        = string
+  default     = "{{ cookiecutter.project_name }}-github-connection"
 }
 
 variable "repository_name" {
@@ -185,4 +186,48 @@ variable "vector_search_machine_type" {
   default = "e2-standard-2"
 }
 {% endif %}
+{% endif %}
+variable "repository_owner" {
+  description = "Owner of the Git repository - username or organization"
+  type        = string
+}
+{% if cookiecutter.cicd_runner == "github_actions" %}
+
+
+variable "create_repository" {
+  description = "Flag indicating if the Git repository already exists"
+  type        = bool
+  default     = false
+}
+{% else %}
+variable "github_app_installation_id" {
+  description = "GitHub App Installation ID for Cloud Build"
+  type        = string
+  default     = null
+}
+
+variable "github_pat" {
+  description = "GitHub Personal Access Token (sensitive)"
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "github_pat_secret_id" {
+  description = "GitHub PAT Secret ID created by gcloud CLI"
+  type        = string
+  default     = null
+}
+
+variable "create_cb_connection" {
+  description = "Flag indicating if a Cloud Build connection already exists"
+  type        = bool
+  default     = false
+}
+
+variable "create_repository" {
+  description = "Flag indicating if the Git repository already exists"
+  type        = bool
+  default     = false
+}
 {% endif %}

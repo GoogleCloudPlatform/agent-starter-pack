@@ -1,126 +1,114 @@
 # Deployment
 
-::: tip ⭐ Streamlined Deployment
-For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`uvx agent-starter-pack setup-cicd` CLI command](../cli/setup_cicd). Currently only supporting Github.
-:::
+This starter pack uses a robust, production-ready deployment strategy that combines **Terraform** for infrastructure as code and a CI/CD pipeline for automated builds, tests, and deployments. You can choose between **Google Cloud Build** and **GitHub Actions** as your CI/CD runner.
 
-The templated agent leverages [**Terraform**](http://terraform.io) to define and provision the underlying infrastructure, while [**Cloud Build**](https://cloud.google.com/build/) orchestrates the continuous integration and continuous deployment (CI/CD) pipeline.
+The recommended way to deploy your agent is with the `agent-starter-pack setup-cicd` command, which automates the entire process.
 
 ## Deployment Workflow
+
+The CI/CD pipeline is designed with best practices for deploying applications safely and reliably.
 
 ![Deployment Workflow](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/deployment_workflow.png)
 
 **Description:**
 
-1. CI Pipeline (`deployment/ci/pr_checks.yaml`):
+1. **CI Pipeline** (e.g., `.github/workflows/pr_checks.yaml` or `.cloudbuild/pr_checks.yaml`):
+   - Triggered on pull request creation/update.
+   - Runs unit and integration tests to ensure code quality.
 
-   - Triggered on pull request creation/update
-   - Runs unit and integration tests
+2. **Staging CD Pipeline** (e.g., `.github/workflows/staging.yaml` or `.cloudbuild/staging.yaml`):
+   - Triggered on merge to the `main` branch.
+   - Builds and pushes the application container to Artifact Registry.
+   - Deploys the new version to the **staging environment**.
+   - Performs automated load testing against the staging environment.
 
-2. CD Pipeline (`deployment/cd/staging.yaml`):
+3. **Production Deployment** (e.g., `.github/workflows/deploy-to-prod.yaml` or `.cloudbuild/deploy-to-prod.yaml`):
+   - Triggered after a successful staging deployment.
+   - Requires **manual approval** before proceeding to production.
+   - Deploys the same container image that was tested in staging to the **production environment**.
 
-   - Triggered on merge to `main` branch
-   - Builds and pushes application to Artifact Registry
-   - Deploys to staging environment
-   - Performs load testing
+## Development Environment Deployment
 
-3. Production Deployment (`deployment/cd/deploy-to-prod.yaml`):
-   - Triggered after successful staging deployment
-   - Requires manual approval
-   - Deploys to production environment
+If you want to deploy a standalone development environment without setting up the full CI/CD pipeline, you can use the `make setup-dev-env` command.
 
-## Setup
-
-**Prerequisites:**
-
-1. A set of Google Cloud projects:
-   - Staging project
-   - Production project
-   - CI/CD project (can be the same as staging or production)
-2. Terraform installed on your local machine
-3. Enable required APIs in the CI/CD project. This will be required for the Terraform deployment:
-
+1. **Set your Dev Project:**
    ```bash
-   gcloud config set project $YOUR_CI_CD_PROJECT_ID
-   gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com cloudbuild.googleapis.com secretmanager.googleapis.com
+   gcloud config set project <your-dev-project-id>
    ```
 
-## Step-by-Step Guide
-
-1. **Create a Git Repository using your favorite Git provider (GitHub, GitLab, Bitbucket, etc.)**
-
-2. **Connect Your Repository to Cloud Build**
-   For detailed instructions, visit: [Cloud Build Repository Setup](https://cloud.google.com/build/docs/repositories#whats_next).<br>
-
-   ![Alt text](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/connection_cb.gif)
-
-3. **Configure Terraform Variables**
-
-   - Edit `deployment/terraform/vars/env.tfvars` with your Google Cloud settings.
-
-   | Variable               | Description                                                     | Required |
-   | ---------------------- | --------------------------------------------------------------- | :------: |
-   | project_name           | Project name used as a base for resource naming                 |   Yes    |
-   | prod_project_id        | **Production** Google Cloud Project ID for resource deployment. |   Yes    |
-   | staging_project_id     | **Staging** Google Cloud Project ID for resource deployment.    |   Yes    |
-   | cicd_runner_project_id | Google Cloud Project ID where CI/CD pipelines will execute.     |   Yes    |
-   | region                 | Google Cloud region for resource deployment.                    |   Yes    |
-   | host_connection_name   | Name of the host connection you created in Cloud Build          |   Yes    |
-   | repository_name        | Name of the repository you added to Cloud Build                 |   Yes    |
-
-   Other optional variables may include: telemetry and feedback log filters, service account roles, and for projects requiring data ingestion: pipeline cron schedule, pipeline roles, and datastore-specific configurations.
-
-4. **Deploy Infrastructure with Terraform**
-
-   - Open a terminal and navigate to the Terraform directory:
-
+2. **Deploy Dev Infrastructure:**
+   This command runs the Terraform configuration in `deployment/terraform/dev` to provision a development environment.
    ```bash
-   cd deployment/terraform
+   make setup-dev-env
    ```
 
-   - Initialize Terraform:
-
+3. **Deploy the Application:**
+   Once the infrastructure is ready, deploy your agent to the dev environment.
    ```bash
-   terraform init
+   make backend
    ```
+   
+## Automated Deployment with `setup-cicd`
 
-   - Apply the Terraform configuration:
-
-   ```bash
-   terraform apply --var-file vars/env.tfvars
-   ```
-
-   - Type 'yes' when prompted to confirm
-
-After completing these steps, your infrastructure will be set up and ready for deployment!
-
-## Dev Deployment
-
-For End-to-end testing of the application, including tracing and feedback sinking to BigQuery, without the need to trigger a CI/CD pipeline.
-
-
-First, enable required Google Cloud APIs:
+For a streamlined, one-command deployment of the entire CI/CD pipeline and infrastructure, use the `setup-cicd` command from the root of your generated project.
 
 ```bash
-gcloud config set project <your-dev-project-id>
-gcloud services enable serviceusage.googleapis.com cloudresourcemanager.googleapis.com
+uvx agent-starter-pack setup-cicd
 ```
 
-After you edited the relative `terraform/dev/vars/env.tfvars` file, follow the following instructions:
+This command handles all the necessary steps:
+- **Infrastructure Provisioning:** Uses Terraform to create and configure the necessary resources in your staging and production Google Cloud projects.
+- **CI/CD Configuration:** Sets up a complete CI/CD pipeline with your chosen runner (Google Cloud Build or GitHub Actions), including triggers for pull requests and merges to the main branch.
+- **Repository Connection:** Connects your GitHub repository to the CI/CD provider.
 
-```bash
-cd deployment/terraform/dev
-terraform init
-terraform apply --var-file vars/env.tfvars
-```
+For a complete guide on the command and its options, see the [**`setup-cicd` CLI Reference**](../cli/setup_cicd.html).
 
-Then deploy the application using the following command (from the root of the repository):
+## Required Variables
 
-```bash
-make backend
-```
+The deployment uses Terraform variables that need to be configured for your environment. These are defined in `src/base_template/deployment/terraform/variables.tf`:
 
-> Note: the Makefile also offers a command to automate the dev terraform apply setup. `make setup-dev-env`
+### Core Configuration
+- **`project_name`**: Base name for resource naming (default: auto-generated from cookiecutter)
+- **`prod_project_id`**: Google Cloud Project ID for production deployment
+- **`staging_project_id`**: Google Cloud Project ID for staging deployment
+- **`cicd_runner_project_id`**: Google Cloud Project ID where CI/CD pipelines execute
+- **`region`**: Google Cloud region for resources (default: `us-central1`)
+
+### Repository Connection
+- **`repository_name`**: Name of your GitHub repository
+- **`repository_owner`**: GitHub username or organization name
+- **`host_connection_name`**: Name for Cloud Build connection (default: auto-generated)
+
+### Service Account Permissions
+- **`cloud_run_app_roles`** / **`agentengine_sa_roles`**: Roles for the application service account
+- **`cicd_roles`**: Roles for CI/CD runner service account
+- **`cicd_sa_deployment_required_roles`**: Deployment roles for staging/prod projects
+
+### CI/CD Provider Specific
+For **Cloud Build**:
+- **`github_app_installation_id`**: GitHub App Installation ID
+- **`github_pat`** / **`github_pat_secret_id`**: GitHub Personal Access Token
+- **`create_cb_connection`**: Whether to create new Cloud Build connection
+
+For **GitHub Actions**:
+- **`create_repository`**: Whether the repository already exists
+
+### Data Ingestion (Optional)
+If data ingestion is enabled:
+- **`pipeline_cron_schedule`**: Cron schedule for automated ingestion (default: weekly)
+- **`pipelines_roles`**: Roles for Vertex AI Pipelines service account
+
+### Vector Search Configuration (Optional)
+If using Vertex AI Vector Search:
+- **`vector_search_embedding_size`**: Embedding dimensions (default: 768)
+- **`vector_search_approximate_neighbors_count`**: Neighbors to return (default: 150)
+- **`vector_search_min/max_replica_count`**: Scaling configuration
+- **`vector_search_shard_size`**: Shard size (default: SHARD_SIZE_SMALL)
+- **`vector_search_machine_type`**: Instance type (default: e2-standard-2)
+
+### Logging Configuration
+- **`telemetry_logs_filter`**: Log filter for telemetry data
+- **`feedback_logs_filter`**: Log filter for feedback data
 
 ### End-to-end Demo video
 

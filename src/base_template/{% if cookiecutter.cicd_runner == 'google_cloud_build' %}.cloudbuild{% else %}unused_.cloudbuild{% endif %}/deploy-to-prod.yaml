@@ -23,18 +23,18 @@ steps:
         cd data_ingestion && pip install uv==0.6.12 --user && cd data_ingestion_pipeline && \
         uv sync --locked && uv run python submit_pipeline.py
     env:
-      - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT}"
+      - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT_PROD}"
       - "REGION=${_REGION}"
       {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
       - "DATA_STORE_REGION=${_DATA_STORE_REGION}"
-      - "DATA_STORE_ID=${_DATA_STORE_ID}"
+      - "DATA_STORE_ID=${_DATA_STORE_ID_PROD}"
       {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-      - "VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX}"
-      - "VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT}"
-      - "VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET}"
+      - "VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_PROD}"
+      - "VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_PROD}"
+      - "VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_PROD}"
       {%- endif %}
       - "PROJECT_ID=${_PROD_PROJECT_ID}"
-      - "SERVICE_ACCOUNT=${_PIPELINE_SA_EMAIL}"
+      - "SERVICE_ACCOUNT=${_PIPELINE_SA_EMAIL_PROD}"
       - "PIPELINE_NAME=${_PIPELINE_NAME}"
       - "CRON_SCHEDULE=${_PIPELINE_CRON_SCHEDULE}"
       - "DISABLE_CACHING=TRUE"
@@ -77,7 +77,7 @@ steps:
         uv run app/agent_engine_app.py \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET}{%- endif %}{%- endif %}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_PROD},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_PROD},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_PROD},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_PROD}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}

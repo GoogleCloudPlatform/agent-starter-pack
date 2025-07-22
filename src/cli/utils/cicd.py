@@ -268,7 +268,7 @@ class ProjectConfig:
     project_name: str | None = None
     repository_name: str | None = None
     repository_owner: str | None = None
-    repository_exists: bool | None = None
+    create_repository: bool | None = None
     host_connection_name: str | None = None
     github_pat: str | None = None
     github_app_installation_id: str | None = None
@@ -405,6 +405,7 @@ def run_command(
     capture_output: bool = False,
     shell: bool = False,
     input: str | None = None,
+    env_vars: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess:
     """Run a command and display it to the user"""
     # Format command for display
@@ -412,6 +413,14 @@ def run_command(
     print(f"\n🔄 Running command: {cmd_str}")
     if cwd:
         print(f"📂 In directory: {cwd}")
+
+    # Prepare environment variables
+    env = None
+    if env_vars:
+        import os
+
+        env = os.environ.copy()
+        env.update(env_vars)
 
     # Run the command
     result = subprocess.run(
@@ -422,6 +431,7 @@ def run_command(
         text=True,
         shell=shell,
         input=input,
+        env=env,
     )
 
     # Display output if captured

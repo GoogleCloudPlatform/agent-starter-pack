@@ -357,6 +357,36 @@ def prompt_datastore_selection(
     return datastore_type
 
 
+def prompt_cicd_runner_selection() -> str:
+    """Ask user to select a CI/CD runner."""
+    console = Console()
+
+    cicd_runners = {
+        "google_cloud_build": {
+            "display_name": "Google Cloud Build",
+            "description": "Fully managed CI/CD, deeply integrated with GCP for fast, consistent builds and deployments.",
+        },
+        "github_actions": {
+            "display_name": "GitHub Actions",
+            "description": "GitHub Actions: CI/CD with secure workload identity federation directly in GitHub.",
+        },
+    }
+
+    console.print("\n> Please select a CI/CD runner:")
+    for idx, (_key, info) in enumerate(cicd_runners.items(), 1):
+        console.print(
+            f"{idx}. [bold]{info['display_name']}[/] - [dim]{info['description']}[/]"
+        )
+
+    choice = IntPrompt.ask(
+        "\nEnter the number of your CI/CD runner choice",
+        default=1,
+        show_default=True,
+    )
+
+    return list(cicd_runners.keys())[choice - 1]
+
+
 def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
     """Get the absolute path to the agent template directory."""
     current_dir = pathlib.Path(__file__).parent.parent.parent.parent
@@ -404,6 +434,7 @@ def process_template(
     template_dir: pathlib.Path,
     project_name: str,
     deployment_target: str | None = None,
+    cicd_runner: str | None = None,
     include_data_ingestion: bool = False,
     datastore: str | None = None,
     session_type: str | None = None,
@@ -418,6 +449,7 @@ def process_template(
         template_dir: Directory containing the template files
         project_name: Name of the project to create
         deployment_target: Optional deployment target (agent_engine or cloud_run)
+        cicd_runner: Optional CI/CD runner to use
         include_data_ingestion: Whether to include data pipeline components
         datastore: Optional datastore type for data ingestion
         session_type: Optional session type for cloud_run deployment
@@ -605,6 +637,7 @@ def process_template(
                 "settings": settings,
                 "tags": tags,
                 "deployment_target": deployment_target or "",
+                "cicd_runner": cicd_runner or "google_cloud_build",
                 "session_type": session_type or "",
                 "frontend_type": frontend_type,
                 "extra_dependencies": [extra_deps],
@@ -641,6 +674,7 @@ def process_template(
             cookiecutter(
                 str(cookiecutter_template),
                 no_input=True,
+                overwrite_if_exists=True,
                 extra_context={
                     "project_name": project_name,
                     "agent_name": agent_name,
@@ -680,6 +714,27 @@ def process_template(
                     if file_path.exists():
                         file_path.unlink()
                         logging.debug(f"Deleted {file_path}")
+
+                # Clean up unused_* files and directories created by conditional templates
+                import glob
+
+                unused_patterns = [
+                    final_destination / "unused_*",
+                    final_destination / "**" / "unused_*",
+                ]
+
+                for pattern in unused_patterns:
+                    for unused_path_str in glob.glob(str(pattern), recursive=True):
+                        unused_path = pathlib.Path(unused_path_str)
+                        if unused_path.exists():
+                            if unused_path.is_dir():
+                                shutil.rmtree(unused_path)
+                                logging.debug(
+                                    f"Deleted unused directory: {unused_path}"
+                                )
+                            else:
+                                unused_path.unlink()
+                                logging.debug(f"Deleted unused file: {unused_path}")
 
                 # Handle pyproject.toml and uv.lock files
                 if is_remote and remote_template_path:

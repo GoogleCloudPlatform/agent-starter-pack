@@ -14,7 +14,6 @@
 
 import logging
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -26,14 +25,11 @@ import click
 from rich.console import Console
 
 from src.cli.utils.cicd import (
-    E2EDeployment,
     ProjectConfig,
     create_github_connection,
     create_github_repository,
-    ensure_apis_enabled,
     handle_github_authentication,
     is_github_authenticated,
-    print_cicd_summary,
     run_command,
 )
 
@@ -86,6 +82,66 @@ def check_gh_cli_installed() -> bool:
         return False
 
 
+def check_github_scopes(cicd_runner: str) -> None:
+    """Check if GitHub CLI has required scopes for the CI/CD runner.
+
+    Args:
+        cicd_runner: Either 'github_actions' or 'google_cloud_build'
+
+    Raises:
+        click.ClickException: If required scopes are missing
+    """
+    try:
+        # Get scopes from gh auth status
+        result = run_command(["gh", "auth", "status"], capture_output=True, check=True)
+
+        # Parse scopes from the output
+        scopes = []
+        for line in result.stdout.split("\n"):
+            if "Token scopes:" in line:
+                # Extract scopes from line like "- Token scopes: 'gist', 'read:org', 'repo', 'workflow'"
+                scopes_part = line.split("Token scopes:")[1].strip()
+                # Remove quotes and split by comma
+                scopes = [
+                    s.strip().strip("'\"") for s in scopes_part.split(",") if s.strip()
+                ]
+                break
+
+        # Define required scopes based on CI/CD runner
+        if cicd_runner == "github_actions":
+            required_scopes = ["repo", "workflow"]
+            missing_scopes = [scope for scope in required_scopes if scope not in scopes]
+
+            if missing_scopes:
+                console.print(
+                    f"❌ Missing required GitHub scopes: {', '.join(missing_scopes)}",
+                    style="bold red",
+                )
+                console.print("To fix this: gh auth login --scopes repo,workflow")
+                raise click.ClickException(
+                    "GitHub CLI authentication lacks required scopes"
+                )
+
+        elif cicd_runner == "google_cloud_build":
+            required_scopes = ["repo"]
+            missing_scopes = [scope for scope in required_scopes if scope not in scopes]
+
+            if missing_scopes:
+                console.print(
+                    f"❌ Missing required GitHub scopes: {', '.join(missing_scopes)}",
+                    style="bold red",
+                )
+                console.print("To fix this: gh auth login --scopes repo")
+                raise click.ClickException(
+                    "GitHub CLI authentication lacks required scopes"
+                )
+
+        console.print("✅ GitHub CLI scopes verified")
+
+    except subprocess.CalledProcessError:
+        console.print("⚠️ Could not verify GitHub CLI scopes", style="yellow")
+
+
 def prompt_gh_cli_installation() -> None:
     """Display instructions for installing GitHub CLI and exit."""
     console.print("\n❌ GitHub CLI not found", style="bold red")
@@ -114,8 +170,8 @@ def setup_git_repository(config: ProjectConfig) -> str:
     # Get current GitHub username for the remote URL
     result = run_command(["gh", "api", "user", "--jq", ".login"], capture_output=True)
     github_username = result.stdout.strip()
-
     # Add remote if it doesn't exist
+    console.print("🔍 Checking if Git remote 'origin' is already configured...")
     try:
         run_command(
             ["git", "remote", "get-url", "origin"], capture_output=True, check=True
@@ -191,7 +247,7 @@ def prompt_for_repository_details(
     # Get current GitHub username as default owner
     result = run_command(["gh", "api", "user", "--jq", ".login"], capture_output=True)
     default_owner = result.stdout.strip()
-    repository_exists = False
+    create_repository = False
 
     if not (repository_name and repository_owner):
         console.print("\n📦 Repository Configuration", style="bold blue")
@@ -222,7 +278,7 @@ def prompt_for_repository_details(
                 )
         else:
             # Existing repository
-            repository_exists = True
+            create_repository = True
             while True:
                 repo_url = click.prompt(
                     "Enter existing repository URL (e.g., https://github.com/owner/repo)"
@@ -242,7 +298,7 @@ def prompt_for_repository_details(
 
     if repository_name is None or repository_owner is None:
         raise ValueError("Repository name and owner must be provided")
-    return repository_name, repository_owner, repository_exists
+    return repository_name, repository_owner, create_repository
 
 
 def setup_terraform_backend(
@@ -380,11 +436,6 @@ console = Console()
     help="GitHub App Installation ID for programmatic auth",
 )
 @click.option(
-    "--git-provider",
-    type=click.Choice(["github"]),
-    help="Git provider to use (currently only GitHub is supported)",
-)
-@click.option(
     "--local-state",
     is_flag=True,
     default=False,
@@ -397,7 +448,7 @@ console = Console()
     help="Skip confirmation prompts and proceed automatically",
 )
 @click.option(
-    "--repository-exists",
+    "--create-repository",
     is_flag=True,
     default=False,
     help="Flag indicating if the repository already exists",
@@ -419,11 +470,10 @@ def setup_cicd(
     host_connection_name: str | None,
     github_pat: str | None,
     github_app_installation_id: str | None,
-    git_provider: str | None,
     local_state: bool,
     debug: bool,
     auto_approve: bool,
-    repository_exists: bool,
+    create_repository: bool,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
 
@@ -509,99 +559,139 @@ def setup_cicd(
         logging.basicConfig(level=logging.DEBUG)
         console.print("> Debug mode enabled")
 
-    # Set git provider through prompt if not provided
-    if not git_provider:
-        git_provider = prompt_for_git_provider()
+    # Auto-detect CI/CD runner based on Terraform files
+    tf_dir = Path("deployment/terraform")
+    is_github_actions = (tf_dir / "wif.tf").exists() and (tf_dir / "github.tf").exists()
+    cicd_runner = "github_actions" if is_github_actions else "google_cloud_build"
+    if debug:
+        logging.debug(f"Detected CI/CD runner: {cicd_runner}")
 
-    # Check GitHub authentication if GitHub is selected
-    if git_provider == "github" and not (github_pat and github_app_installation_id):
-        # Check if GitHub CLI is installed
-        if git_provider == "github" or git_provider is None:
-            if not check_gh_cli_installed():
-                prompt_gh_cli_installation()
-        if not is_github_authenticated():
-            console.print("\n⚠️ Not authenticated with GitHub CLI", style="yellow")
-            handle_github_authentication()
-        else:
-            console.print("✅ GitHub CLI authentication verified")
+    # Ensure GitHub CLI is available and authenticated
+    if not check_gh_cli_installed():
+        prompt_gh_cli_installation()
+    if not is_github_authenticated():
+        console.print("\n⚠️ Not authenticated with GitHub CLI", style="yellow")
+        handle_github_authentication()
+    else:
+        console.print("✅ GitHub CLI authentication verified")
 
-    # Only prompt for repository details if not provided via CLI
+    # Check if GitHub CLI has required scopes for the CI/CD runner
+    console.print("\n🔍 Checking GitHub CLI scopes...")
+    check_github_scopes(cicd_runner)
+
+    # Gather repository details if not provided
     if not (repository_name and repository_owner):
-        repository_name, repository_owner, repository_exists = (
-            prompt_for_repository_details(repository_name, repository_owner)
-        )
+        if auto_approve:
+            # Auto-generate repository details when auto-approve is used
+            if not repository_owner:
+                repository_owner = run_command(
+                    ["gh", "api", "user", "--jq", ".login"], capture_output=True
+                ).stdout.strip()
+            if not repository_name:
+                # Get project name from pyproject.toml or generate one
+                try:
+                    with open("pyproject.toml") as f:
+                        for line in f:
+                            if line.strip().startswith("name ="):
+                                repository_name = (
+                                    line.split("=")[1].strip().strip("\"'")
+                                )
+                                break
+                        else:
+                            repository_name = f"genai-app-{int(time.time())}"
+                except FileNotFoundError:
+                    repository_name = f"genai-app-{int(time.time())}"
+            console.print(
+                f"✅ Auto-generated repository: {repository_owner}/{repository_name}"
+            )
+            create_repository = False  # Assume new repo when auto-generated
+        else:
+            repository_name, repository_owner, create_repository = (
+                prompt_for_repository_details(repository_name, repository_owner)
+            )
+
     # Set default host connection name if not provided
     if not host_connection_name:
         host_connection_name = f"git-{repository_name}"
-    # Check and enable required APIs regardless of auth method
-    required_apis = ["secretmanager.googleapis.com", "cloudbuild.googleapis.com"]
-    ensure_apis_enabled(cicd_project, required_apis)
 
-    # Create GitHub connection and repository if not using PAT authentication
+    # For Cloud Build, determine mode and handle connection creation
     oauth_token_secret_id = None
+    # Track original repository state for Terraform (before we create it)
+    terraform_create_repository = create_repository
 
-    # Determine if we're in programmatic or interactive mode based on provided credentials
-    detected_mode = (
-        "programmatic" if github_pat and github_app_installation_id else "interactive"
-    )
-
-    if git_provider == "github" and detected_mode == "interactive":
-        # First create the repository since we're in interactive mode
-        if not repository_exists:
-            create_github_repository(repository_owner, repository_name)
-
-        # Then create the connection
-        oauth_token_secret_id, github_app_installation_id = create_github_connection(
-            project_id=cicd_project, region=region, connection_name=host_connection_name
-        )
-        repository_exists = True
-    elif git_provider == "github" and detected_mode == "programmatic":
-        oauth_token_secret_id = "github-pat"
-
-        if github_pat is None:
-            raise ValueError("GitHub PAT is required for programmatic mode")
-
-        # Create the GitHub PAT secret if provided
-        console.print("\n🔐 Creating/updating GitHub PAT secret...")
-        create_or_update_secret(
-            secret_id=oauth_token_secret_id,
-            secret_value=github_pat,
-            project_id=cicd_project,
+    if cicd_runner == "google_cloud_build":
+        # Determine if we're in programmatic or interactive mode based on provided credentials
+        detected_mode = (
+            "programmatic"
+            if github_pat and github_app_installation_id
+            else "interactive"
         )
 
-    else:
-        # Unsupported git provider
-        console.print("⚠️  Only GitHub is currently supported.", style="bold yellow")
-        raise ValueError("Unsupported git provider")
+        if detected_mode == "interactive":
+            console.print(
+                "\n🔗 Interactive mode: Creating GitHub connection using gcloud CLI..."
+            )
+
+            # Create GitHub repository first if it doesn't exist
+            if not create_repository:
+                console.print("\n📦 Creating GitHub repository...")
+                assert repository_owner is not None, "Repository owner must be set"
+                assert repository_name is not None, "Repository name must be set"
+                create_github_repository(repository_owner, repository_name)
+                console.print("✅ GitHub repository created")
+
+            # Create connection using gcloud CLI (interactive approach)
+            try:
+                oauth_token_secret_id, github_app_installation_id = (
+                    create_github_connection(
+                        project_id=cicd_project,
+                        region=region,
+                        connection_name=host_connection_name,
+                    )
+                )
+                create_cb_connection = (
+                    True  # Connection created by gcloud, Terraform will reference it
+                )
+                console.print("✅ GitHub connection created successfully")
+            except Exception as e:
+                console.print(
+                    f"❌ Failed to create GitHub connection: {e}", style="red"
+                )
+                raise
+
+        elif detected_mode == "programmatic":
+            console.print(
+                "\n🔐 Programmatic mode: Creating GitHub PAT secret for Terraform..."
+            )
+
+            oauth_token_secret_id = "github-pat"  # Use fixed secret ID like main branch
+
+            if github_pat is None:
+                raise ValueError("GitHub PAT is required for programmatic mode")
+
+            # Create GitHub repository first if it doesn't exist
+            if not create_repository:
+                console.print("\n📦 Creating GitHub repository...")
+                assert repository_owner is not None, "Repository owner must be set"
+                assert repository_name is not None, "Repository name must be set"
+                create_github_repository(repository_owner, repository_name)
+                console.print("✅ GitHub repository created")
+
+            # Create the GitHub PAT secret for Terraform to use
+            create_or_update_secret(
+                secret_id=oauth_token_secret_id,
+                secret_value=github_pat,
+                project_id=cicd_project,
+            )
+            create_cb_connection = False  # Let Terraform create the connection
+            console.print("✅ GitHub PAT secret created for programmatic mode")
+
+    # For GitHub Actions, no connection management needed
+    if cicd_runner == "github_actions":
+        create_cb_connection = False
 
     console.print("\n📦 Starting CI/CD Infrastructure Setup", style="bold blue")
     console.print("=====================================")
-
-    config = ProjectConfig(
-        dev_project_id=dev_project,
-        staging_project_id=staging_project,
-        prod_project_id=prod_project,
-        cicd_project_id=cicd_project,
-        region=region,
-        repository_name=repository_name,
-        repository_owner=repository_owner,
-        host_connection_name=host_connection_name,
-        agent="",  # Not needed for CICD setup
-        deployment_target="",  # Not needed for CICD setup
-        github_pat=github_pat,
-        github_app_installation_id=github_app_installation_id,
-        git_provider=git_provider,
-        repository_exists=repository_exists,
-    )
-
-    tf_dir = Path("deployment/terraform")
-
-    # Copy CICD terraform files
-    cicd_utils_path = Path(__file__).parent.parent.parent / "resources" / "setup_cicd"
-
-    for tf_file in cicd_utils_path.glob("*.tf"):
-        shutil.copy2(tf_file, tf_dir)
-    console.print("✅ Copied CICD terraform files")
 
     # Setup Terraform backend if not using local state
     if not local_state:
@@ -616,133 +706,65 @@ def setup_cicd(
     else:
         console.print("\n📝 Using local Terraform state (remote backend disabled)")
 
-    # Update terraform variables using existing function
-    deployment = E2EDeployment(config)
-    deployment.update_terraform_vars(
-        Path.cwd(), is_dev=False
-    )  # is_dev=False for prod/staging setup
-
-    # Update env.tfvars with additional variables
+    # Prepare Terraform variables
     env_vars_path = tf_dir / "vars" / "env.tfvars"
-
-    # Read existing content
-    existing_content = ""
-    if env_vars_path.exists():
-        with open(env_vars_path) as f:
-            existing_content = f.read()
-
-    # Prepare new variables
-    new_vars = {}
-    if not config.repository_owner:
-        result = run_command(
+    terraform_vars = {
+        "staging_project_id": staging_project,
+        "prod_project_id": prod_project,
+        "cicd_runner_project_id": cicd_project,
+        "region": region,
+        "repository_name": repository_name,
+        "repository_owner": repository_owner
+        or run_command(
             ["gh", "api", "user", "--jq", ".login"], capture_output=True
+        ).stdout.strip(),
+    }
+
+    # Add CI/CD runner specific variables
+    if cicd_runner == "google_cloud_build":
+        terraform_vars.update(
+            {
+                "host_connection_name": host_connection_name,
+                "create_cb_connection": str(create_cb_connection).lower(),
+                "create_repository": str(
+                    terraform_create_repository
+                ).lower(),  # Use original state
+                "github_app_installation_id": github_app_installation_id,
+                "github_pat_secret_id": oauth_token_secret_id,
+            }
         )
-        new_vars["repository_owner"] = result.stdout.strip()
-    else:
-        new_vars["repository_owner"] = config.repository_owner
+    else:  # github_actions
+        terraform_vars["create_repository"] = str(
+            terraform_create_repository
+        ).lower()  # Use original state
 
-    # Use the app installation ID from the connection if available, otherwise use the provided one
-    new_vars["github_app_installation_id"] = github_app_installation_id
-    # Use the OAuth token secret ID if available, otherwise use default PAT secret ID
-    new_vars["github_pat_secret_id"] = oauth_token_secret_id
-    # Set connection_exists based on whether we created a new connection
-    new_vars["connection_exists"] = (
-        "true" if detected_mode == "interactive" else "false"
-    )
-    new_vars["repository_exists"] = "true" if config.repository_exists else "false"
-
-    # Update or append variables
+    # Write Terraform variables
     with open(env_vars_path, "w") as f:
-        # Write existing content excluding lines with variables we're updating
-        for line in existing_content.splitlines():
-            if not any(line.startswith(f"{var} = ") for var in new_vars.keys()):
-                f.write(line + "\n")
-
-        # Write new/updated variables
-        for var_name, var_value in new_vars.items():
-            if var_value in ("true", "false"):  # For boolean values
+        for var_name, var_value in terraform_vars.items():
+            if var_value in ("true", "false"):  # Boolean values
                 f.write(f"{var_name} = {var_value}\n")
-            else:  # For string values
+            elif var_value is not None:  # String values
                 f.write(f'{var_name} = "{var_value}"\n')
 
-    console.print("✅ Updated env.tfvars with additional variables")
+    console.print("✅ Updated env.tfvars with variables")
 
-    # Update dev environment vars
-    dev_tf_vars_path = tf_dir / "dev" / "vars" / "env.tfvars"
-    if (
-        dev_tf_vars_path.exists() and dev_project
-    ):  # Only update if dev_project is provided
-        with open(dev_tf_vars_path) as f:
-            dev_content = f.read()
+    # Update dev environment vars if dev project provided
+    if dev_project:
+        dev_tf_vars_path = tf_dir / "dev" / "vars" / "env.tfvars"
+        if dev_tf_vars_path.exists():
+            with open(dev_tf_vars_path, "w") as f:
+                f.write(f'dev_project_id = "{dev_project}"\n')
+            console.print("✅ Updated dev env.tfvars")
 
-        # Update dev project ID
-        dev_content = re.sub(
-            r'dev_project_id\s*=\s*"[^"]*"',
-            f'dev_project_id = "{dev_project}"',
-            dev_content,
-        )
-
-        with open(dev_tf_vars_path, "w") as f:
-            f.write(dev_content)
-
-        console.print("✅ Updated dev env.tfvars with project configuration")
-
-    # Update build triggers configuration
-    update_build_triggers(tf_dir)
-
-    # First initialize and apply dev terraform
-    dev_tf_dir = tf_dir / "dev"
-    if dev_tf_dir.exists() and dev_project:  # Only deploy if dev_project is provided
-        with console.status("[bold blue]Setting up dev environment..."):
+    # Apply dev Terraform if dev project is provided
+    if dev_project:
+        dev_tf_dir = tf_dir / "dev"
+        if dev_tf_dir.exists():
+            console.print("\n🏗️ Applying dev Terraform configuration...")
             if local_state:
                 run_command(["terraform", "init", "-backend=false"], cwd=dev_tf_dir)
             else:
                 run_command(["terraform", "init"], cwd=dev_tf_dir)
-
-            try:
-                run_command(
-                    [
-                        "terraform",
-                        "apply",
-                        "-auto-approve",
-                        "--var-file",
-                        "vars/env.tfvars",
-                    ],
-                    cwd=dev_tf_dir,
-                )
-            except subprocess.CalledProcessError as e:
-                if "Error acquiring the state lock" in str(e):
-                    console.print(
-                        "[yellow]State lock error detected, retrying without lock...[/yellow]"
-                    )
-                    run_command(
-                        [
-                            "terraform",
-                            "apply",
-                            "-auto-approve",
-                            "--var-file",
-                            "vars/env.tfvars",
-                            "-lock=false",
-                        ],
-                        cwd=dev_tf_dir,
-                    )
-                else:
-                    raise
-
-            console.print("✅ Dev environment Terraform configuration applied")
-    elif dev_tf_dir.exists():
-        console.print("ℹ️ Skipping dev environment setup (no dev project provided)")
-
-    # Then apply prod terraform to create GitHub repo
-    with console.status(
-        "[bold blue]Setting up Prod/Staging Terraform configuration..."
-    ):
-        if local_state:
-            run_command(["terraform", "init", "-backend=false"], cwd=tf_dir)
-        else:
-            run_command(["terraform", "init"], cwd=tf_dir)
-
-        try:
             run_command(
                 [
                     "terraform",
@@ -751,87 +773,67 @@ def setup_cicd(
                     "--var-file",
                     "vars/env.tfvars",
                 ],
-                cwd=tf_dir,
+                cwd=dev_tf_dir,
             )
-        except subprocess.CalledProcessError as e:
-            if "Error acquiring the state lock" in str(e):
-                console.print(
-                    "[yellow]State lock error detected, retrying without lock...[/yellow]"
-                )
-                run_command(
-                    [
-                        "terraform",
-                        "apply",
-                        "-auto-approve",
-                        "--var-file",
-                        "vars/env.tfvars",
-                        "-lock=false",
-                    ],
-                    cwd=tf_dir,
-                )
-            else:
-                raise
+            console.print("✅ Dev environment deployed")
+        else:
+            console.print("ℹ️ No dev Terraform directory found")
 
-        console.print("✅ Prod/Staging Terraform configuration applied")
-
-    # Now we can set up git since the repo exists
-    if git_provider == "github":
-        console.print("\n🔧 Setting up Git repository...")
-
-        # Initialize git if not already initialized
-        if not (Path.cwd() / ".git").exists():
-            run_command(["git", "init", "-b", "main"])
-            console.print("✅ Git repository initialized")
-
-        # Get current GitHub username for the remote URL
-        result = run_command(
-            ["gh", "api", "user", "--jq", ".login"], capture_output=True
-        )
-        github_username = result.stdout.strip()
-
-        # Add remote if it doesn't exist
-        try:
-            run_command(
-                ["git", "remote", "get-url", "origin"], capture_output=True, check=True
-            )
-            console.print("✅ Git remote already configured")
-        except subprocess.CalledProcessError:
-            remote_url = (
-                f"https://github.com/{github_username}/{config.repository_name}.git"
-            )
-            run_command(["git", "remote", "add", "origin", remote_url])
-            console.print(f"✅ Added git remote: {remote_url}")
-
-        console.print(
-            "\n💡 Tip: Don't forget to commit and push your changes to the repository!"
-        )
-
-    console.print("\n✅ CICD infrastructure setup complete!")
-    if not local_state:
-        console.print(
-            f"📦 Using remote Terraform state in bucket: {cicd_project}-terraform-state"
-        )
+    # Apply prod Terraform
+    console.print("\n🚀 Applying prod Terraform configuration...")
+    if local_state:
+        run_command(["terraform", "init", "-backend=false"], cwd=tf_dir)
     else:
-        console.print("📝 Using local Terraform state")
+        run_command(["terraform", "init"], cwd=tf_dir)
+
+    run_command(
+        ["terraform", "apply", "-auto-approve", "--var-file", "vars/env.tfvars"],
+        cwd=tf_dir,
+    )
+    console.print("✅ Prod/Staging infrastructure deployed")
+
+    # Setup git repository
+    console.print("\n🔧 Setting up Git repository...")
+    if not (Path.cwd() / ".git").exists():
+        run_command(["git", "init", "-b", "main"])
+        console.print("✅ Git repository initialized")
+
+    # Get GitHub username and add remote if needed
+    github_username = run_command(
+        ["gh", "api", "user", "--jq", ".login"], capture_output=True
+    ).stdout.strip()
 
     try:
-        # Print success message with useful links
-        result = run_command(
-            ["gh", "api", "user", "--jq", ".login"], capture_output=True
+        run_command(
+            ["git", "remote", "get-url", "origin"], capture_output=True, check=True
         )
-        github_username = result.stdout.strip()
+        console.print("✅ Git remote already configured")
+    except subprocess.CalledProcessError:
+        remote_url = f"https://github.com/{github_username}/{repository_name}.git"
+        run_command(["git", "remote", "add", "origin", remote_url], capture_output=True)
+        console.print(f"✅ Added git remote: {remote_url}")
 
-        repo_url = f"https://github.com/{github_username}/{config.repository_name}"
-        cloud_build_url = f"https://console.cloud.google.com/cloud-build/builds?project={config.cicd_project_id}"
-        # Sleep to allow resources to propagate
-        console.print("\n⏳ Waiting for resources to propagate...")
-        time.sleep(10)
+    console.print("\n✅ CI/CD infrastructure setup complete!")
 
-        # Print final summary
-        print_cicd_summary(config, github_username, repo_url, cloud_build_url)
+    # Print useful information
+    repo_url = f"https://github.com/{github_username}/{repository_name}"
 
-    except Exception as e:
-        if debug:
-            logging.exception("An error occurred:")
-        console.print(f"\n❌ Error: {e!s}", style="bold red")
-        sys.exit(1)
+    console.print("\n📋 Summary:")
+    console.print(f"• Repository: {repo_url}")
+    console.print(f"• CI/CD Runner: {cicd_runner.replace('_', ' ').title()}")
+
+    if cicd_runner == "google_cloud_build":
+        console.print(
+            f"• Cloud Build: https://console.cloud.google.com/cloud-build/builds?project={cicd_project}"
+        )
+    else:
+        console.print(f"• GitHub Actions: {repo_url}/actions")
+
+    if not local_state:
+        console.print(f"• Terraform State: gs://{cicd_project}-terraform-state")
+    else:
+        console.print("• Terraform State: Local")
+
+    console.print("\n💡 Next steps:")
+    console.print("1. Commit and push your code to the repository")
+    console.print("2. Your CI/CD pipeline will automatically trigger on pushes")

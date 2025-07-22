@@ -330,6 +330,7 @@ class TestCreateCommand:
         with (
             patch("pathlib.Path.exists", return_value=False),
             patch("rich.prompt.Prompt.ask") as mock_prompt,
+            patch("builtins.input", return_value="1"),  # Mock CI/CD runner selection
         ):
             mock_prompt.side_effect = ["edit", "y"]
 

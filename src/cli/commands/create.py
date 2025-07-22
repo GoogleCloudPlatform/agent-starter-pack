@@ -40,6 +40,7 @@ from ..utils.template import (
     get_template_path,
     load_template_config,
     process_template,
+    prompt_cicd_runner_selection,
     prompt_datastore_selection,
     prompt_deployment_target,
     prompt_session_type_selection,
@@ -97,6 +98,11 @@ def normalize_project_name(project_name: str) -> str:
     help="Deployment target name",
 )
 @click.option(
+    "--cicd-runner",
+    type=click.Choice(["google_cloud_build", "github_actions"]),
+    help="CI/CD runner to use",
+)
+@click.option(
     "--include-data-ingestion",
     "-i",
     is_flag=True,
@@ -140,6 +146,7 @@ def create(
     project_name: str,
     agent: str | None,
     deployment_target: str | None,
+    cicd_runner: str | None,
     include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
@@ -389,6 +396,20 @@ def create(
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
+        # CI/CD runner selection
+        final_cicd_runner = cicd_runner
+        if not final_cicd_runner:
+            if auto_approve:
+                final_cicd_runner = "google_cloud_build"
+                console.print(
+                    "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
+                    style="yellow",
+                )
+            else:
+                final_cicd_runner = prompt_cicd_runner_selection()
+        if debug:
+            logging.debug(f"Selected CI/CD runner: {final_cicd_runner}")
+
         # Session type validation and selection (only for agents that require session management)
         final_session_type = session_type
 
@@ -460,7 +481,7 @@ def create(
                 )
                 console.print(
                     "> Please check your authentication settings and permissions. "
-                    "Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
+                    "> Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
                     style="yellow",
                 )
                 console.print(
@@ -490,6 +511,7 @@ def create(
                 template_path,
                 project_name,
                 deployment_target=final_deployment,
+                cicd_runner=final_cicd_runner,
                 include_data_ingestion=include_data_ingestion,
                 datastore=datastore,
                 session_type=final_session_type,

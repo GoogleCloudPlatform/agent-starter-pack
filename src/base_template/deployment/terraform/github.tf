@@ -294,9 +294,7 @@ resource "google_cloudbuildv2_repository" "repo" {
   name     = var.repository_name
   
   # Use existing connection ID when it exists, otherwise use the created connection
-  parent_connection = var.create_cb_connection ? 
-    "projects/${var.cicd_runner_project_id}/locations/${var.region}/connections/${var.host_connection_name}" : 
-    google_cloudbuildv2_connection.github_connection[0].id
+  parent_connection = var.create_cb_connection ? "projects/${var.cicd_runner_project_id}/locations/${var.region}/connections/${var.host_connection_name}" : google_cloudbuildv2_connection.github_connection[0].id
   remote_uri       = "https://github.com/${var.repository_owner}/${var.repository_name}.git"
   depends_on = [
     resource.google_project_service.cicd_services,

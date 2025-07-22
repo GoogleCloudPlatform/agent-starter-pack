@@ -1243,7 +1243,6 @@ class TestE2EDeployment:
                 logger.error(f"Standard output:\n{e.output}")
                 raise
 
-            # time.sleep(1)
             time.sleep(60)
 
             # Configure git remote with authentication
@@ -1336,6 +1335,9 @@ def dummy_function():
             run_command(
                 ["git", "push", "origin", "feature/example-change"], cwd=new_project_dir
             )
+
+            # Wait before creating PR to ensure GitHub is ready
+            time.sleep(5)
 
             # Create PR
             pr_output = run_command(

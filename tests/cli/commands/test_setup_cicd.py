@@ -157,13 +157,14 @@ class TestSetupCICD:
     ) -> None:
         """Test Git repository setup"""
         config = ProjectConfig(
-            dev_project_id="test-dev",
             staging_project_id="test-staging",
             prod_project_id="test-prod",
             cicd_project_id="test-cicd",
             agent="test-agent",
             deployment_target="cloud-run",
             repository_name="test-repo",
+            repository_owner="test-owner",
+            dev_project_id="test-dev",
         )
 
         # Test when .git doesn't exist
@@ -173,7 +174,6 @@ class TestSetupCICD:
             # Configure mock_run_command behavior
             mock_run_command.side_effect = [
                 MagicMock(returncode=0),  # git init
-                MagicMock(stdout="test-user", returncode=0),  # gh api user
                 subprocess.CalledProcessError(
                     1, ["git", "remote", "get-url"]
                 ),  # git remote get-url fails
@@ -182,15 +182,10 @@ class TestSetupCICD:
 
             github_username = setup_git_repository(config)
 
-            assert github_username == "test-user"
+            assert github_username == "test-owner"
 
             # Verify git init was called
             mock_run_command.assert_any_call(["git", "init", "-b", "main"])
-
-            # Verify GitHub username was fetched
-            mock_run_command.assert_any_call(
-                ["gh", "api", "user", "--jq", ".login"], capture_output=True
-            )
 
             # Verify remote was added
             mock_run_command.assert_any_call(
@@ -199,8 +194,10 @@ class TestSetupCICD:
                     "remote",
                     "add",
                     "origin",
-                    "https://github.com/test-user/test-repo.git",
-                ]
+                    "https://github.com/test-owner/test-repo.git",
+                ],
+                capture_output=True,
+                check=True,
             )
 
         # Test when .git exists and remote is configured
@@ -209,13 +206,12 @@ class TestSetupCICD:
 
             mock_run_command.reset_mock()
             mock_run_command.side_effect = [
-                MagicMock(stdout="test-user", returncode=0),  # gh api user
                 MagicMock(returncode=0),  # git remote get-url succeeds
             ]
 
             github_username = setup_git_repository(config)
 
-            assert github_username == "test-user"
+            assert github_username == "test-owner"
 
             # Verify git init was not called
             assert not any(

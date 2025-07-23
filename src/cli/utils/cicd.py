@@ -263,11 +263,11 @@ class ProjectConfig:
     cicd_project_id: str
     agent: str
     deployment_target: str
+    repository_name: str
+    repository_owner: str
     region: str = "us-central1"
     dev_project_id: str | None = None
     project_name: str | None = None
-    repository_name: str | None = None
-    repository_owner: str | None = None
     create_repository: bool | None = None
     host_connection_name: str | None = None
     github_pat: str | None = None

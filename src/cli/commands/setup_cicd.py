@@ -27,7 +27,6 @@ from rich.console import Console
 from src.cli.utils.cicd import (
     ProjectConfig,
     create_github_connection,
-    create_github_repository,
     handle_github_authentication,
     is_github_authenticated,
     run_command,
@@ -158,7 +157,7 @@ def setup_git_repository(config: ProjectConfig) -> str:
         config: Project configuration containing repository details
 
     Returns:
-        str: GitHub username of the authenticated user
+        str: Repository owner from the config
     """
     console.print("\n🔧 Setting up Git repository...")
 
@@ -167,27 +166,31 @@ def setup_git_repository(config: ProjectConfig) -> str:
         run_command(["git", "init", "-b", "main"])
         console.print("✅ Git repository initialized")
 
-    # Get current GitHub username for the remote URL
-    result = run_command(["gh", "api", "user", "--jq", ".login"], capture_output=True)
-    github_username = result.stdout.strip()
     # Add remote if it doesn't exist
-    console.print("🔍 Checking if Git remote 'origin' is already configured...")
+    remote_url = (
+        f"https://github.com/{config.repository_owner}/{config.repository_name}.git"
+    )
     try:
         run_command(
             ["git", "remote", "get-url", "origin"], capture_output=True, check=True
         )
         console.print("✅ Git remote already configured")
     except subprocess.CalledProcessError:
-        remote_url = (
-            f"https://github.com/{github_username}/{config.repository_name}.git"
-        )
-        run_command(["git", "remote", "add", "origin", remote_url])
-        console.print(f"✅ Added git remote: {remote_url}")
+        try:
+            run_command(
+                ["git", "remote", "add", "origin", remote_url],
+                capture_output=True,
+                check=True,
+            )
+            console.print(f"✅ Added git remote: {remote_url}")
+        except subprocess.CalledProcessError as e:
+            console.print(f"❌ Failed to add git remote: {e}", style="bold red")
+            raise click.ClickException(f"Failed to add git remote: {e}") from e
 
     console.print(
         "\n💡 Tip: Don't forget to commit and push your changes to the repository!"
     )
-    return github_username
+    return config.repository_owner
 
 
 def prompt_for_git_provider() -> str:
@@ -260,6 +263,7 @@ def prompt_for_repository_details(
         )
         if choice == "1":
             # New repository
+            create_repository = True
             if not repository_name:
                 # Get project name from pyproject.toml
                 with open("pyproject.toml") as f:
@@ -278,7 +282,7 @@ def prompt_for_repository_details(
                 )
         else:
             # Existing repository
-            create_repository = True
+            create_repository = False
             while True:
                 repo_url = click.prompt(
                     "Enter existing repository URL (e.g., https://github.com/owner/repo)"
@@ -451,7 +455,7 @@ console = Console()
     "--create-repository",
     is_flag=True,
     default=False,
-    help="Flag indicating if the repository already exists",
+    help="Flag indicating whether to create a new repository",
 )
 @backoff.on_exception(
     backoff.expo,
@@ -604,11 +608,14 @@ def setup_cicd(
             console.print(
                 f"✅ Auto-generated repository: {repository_owner}/{repository_name}"
             )
-            create_repository = False  # Assume new repo when auto-generated
+            # Keep the CLI argument value for create_repository
         else:
             repository_name, repository_owner, create_repository = (
                 prompt_for_repository_details(repository_name, repository_owner)
             )
+
+    assert repository_name is not None, "Repository name must be provided"
+    assert repository_owner is not None, "Repository owner must be provided"
 
     # Set default host connection name if not provided
     if not host_connection_name:
@@ -632,14 +639,6 @@ def setup_cicd(
                 "\n🔗 Interactive mode: Creating GitHub connection using gcloud CLI..."
             )
 
-            # Create GitHub repository first if it doesn't exist
-            if not create_repository:
-                console.print("\n📦 Creating GitHub repository...")
-                assert repository_owner is not None, "Repository owner must be set"
-                assert repository_name is not None, "Repository name must be set"
-                create_github_repository(repository_owner, repository_name)
-                console.print("✅ GitHub repository created")
-
             # Create connection using gcloud CLI (interactive approach)
             try:
                 oauth_token_secret_id, github_app_installation_id = (
@@ -661,7 +660,7 @@ def setup_cicd(
 
         elif detected_mode == "programmatic":
             console.print(
-                "\n🔐 Programmatic mode: Creating GitHub PAT secret for Terraform..."
+                "\n🔐 Programmatic mode: Creating GitHub PAT secret using gcloud CLI..."
             )
 
             oauth_token_secret_id = "github-pat"  # Use fixed secret ID like main branch
@@ -669,22 +668,11 @@ def setup_cicd(
             if github_pat is None:
                 raise ValueError("GitHub PAT is required for programmatic mode")
 
-            # Create GitHub repository first if it doesn't exist
-            if not create_repository:
-                console.print("\n📦 Creating GitHub repository...")
-                assert repository_owner is not None, "Repository owner must be set"
-                assert repository_name is not None, "Repository name must be set"
-                create_github_repository(repository_owner, repository_name)
-                console.print("✅ GitHub repository created")
-
-            # Create the GitHub PAT secret for Terraform to use
-            create_or_update_secret(
-                secret_id=oauth_token_secret_id,
-                secret_value=github_pat,
-                project_id=cicd_project,
-            )
-            create_cb_connection = False  # Let Terraform create the connection
-            console.print("✅ GitHub PAT secret created for programmatic mode")
+            # Create GitHub PAT secret using gcloud CLI instead of Terraform
+            console.print("📝 Creating GitHub PAT secret using gcloud CLI...")
+            create_or_update_secret(oauth_token_secret_id, github_pat, cicd_project)
+            create_cb_connection = False  # Terraform will not create connection, will reference existing secret
+            console.print("✅ GitHub PAT secret created using gcloud CLI")
 
     # For GitHub Actions, no connection management needed
     if cicd_runner == "github_actions":
@@ -786,37 +774,41 @@ def setup_cicd(
     else:
         run_command(["terraform", "init"], cwd=tf_dir)
 
+    # Prepare environment variables for Terraform
+    terraform_env_vars = {}
+    if (
+        cicd_runner == "google_cloud_build"
+        and detected_mode == "programmatic"
+        and github_pat
+    ):
+        terraform_env_vars["GITHUB_TOKEN"] = (
+            github_pat  # For GitHub provider authentication
+        )
+
     run_command(
         ["terraform", "apply", "-auto-approve", "--var-file", "vars/env.tfvars"],
         cwd=tf_dir,
+        env_vars=terraform_env_vars if terraform_env_vars else None,
     )
     console.print("✅ Prod/Staging infrastructure deployed")
 
-    # Setup git repository
-    console.print("\n🔧 Setting up Git repository...")
-    if not (Path.cwd() / ".git").exists():
-        run_command(["git", "init", "-b", "main"])
-        console.print("✅ Git repository initialized")
+    config = ProjectConfig(
+        staging_project_id=staging_project,
+        prod_project_id=prod_project,
+        cicd_project_id=cicd_project,
+        agent="",  # Not used in git setup
+        deployment_target="",  # Not used in git setup
+        region=region,
+        repository_name=repository_name,
+        repository_owner=repository_owner,
+    )
 
-    # Get GitHub username and add remote if needed
-    github_username = run_command(
-        ["gh", "api", "user", "--jq", ".login"], capture_output=True
-    ).stdout.strip()
-
-    try:
-        run_command(
-            ["git", "remote", "get-url", "origin"], capture_output=True, check=True
-        )
-        console.print("✅ Git remote already configured")
-    except subprocess.CalledProcessError:
-        remote_url = f"https://github.com/{github_username}/{repository_name}.git"
-        run_command(["git", "remote", "add", "origin", remote_url], capture_output=True)
-        console.print(f"✅ Added git remote: {remote_url}")
+    setup_git_repository(config)
 
     console.print("\n✅ CI/CD infrastructure setup complete!")
 
     # Print useful information
-    repo_url = f"https://github.com/{github_username}/{repository_name}"
+    repo_url = f"https://github.com/{repository_owner}/{repository_name}"
 
     console.print("\n📋 Summary:")
     console.print(f"• Repository: {repo_url}")

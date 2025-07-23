@@ -195,7 +195,7 @@ variable "repository_owner" {
 
 
 variable "create_repository" {
-  description = "Flag indicating if the Git repository already exists"
+  description = "Flag indicating whether to create a new Git repository"
   type        = bool
   default     = false
 }
@@ -206,12 +206,6 @@ variable "github_app_installation_id" {
   default     = null
 }
 
-variable "github_pat" {
-  description = "GitHub Personal Access Token (sensitive)"
-  type        = string
-  sensitive   = true
-  default     = null
-}
 
 variable "github_pat_secret_id" {
   description = "GitHub PAT Secret ID created by gcloud CLI"
@@ -226,7 +220,7 @@ variable "create_cb_connection" {
 }
 
 variable "create_repository" {
-  description = "Flag indicating if the Git repository already exists"
+  description = "Flag indicating whether to create a new Git repository"
   type        = bool
   default     = false
 }

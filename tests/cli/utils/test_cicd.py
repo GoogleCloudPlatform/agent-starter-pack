@@ -38,12 +38,14 @@ def mock_run_command() -> MagicMock:
 def test_project_config() -> None:
     """Test ProjectConfig initialization with minimal required fields"""
     config = ProjectConfig(
-        dev_project_id="test-dev",
         staging_project_id="test-staging",
         prod_project_id="test-prod",
         cicd_project_id="test-cicd",
         agent="test-agent",
         deployment_target="cloud-run",
+        repository_name="test-repo",
+        repository_owner="test-owner",
+        dev_project_id="test-dev",
     )
 
     assert config.dev_project_id == "test-dev"
@@ -54,13 +56,14 @@ def test_project_config() -> None:
 def test_print_cicd_summary(mock_console: MagicMock) -> None:
     """Test CICD summary printing"""
     config = ProjectConfig(
-        dev_project_id="test-dev",
         staging_project_id="test-staging",
         prod_project_id="test-prod",
         cicd_project_id="test-cicd",
         agent="test-agent",
         deployment_target="cloud-run",
         repository_name="test-repo",
+        repository_owner="test-owner",
+        dev_project_id="test-dev",
     )
 
     print_cicd_summary(

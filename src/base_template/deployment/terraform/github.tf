@@ -18,13 +18,13 @@ provider "github" {
 
 # Try to get existing repo
 data "github_repository" "existing_repo" {
-  count = var.create_repository ? 1 : 0
+  count = var.create_repository ? 0 : 1
   full_name = "${var.repository_owner}/${var.repository_name}"
 }
 
-# Only create GitHub repo if it doesn't already exist
+# Only create GitHub repo if create_repository is true
 resource "github_repository" "repo" {
-  count       = var.create_repository ? 0 : 1
+  count       = var.create_repository ? 1 : 0
   name        = var.repository_name
   description = "Repository created with goo.gle/agent-starter-pack"
   visibility  = "private"
@@ -244,32 +244,9 @@ resource "github_repository_environment" "production_environment" {
 
 # Reference existing GitHub PAT secret created by gcloud CLI
 data "google_secret_manager_secret" "github_pat" {
-  count     = var.create_cb_connection ? 1 : 0
   project   = var.cicd_runner_project_id
   secret_id = var.github_pat_secret_id
 }
-
-# Create GitHub PAT secret in Secret Manager (fallback for manual Terraform usage)
-resource "google_secret_manager_secret" "github_pat" {
-  count     = var.create_cb_connection ? 0 : 1
-  project   = var.cicd_runner_project_id
-  secret_id = "${var.repository_name}-git-pat"
-  
-  replication {
-    auto {}
-  }
-  
-  depends_on = [resource.google_project_service.cicd_services]
-}
-
-resource "google_secret_manager_secret_version" "github_pat" {
-  count       = var.create_cb_connection ? 0 : 1
-  secret      = google_secret_manager_secret.github_pat[0].id
-  secret_data = var.github_pat
-}
-
-# Note: No data source exists for google_cloudbuildv2_connection
-# When create_cb_connection=true, we'll reference it by constructing the ID
 
 # Create the GitHub connection (fallback for manual Terraform usage)
 resource "google_cloudbuildv2_connection" "github_connection" {
@@ -281,7 +258,7 @@ resource "google_cloudbuildv2_connection" "github_connection" {
   github_config {
     app_installation_id = var.github_app_installation_id
     authorizer_credential {
-      oauth_token_secret_version = google_secret_manager_secret_version.github_pat[0].id
+      oauth_token_secret_version = "${data.google_secret_manager_secret.github_pat.id}/versions/latest"
     }
   }
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]

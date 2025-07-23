@@ -1210,6 +1210,7 @@ class TestE2EDeployment:
                     "--repository-owner",
                     github_username,
                     "--auto-approve",
+                    "--create-repository",
                 ]
 
                 # Add CICD runner-specific parameters
@@ -1222,8 +1223,8 @@ class TestE2EDeployment:
                             github_pat,
                             "--github-app-installation-id",
                             github_app_installation_id,
-                            "--dev-project",  # Not CB-specific, but we can test dev project here (no need to retest for GitHub Actions)
-                            dev_project,
+                            # "--dev-project",  # Not CB-specific, but we can test dev project here (no need to retest for GitHub Actions)
+                            # dev_project,
                         ]
                     )
                 elif actual_cicd_runner == "github_actions":
@@ -1410,15 +1411,15 @@ def dummy_function():
             logger.info(f"Project Directory: {new_project_dir}")
             logger.info(f"GitHub Repository: {project_name}")
 
-            # Clean up all resources
-            try:
-                self.cleanup_resources(
-                    new_project_dir,
-                    project_name,
-                    str(cicd_project),
-                    region,
-                    config.deployment_target,
-                    actual_cicd_runner,
-                )
-            except Exception as e:
-                logger.error(f"Error during cleanup: {e}")
+            # # Clean up all resources
+            # try:
+            #     self.cleanup_resources(
+            #         new_project_dir,
+            #         project_name,
+            #         str(cicd_project),
+            #         region,
+            #         config.deployment_target,
+            #         actual_cicd_runner,
+            #     )
+            # except Exception as e:
+            #     logger.error(f"Error during cleanup: {e}")

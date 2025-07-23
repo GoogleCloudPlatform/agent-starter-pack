@@ -396,20 +396,6 @@ def create(
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
-        # CI/CD runner selection
-        final_cicd_runner = cicd_runner
-        if not final_cicd_runner:
-            if auto_approve:
-                final_cicd_runner = "google_cloud_build"
-                console.print(
-                    "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
-                    style="yellow",
-                )
-            else:
-                final_cicd_runner = prompt_cicd_runner_selection()
-        if debug:
-            logging.debug(f"Selected CI/CD runner: {final_cicd_runner}")
-
         # Session type validation and selection (only for agents that require session management)
         final_session_type = session_type
 
@@ -450,6 +436,20 @@ def create(
 
         if debug and final_session_type:
             logging.debug(f"Selected session type: {final_session_type}")
+
+        # CI/CD runner selection
+        final_cicd_runner = cicd_runner
+        if not final_cicd_runner:
+            if auto_approve:
+                final_cicd_runner = "google_cloud_build"
+                console.print(
+                    "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
+                    style="yellow",
+                )
+            else:
+                final_cicd_runner = prompt_cicd_runner_selection()
+        if debug:
+            logging.debug(f"Selected CI/CD runner: {final_cicd_runner}")
 
         # Region confirmation (if not explicitly passed)
         if (

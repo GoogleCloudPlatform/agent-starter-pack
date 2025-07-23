@@ -356,7 +356,7 @@ document_pipeline = SequentialAgent(
 Executes `sub_agents` simultaneously. Useful for independent tasks to reduce overall latency. All sub-agents share the same `session.state`.
 
 ```python
-from google.adk.agents import ParallelAgent, Agent
+from google.adk.agents import ParallelAgent, Agent, SequentialAgent
 
 # Agents to fetch data concurrently
 fetch_stock_price = Agent(name="StockPriceFetcher", ..., output_key="stock_data")

@@ -98,6 +98,10 @@ locals {
       name  = "adk_base-cloud_run-alloydb"
       value = "adk_base,cloud_run,--session-type,alloydb"
     },
+    {
+      name  = "adk_base-cloud_run-agent_engine"
+      value = "adk_base,cloud_run,--session-type,agent_engine"
+    },
   ]
 
 agent_testing_included_files = { for combo in local.agent_testing_combinations :

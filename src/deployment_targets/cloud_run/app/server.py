@@ -20,6 +20,9 @@ from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
+{%- if cookiecutter.session_type == "agent_engine" %}
+from vertexai import agent_engines
+{%- endif %}
 
 from app.utils.gcs import create_bucket_if_not_exists
 from app.utils.tracing import CloudTraceLoggingSpanExporter
@@ -55,6 +58,22 @@ db_host = os.environ.get("DB_HOST")
 session_service_uri = None
 if db_host and db_pass:
     session_service_uri = f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
+{%- elif cookiecutter.session_type == "agent_engine" %}
+# Agent Engine session configuration
+# Use environment variable for agent name, default to project name
+agent_name = os.environ.get("AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}")
+
+# Check if an agent with this name already exists
+existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))
+
+if existing_agents:
+    # Use the existing agent
+    agent_engine = existing_agents[0]
+else:
+    # Create a new agent if none exists
+    agent_engine = agent_engines.create(display_name=agent_name)
+
+session_service_uri = f"agentengine://{agent_engine.resource_name}"
 {%- else %}
 # In-memory session configuration - no persistent storage
 session_service_uri = None

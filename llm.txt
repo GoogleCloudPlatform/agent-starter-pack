@@ -69,7 +69,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 *   `-d, --deployment-target`: Target deployment environment (`cloud_run` or `agent_engine`).
 *   `-ds, --datastore`: For RAG agents, the datastore (`vertex_ai_search` or `vertex_ai_vector_search`).
 *   `-i, --include-data-ingestion`: Include data ingestion pipeline scaffolding.
-*   `--session-type`: For agents requiring session management on Cloud Run, specifies the storage type (`in_memory` or `alloydb`).
+*   `--session-type`: For agents requiring session management on Cloud Run, specifies the storage type (`in_memory`, `alloydb`, `agent_engine`).
 *   `--region`: GCP region (e.g., `us-central1`).
 *   `--auto-approve`: **Skips all interactive prompts (crucial for automation).**
 *   `--debug`: Enables debug logging during creation.

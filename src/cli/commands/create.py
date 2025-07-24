@@ -116,7 +116,7 @@ def normalize_project_name(project_name: str) -> str:
 )
 @click.option(
     "--session-type",
-    type=click.Choice(["in_memory", "alloydb"]),
+    type=click.Choice(["in_memory", "alloydb", "agent_engine"]),
     help="Type of session storage to use",
 )
 @click.option("--debug", is_flag=True, help="Enable debug logging")

@@ -649,7 +649,7 @@ def display_adk_samples_selection() -> str:
             try:
                 import yaml
 
-                with open(config_path) as f:
+                with open(config_path, encoding="utf-8") as f:
                     config = yaml.safe_load(f)
 
                 agent_name = config.get("name", config_path.parent.parent.name)

@@ -49,7 +49,7 @@ class LocalChatMessageHistory(BaseChatMessageHistory):
         for filename in os.listdir(self.user_dir):
             if filename.endswith(".yaml"):
                 file_path = os.path.join(self.user_dir, filename)
-                with open(file_path) as f:
+                with open(file_path, encoding="utf-8") as f:
                     conversation = yaml.safe_load(f)
                     if not isinstance(conversation, list) or len(conversation) > 1:
                         raise ValueError(
@@ -71,7 +71,7 @@ class LocalChatMessageHistory(BaseChatMessageHistory):
     def upsert_session(self, session: dict) -> None:
         """Updates or inserts a session into the local storage."""
         session["update_time"] = datetime.now().isoformat()
-        with open(self.session_file, "w") as f:
+        with open(self.session_file, "w", encoding="utf-8") as f:
             yaml.dump(
                 [session],
                 f,

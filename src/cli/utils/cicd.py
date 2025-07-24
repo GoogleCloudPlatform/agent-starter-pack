@@ -125,6 +125,7 @@ def create_github_connection(
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding="utf-8",
         )
 
         # Send 'y' followed by enter key to handle both the API enablement prompt and any other prompts
@@ -485,6 +486,7 @@ def handle_github_authentication() -> None:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
+                encoding="utf-8",
             )
             stdout, stderr = process.communicate(input=token + "\n")
 
@@ -575,7 +577,7 @@ class E2EDeployment:
                 project_dir / "deployment" / "terraform" / "dev" / "vars" / "env.tfvars"
             )
 
-            with open(tf_vars_path) as f:
+            with open(tf_vars_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Replace dev project ID
@@ -590,7 +592,7 @@ class E2EDeployment:
                 project_dir / "deployment" / "terraform" / "vars" / "env.tfvars"
             )
 
-            with open(tf_vars_path) as f:
+            with open(tf_vars_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Replace all project IDs
@@ -623,7 +625,7 @@ class E2EDeployment:
             )
 
         # Write updated content
-        with open(tf_vars_path, "w") as f:
+        with open(tf_vars_path, "w", encoding="utf-8") as f:
             f.write(content)
 
     def setup_terraform_state(self, project_dir: Path, env: Environment) -> None:
@@ -677,7 +679,7 @@ class E2EDeployment:
             state_prefix = "dev" if is_dev_dir else "prod"
 
             backend_file = tf_dir / "backend.tf"
-            with open(backend_file, "w") as f:
+            with open(backend_file, "w", encoding="utf-8") as f:
                 f.write(f'''terraform {{
   backend "gcs" {{
     bucket = "{bucket_name}"

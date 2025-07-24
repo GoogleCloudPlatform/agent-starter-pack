@@ -4,7 +4,7 @@ install:
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %} 
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}
 {%- else %}
-	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter{% if cookiecutter.agent_name == 'live_api' %} && npm --prefix frontend install{%- endif %}
+	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter{% if cookiecutter.agent_name == 'live_api' %} && (cd frontend && npm install){%- endif %}
 {%- endif %}
 
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
@@ -44,7 +44,7 @@ playground:
 	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload &
 {%- endif %}
 {%- if cookiecutter.agent_name == 'live_api' %}
-	PORT=8501 npm --prefix frontend start
+	(cd frontend && PORT=8501 npm start)
 {%- else %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 {%- endif %}
@@ -86,7 +86,7 @@ local-backend:
 
 # Start the frontend UI for development
 ui:
-	PORT=8501 npm --prefix frontend start
+	(cd frontend && PORT=8501 npm start)
 {%- endif %}
 {%- endif %}
 

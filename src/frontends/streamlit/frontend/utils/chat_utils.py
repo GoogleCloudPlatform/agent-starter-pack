@@ -56,7 +56,7 @@ def save_chat(st: Any) -> None:
     if len(messages) > 0:
         session["messages"] = sanitize_messages(session["messages"])
         filename = f"{session_id}.yaml"
-        with open(Path(SAVED_CHAT_PATH) / filename, "w") as file:
+        with open(Path(SAVED_CHAT_PATH) / filename, "w", encoding="utf-8") as file:
             yaml.dump(
                 [session],
                 file,

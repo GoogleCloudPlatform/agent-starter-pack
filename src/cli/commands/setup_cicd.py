@@ -222,7 +222,7 @@ def update_build_triggers(tf_dir: Path) -> None:
     """Update build triggers configuration."""
     build_triggers_path = tf_dir / "build_triggers.tf"
     if build_triggers_path.exists():
-        with open(build_triggers_path) as f:
+        with open(build_triggers_path, encoding="utf-8") as f:
             content = f.read()
 
         # Add repository dependency to all trigger resources
@@ -237,7 +237,7 @@ def update_build_triggers(tf_dir: Path) -> None:
             "repository = google_cloudbuildv2_repository.repo.id",
         )
 
-        with open(build_triggers_path, "w") as f:
+        with open(build_triggers_path, "w", encoding="utf-8") as f:
             f.write(modified_content)
 
         console.print("✅ Updated build triggers with repository dependency")
@@ -266,7 +266,7 @@ def prompt_for_repository_details(
             create_repository = True
             if not repository_name:
                 # Get project name from pyproject.toml
-                with open("pyproject.toml") as f:
+                with open("pyproject.toml", encoding="utf-8") as f:
                     for line in f:
                         if line.strip().startswith("name ="):
                             default_name = line.split("=")[1].strip().strip("\"'")
@@ -354,7 +354,7 @@ def setup_terraform_backend(
   }}
 }}
 '''
-            with open(backend_file, "w") as f:
+            with open(backend_file, "w", encoding="utf-8") as f:
                 f.write(backend_content)
 
             console.print(
@@ -594,7 +594,7 @@ def setup_cicd(
             if not repository_name:
                 # Get project name from pyproject.toml or generate one
                 try:
-                    with open("pyproject.toml") as f:
+                    with open("pyproject.toml", encoding="utf-8") as f:
                         for line in f:
                             if line.strip().startswith("name ="):
                                 repository_name = (
@@ -727,7 +727,7 @@ def setup_cicd(
         ).lower()  # Use original state
 
     # Write Terraform variables
-    with open(env_vars_path, "w") as f:
+    with open(env_vars_path, "w", encoding="utf-8") as f:
         for var_name, var_value in terraform_vars.items():
             if var_value in ("true", "false"):  # Boolean values
                 f.write(f"{var_name} = {var_value}\n")
@@ -740,7 +740,7 @@ def setup_cicd(
     if dev_project:
         dev_tf_vars_path = tf_dir / "dev" / "vars" / "env.tfvars"
         if dev_tf_vars_path.exists():
-            with open(dev_tf_vars_path, "w") as f:
+            with open(dev_tf_vars_path, "w", encoding="utf-8") as f:
                 f.write(f'dev_project_id = "{dev_project}"\n')
             console.print("✅ Updated dev env.tfvars")
 

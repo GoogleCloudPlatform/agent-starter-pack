@@ -76,6 +76,7 @@ include = ["./agents/**/*.py", "src/cli/**/*.py", "tests/**/*.py", "src/frontend
 exclude = ["./agents/agentic_rag/**/*.py"]
 
 [tool.ruff.lint]
+preview = true
 select = [
     "E",   # pycodestyle
     "F",   # pyflakes
@@ -85,6 +86,7 @@ select = [
     "B",   # flake8-bugbear
     "UP", # pyupgrade
     "RUF", # ruff specific rules
+    "PLW1514", # unspecified-encoding (require encoding in open calls)
 ]
 ignore = ["E501", "C901", "RUF001"]
 

@@ -63,7 +63,7 @@ def test_upsert_session(chat_history: LocalChatMessageHistory) -> None:
     assert Path(chat_history.session_file).exists()
 
     # Verify content
-    with open(chat_history.session_file) as f:
+    with open(chat_history.session_file, encoding="utf-8") as f:
         saved_data = yaml.safe_load(f)
     assert len(saved_data) == 1
     assert saved_data[0]["title"] == "Test Chat"

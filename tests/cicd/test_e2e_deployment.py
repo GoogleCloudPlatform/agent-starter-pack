@@ -194,6 +194,7 @@ def run_command(
                 stderr=None,
                 text=True,
                 bufsize=1,
+                encoding="utf-8",
             )
 
             # Wait for process to complete
@@ -1041,7 +1042,7 @@ class TestE2EDeployment:
         )
         if dev_vars_path.exists():
             # Read current content
-            with open(dev_vars_path) as f:
+            with open(dev_vars_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Replace sample-datastore with project name
@@ -1051,7 +1052,7 @@ class TestE2EDeployment:
             )
 
             # Write back modified content
-            with open(dev_vars_path, "w") as f:
+            with open(dev_vars_path, "w", encoding="utf-8") as f:
                 f.write(modified_content)
 
             logger.info("✅ Updated datastore name in dev env.tfvars")
@@ -1062,7 +1063,7 @@ class TestE2EDeployment:
         )
         if prod_vars_path.exists():
             # Read current content
-            with open(prod_vars_path) as f:
+            with open(prod_vars_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Replace sample-datastore with project name
@@ -1072,7 +1073,7 @@ class TestE2EDeployment:
             )
 
             # Write back modified content
-            with open(prod_vars_path, "w") as f:
+            with open(prod_vars_path, "w", encoding="utf-8") as f:
                 f.write(modified_content)
 
             logger.info("✅ Updated datastore name in prod/staging env.tfvars")
@@ -1290,7 +1291,7 @@ class TestE2EDeployment:
             app_dir = new_project_dir / "app"
             app_dir.mkdir(exist_ok=True)
             dummy_file = app_dir / "dummy.py"
-            with open(dummy_file, "w") as f:
+            with open(dummy_file, "w", encoding="utf-8") as f:
                 f.write('''"""Example file to demonstrate CI/CD workflows."""
 
 def dummy_function():
@@ -1308,7 +1309,7 @@ def dummy_function():
                 logger.info(
                     "\n🔄 Making second commit to main to trigger staging deployment..."
                 )
-                with open(dummy_file, "a") as f:
+                with open(dummy_file, "a", encoding="utf-8") as f:
                     f.write("\n\n# Change to trigger staging workflow")
 
                 run_command(["git", "add", "."], cwd=new_project_dir)
@@ -1325,7 +1326,7 @@ def dummy_function():
             )
 
             # Make a small change for the PR
-            with open(dummy_file, "a") as f:
+            with open(dummy_file, "a", encoding="utf-8") as f:
                 f.write("\n\n# Small change for PR")
 
             # Commit and push feature branch

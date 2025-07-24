@@ -57,7 +57,7 @@ class GeminiPipelineComparator:
 
     def read_file_content(self, file_path: Path) -> str:
         """Read and return file content."""
-        with open(file_path) as f:
+        with open(file_path, encoding="utf-8") as f:
             return f.read()
 
     def create_comparison_prompt(

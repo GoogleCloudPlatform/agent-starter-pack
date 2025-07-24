@@ -71,7 +71,7 @@ def validate_makefile_usability(
             raise FileNotFoundError(f"Makefile not found at {makefile_path}")
 
         # Check for unrendered placeholders
-        with open(makefile_path) as f:
+        with open(makefile_path, encoding="utf-8") as f:
             content = f.read()
             if "{{" in content or "}}" in content:
                 raise ValueError(
@@ -79,7 +79,7 @@ def validate_makefile_usability(
                 )
 
         makefile_targets = []
-        with open(makefile_path) as f:
+        with open(makefile_path, encoding="utf-8") as f:
             makefile_content = f.read()
 
         # Find all targets using regex - looks for lines that start with word characters followed by :

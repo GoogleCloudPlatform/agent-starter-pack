@@ -45,7 +45,7 @@ def display_agents_from_path(base_path: pathlib.Path, source_name: str) -> None:
     # Search for templateconfig.yaml files to identify agents
     for config_path in sorted(base_path.glob("**/templateconfig.yaml")):
         try:
-            with open(config_path) as f:
+            with open(config_path, encoding="utf-8") as f:
                 config = yaml.safe_load(f)
 
             agent_name = config.get("name", config_path.parent.parent.name)

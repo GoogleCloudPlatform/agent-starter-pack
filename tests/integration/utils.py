@@ -39,6 +39,7 @@ def run_command(
             cwd=cwd,
             bufsize=1,  # Line-buffered
             env=env,
+            encoding="utf-8",
         ) as process:
             if stream_output:
                 # Stream stdout

@@ -93,7 +93,7 @@ def test_save_chat(
     saved_file = tmp_path / "test_session.yaml"
     assert saved_file.exists()
 
-    with open(saved_file) as f:
+    with open(saved_file, encoding="utf-8") as f:
         saved_data = yaml.safe_load(f)
     assert len(saved_data) == 1
     assert saved_data[0]["messages"][0]["content"] == "test message"

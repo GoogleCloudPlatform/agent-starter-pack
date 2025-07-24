@@ -48,7 +48,7 @@ class TemplateConfig:
     def from_file(cls, config_path: pathlib.Path) -> "TemplateConfig":
         """Load template config from file with validation"""
         try:
-            with open(config_path) as f:
+            with open(config_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if not isinstance(data, dict):
@@ -101,7 +101,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
             template_config_path = agent_dir / ".template" / "templateconfig.yaml"
             if template_config_path.exists():
                 try:
-                    with open(template_config_path) as f:
+                    with open(template_config_path, encoding="utf-8") as f:
                         config = yaml.safe_load(f)
                     agent_name = agent_dir.name
 
@@ -150,7 +150,7 @@ def load_template_config(template_dir: pathlib.Path) -> dict[str, Any]:
         return {}
 
     try:
-        with open(config_file) as f:
+        with open(config_file, encoding="utf-8") as f:
             config = yaml.safe_load(f)
             return config if config else {}
     except Exception as e:
@@ -621,13 +621,13 @@ def process_template(
                 / "docs"
                 / "adk-cheatsheet.md"
             )
-            with open(adk_cheatsheet_path) as f:
+            with open(adk_cheatsheet_path, encoding="utf-8") as f:
                 adk_cheatsheet_content = f.read()
 
             llm_txt_path = (
                 pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
             )
-            with open(llm_txt_path) as f:
+            with open(llm_txt_path, encoding="utf-8") as f:
                 llm_txt_content = f.read()
 
             cookiecutter_config = {
@@ -666,7 +666,9 @@ def process_template(
                 ],
             }
 
-            with open(cookiecutter_template / "cookiecutter.json", "w") as f:
+            with open(
+                cookiecutter_template / "cookiecutter.json", "w", encoding="utf-8"
+            ) as f:
                 json.dump(cookiecutter_config, f, indent=4)
 
             logging.debug(f"Template structure created at {cookiecutter_template}")

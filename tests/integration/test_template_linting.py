@@ -69,7 +69,7 @@ def test_template_linting(
         # Check for unrendered placeholders in Makefile
         makefile_path = project_path / "Makefile"
         if makefile_path.exists():
-            with open(makefile_path) as f:
+            with open(makefile_path, encoding="utf-8") as f:
                 content = f.read()
                 if "{{" in content or "}}" in content:
                     raise ValueError(

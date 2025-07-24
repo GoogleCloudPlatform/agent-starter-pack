@@ -67,6 +67,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 **Key Options:**
 *   `-a, --agent`: Agent template (e.g., `adk_base`, `agentic_rag`).
 *   `-d, --deployment-target`: Target deployment environment (`cloud_run` or `agent_engine`).
+*   `--cicd-runner`: CI/CD pipeline runner (`google_cloud_build` or `github_actions`).
 *   `-ds, --datastore`: For RAG agents, the datastore (`vertex_ai_search` or `vertex_ai_vector_search`).
 *   `-i, --include-data-ingestion`: Include data ingestion pipeline scaffolding.
 *   `--session-type`: For agents requiring session management on Cloud Run, specifies the storage type (`in_memory`, `alloydb`, `agent_engine`).
@@ -165,7 +166,7 @@ Before setting up full CI/CD, you can deploy to a personal cloud dev environment
 3.  **Deploy Backend:** `make backend` (builds and deploys the agent).
 
 ### 3. Automated Production-Ready Deployment with CI/CD
-For reliable deployments, the `setup-cicd` command streamlines the entire process. It creates a GitHub repo, connects it to Cloud Build, provisions staging/prod infrastructure, and configures deployment triggers.
+For reliable deployments, the `setup-cicd` command streamlines the entire process. It creates a GitHub repo, connects it to your chosen CI/CD runner (Google Cloud Build or GitHub Actions), provisions staging/prod infrastructure, and configures deployment triggers.
 
 **Automated CI/CD Setup Example (Recommended):**
 ```bash

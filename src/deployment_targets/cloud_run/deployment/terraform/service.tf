@@ -75,9 +75,10 @@ resource "google_service_networking_connection" "vpc_connection" {
 resource "google_alloydb_cluster" "session_db_cluster" {
   for_each = local.deploy_project_ids
   
-  project    = local.deploy_project_ids[each.key]
-  cluster_id = "${var.project_name}-alloydb-cluster"
-  location   = var.region
+  project         = local.deploy_project_ids[each.key]
+  cluster_id      = "${var.project_name}-alloydb-cluster"
+  location        = var.region
+  deletion_policy = "FORCE"
 
   network_config {
     network = google_compute_network.default[each.key].id

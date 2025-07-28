@@ -21,6 +21,7 @@ settings:
   extra_dependencies: ["google-adk~=1.8.0"]
   tags: ["adk"]
   frontend_type: "adk_gemini_fullstack"
+  interactive_command: "dev"
   commands:
     override:
       install: "uv sync --dev --extra jupyter && npm --prefix frontend install"

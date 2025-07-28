@@ -373,7 +373,7 @@ def create_or_update_secret(secret_id: str, secret_value: str, project_id: str) 
     Raises:
         subprocess.CalledProcessError: If secret creation/update fails
     """
-    with tempfile.NamedTemporaryFile(mode="w") as temp_file:
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8") as temp_file:
         temp_file.write(secret_value)
         temp_file.flush()
 

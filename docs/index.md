@@ -33,9 +33,6 @@ features:
   - icon: 🛠️
     title: Customize & Extend
     details: Adapt and enhance templates for your specific use case, or create your own.
-  - icon: 🌐
-    title: Remote Templates
-    details: Create and share your own agent templates for easy reuse and distribution.
 ---
 
 ::: tip ⭐ Like Agent Starter Pack?

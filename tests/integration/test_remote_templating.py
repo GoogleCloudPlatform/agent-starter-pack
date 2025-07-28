@@ -30,7 +30,7 @@ def test_remote_templating() -> None:
     project_name = f"myagent-{timestamp}"
     output_dir = pathlib.Path(TARGET_DIR)
     project_path = output_dir / project_name
-    remote_url = "https://github.com/eliasecchig/test-adk-samples/tree/main/python/agents/gemini-fullstack"
+    remote_url = "https://github.com/google/adk-samples/tree/feat-add-lint-tests-adk-asp-samples/python/agents/gemini-fullstack"
 
     try:
         # Create target directory if it doesn't exist

@@ -126,10 +126,11 @@ async def test_websocket_endpoint() -> None:
             # Verify mock interactions
             mock_genai.aio.live.connect.assert_called_once()
             assert mock_session._ws.recv.called
+            await mock_session._ws.recv.aclose()
 
 
 @pytest.mark.asyncio
-async def test_websocket_error_handling() -> None:
+def test_websocket_error_handling() -> None:
     """Test websocket error handling."""
     from app.server import app
 

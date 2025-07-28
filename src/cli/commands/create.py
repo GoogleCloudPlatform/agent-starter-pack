@@ -277,6 +277,27 @@ def create(
                 )
             final_agent = display_agent_selection(deployment_target)
 
+            # If browse functionality returned a remote agent spec, process it like CLI input
+            if final_agent and final_agent.startswith("adk@"):
+                # Set agent to the returned spec for remote processing
+                agent = final_agent
+
+                # Process the remote template spec just like CLI input
+                remote_spec = parse_agent_spec(agent)
+                if remote_spec:
+                    if remote_spec.is_adk_samples:
+                        console.print(
+                            f"> Fetching template: {remote_spec.template_path}",
+                            style="bold blue",
+                        )
+                    else:
+                        console.print(f"Fetching remote template: {agent}")
+                    template_source_path, temp_dir_path = fetch_remote_template(
+                        remote_spec
+                    )
+                    temp_dir_to_clean = str(temp_dir_path)
+                    final_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
+
         if debug:
             logging.debug(f"Selected agent: {final_agent}")
 
@@ -658,11 +679,19 @@ def display_adk_samples_selection() -> str:
                 # Get the relative path from repo root
                 relative_path = config_path.parent.parent.relative_to(repo_path)
 
+                # For adk-samples, use just the agent name for the spec
+                # This handles cases like python/agents/gemini-fullstack -> gemini-fullstack
+                agent_spec_name = (
+                    relative_path.name
+                    if relative_path != relative_path.parent
+                    else str(relative_path)
+                )
+
                 adk_agents[agent_count] = {
                     "name": agent_name,
                     "description": description,
                     "path": str(relative_path),
-                    "spec": f"adk@{relative_path}",
+                    "spec": f"adk@{agent_spec_name}",
                 }
                 agent_count += 1
 

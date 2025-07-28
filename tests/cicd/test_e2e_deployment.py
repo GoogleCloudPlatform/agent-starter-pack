@@ -1224,8 +1224,8 @@ class TestE2EDeployment:
                             github_pat,
                             "--github-app-installation-id",
                             github_app_installation_id,
-                            # "--dev-project",  # Not CB-specific, but we can test dev project here (no need to retest for GitHub Actions)
-                            # dev_project,
+                            "--dev-project",  # Not CB-specific, but we can test dev project here (no need to retest for GitHub Actions)
+                            dev_project,
                         ]
                     )
                 elif actual_cicd_runner == "github_actions":

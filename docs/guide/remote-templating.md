@@ -1,6 +1,13 @@
 # Remote Templates
 
-A remote template is a Git repository that the agent-starter-pack CLI uses to generate new **agent codebases**—the local directories containing your agent's code, configuration, and dependencies. It empowers you to create and share your **own production-ready starter packs** by packaging your **custom agent logic, dependencies, and configurations**. This guide covers how to build, test, and use them.
+Remote templates turn your agent prototype into a production-ready starter pack. A remote template is a Git repository containing your custom agent logic, dependencies, and infrastructure definitions (Terraform). The `agent-starter-pack` CLI uses it to generate a complete, deployable application by automatically adding production-grade boilerplate for testing and multi-target deployment (e.g., Cloud Run, Agent Engine). This lets you share best practices and provide a one-command "get started" experience for any agent.
+
+## Prerequisites
+
+To create a valid remote template, your project structure and dependency definitions must be compatible with `uv`, the Python package manager used by the Agent Starter Pack.
+
+- **`pyproject.toml`:** Your template **must** include a `pyproject.toml` file at its root. This file must be valid and parseable by `uv`. It defines your agent's dependencies and project metadata.
+- **Dependency Management:** The starter pack uses `uv` to install the dependencies specified in your `pyproject.toml`. Ensure that your dependencies can be resolved by `uv`.
 
 ## Quickstart: Creating Your First Remote Template
 
@@ -149,6 +156,37 @@ Here's how the merge logic works:
 - **Base Commands are Appended**: Any commands that are in the base `Makefile` but not in yours are appended to your `Makefile`, under a clear separator comment.
 
 This allows you to completely customize the `Makefile` while still inheriting the standard functionality of the starter pack.
+
+## Customizing Infrastructure with Terraform
+
+You can customize the generated agent's infrastructure by adding or replacing Terraform files in your remote template. The templating engine follows a simple rule: your remote template's files take precedence over the base template's files.
+
+-   **Adding New Files:** To add a new Terraform file (e.g., for a custom resource), simply place it in the desired directory.
+-   **Overriding Base Files:** To completely replace a file from the base template (e.g., to change the default storage configuration), create a file with the **exact same name** in the corresponding directory of your remote template. Your version of the file will be used instead of the base one.
+
+### Environment-Specific Configuration
+
+The starter pack uses a directory-based approach for managing different deployment environments. The Terraform configurations are split between production/staging and development.
+
+-   **Production/Staging Configuration:** Files in `deployment/terraform/` define the infrastructure for your `staging` and `prod` environments.
+-   **Development Configuration:** Files in `deployment/terraform/dev/` define the infrastructure for your `dev` environment. This configuration is typically simpler and uses fewer resources to save costs.
+
+When you create a remote template, you can override files in either of these directories. For example, to change the machine type for your production Cloud Run service, you would replace `deployment/terraform/service.tf`. To change it for your development environment, you would replace `deployment/terraform/dev/service.tf`.
+
+**Example Structure:**
+```
+my-terraform-template/
+├── .template/
+│   └── templateconfig.yaml
+├── pyproject.toml
+└── deployment/
+    └── terraform/
+        ├── service.tf      # Replaces the base service.tf for 'staging' and 'prod'
+        └── dev/
+            └── service.tf  # Replaces the base service.tf ONLY for the 'dev' environment
+```
+
+For a complete list of configurable infrastructure variables, see the [Deployment guide](./deployment.md).
 
 ## Configuration Reference
 

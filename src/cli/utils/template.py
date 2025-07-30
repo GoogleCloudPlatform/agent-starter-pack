@@ -445,6 +445,7 @@ def process_template(
     output_dir: pathlib.Path | None = None,
     remote_template_path: pathlib.Path | None = None,
     remote_config: dict[str, Any] | None = None,
+    in_folder: bool = False,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -460,6 +461,7 @@ def process_template(
         output_dir: Optional output directory path, defaults to current directory
         remote_template_path: Optional path to remote template for overlay
         remote_config: Optional remote template configuration
+        in_folder: Whether to template directly into the output directory instead of creating a subdirectory
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
@@ -689,112 +691,224 @@ def process_template(
             logging.debug("Template processing completed successfully")
 
             # Move the generated project to the final destination
-            output_dir = temp_path / project_name
-            final_destination = destination_dir / project_name
+            generated_project_dir = temp_path / project_name
 
-            logging.debug(f"Moving project from {output_dir} to {final_destination}")
-
-            if output_dir.exists():
-                if final_destination.exists():
-                    shutil.rmtree(final_destination)
-                shutil.copytree(output_dir, final_destination, dirs_exist_ok=True)
-                logging.debug(f"Project successfully created at {final_destination}")
-
-                # Render and merge Makefiles.
-                # If it's a local template, remote_template_path will be None,
-                # and only the base Makefile will be rendered.
-                render_and_merge_makefiles(
-                    base_template_path=base_template_path,
-                    final_destination=final_destination,
-                    cookiecutter_config=cookiecutter_config,
-                    remote_template_path=remote_template_path,
+            if in_folder:
+                # For in-folder mode, copy files directly to the destination directory
+                final_destination = destination_dir
+                logging.debug(
+                    f"In-folder mode: copying files from {generated_project_dir} to {final_destination}"
                 )
 
-                # Delete appropriate files based on ADK tag
-                if "adk" in tags:
-                    files_to_delete = [final_destination / f for f in NON_ADK_FILES]
-                else:
-                    files_to_delete = [final_destination / f for f in ADK_FILES]
+                if generated_project_dir.exists():
+                    # Copy all files from generated project to destination directory
+                    for item in generated_project_dir.iterdir():
+                        dest_item = final_destination / item.name
 
-                for file_path in files_to_delete:
-                    if file_path.exists():
-                        file_path.unlink()
-                        logging.debug(f"Deleted {file_path}")
-
-                # Clean up unused_* files and directories created by conditional templates
-                import glob
-
-                unused_patterns = [
-                    final_destination / "unused_*",
-                    final_destination / "**" / "unused_*",
-                ]
-
-                for pattern in unused_patterns:
-                    for unused_path_str in glob.glob(str(pattern), recursive=True):
-                        unused_path = pathlib.Path(unused_path_str)
-                        if unused_path.exists():
-                            if unused_path.is_dir():
-                                shutil.rmtree(unused_path)
-                                logging.debug(
-                                    f"Deleted unused directory: {unused_path}"
-                                )
-                            else:
-                                unused_path.unlink()
-                                logging.debug(f"Deleted unused file: {unused_path}")
-
-                # Handle pyproject.toml and uv.lock files
-                if is_remote and remote_template_path:
-                    # For remote templates, use their pyproject.toml and uv.lock if they exist
-                    remote_pyproject = remote_template_path / "pyproject.toml"
-                    remote_uv_lock = remote_template_path / "uv.lock"
-
-                    if remote_pyproject.exists():
-                        shutil.copy2(
-                            remote_pyproject, final_destination / "pyproject.toml"
-                        )
-                        logging.debug("Used pyproject.toml from remote template")
-
-                    if remote_uv_lock.exists():
-                        shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
-                        logging.debug("Used uv.lock from remote template")
-                elif deployment_target:
-                    # For local templates, use the existing logic
-                    lock_path = (
-                        pathlib.Path(__file__).parent.parent.parent.parent
-                        / "src"
-                        / "resources"
-                        / "locks"
-                        / f"uv-{agent_name}-{deployment_target}.lock"
-                    )
-                    logging.debug(f"Looking for lock file at: {lock_path}")
-                    logging.debug(f"Lock file exists: {lock_path.exists()}")
-                    if not lock_path.exists():
-                        raise FileNotFoundError(f"Lock file not found: {lock_path}")
-                    # Copy and rename to uv.lock in the project directory
-                    shutil.copy2(lock_path, final_destination / "uv.lock")
-                    logging.debug(
-                        f"Copied lock file from {lock_path} to {final_destination}/uv.lock"
-                    )
-
-                    # Replace cookiecutter project name with actual project name in lock file
-                    lock_file_path = final_destination / "uv.lock"
-                    with open(lock_file_path, "r+", encoding="utf-8") as f:
-                        content = f.read()
-                        f.seek(0)
-                        f.write(
-                            content.replace(
-                                "{{cookiecutter.project_name}}", project_name
+                        # Special handling for README files - use base template README if conflict exists
+                        if (
+                            item.name.lower().startswith("readme")
+                            and (final_destination / item.name).exists()
+                        ):
+                            # The existing README stays, use base template README with starter_pack prefix
+                            base_name = item.stem
+                            extension = item.suffix
+                            dest_item = (
+                                final_destination
+                                / f"starter_pack_{base_name}{extension}"
                             )
-                        )
-                        f.truncate()
+
+                            # Try to use base template README instead of templated README
+                            base_readme = base_template_path / item.name
+                            if base_readme.exists():
+                                logging.debug(
+                                    f"README conflict: preserving existing {item.name}, using base template README as starter_pack_{base_name}{extension}"
+                                )
+                                # Process the base template README through cookiecutter
+                                try:
+                                    import tempfile as tmp_module
+
+                                    with (
+                                        tmp_module.TemporaryDirectory() as temp_readme_dir
+                                    ):
+                                        temp_readme_path = pathlib.Path(temp_readme_dir)
+
+                                        # Create a minimal cookiecutter structure for just the README
+                                        readme_template_dir = (
+                                            temp_readme_path / "readme_template"
+                                        )
+                                        readme_template_dir.mkdir()
+                                        readme_project_dir = (
+                                            readme_template_dir
+                                            / "{{cookiecutter.project_name}}"
+                                        )
+                                        readme_project_dir.mkdir()
+
+                                        # Copy base README to template structure
+                                        shutil.copy2(
+                                            base_readme, readme_project_dir / item.name
+                                        )
+
+                                        # Create cookiecutter.json with same config as main template
+                                        with open(
+                                            readme_template_dir / "cookiecutter.json",
+                                            "w",
+                                            encoding="utf-8",
+                                        ) as f:
+                                            json.dump(cookiecutter_config, f, indent=4)
+
+                                        # Process the README template
+                                        cookiecutter(
+                                            str(readme_template_dir),
+                                            no_input=True,
+                                            overwrite_if_exists=True,
+                                            output_dir=str(temp_readme_path),
+                                            extra_context={
+                                                "project_name": project_name,
+                                                "agent_name": agent_name,
+                                            },
+                                        )
+
+                                        # Copy the processed README
+                                        processed_readme = (
+                                            temp_readme_path / project_name / item.name
+                                        )
+                                        if processed_readme.exists():
+                                            shutil.copy2(processed_readme, dest_item)
+                                        else:
+                                            # Fallback to original behavior if processing fails
+                                            shutil.copy2(item, dest_item)
+
+                                except Exception as e:
+                                    logging.warning(
+                                        f"Failed to process base template README: {e}. Using templated README instead."
+                                    )
+                                    shutil.copy2(item, dest_item)
+                            else:
+                                # Fallback to original behavior if base README doesn't exist
+                                logging.debug(
+                                    f"README conflict: preserving existing {item.name}, saving templated README as starter_pack_{base_name}{extension}"
+                                )
+                                shutil.copy2(item, dest_item)
+                        else:
+                            # Normal file copying
+                            if item.is_dir():
+                                if dest_item.exists():
+                                    shutil.rmtree(dest_item)
+                                shutil.copytree(item, dest_item, dirs_exist_ok=True)
+                            else:
+                                shutil.copy2(item, dest_item)
                     logging.debug(
-                        f"Updated project name in lock file at {lock_file_path}"
+                        f"Project files successfully copied to {final_destination}"
                     )
             else:
-                logging.error(f"Generated project directory not found at {output_dir}")
-                raise FileNotFoundError(
-                    f"Generated project directory not found at {output_dir}"
+                # Standard mode: create project subdirectory
+                final_destination = destination_dir / project_name
+                logging.debug(
+                    f"Standard mode: moving project from {generated_project_dir} to {final_destination}"
                 )
+
+                if generated_project_dir.exists():
+                    if final_destination.exists():
+                        shutil.rmtree(final_destination)
+                    shutil.copytree(
+                        generated_project_dir, final_destination, dirs_exist_ok=True
+                    )
+                    logging.debug(
+                        f"Project successfully created at {final_destination}"
+                    )
+
+            # Always check if the project was successfully created before proceeding
+            if not final_destination.exists():
+                logging.error(
+                    f"Final destination directory not found at {final_destination}"
+                )
+                raise FileNotFoundError(
+                    f"Final destination directory not found at {final_destination}"
+                )
+
+            # Render and merge Makefiles.
+            # If it's a local template, remote_template_path will be None,
+            # and only the base Makefile will be rendered.
+            render_and_merge_makefiles(
+                base_template_path=base_template_path,
+                final_destination=final_destination,
+                cookiecutter_config=cookiecutter_config,
+                remote_template_path=remote_template_path,
+            )
+
+            # Delete appropriate files based on ADK tag
+            if "adk" in tags:
+                files_to_delete = [final_destination / f for f in NON_ADK_FILES]
+            else:
+                files_to_delete = [final_destination / f for f in ADK_FILES]
+
+            for file_path in files_to_delete:
+                if file_path.exists():
+                    file_path.unlink()
+                    logging.debug(f"Deleted {file_path}")
+
+            # Clean up unused_* files and directories created by conditional templates
+            import glob
+
+            unused_patterns = [
+                final_destination / "unused_*",
+                final_destination / "**" / "unused_*",
+            ]
+
+            for pattern in unused_patterns:
+                for unused_path_str in glob.glob(str(pattern), recursive=True):
+                    unused_path = pathlib.Path(unused_path_str)
+                    if unused_path.exists():
+                        if unused_path.is_dir():
+                            shutil.rmtree(unused_path)
+                            logging.debug(f"Deleted unused directory: {unused_path}")
+                        else:
+                            unused_path.unlink()
+                            logging.debug(f"Deleted unused file: {unused_path}")
+
+            # Handle pyproject.toml and uv.lock files
+            if is_remote and remote_template_path:
+                # For remote templates, use their pyproject.toml and uv.lock if they exist
+                remote_pyproject = remote_template_path / "pyproject.toml"
+                remote_uv_lock = remote_template_path / "uv.lock"
+
+                if remote_pyproject.exists():
+                    shutil.copy2(remote_pyproject, final_destination / "pyproject.toml")
+                    logging.debug("Used pyproject.toml from remote template")
+
+                if remote_uv_lock.exists():
+                    shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
+                    logging.debug("Used uv.lock from remote template")
+            elif deployment_target:
+                # For local templates, use the existing logic
+                lock_path = (
+                    pathlib.Path(__file__).parent.parent.parent.parent
+                    / "src"
+                    / "resources"
+                    / "locks"
+                    / f"uv-{agent_name}-{deployment_target}.lock"
+                )
+                logging.debug(f"Looking for lock file at: {lock_path}")
+                logging.debug(f"Lock file exists: {lock_path.exists()}")
+                if not lock_path.exists():
+                    raise FileNotFoundError(f"Lock file not found: {lock_path}")
+                # Copy and rename to uv.lock in the project directory
+                shutil.copy2(lock_path, final_destination / "uv.lock")
+                logging.debug(
+                    f"Copied lock file from {lock_path} to {final_destination}/uv.lock"
+                )
+
+                # Replace cookiecutter project name with actual project name in lock file
+                lock_file_path = final_destination / "uv.lock"
+                with open(lock_file_path, "r+", encoding="utf-8") as f:
+                    content = f.read()
+                    f.seek(0)
+                    f.write(
+                        content.replace("{{cookiecutter.project_name}}", project_name)
+                    )
+                    f.truncate()
+                logging.debug(f"Updated project name in lock file at {lock_file_path}")
 
         except Exception as e:
             logging.error(f"Failed to process template: {e!s}")

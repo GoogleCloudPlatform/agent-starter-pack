@@ -24,6 +24,46 @@ console = Console()
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+def display_welcome_banner(
+    agent: str | None = None, enhance_mode: bool = False
+) -> None:
+    """Display the Agent Starter Pack welcome banner.
+
+    Args:
+        agent: Optional agent specification to customize the welcome message
+        enhance_mode: Whether this is for enhancement mode
+    """
+    if enhance_mode:
+        console.print(
+            "\n=== Google Cloud Agent Starter Pack 🚀===",
+            style="bold blue",
+        )
+        console.print(
+            "Enhancing your existing project with production-ready agent capabilities!\n",
+            style="green",
+        )
+    elif agent and agent.startswith("adk@"):
+        console.print(
+            "\n=== Welcome to [link=https://github.com/google/adk-samples]google/adk-samples[/link]! ✨ ===",
+            style="bold blue",
+        )
+        console.print(
+            "Powered by [link=https://goo.gle/agent-starter-pack]Google Cloud - Agent Starter Pack [/link]\n",
+        )
+        console.print(
+            "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
+        )
+    else:
+        console.print(
+            "\n=== Google Cloud Agent Starter Pack 🚀===",
+            style="bold blue",
+        )
+        console.print("Welcome to the Agent Starter Pack!")
+        console.print(
+            "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
+        )
+
+
 def handle_cli_error(f: F) -> F:
     """Decorator to handle CLI errors gracefully.
 

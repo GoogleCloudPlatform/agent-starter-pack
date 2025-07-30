@@ -12,21 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import logging
 import os
 import pathlib
 import shutil
 import subprocess
 import tempfile
+from collections.abc import Callable
 
 import click
+import tomllib
 from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
 from ..utils.datastores import DATASTORE_TYPES, DATASTORES
 from ..utils.gcp import verify_credentials, verify_vertex_connection
-from ..utils.logging import handle_cli_error
+from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.remote_template import (
     fetch_remote_template,
     get_base_template_name,
@@ -47,6 +50,58 @@ from ..utils.template import (
 )
 
 console = Console()
+
+# Export the shared decorator for use by other commands
+__all__ = ["create", "shared_template_options"]
+
+
+def shared_template_options(f: Callable) -> Callable:
+    """Decorator to add shared options for template-based commands."""
+    # Apply options in reverse order since decorators are applied bottom-up
+    f = click.option(
+        "--skip-checks",
+        is_flag=True,
+        help="Skip verification checks for GCP and Vertex AI",
+        default=False,
+    )(f)
+    f = click.option(
+        "--region",
+        help="GCP region for deployment (default: us-central1)",
+        default="us-central1",
+    )(f)
+    f = click.option(
+        "--auto-approve", is_flag=True, help="Skip credential confirmation prompts"
+    )(f)
+    f = click.option("--debug", is_flag=True, help="Enable debug logging")(f)
+    f = click.option(
+        "--session-type",
+        type=click.Choice(["in_memory", "alloydb", "agent_engine"]),
+        help="Type of session storage to use",
+    )(f)
+    f = click.option(
+        "--datastore",
+        "-ds",
+        type=click.Choice(DATASTORE_TYPES),
+        help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
+    )(f)
+    f = click.option(
+        "--include-data-ingestion",
+        "-i",
+        is_flag=True,
+        help="Include data ingestion pipeline in the project",
+    )(f)
+    f = click.option(
+        "--cicd-runner",
+        type=click.Choice(["google_cloud_build", "github_actions"]),
+        help="CI/CD runner to use",
+    )(f)
+    f = click.option(
+        "--deployment-target",
+        "-d",
+        type=click.Choice(["agent_engine", "cloud_run"]),
+        help="Deployment target name",
+    )(f)
+    return f
 
 
 def normalize_project_name(project_name: str) -> str:
@@ -92,54 +147,19 @@ def normalize_project_name(project_name: str) -> str:
     help="Template identifier to use. Can be a local agent name (e.g., `chat_agent`), a local path (`local@/path/to/template`), an `adk-samples` shortcut (e.g., `adk@data-science`), or a remote Git URL. Both shorthand (e.g., `github.com/org/repo/path@main`) and full URLs from your browser (e.g., `https://github.com/org/repo/tree/main/path`) are supported. Lists available local templates if omitted.",
 )
 @click.option(
-    "--deployment-target",
-    "-d",
-    type=click.Choice(["agent_engine", "cloud_run"]),
-    help="Deployment target name",
-)
-@click.option(
-    "--cicd-runner",
-    type=click.Choice(["google_cloud_build", "github_actions"]),
-    help="CI/CD runner to use",
-)
-@click.option(
-    "--include-data-ingestion",
-    "-i",
-    is_flag=True,
-    help="Include data ingestion pipeline in the project",
-)
-@click.option(
-    "--datastore",
-    "-ds",
-    type=click.Choice(DATASTORE_TYPES),
-    help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
-)
-@click.option(
-    "--session-type",
-    type=click.Choice(["in_memory", "alloydb", "agent_engine"]),
-    help="Type of session storage to use",
-)
-@click.option("--debug", is_flag=True, help="Enable debug logging")
-@click.option(
     "--output-dir",
     "-o",
     type=click.Path(),
     help="Output directory for the project (default: current directory)",
 )
 @click.option(
-    "--auto-approve", is_flag=True, help="Skip credential confirmation prompts"
-)
-@click.option(
-    "--region",
-    help="GCP region for deployment (default: us-central1)",
-    default="us-central1",
-)
-@click.option(
-    "--skip-checks",
+    "--in-folder",
+    "-if",
     is_flag=True,
-    help="Skip verification checks for GCP and Vertex AI",
+    help="Template files directly into the current directory instead of creating a new project directory",
     default=False,
 )
+@shared_template_options
 @handle_cli_error
 def create(
     ctx: click.Context,
@@ -155,30 +175,14 @@ def create(
     auto_approve: bool,
     region: str,
     skip_checks: bool,
+    in_folder: bool,
+    skip_welcome: bool = False,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
-        # Display welcome banner
-        if agent and agent.startswith("adk@"):
-            console.print(
-                "\n=== Welcome to [link=https://github.com/google/adk-samples]google/adk-samples[/link]! ✨ ===",
-                style="bold blue",
-            )
-            console.print(
-                "Powered by [link=https://goo.gle/agent-starter-pack]Google Cloud - Agent Starter Pack [/link]\n",
-            )
-            console.print(
-                "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
-            )
-        else:
-            console.print(
-                "\n=== Google Cloud Agent Starter Pack :rocket:===",
-                style="bold blue",
-            )
-            console.print("Welcome to the Agent Starter Pack!")
-            console.print(
-                "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
-            )
+        # Display welcome banner (unless skipped)
+        if not skip_welcome:
+            display_welcome_banner(agent)
         # Validate project name
         if len(project_name) > 26:
             console.print(
@@ -199,14 +203,41 @@ def create(
         destination_dir = pathlib.Path(output_dir) if output_dir else pathlib.Path.cwd()
         destination_dir = destination_dir.resolve()  # Convert to absolute path
 
-        # Check if project would exist in output directory
-        project_path = destination_dir / project_name
-        if project_path.exists():
-            console.print(
-                f"Error: Project directory '{project_path}' already exists",
-                style="bold red",
+        if in_folder:
+            # For in-folder templating, use the current directory directly
+            project_path = destination_dir
+            # In-folder mode is permissive - we assume the user wants to enhance their existing repo
+
+            # Create backup of entire directory before in-folder templating
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            backup_dir = (
+                project_path.parent / f".backup_{project_path.name}_{timestamp}"
             )
-            return
+
+            console.print("📦 [blue]Creating backup before enhancement...[/blue]")
+
+            try:
+                shutil.copytree(project_path, backup_dir)
+                console.print(f"Backup created: [cyan]{backup_dir.name}[/cyan]")
+            except Exception as e:
+                console.print(
+                    f"⚠️  [yellow]Warning: Could not create backup: {e}[/yellow]"
+                )
+                if not auto_approve:
+                    if not click.confirm("Continue without backup?", default=True):
+                        console.print("✋ [red]Operation cancelled.[/red]")
+                        return
+
+            console.print()
+        else:
+            # Check if project would exist in output directory
+            project_path = destination_dir / project_name
+            if project_path.exists():
+                console.print(
+                    f"Error: Project directory '{project_path}' already exists",
+                    style="bold red",
+                )
+                return
 
         # Agent selection - handle remote templates
         selected_agent = None
@@ -306,26 +337,9 @@ def create(
             # Load remote template config
             source_config = load_remote_template_config(template_source_path)
 
-            # Check if remote template has the required structure
-            template_config_path = (
-                template_source_path / ".template" / "templateconfig.yaml"
-            )
-
-            if not template_config_path.exists():
-                console.print(
-                    "Error: Template is invalid or improperly structured.",
-                    style="bold red",
-                )
-                console.print(
-                    "Templates must contain a '.template/templateconfig.yaml' file.\n\n"
-                    "Expected structure:\n"
-                    "  your-template/\n"
-                    "  └── .template/\n"
-                    "      ├── templateconfig.yaml\n"
-                    "      └── [other template files...]",
-                    style="yellow",
-                )
-                return
+            # Remote templates now work even without pyproject.toml thanks to defaults
+            if debug and source_config:
+                logging.debug(f"Final remote template config: {source_config}")
 
             # Load base template config for inheritance
             base_template_name = get_base_template_name(source_config)
@@ -539,6 +553,7 @@ def create(
                 output_dir=destination_dir,
                 remote_template_path=template_source_path,
                 remote_config=config if template_source_path else None,
+                in_folder=in_folder,
             )
 
             # Replace region in all files if a different region was specified
@@ -557,8 +572,12 @@ def create(
                         f"Failed to clean up temporary directory {temp_dir_to_clean}: {e}"
                     )
 
-        project_path = destination_dir / project_name
-        cd_path = project_path if output_dir else project_name
+        if not in_folder:
+            project_path = destination_dir / project_name
+            cd_path = project_path if output_dir else project_name
+        else:
+            project_path = destination_dir
+            cd_path = "."
 
         if include_data_ingestion:
             project_id = creds_info.get("project", "")
@@ -665,19 +684,31 @@ def display_adk_samples_selection() -> str:
         adk_agents = {}
         agent_count = 1
 
-        # Search for templateconfig.yaml files to identify agents
-        for config_path in sorted(repo_path.glob("**/templateconfig.yaml")):
+        # Search for pyproject.toml files to identify agents
+        for config_path in sorted(repo_path.glob("**/pyproject.toml")):
             try:
-                import yaml
+                with open(config_path, "rb") as f:
+                    pyproject_data = tomllib.load(f)
 
-                with open(config_path, encoding="utf-8") as f:
-                    config = yaml.safe_load(f)
+                config = pyproject_data.get("tool", {}).get("agent-starter-pack", {})
 
-                agent_name = config.get("name", config_path.parent.parent.name)
-                description = config.get("description", "No description available")
+                # Skip pyproject.toml files that don't have agent-starter-pack config
+                if not config:
+                    continue
+
+                template_root = config_path.parent
+
+                # Use fallbacks to [project] section if needed
+                project_info = pyproject_data.get("project", {})
+                agent_name = (
+                    config.get("name") or project_info.get("name") or template_root.name
+                )
+                description = (
+                    config.get("description") or project_info.get("description") or ""
+                )
 
                 # Get the relative path from repo root
-                relative_path = config_path.parent.parent.relative_to(repo_path)
+                relative_path = template_root.relative_to(repo_path)
 
                 # For adk-samples, use just the agent name for the spec
                 # This handles cases like python/agents/gemini-fullstack -> gemini-fullstack

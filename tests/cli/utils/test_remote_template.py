@@ -182,19 +182,31 @@ class TestFetchRemoteTemplate:
 
 class TestLoadRemoteTemplateConfig:
     def test_load_remote_template_config_primary_location(self) -> None:
-        """Test loading config from primary location"""
-        config_content = """
-name: test-template
-description: Test template
-settings:
-  requires_data_ingestion: false
+        """Test loading config from pyproject.toml"""
+        config_content = b"""
+[tool.agent-starter-pack]
+name = "test-template"
+description = "Test template"
+
+[tool.agent-starter-pack.settings]
+requires_data_ingestion = false
 """
         template_dir = pathlib.Path("/mock/template")
 
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data=config_content)),
+            patch("tomllib.load") as mock_toml_load,
         ):
+            mock_toml_load.return_value = {
+                "tool": {
+                    "agent-starter-pack": {
+                        "name": "test-template",
+                        "description": "Test template",
+                        "settings": {"requires_data_ingestion": False},
+                    }
+                }
+            }
             result = load_remote_template_config(template_dir)
 
             assert result["name"] == "test-template"
@@ -202,19 +214,24 @@ settings:
             assert result["settings"]["requires_data_ingestion"] is False
 
     def test_load_remote_template_config_no_file(self) -> None:
-        """Test loading config when no config file exists"""
+        """Test loading config when no config file exists - returns defaults"""
         template_dir = pathlib.Path("/mock/template")
 
         with patch("pathlib.Path.exists", return_value=False):
             result = load_remote_template_config(template_dir)
 
-            assert result == {}
+            # Should return defaults when no pyproject.toml exists
+            assert result == {
+                "base_template": "adk_base",
+                "name": "template",
+                "description": "",
+            }
 
     @patch("src.cli.utils.remote_template.logging")
     def test_load_remote_template_config_yaml_error(
         self, mock_logging: MagicMock
     ) -> None:
-        """Test loading config with YAML error"""
+        """Test loading config with TOML parsing error - returns defaults"""
         template_dir = pathlib.Path("/mock/template")
 
         with (
@@ -226,8 +243,59 @@ settings:
         ):
             result = load_remote_template_config(template_dir)
 
-            assert result == {}
+            # Should return defaults when pyproject.toml parsing fails
+            assert result == {
+                "base_template": "adk_base",
+                "name": "template",
+                "description": "",
+            }
             mock_logging.error.assert_called_once()
+
+    def test_load_remote_template_config_with_cli_overrides(self) -> None:
+        """Test loading config with CLI overrides taking precedence"""
+        template_dir = pathlib.Path("/mock/template")
+        cli_overrides = {
+            "name": "CLI Override Name",
+            "base_template": "custom_base",
+            "settings": {"custom_setting": True},
+        }
+
+        config_content = b"""
+[tool.agent-starter-pack]
+name = "TOML Name"
+description = "TOML Description"
+base_template = "toml_base"
+
+[tool.agent-starter-pack.settings]
+requires_data_ingestion = true
+"""
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=config_content)),
+            patch("tomllib.load") as mock_toml_load,
+        ):
+            mock_toml_load.return_value = {
+                "tool": {
+                    "agent-starter-pack": {
+                        "name": "TOML Name",
+                        "description": "TOML Description",
+                        "base_template": "toml_base",
+                        "settings": {"requires_data_ingestion": True},
+                    }
+                }
+            }
+
+            result = load_remote_template_config(
+                template_dir, cli_overrides=cli_overrides
+            )
+
+            # CLI overrides should take precedence
+            assert result["name"] == "CLI Override Name"  # CLI override
+            assert result["base_template"] == "custom_base"  # CLI override
+            assert result["description"] == "TOML Description"  # From TOML
+            assert result["settings"]["custom_setting"] is True  # CLI override
+            assert result["settings"]["requires_data_ingestion"] is True  # From TOML
 
 
 class TestGetBaseTemplateName:

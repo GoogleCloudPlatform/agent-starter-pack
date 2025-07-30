@@ -16,7 +16,7 @@ import logging
 import pathlib
 
 import click
-import yaml
+import tomllib
 from rich.console import Console
 from rich.table import Table
 
@@ -42,25 +42,37 @@ def display_agents_from_path(base_path: pathlib.Path, source_name: str) -> None:
         return
 
     found_agents = False
-    # Search for templateconfig.yaml files to identify agents
-    for config_path in sorted(base_path.glob("**/templateconfig.yaml")):
+    # Search for pyproject.toml files to identify agents (explicit opt-in)
+    for config_path in sorted(base_path.glob("**/pyproject.toml")):
         try:
-            with open(config_path, encoding="utf-8") as f:
-                config = yaml.safe_load(f)
+            with open(config_path, "rb") as f:
+                pyproject_data = tomllib.load(f)
 
-            agent_name = config.get("name", config_path.parent.parent.name)
-            description = config.get("description", "No description.")
+            config = pyproject_data.get("tool", {}).get("agent-starter-pack", {})
+
+            # Skip pyproject.toml files that don't have agent-starter-pack config
+            if not config:
+                continue
+
+            template_root = config_path.parent
+
+            # Use fallbacks to [project] section if needed
+            project_info = pyproject_data.get("project", {})
+            agent_name = (
+                config.get("name") or project_info.get("name") or template_root.name
+            )
+            description = (
+                config.get("description") or project_info.get("description") or ""
+            )
 
             # Display the agent's path relative to the scanned directory
-            relative_path = config_path.parent.parent.relative_to(base_path)
+            relative_path = template_root.relative_to(base_path)
 
             table.add_row(agent_name, f"/{relative_path}", description)
             found_agents = True
 
         except Exception as e:
-            logging.warning(
-                f"Could not load agent from {config_path.parent.parent}: {e}"
-            )
+            logging.warning(f"Could not load agent from {config_path.parent}: {e}")
 
     if not found_agents:
         console.print(f"No agents found in {source_name}", style="yellow")

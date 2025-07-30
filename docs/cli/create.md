@@ -1,50 +1,176 @@
-# `create`
+# create
 
-The Agent Starter Pack provides CLI commands to help you create and manage AI agent projects.
+Create new GCP-based AI agent projects from built-in agents or remote templates.
 
-## Create Command
-
-The `create` command helps you create new GCP-based AI agent projects from templates.
+## Usage
 
 ```bash
-agent-starter-pack create PROJECT_NAME [OPTIONS]
+uvx agent-starter-pack create PROJECT_NAME [OPTIONS]
 ```
 
-### Arguments
+## Arguments
 
 - `PROJECT_NAME`: Name for your new agent project directory and base for resource naming.
   *Note: This name will be converted to lowercase and must be 26 characters or less.*
 
-### Options
+## Template Selection
 
-The following options will be prompted interactively if not provided via the command line:
-- `--agent`, `-a`: Agent name or number to use. Lists available agents if omitted.
-- `--deployment-target`, `-d`: Deployment target (`agent_engine` or `cloud_run`). Prompts if omitted.
-- `--datastore`, `-ds`: Datastore for RAG agents (`vertex_ai_search` or `vertex_ai_vector_search`). Prompted if `--include-data-ingestion` is specified, or if the selected agent (e.g., `agentic_rag`) requires data ingestion, and this option is omitted.
-- `--region`: GCP region for deployment (default: `us-central1`). Prompts for confirmation if not specified and `--auto-approve` is not used.
-- `--session-type`: Type of session storage to use (`in_memory`, `alloydb`, or `agent_engine`). This is only applicable for agents that require session management and when the deployment target is `cloud_run`.
+### `--agent`, `-a` TEMPLATE
+Specify which template to use for your agent:
 
-GCP account and project ID are detected automatically (using your active `gcloud config` settings). You will be prompted to confirm or change them unless `--auto-approve` is used.
+**Built-in agents:**
+```bash
+uvx agent-starter-pack create my-agent -a adk_base
+uvx agent-starter-pack create my-agent -a chat_agent
+```
 
-Additional options:
-- `--include-data-ingestion`, `-i`: Include data ingestion pipeline components (required by some agents like `agentic_rag`, which enable this automatically). If specified manually without `--datastore`, you will be prompted to select one.
-- `--debug`: Enable debug logging.
-- `--output-dir`, `-o`: Output directory for the project (default: current directory).
-- `--auto-approve`: Skip interactive confirmation prompts for GCP credentials and region.
-- `--skip-checks`: Skip verification checks for `uv` installation, GCP authentication, and Vertex AI connection.
+**Remote templates:**
+```bash
+# Full GitHub URL
+uvx agent-starter-pack create my-agent -a https://github.com/user/repo
 
-### Example Usage
+# Shorthand notation  
+uvx agent-starter-pack create my-agent -a github.com/user/repo@main
+
+# ADK samples shortcut
+uvx agent-starter-pack create my-agent -a adk@gemini-fullstack
+
+# Local templates
+uvx agent-starter-pack create my-agent -a local@./path/to/template
+```
+
+If omitted, you'll see an interactive list of available agents.
+
+## Deployment Options
+
+### `--deployment-target`, `-d` TARGET
+Deployment target for your agent:
+- `cloud_run` - Deploy to Google Cloud Run
+- `agent_engine` - Deploy to Google Cloud Agent Engine
+
+### `--cicd-runner` RUNNER  
+CI/CD runner to use:
+- `google_cloud_build` - Use Google Cloud Build
+- `github_actions` - Use GitHub Actions
+
+### `--region` REGION
+GCP region for deployment (default: `us-central1`)
+
+## Data & Storage Options
+
+### `--include-data-ingestion`, `-i`
+Include data ingestion pipeline components in the project.
+
+### `--datastore`, `-ds` DATASTORE
+Type of datastore for data ingestion (requires `--include-data-ingestion`):
+- `vertex_ai_search`
+- `vertex_ai_vector_search` 
+- `alloydb`
+
+### `--session-type` TYPE
+Session storage type (for Cloud Run deployment):
+- `in_memory` - Store sessions in memory
+- `alloydb` - Store sessions in AlloyDB
+- `agent_engine` - Use Agent Engine session management
+
+## Project Creation Options
+
+### `--output-dir`, `-o` DIRECTORY
+Output directory for the project (default: current directory)
+
+### `--in-folder`
+Create agent files directly in the current directory instead of creating a new project subdirectory.
+
+**Standard behavior:**
+```bash
+uvx agent-starter-pack create my-agent -a template
+# Creates: ./my-agent/[project files]
+```
+
+**In-folder behavior:**
+```bash  
+uvx agent-starter-pack create my-agent -a template --in-folder
+# Creates: ./[project files] (in current directory)
+```
+
+**Use cases:**
+- Adding agent capabilities to existing projects
+- Working within established repository structures
+- Containerized development environments
+
+**Automatic Backup:** When using `--in-folder`, a complete backup of your directory is automatically created as `.backup_[dirname]_[timestamp]` before any changes are made.
+
+## Automation Options
+
+### `--auto-approve`
+Skip interactive confirmation prompts for GCP credentials and region.
+
+### `--skip-checks`
+Skip verification checks for GCP authentication and Vertex AI connection.
+
+### `--debug`
+Enable debug logging for troubleshooting.
+
+## Examples
+
+### Basic Usage
 
 ```bash
 # Create a new project interactively
-agent-starter-pack create my-agent-project
+uvx agent-starter-pack create my-agent-project
 
-# Create with specific agent, deployment target, region, and include data ingestion with Vertex AI Search
-agent-starter-pack create my-agent-project -a agentic_rag -d cloud_run --region europe-west1 -i -ds vertex_ai_search
-
-# Create without interactive prompts (uses detected GCP credentials)
-agent-starter-pack create my-other-agent -a chat_agent -d agent_engine --auto-approve
-
-# Create in a specific output directory
-agent-starter-pack create my-specific-loc-agent -o ./my-agents/
+# Create with specific built-in agent
+uvx agent-starter-pack create my-agent -a adk_base -d cloud_run
 ```
+
+### Remote Templates
+
+```bash
+# Use ADK samples
+uvx agent-starter-pack create my-agent -a adk@gemini-fullstack
+
+# Use GitHub repository
+uvx agent-starter-pack create my-agent -a https://github.com/user/my-template
+
+# Use shorthand notation with branch
+uvx agent-starter-pack create my-agent -a github.com/user/template@develop
+
+# Test local template
+uvx agent-starter-pack create my-agent -a local@./my-template
+```
+
+### Advanced Configuration
+
+```bash
+# Include data ingestion with specific datastore
+uvx agent-starter-pack create my-rag-agent -a adk_base -i -ds alloydb -d cloud_run
+
+# Create with custom region and CI/CD
+uvx agent-starter-pack create my-agent -a template-url --region europe-west1 --cicd-runner github_actions
+
+# In-folder creation (add to existing project)
+uvx agent-starter-pack create my-agent -a adk@data-science --in-folder
+
+# Skip all prompts for automation
+uvx agent-starter-pack create my-agent -a template-url --auto-approve --skip-checks
+```
+
+### Output Directory
+
+```bash
+# Create in specific directory
+uvx agent-starter-pack create my-agent -o ./projects/
+
+# Create in current directory with in-folder
+uvx agent-starter-pack create existing-project -a template-url --in-folder
+```
+
+## Related Commands
+
+- [`enhance`](./enhance.md) - Add agent capabilities to existing projects (automatically uses `--in-folder`)
+- [`list`](./list.md) - List available templates and agents
+
+## See Also
+
+- [Using Remote Templates](../guide/using-remote-templates.md) - Complete guide for using remote templates
+- [Creating Remote Templates](../guide/creating-remote-templates.md) - Guide for creating your own templates

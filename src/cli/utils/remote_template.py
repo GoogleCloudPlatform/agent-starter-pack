@@ -22,7 +22,7 @@ import tempfile
 from dataclasses import dataclass
 from typing import Any
 
-import yaml
+import tomllib
 from jinja2 import Environment
 
 
@@ -183,27 +183,66 @@ def fetch_remote_template(
         ) from e
 
 
-def load_remote_template_config(template_dir: pathlib.Path) -> dict[str, Any]:
-    """Load template configuration from remote template.
+def load_remote_template_config(
+    template_dir: pathlib.Path, cli_overrides: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Load template configuration from remote template's pyproject.toml with CLI overrides.
+
+    Loads configuration from [tool.agent-starter-pack] section with fallbacks
+    to [project] section for name and description if not specified. CLI overrides
+    take precedence over all other sources.
 
     Args:
         template_dir: Path to template directory
+        cli_overrides: Configuration overrides from CLI (takes highest precedence)
 
     Returns:
-        Template configuration dictionary
+        Template configuration dictionary with merged sources
     """
-    config_path = template_dir / ".template" / "templateconfig.yaml"
+    config = {}
 
-    if not config_path.exists():
-        return {}
+    # Start with defaults
+    defaults = {
+        "base_template": "adk_base",
+        "name": template_dir.name,
+        "description": "",
+    }
+    config.update(defaults)
 
-    try:
-        with open(config_path, encoding="utf-8") as f:
-            config = yaml.safe_load(f)
-            return config if config else {}
-    except Exception as e:
-        logging.error(f"Error loading remote template config: {e}")
-        return {}
+    # Load from pyproject.toml if it exists
+    pyproject_path = template_dir / "pyproject.toml"
+    if pyproject_path.exists():
+        try:
+            with open(pyproject_path, "rb") as f:
+                pyproject_data = tomllib.load(f)
+
+            # Extract the agent-starter-pack configuration
+            toml_config = pyproject_data.get("tool", {}).get("agent-starter-pack", {})
+
+            # Fallback to [project] fields if not specified in agent-starter-pack section
+            project_info = pyproject_data.get("project", {})
+
+            # Apply pyproject.toml configuration (overrides defaults)
+            if toml_config:
+                config.update(toml_config)
+
+            # Apply [project] fallbacks if not already set
+            if "name" not in toml_config and "name" in project_info:
+                config["name"] = project_info["name"]
+
+            if "description" not in toml_config and "description" in project_info:
+                config["description"] = project_info["description"]
+
+            logging.debug(f"Loaded template config from {pyproject_path}")
+        except Exception as e:
+            logging.error(f"Error loading pyproject.toml config: {e}")
+
+    # Apply CLI overrides (highest precedence) using deep merge
+    if cli_overrides:
+        config = merge_template_configs(config, cli_overrides)
+        logging.debug(f"Applied CLI overrides: {cli_overrides}")
+
+    return config
 
 
 def get_base_template_name(config: dict[str, Any]) -> str:

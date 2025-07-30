@@ -24,6 +24,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Remote Templates', link: '/remote-templates/' },
       { text: 'Agents', link: '/agents/overview' },
       { text: 'CLI', link: '/cli/index.md' }
     ],
@@ -44,9 +45,11 @@ export default defineConfig({
         ]
       },
       {
-        text: 'Authoring Templates',
+        text: 'Remote Templates',
         items: [
-          { text: 'Remote Templating', link: '/guide/remote-templating' },
+          { text: 'Overview', link: '/remote-templates/' },
+          { text: 'Using Remote Templates', link: '/remote-templates/using-remote-templates' },
+          { text: 'Creating Remote Templates', link: '/remote-templates/creating-remote-templates' },
           { text: 'Template Config Reference', link: '/guide/template-config-reference' }
         ]
       },
@@ -61,6 +64,8 @@ export default defineConfig({
         text: 'CLI Reference',
         items: [
           { text: 'create', link: '/cli/create' },
+          { text: 'enhance', link: '/cli/enhance' },
+          { text: 'list', link: '/cli/list' },
           { text: 'setup-cicd', link: '/cli/setup_cicd' }
         ]
       }

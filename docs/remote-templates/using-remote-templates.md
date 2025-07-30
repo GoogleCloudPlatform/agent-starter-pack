@@ -32,8 +32,8 @@ uvx agent-starter-pack create my-agent -a github.com/user/my-template@main
 # Use official ADK samples
 uvx agent-starter-pack create my-agent -a adk@gemini-fullstack
 
-# Test local templates
-uvx agent-starter-pack create my-agent -a local@./path/to/template
+# Use your existing project
+uvx agent-starter-pack create my-agent -a local@./path/to/project
 ```
 
 The system automatically handles the rest - fetching the template, applying intelligent defaults, and generating your production-ready agent.
@@ -70,11 +70,11 @@ uvx agent-starter-pack create my-agent -a adk@data-science
 uvx agent-starter-pack create my-agent -a adk@chat-agent
 ```
 
-### Local Templates
+### Your Existing Projects
 ```bash
-# Test templates on your local machine
-uvx agent-starter-pack create my-test-agent -a local@./path/to/your/template
-uvx agent-starter-pack create my-test-agent -a local@/absolute/path/to/template
+# Use your existing project as source
+uvx agent-starter-pack create my-test-agent -a local@./path/to/your/project
+uvx agent-starter-pack create my-test-agent -a local@/absolute/path/to/project
 ```
 
 ## Advanced Usage

@@ -8,7 +8,6 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | Agent Name | Description | Use Case |
 |------------|-------------|----------|
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
-| `adk_gemini_fullstack` | A production-ready fullstack research agent with Gemini | Complex research and information synthesis |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
 | `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |

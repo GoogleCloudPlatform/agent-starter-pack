@@ -104,6 +104,62 @@ def shared_template_options(f: Callable) -> Callable:
     return f
 
 
+def get_available_base_templates() -> list[str]:
+    """Get list of available base templates for inheritance.
+
+    Returns:
+        List of base template names.
+    """
+    agents = get_available_agents()
+    return sorted([agent_info["name"] for agent_info in agents.values()])
+
+
+def validate_base_template(base_template: str) -> bool:
+    """Validate that a base template exists.
+
+    Args:
+        base_template: Name of the base template to validate
+
+    Returns:
+        True if the base template exists, False otherwise
+    """
+    available_templates = get_available_base_templates()
+    return base_template in available_templates
+
+
+def get_standard_ignore_patterns() -> Callable[[str, list[str]], list[str]]:
+    """Get standard ignore patterns for copying directories.
+
+    Returns:
+        A callable that can be used with shutil.copytree's ignore parameter.
+    """
+    exclude_dirs = {
+        ".git",
+        ".venv",
+        "venv",
+        "__pycache__",
+        ".pytest_cache",
+        "node_modules",
+        ".next",
+        "dist",
+        "build",
+        ".DS_Store",
+        ".vscode",
+        ".idea",
+        "*.egg-info",
+        ".mypy_cache",
+        ".coverage",
+        "htmlcov",
+        ".tox",
+        ".cache",
+    }
+
+    def ignore_patterns(dir: str, files: list[str]) -> list[str]:
+        return [f for f in files if f in exclude_dirs or f.startswith(".backup_")]
+
+    return ignore_patterns
+
+
 def normalize_project_name(project_name: str) -> str:
     """Normalize project name for better compatibility with cloud resources and tools."""
 
@@ -176,6 +232,7 @@ def create(
     region: str,
     skip_checks: bool,
     in_folder: bool,
+    base_template: str | None = None,
     skip_welcome: bool = False,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
@@ -210,14 +267,14 @@ def create(
 
             # Create backup of entire directory before in-folder templating
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_dir = (
-                project_path.parent / f".backup_{project_path.name}_{timestamp}"
-            )
+            backup_dir = project_path / f".backup_{project_path.name}_{timestamp}"
 
-            console.print("📦 [blue]Creating backup before enhancement...[/blue]")
+            console.print("📦 [blue]Creating backup before modification...[/blue]")
 
             try:
-                shutil.copytree(project_path, backup_dir)
+                shutil.copytree(
+                    project_path, backup_dir, ignore=get_standard_ignore_patterns()
+                )
                 console.print(f"Backup created: [cyan]{backup_dir.name}[/cyan]")
             except Exception as e:
                 console.print(
@@ -257,7 +314,11 @@ def create(
                 temp_dir = tempfile.mkdtemp(prefix="asp_local_template_")
                 temp_dir_to_clean = temp_dir
                 template_source_path = pathlib.Path(temp_dir) / local_path.name
-                shutil.copytree(local_path, template_source_path)
+                shutil.copytree(
+                    local_path,
+                    template_source_path,
+                    ignore=get_standard_ignore_patterns(),
+                )
 
                 selected_agent = f"local_{template_source_path.name}"
                 console.print(f"Using local template: {local_path}")
@@ -334,8 +395,15 @@ def create(
 
         # Load template configuration based on whether it's remote or local
         if template_source_path:
+            # Prepare CLI overrides for remote template config
+            cli_overrides = {}
+            if base_template:
+                cli_overrides["base_template"] = base_template
+
             # Load remote template config
-            source_config = load_remote_template_config(template_source_path)
+            source_config = load_remote_template_config(
+                template_source_path, cli_overrides
+            )
 
             # Remote templates now work even without pyproject.toml thanks to defaults
             if debug and source_config:
@@ -343,6 +411,9 @@ def create(
 
             # Load base template config for inheritance
             base_template_name = get_base_template_name(source_config)
+            if debug:
+                logging.debug(f"Using base template: {base_template_name}")
+
             base_template_path = (
                 pathlib.Path(__file__).parent.parent.parent.parent
                 / "agents"

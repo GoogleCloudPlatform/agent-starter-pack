@@ -121,7 +121,7 @@ def test_create_with_in_folder_flag(
     assert "Using local template:" in result.output
 
     mock_process_template.assert_called_once()
-    call_args, call_kwargs = mock_process_template.call_args
+    _, call_kwargs = mock_process_template.call_args
 
     # Verify that in_folder was passed as True
     assert call_kwargs["in_folder"] is True

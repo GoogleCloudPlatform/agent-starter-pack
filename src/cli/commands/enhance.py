@@ -18,7 +18,12 @@ import click
 from rich.console import Console
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
-from .create import create, shared_template_options
+from .create import (
+    create,
+    get_available_base_templates,
+    shared_template_options,
+    validate_base_template,
+)
 
 console = Console()
 
@@ -36,6 +41,10 @@ console = Console()
     "-n",
     help="Project name for templating (defaults to current directory name)",
 )
+@click.option(
+    "--base-template",
+    help="Base template to inherit from (e.g., adk_base, langgraph_base_react, agentic_rag)",
+)
 @shared_template_options
 @handle_cli_error
 def enhance(
@@ -51,6 +60,7 @@ def enhance(
     auto_approve: bool,
     region: str,
     skip_checks: bool,
+    base_template: str | None,
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -71,6 +81,19 @@ def enhance(
 
     # Display welcome banner for enhance command
     display_welcome_banner(enhance_mode=True)
+
+    # Validate base template if provided
+    if base_template and not validate_base_template(base_template):
+        available_templates = get_available_base_templates()
+        console.print(
+            f"Error: Base template '{base_template}' not found.", style="bold red"
+        )
+        console.print(
+            f"Available base templates: {', '.join(available_templates)}",
+            style="yellow",
+        )
+        return
+
     # Determine project name
     if name:
         project_name = name
@@ -82,6 +105,30 @@ def enhance(
             f"Using current directory name as project name: {project_name}", style="dim"
         )
 
+    # Show confirmation prompt for enhancement unless auto-approved
+    if not auto_approve:
+        current_dir = pathlib.Path.cwd()
+        console.print()
+        console.print(
+            "🚀 [blue]Ready to enhance your project with deployment capabilities[/blue]"
+        )
+        console.print(f"📂 {current_dir}")
+        console.print()
+        console.print("[bold]What will happen:[/bold]")
+        console.print("• New template files will be added to this directory")
+        console.print("• Your existing files will be preserved")
+        console.print("• A backup will be created before any changes")
+        console.print()
+
+        if not click.confirm(
+            f"Continue with enhancement? {click.style('[Y/n]: ', fg='blue', bold=True)}",
+            default=True,
+            show_default=False,
+        ):
+            console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
+            return
+        console.print()
+
     # Determine agent specification based on template_path
     if template_path == pathlib.Path("."):
         # Current directory - use local@ syntax
@@ -92,6 +139,41 @@ def enhance(
     else:
         # Assume it's an agent name or remote spec
         agent_spec = str(template_path)
+
+    # Show base template inheritance info early for local projects
+    if agent_spec.startswith("local@"):
+        from ..utils.remote_template import (
+            get_base_template_name,
+            load_remote_template_config,
+        )
+
+        # Prepare CLI overrides for base template
+        cli_overrides = {}
+        if base_template:
+            cli_overrides["base_template"] = base_template
+
+        # Load config from current directory for inheritance info
+        current_dir = pathlib.Path.cwd()
+        source_config = load_remote_template_config(current_dir, cli_overrides)
+        base_template_name = get_base_template_name(source_config)
+
+        console.print()
+        console.print(
+            f"Template inherits from base: [cyan][link=https://github.com/GoogleCloudPlatform/agent-starter-pack/tree/main/agents/{base_template_name}]{base_template_name}[/link][/cyan]"
+        )
+
+        # Show available alternatives and guidance
+        available_bases = get_available_base_templates()
+        if len(available_bases) > 1:
+            other_bases = [b for b in available_bases if b != base_template_name]
+            if other_bases:
+                console.print(
+                    f"[dim]💡 To use a different base template (e.g., {', '.join(other_bases[:2])}), use:[/dim]"
+                )
+                console.print(
+                    "[dim]   asp enhance . --base-template langgraph_base_react[/dim]"
+                )
+        console.print()
 
     # Validate project structure when using current directory template
     if template_path == pathlib.Path("."):
@@ -116,22 +198,23 @@ def enhance(
             console.print()
             console.print(
                 "[dim]The enhance command can still proceed, but for best compatibility"
-                "your agent code should be organized in an /app folder structure.[/dim]"
+                " your agent code should be organized in an /app folder structure.[/dim]"
             )
             console.print()
 
-            # Ask for confirmation unless auto-approve is enabled
-            if not auto_approve:
-                import click
+            # Ask for confirmation after showing the structure warning
+            console.print(
+                "💡 [dim]Consider creating an /app folder for better compatibility.[/dim]"
+            )
+            console.print()
 
-                if not click.confirm("Continue with enhancement?", default=False):
-                    console.print()
+            if not auto_approve:
+                if not click.confirm(
+                    "Continue with enhancement despite missing /app folder?",
+                    default=True,
+                ):
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
-                    console.print(
-                        "💡 [dim]Tip: Create an /app folder with your agent.py file and try again.[/dim]"
-                    )
                     return
-                console.print()
         else:
             # Check for common agent files
             agent_py = app_folder / "agent.py"
@@ -160,5 +243,6 @@ def enhance(
         region=region,
         skip_checks=skip_checks,
         in_folder=True,  # Always use in-folder mode for enhance
+        base_template=base_template,
         skip_welcome=True,  # Skip welcome message since enhance shows its own
     )

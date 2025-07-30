@@ -18,8 +18,15 @@ uvx agent-starter-pack enhance [TEMPLATE_PATH] [OPTIONS]
 
 ## Options
 
-The `enhance` command supports all the same options as [`create`](./create.md), including:
+The `enhance` command supports all the same options as [`create`](./create.md), plus:
 
+### `--base-template` TEMPLATE
+Override the base template for inheritance when enhancing your existing project. Available base templates include:
+- `adk_base` - Basic agent template (default)
+- `langgraph_base_react` - LangGraph-based ReAct agent
+- `agentic_rag` - RAG-enabled agent template
+
+### Other Options
 - `--name, -n` - Project name (defaults to current directory name)
 - `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
 - `--include-data-ingestion, -i` - Include data ingestion pipeline
@@ -55,6 +62,16 @@ uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
 uvx agent-starter-pack enhance --session-type alloydb
 ```
 
+### Base Template Inheritance
+
+```bash
+# Enhance current project with LangGraph capabilities
+uvx agent-starter-pack enhance . --base-template langgraph_base_react
+
+# Enhance with RAG-enabled base template
+uvx agent-starter-pack enhance . --base-template agentic_rag
+```
+
 ## Project Structure Validation
 
 The enhance command validates your project structure and provides guidance:
@@ -87,6 +104,23 @@ It automatically:
 - Validates the project structure for compatibility
 - Applies the same file merging logic as the `create` command
 
+### Base Template Inheritance
+
+When enhancing your existing project (using `local@.` or `local@/path/to/project`), the enhance command will:
+
+1. **Show current inheritance**: Display which base template your project inherits from
+2. **Provide guidance**: Show available alternative base templates and how to use them
+3. **Support CLI override**: Use `--base-template` to override the base template specified in `pyproject.toml`
+
+The inheritance hierarchy works as follows:
+```
+Your Existing Project
+    ↓ (inherits from)
+Base Template (adk_base, langgraph_base_react, etc.)
+    ↓ (provides)
+Core Infrastructure & Capabilities
+```
+
 ## Use Cases
 
 **Prototype to Production:**
@@ -111,6 +145,9 @@ uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
 ```bash
 # Upgrade from basic to advanced agent template
 uvx agent-starter-pack enhance adk@gemini-fullstack
+
+# Or change base template inheritance
+uvx agent-starter-pack enhance . --base-template langgraph_base_react
 ```
 
 ## Automatic Backup

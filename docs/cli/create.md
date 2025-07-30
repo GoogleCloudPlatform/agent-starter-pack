@@ -35,8 +35,8 @@ uvx agent-starter-pack create my-agent -a github.com/user/repo@main
 # ADK samples shortcut
 uvx agent-starter-pack create my-agent -a adk@gemini-fullstack
 
-# Local templates
-uvx agent-starter-pack create my-agent -a local@./path/to/template
+# Use your existing project as source
+uvx agent-starter-pack create my-agent -a local@./path/to/project
 ```
 
 If omitted, you'll see an interactive list of available agents.
@@ -135,8 +135,8 @@ uvx agent-starter-pack create my-agent -a https://github.com/user/my-template
 # Use shorthand notation with branch
 uvx agent-starter-pack create my-agent -a github.com/user/template@develop
 
-# Test local template
-uvx agent-starter-pack create my-agent -a local@./my-template
+# Use your existing project  
+uvx agent-starter-pack create my-agent -a local@./my-project
 ```
 
 ### Advanced Configuration

@@ -705,12 +705,16 @@ def process_template(
                     for item in generated_project_dir.iterdir():
                         dest_item = final_destination / item.name
 
-                        # Special handling for README files - use base template README if conflict exists
+                        # Special handling for README files - always preserve existing README
+                        # Special handling for pyproject.toml files - only preserve for in-folder updates
+                        should_preserve_file = item.name.lower().startswith(
+                            "readme"
+                        ) or (item.name == "pyproject.toml" and in_folder)
                         if (
-                            item.name.lower().startswith("readme")
+                            should_preserve_file
                             and (final_destination / item.name).exists()
                         ):
-                            # The existing README stays, use base template README with starter_pack prefix
+                            # The existing file stays, use base template file with starter_pack prefix
                             base_name = item.stem
                             extension = item.suffix
                             dest_item = (
@@ -718,76 +722,76 @@ def process_template(
                                 / f"starter_pack_{base_name}{extension}"
                             )
 
-                            # Try to use base template README instead of templated README
-                            base_readme = base_template_path / item.name
-                            if base_readme.exists():
+                            # Try to use base template file instead of templated file
+                            base_file = base_template_path / item.name
+                            if base_file.exists():
                                 logging.debug(
-                                    f"README conflict: preserving existing {item.name}, using base template README as starter_pack_{base_name}{extension}"
+                                    f"{item.name} conflict: preserving existing {item.name}, using base template {item.name} as starter_pack_{base_name}{extension}"
                                 )
-                                # Process the base template README through cookiecutter
+                                # Process the base template file through cookiecutter
                                 try:
                                     import tempfile as tmp_module
 
                                     with (
-                                        tmp_module.TemporaryDirectory() as temp_readme_dir
+                                        tmp_module.TemporaryDirectory() as temp_file_dir
                                     ):
-                                        temp_readme_path = pathlib.Path(temp_readme_dir)
+                                        temp_file_path = pathlib.Path(temp_file_dir)
 
-                                        # Create a minimal cookiecutter structure for just the README
-                                        readme_template_dir = (
-                                            temp_readme_path / "readme_template"
+                                        # Create a minimal cookiecutter structure for just the file
+                                        file_template_dir = (
+                                            temp_file_path / "file_template"
                                         )
-                                        readme_template_dir.mkdir()
-                                        readme_project_dir = (
-                                            readme_template_dir
+                                        file_template_dir.mkdir()
+                                        file_project_dir = (
+                                            file_template_dir
                                             / "{{cookiecutter.project_name}}"
                                         )
-                                        readme_project_dir.mkdir()
+                                        file_project_dir.mkdir()
 
-                                        # Copy base README to template structure
+                                        # Copy base file to template structure
                                         shutil.copy2(
-                                            base_readme, readme_project_dir / item.name
+                                            base_file, file_project_dir / item.name
                                         )
 
                                         # Create cookiecutter.json with same config as main template
                                         with open(
-                                            readme_template_dir / "cookiecutter.json",
+                                            file_template_dir / "cookiecutter.json",
                                             "w",
                                             encoding="utf-8",
                                         ) as f:
                                             json.dump(cookiecutter_config, f, indent=4)
 
-                                        # Process the README template
+                                        # Process the file template
                                         cookiecutter(
-                                            str(readme_template_dir),
+                                            str(file_template_dir),
                                             no_input=True,
                                             overwrite_if_exists=True,
-                                            output_dir=str(temp_readme_path),
+                                            output_dir=str(temp_file_path),
                                             extra_context={
                                                 "project_name": project_name,
                                                 "agent_name": agent_name,
                                             },
                                         )
 
-                                        # Copy the processed README
-                                        processed_readme = (
-                                            temp_readme_path / project_name / item.name
+                                        # Copy the processed file
+                                        processed_file = (
+                                            temp_file_path / project_name / item.name
                                         )
-                                        if processed_readme.exists():
-                                            shutil.copy2(processed_readme, dest_item)
+                                        if processed_file.exists():
+                                            shutil.copy2(processed_file, dest_item)
                                         else:
                                             # Fallback to original behavior if processing fails
                                             shutil.copy2(item, dest_item)
 
                                 except Exception as e:
                                     logging.warning(
-                                        f"Failed to process base template README: {e}. Using templated README instead."
+                                        f"Failed to process base template {item.name}: {e}. Using templated {item.name} instead."
                                     )
                                     shutil.copy2(item, dest_item)
                             else:
-                                # Fallback to original behavior if base README doesn't exist
+                                # Fallback to original behavior if base file doesn't exist
                                 logging.debug(
-                                    f"README conflict: preserving existing {item.name}, saving templated README as starter_pack_{base_name}{extension}"
+                                    f"{item.name} conflict: preserving existing {item.name}, saving templated {item.name} as starter_pack_{base_name}{extension}"
                                 )
                                 shutil.copy2(item, dest_item)
                         else:

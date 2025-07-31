@@ -172,5 +172,5 @@ uvx agent-starter-pack create existing-project -a template-url --in-folder
 
 ## See Also
 
-- [Using Remote Templates](../guide/using-remote-templates.md) - Complete guide for using remote templates
-- [Creating Remote Templates](../guide/creating-remote-templates.md) - Guide for creating your own templates
+- [Using Remote Templates](../remote-templates/using-remote-templates.md) - Complete guide for using remote templates
+- [Creating Remote Templates](../remote-templates/creating-remote-templates.md) - Guide for creating your own templates

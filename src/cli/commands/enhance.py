@@ -16,8 +16,10 @@ import pathlib
 
 import click
 from rich.console import Console
+from rich.prompt import IntPrompt
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
+from ..utils.template import get_available_agents
 from .create import (
     create,
     get_available_base_templates,
@@ -26,6 +28,48 @@ from .create import (
 )
 
 console = Console()
+
+
+def display_base_template_selection(current_base: str) -> str:
+    """Display available base templates and prompt for selection."""
+    agents = get_available_agents()
+
+    if not agents:
+        raise click.ClickException("No base templates available")
+
+    console.print()
+    console.print("🔧 [bold]Base Template Selection[/bold]")
+    console.print()
+    console.print(f"Your project currently inherits from: [cyan]{current_base}[/cyan]")
+    console.print("Available base templates:")
+
+    # Create a mapping of choices to agent names
+    template_choices = {}
+    choice_num = 1
+    current_choice = None
+
+    for _num, agent in agents.items():
+        template_choices[choice_num] = agent["name"]
+        current_indicator = " (current)" if agent["name"] == current_base else ""
+        console.print(
+            f"  {choice_num}. [bold]{agent['name']}[/]{current_indicator} - [dim]{agent['description']}[/]"
+        )
+        if agent["name"] == current_base:
+            current_choice = choice_num
+        choice_num += 1
+
+    if current_choice is None:
+        current_choice = 1
+
+    console.print()
+    choice = IntPrompt.ask(
+        "Select base template", default=current_choice, show_default=True
+    )
+
+    if choice in template_choices:
+        return template_choices[choice]
+    else:
+        raise ValueError(f"Invalid base template selection: {choice}")
 
 
 @click.command()
@@ -155,25 +199,35 @@ def enhance(
         # Load config from current directory for inheritance info
         current_dir = pathlib.Path.cwd()
         source_config = load_remote_template_config(current_dir, cli_overrides)
+        original_base_template_name = get_base_template_name(source_config)
+
+        # Interactive base template selection if not provided via CLI and not auto-approved
+        if not base_template and not auto_approve:
+            selected_base_template = display_base_template_selection(
+                original_base_template_name
+            )
+            if selected_base_template != original_base_template_name:
+                # Update CLI overrides with the selected base template
+                cli_overrides["base_template"] = selected_base_template
+                base_template = selected_base_template
+                console.print(
+                    f"✅ Selected base template: [cyan]{selected_base_template}[/cyan]"
+                )
+                console.print()
+
+        # Reload config with potential base template override
+        if cli_overrides.get("base_template"):
+            source_config = load_remote_template_config(current_dir, cli_overrides)
+
         base_template_name = get_base_template_name(source_config)
 
-        console.print()
-        console.print(
-            f"Template inherits from base: [cyan][link=https://github.com/GoogleCloudPlatform/agent-starter-pack/tree/main/agents/{base_template_name}]{base_template_name}[/link][/cyan]"
-        )
-
-        # Show available alternatives and guidance
-        available_bases = get_available_base_templates()
-        if len(available_bases) > 1:
-            other_bases = [b for b in available_bases if b != base_template_name]
-            if other_bases:
-                console.print(
-                    f"[dim]💡 To use a different base template (e.g., {', '.join(other_bases[:2])}), use:[/dim]"
-                )
-                console.print(
-                    "[dim]   asp enhance . --base-template langgraph_base_react[/dim]"
-                )
-        console.print()
+        # Show current inheritance info
+        if not auto_approve or base_template:
+            console.print()
+            console.print(
+                f"Template inherits from base: [cyan][link=https://github.com/GoogleCloudPlatform/agent-starter-pack/tree/main/agents/{base_template_name}]{base_template_name}[/link][/cyan]"
+            )
+            console.print()
 
     # Validate project structure when using current directory template
     if template_path == pathlib.Path("."):

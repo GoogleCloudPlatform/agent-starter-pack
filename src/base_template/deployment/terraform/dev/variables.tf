@@ -45,13 +45,8 @@ variable "feedback_logs_filter" {
   default     = "jsonPayload.log_type=\"feedback\" jsonPayload.service_name=\"{{cookiecutter.project_name}}\""
 }
 
-{% if cookiecutter.deployment_target == 'cloud_run' %}
-variable "cloud_run_app_roles" {
-  description = "List of roles to assign to the Cloud Run app service account"
-{% elif cookiecutter.deployment_target == 'agent_engine' %}
-variable "agentengine_sa_roles" {
-  description = "List of roles to assign to the Agent Engine app service account"
-{% endif %}
+variable "app_sa_roles" {
+  description = "List of roles to assign to the application service account"
   type        = list(string)
   default = [
 {%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}

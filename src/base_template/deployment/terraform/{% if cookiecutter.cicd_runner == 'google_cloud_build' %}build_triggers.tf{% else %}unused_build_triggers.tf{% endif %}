@@ -78,7 +78,8 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
 {% if cookiecutter.deployment_target == 'cloud_run' %}
     _CONTAINER_NAME                = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
-    _CLOUD_RUN_APP_SA_EMAIL         = resource.google_service_account.cloud_run_app_sa["staging"].email
+{% elif cookiecutter.deployment_target == 'agent_engine' %}
+    _APP_SA_EMAIL_STAGING          = resource.google_service_account.app_sa["staging"].email
 {% endif %}
 {% if cookiecutter.data_ingestion %}
     _PIPELINE_GCS_ROOT_STAGING     = "gs://${resource.google_storage_bucket.data_ingestion_pipeline_gcs_root["staging"].name}"
@@ -126,7 +127,8 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
 {% if cookiecutter.deployment_target == 'cloud_run' %}
     _CONTAINER_NAME              = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
-    _CLOUD_RUN_APP_SA_EMAIL       = resource.google_service_account.cloud_run_app_sa["prod"].email
+{% elif cookiecutter.deployment_target == 'agent_engine' %}
+    _APP_SA_EMAIL_PROD             = resource.google_service_account.app_sa["prod"].email
 {% endif %}
 {% if cookiecutter.data_ingestion %}
     _PIPELINE_GCS_ROOT_PROD        = "gs://${resource.google_storage_bucket.data_ingestion_pipeline_gcs_root["prod"].name}"

@@ -208,6 +208,7 @@ def deploy_agent_engine_app(
     requirements_file: str = ".requirements.txt",
     extra_packages: list[str] = ["./app"],
     env_vars: dict[str, str] = {},
+    service_account: str | None = None,
 ) -> agent_engines.AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
@@ -247,6 +248,7 @@ def deploy_agent_engine_app(
         "description": "{{cookiecutter.agent_description}}",
         "extra_packages": extra_packages,
         "env_vars": env_vars,
+        "service_account": service_account,
     }
     logging.info(f"Agent config: {agent_config}")
     agent_config["requirements"] = requirements
@@ -310,6 +312,11 @@ if __name__ == "__main__":
         "--set-env-vars",
         help="Comma-separated list of environment variables in KEY=VALUE format",
     )
+    parser.add_argument(
+        "--service-account",
+        default=None,
+        help="Service account email to use for the agent engine",
+    )
     args = parser.parse_args()
 
     # Parse environment variables if provided
@@ -337,4 +344,5 @@ if __name__ == "__main__":
         requirements_file=args.requirements_file,
         extra_packages=args.extra_packages,
         env_vars=env_vars,
+        service_account=args.service_account,
     )

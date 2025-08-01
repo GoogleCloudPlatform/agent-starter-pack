@@ -111,6 +111,7 @@ steps:
         uv run app/agent_engine_app.py \
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
+          --service-account ${_APP_SA_EMAIL_STAGING} \
           --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'

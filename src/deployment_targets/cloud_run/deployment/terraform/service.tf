@@ -216,7 +216,7 @@ resource "google_cloud_run_v2_service" "app_staging" {
 {%- endif %}
     }
 
-    service_account                = google_service_account.cloud_run_app_sa["staging"].email
+    service_account                = google_service_account.app_sa["staging"].email
     max_instance_request_concurrency = 40
 
     scaling {
@@ -322,7 +322,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
 {%- endif %}
     }
 
-    service_account                = google_service_account.cloud_run_app_sa["prod"].email
+    service_account                = google_service_account.app_sa["prod"].email
     max_instance_request_concurrency = 40
 
     scaling {

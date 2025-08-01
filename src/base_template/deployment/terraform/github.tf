@@ -105,6 +105,20 @@ resource "github_actions_variable" "bucket_name_load_test_results" {
   depends_on    = [github_repository.repo]
 }
 
+resource "github_actions_variable" "app_sa_email_staging" {
+  repository    = var.repository_name
+  variable_name = "APP_SA_EMAIL_STAGING"
+  value         = google_service_account.app_sa["staging"].email
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "app_sa_email_prod" {
+  repository    = var.repository_name
+  variable_name = "APP_SA_EMAIL_PROD"
+  value         = google_service_account.app_sa["prod"].email
+  depends_on    = [github_repository.repo]
+}
+
 {% if cookiecutter.deployment_target == 'cloud_run' %}
 resource "github_actions_variable" "container_name" {
   repository    = var.repository_name

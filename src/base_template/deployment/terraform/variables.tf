@@ -66,13 +66,8 @@ variable "feedback_logs_filter" {
   default     = "jsonPayload.log_type=\"feedback\""
 }
 
-{% if cookiecutter.deployment_target == 'cloud_run' %}
-variable "cloud_run_app_roles" {
-  description = "List of roles to assign to the Cloud Run app service account"
-{% elif cookiecutter.deployment_target == 'agent_engine' %}
-variable "agentengine_sa_roles" {
-  description = "List of roles to assign to the Agent Engine service account"
-{% endif %}
+variable "app_sa_roles" {
+  description = "List of roles to assign to the application service account"
   type        = list(string)
   default = [
 {%- if cookiecutter.deployment_target == 'cloud_run' %}

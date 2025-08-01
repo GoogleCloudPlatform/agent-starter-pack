@@ -16,12 +16,12 @@ dependencies = [
 {%- endif %}
     "google-cloud-logging~=3.11.4",
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-    "google-cloud-aiplatform[evaluation]~=1.103.0",
+    "google-cloud-aiplatform[evaluation]~=1.106.0",
     "fastapi~=0.115.8",
     "uvicorn~=0.34.0",
     "psycopg2-binary>=2.9.10",
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-    "google-cloud-aiplatform[evaluation,agent-engines]~=1.103.0"
+    "google-cloud-aiplatform[evaluation,agent-engines]~=1.106.0"
 {%- endif %}
 ]
 {% if cookiecutter.deployment_target == 'cloud_run' %}

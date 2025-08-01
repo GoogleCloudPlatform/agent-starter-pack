@@ -64,10 +64,12 @@ jobs:
         uses: 'google-github-actions/setup-gcloud@v2'
 {%- endif %}
 
+{%- if cookiecutter.data_ingestion or cookiecutter.deployment_target == 'agent_engine' %}
       - name: Install uv and dependencies
         run: |
           pip install uv==0.6.12
           uv sync --locked
+{%- endif %}
 
 {%- if cookiecutter.data_ingestion %}
       - name: Deploy data ingestion pipeline (Production)

@@ -33,16 +33,6 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Building general-purpose conversational agents.
 *   Learning the ADK framework and ReAct pattern.
 
-### ADK Gemini Fullstack (`adk_gemini_fullstack`)
-
-> 🔍 **Sample Agent**: This agent is part of the [ADK Samples](https://github.com/google/adk-samples/tree/main/python/agents/gemini-fullstack) collection, showcasing agent implementations using the Agent Development Kit.
-
-This template provides a production-ready blueprint for building a sophisticated, fullstack research agent with Gemini. It demonstrates how the ADK helps structure complex agentic workflows, build modular agents, and incorporate critical Human-in-the-Loop (HITL) steps. Key features include:
-
-*   A complete React frontend and ADK-powered FastAPI backend
-*   Advanced agentic workflow where the agent strategizes a multi-step plan, reflects on findings to identify gaps, and synthesizes a final, comprehensive report.
-*   Iterative and Human-in-the-Loop research that involves the user for plan approval, then autonomously loops through searching and refining results.
-
 ### Agentic RAG (`agentic_rag`)
 
 Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)](https://cloud.google.com/use-cases/retrieval-augmented-generation?hl=en) with a production-ready data ingestion pipeline for document-based question answering. It allows you to ingest, process, and embed custom data to enhance response relevance. Features include:

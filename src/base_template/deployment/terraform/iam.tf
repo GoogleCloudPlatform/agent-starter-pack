@@ -44,19 +44,7 @@ resource "google_project_iam_member" "other_projects_roles" {
   member     = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
-{% if cookiecutter.deployment_target == 'cloud_run' %}
-# 3. Allow Cloud Run service SA to pull containers stored in the CICD project
-resource "google_project_iam_member" "cicd_run_invoker_artifact_registry_reader" {
-  for_each = local.deploy_project_ids
-  project  = var.cicd_runner_project_id
-
-  role       = "roles/artifactregistry.reader"
-  member     = "serviceAccount:service-${data.google_project.projects[each.key].number}@serverless-robot-prod.iam.gserviceaccount.com"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
-
-}
-
-# 4. Grant application SA the required permissions to run the application
+# 3. Grant application SA the required permissions to run the application
 resource "google_project_iam_member" "app_sa_roles" {
   for_each = {
     for pair in setproduct(keys(local.deploy_project_ids), var.app_sa_roles) :
@@ -72,32 +60,20 @@ resource "google_project_iam_member" "app_sa_roles" {
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
-{% endif %}
-
-{% if cookiecutter.deployment_target == 'agent_engine' %}
-resource "google_project_service_identity" "vertex_sa" {
+{% if cookiecutter.deployment_target == 'cloud_run' %}
+# 4. Allow Cloud Run service SA to pull containers stored in the CICD project
+resource "google_project_iam_member" "cicd_run_invoker_artifact_registry_reader" {
   for_each = local.deploy_project_ids
-  provider = google-beta
-  project  = each.value
-  service  = "aiplatform.googleapis.com"
+  project  = var.cicd_runner_project_id
+
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:service-${data.google_project.projects[each.key].number}@serverless-robot-prod.iam.gserviceaccount.com"
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
+
 }
 
-# 5. Grant required permissions to Vertex AI Service Agent SA for Agent Engine
-resource "google_project_iam_member" "vertex_ai_sa_permissions" {
-  for_each = {
-    for pair in setproduct(keys(local.deploy_project_ids), var.app_sa_roles) :
-    "${pair[0]}_${pair[1]}" => {
-      project = local.deploy_project_ids[pair[0]]
-      role = pair[1]
-    }
-  }
-
-  project     = each.value.project
-  role        = each.value.role
-  member      = "serviceAccount:service-${data.google_project.projects[split("_", each.key)[0]].number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
-  depends_on  = [resource.google_project_service.deploy_project_services, resource.google_project_service_identity.vertex_sa]
-}
 {% endif %}
+
 
 # Special assignment: Allow the CICD SA to create tokens
 resource "google_service_account_iam_member" "cicd_run_invoker_token_creator" {

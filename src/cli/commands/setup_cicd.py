@@ -48,7 +48,7 @@ def display_intro_message() -> None:
         "This command helps set up a basic CI/CD pipeline for development and testing purposes."
     )
     console.print("It will:")
-    console.print("- Create a GitHub repository and connect it to Cloud Build")
+    console.print("- Create a GitHub repository and connect it to your CI/CD runner")
     console.print("- Set up development environment infrastructure")
     console.print("- Configure basic CI/CD triggers for PR checks and deployments")
     console.print(
@@ -216,6 +216,34 @@ def validate_working_directory() -> None:
             "This command must be run from the project root directory containing pyproject.toml. "
             "Make sure you are in the folder created by agent-starter-pack."
         )
+
+
+def detect_region_from_terraform_vars() -> str | None:
+    """Detect region from Terraform vars file.
+
+    Returns:
+        str | None: The detected region, or None if not found or is default
+    """
+    try:
+        tf_vars_path = Path("deployment/terraform/vars/env.tfvars")
+        if not tf_vars_path.exists():
+            return None
+
+        with open(tf_vars_path, encoding="utf-8") as f:
+            content = f.read()
+
+        # Look for region = "value" pattern
+        region_match = re.search(r'region\s*=\s*"([^"]+)"', content)
+        if region_match:
+            detected_region = region_match.group(1)
+            # Don't auto-detect if it's the default value
+            if detected_region != "us-central1":
+                return detected_region
+
+        return None
+    except Exception:
+        # If any error occurs, return None to use default
+        return None
 
 
 def update_build_triggers(tf_dir: Path) -> None:
@@ -427,7 +455,9 @@ console = Console()
 @click.option(
     "--cicd-project", help="CICD project ID (defaults to prod project if not specified)"
 )
-@click.option("--region", default="us-central1", help="GCP region")
+@click.option(
+    "--region", help="GCP region (auto-detects from Terraform vars if not specified)"
+)
 @click.option("--repository-name", help="Repository name (optional)")
 @click.option(
     "--repository-owner",
@@ -468,7 +498,7 @@ def setup_cicd(
     staging_project: str | None,
     prod_project: str | None,
     cicd_project: str | None,
-    region: str,
+    region: str | None,
     repository_name: str | None,
     repository_owner: str | None,
     host_connection_name: str | None,
@@ -502,23 +532,24 @@ def setup_cicd(
         cicd_project = prod_project
         console.print(f"Using production project '{prod_project}' for CI/CD resources")
 
-    console.print(
-        "\n⚠️  WARNING: The setup-cicd command is experimental and may have unexpected behavior.",
-        style="bold yellow",
-    )
-    console.print("Please report any issues you encounter.\n")
+    # Auto-detect region if not provided
+    if region is None:
+        detected_region = detect_region_from_terraform_vars()
+        if detected_region:
+            region = detected_region
+            console.print(f"Auto-detected region from Terraform vars: {region}")
+        else:
+            region = "us-central1"
+            console.print(f"Using default region: {region}")
+    else:
+        console.print(f"Using provided region: {region}")
 
-    console.print("\n📋 About this command:", style="bold blue")
-    console.print(
-        "This command helps set up a basic CI/CD pipeline for development and testing purposes."
-    )
-    console.print("It will:")
-    console.print("- Create a GitHub repository and connect it to Cloud Build")
-    console.print("- Set up development environment infrastructure")
-    console.print("- Configure basic CI/CD triggers for PR checks and deployments")
-    console.print(
-        "- Configure remote Terraform state in GCS (use --local-state to use local state instead)"
-    )
+    # Auto-detect CI/CD runner based on Terraform files (moved earlier)
+    tf_dir = Path("deployment/terraform")
+    is_github_actions = (tf_dir / "wif.tf").exists() and (tf_dir / "github.tf").exists()
+    cicd_runner = "github_actions" if is_github_actions else "google_cloud_build"
+
+    display_intro_message()
 
     console.print("\n⚡ Production Setup Note:", style="bold yellow")
     console.print(
@@ -536,28 +567,6 @@ def setup_cicd(
         if not click.confirm("\nDo you want to continue with the setup?", default=True):
             console.print("\n🛑 Setup cancelled by user", style="bold yellow")
             return
-
-    console.print(
-        "This command helps set up a basic CI/CD pipeline for development and testing purposes."
-    )
-    console.print("It will:")
-    console.print("- Create a GitHub repository and connect it to Cloud Build")
-    console.print("- Set up development environment infrastructure")
-    console.print("- Configure basic CI/CD triggers for PR checks and deployments")
-    console.print(
-        "- Configure remote Terraform state in GCS (use --local-state to use local state instead)"
-    )
-
-    console.print("\n⚡ Production Setup Note:", style="bold yellow")
-    console.print(
-        "For production deployments and maximum flexibility, we recommend following"
-    )
-    console.print("the manual setup instructions in deployment/README.md")
-    console.print("This will give you more control over:")
-    console.print("- Security configurations")
-    console.print("- Custom deployment workflows")
-    console.print("- Environment-specific settings")
-    console.print("- Advanced CI/CD pipeline customization\n")
 
     if debug:
         logging.basicConfig(level=logging.DEBUG)

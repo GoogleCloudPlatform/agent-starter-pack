@@ -24,9 +24,9 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai import agent_engines
 {%- endif %}
 
-from app.utils.gcs import create_bucket_if_not_exists
-from app.utils.tracing import CloudTraceLoggingSpanExporter
-from app.utils.typing import Feedback
+from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
+from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.utils.typing import Feedback
 
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
@@ -99,9 +99,9 @@ from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
 
-from app.agent import agent
-from app.utils.tracing import CloudTraceLoggingSpanExporter
-from app.utils.typing import Feedback, InputChat, Request, dumps, ensure_valid_config
+from {{cookiecutter.agent_directory}}.agent import agent
+from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.utils.typing import Feedback, InputChat, Request, dumps, ensure_valid_config
 
 # Initialize FastAPI app and logging
 app = FastAPI(

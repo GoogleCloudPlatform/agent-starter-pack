@@ -27,7 +27,7 @@ from google.genai.types import LiveServerToolCall
 from pydantic import BaseModel
 from websockets.exceptions import ConnectionClosedError
 
-from app.agent import MODEL_ID, genai_client, live_connect_config, tool_functions
+from {{cookiecutter.agent_directory}}.agent import MODEL_ID, genai_client, live_connect_config, tool_functions
 
 app = FastAPI()
 app.add_middleware(

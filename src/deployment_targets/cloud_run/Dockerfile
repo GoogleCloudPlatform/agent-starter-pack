@@ -20,7 +20,7 @@ WORKDIR /code
 
 COPY ./pyproject.toml ./README.md ./uv.lock* ./
 
-COPY ./app ./app
+COPY ./{{cookiecutter.agent_directory}} ./{{cookiecutter.agent_directory}}
 
 RUN uv sync --frozen
 
@@ -29,4 +29,4 @@ ENV COMMIT_SHA=${COMMIT_SHA}
 
 EXPOSE 8080
 
-CMD ["uv", "run", "uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uv", "run", "uvicorn", "{{cookiecutter.agent_directory}}.server:app", "--host", "0.0.0.0", "--port", "8080"]

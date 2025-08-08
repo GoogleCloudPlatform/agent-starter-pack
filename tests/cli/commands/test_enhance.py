@@ -175,11 +175,7 @@ class TestEnhanceCommand:
             "tool": {
                 "hatch": {
                     "build": {
-                        "targets": {
-                            "wheel": {
-                                "packages": ["my_agent", "frontend"]
-                            }
-                        }
+                        "targets": {"wheel": {"packages": ["my_agent", "frontend"]}}
                     }
                 }
             }
@@ -212,7 +208,7 @@ class TestEnhanceCommand:
             pathlib.Path("detected_agent/agent.py").touch()
             pathlib.Path("cli_agent").mkdir()
             pathlib.Path("cli_agent/agent.py").touch()
-            
+
             # Create pyproject.toml that would detect 'detected_agent'
             pyproject_content = """
 [tool.hatch.build.targets.wheel]
@@ -239,7 +235,7 @@ packages = ["detected_agent", "frontend"]
 
         with runner.isolated_filesystem():
             # Don't create any agent directory
-            
+
             with patch("src.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
                     enhance,
@@ -265,9 +261,11 @@ packages = ["detected_agent", "frontend"]
                     enhance,
                     [
                         ".",
-                        "--base-template", "langgraph_base_react",
-                        "--agent-directory", "my_chatbot",
-                        "--auto-approve"
+                        "--base-template",
+                        "langgraph_base_react",
+                        "--agent-directory",
+                        "my_chatbot",
+                        "--auto-approve",
                     ],
                 )
 
@@ -275,7 +273,7 @@ packages = ["detected_agent", "frontend"]
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
                 assert call_args[1]["base_template"] == "langgraph_base_react"
-                
+
                 cli_overrides = call_args[1]["cli_overrides"]
                 assert cli_overrides is not None
                 assert cli_overrides["base_template"] == "langgraph_base_react"

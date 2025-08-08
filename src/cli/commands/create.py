@@ -440,12 +440,14 @@ def create(
                 / ".template"
             )
             config = load_template_config(template_path)
-            
+
             # Apply CLI overrides for local templates if provided (e.g., from enhance command)
             if cli_overrides:
                 config = merge_template_configs(config, cli_overrides)
                 if debug:
-                    logging.debug(f"Applied CLI overrides to local template config: {cli_overrides}")
+                    logging.debug(
+                        f"Applied CLI overrides to local template config: {cli_overrides}"
+                    )
         # Data ingestion and datastore selection
         if include_data_ingestion or datastore:
             include_data_ingestion = True

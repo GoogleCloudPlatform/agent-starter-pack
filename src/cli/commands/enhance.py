@@ -245,7 +245,7 @@ def enhance(
     # Validate project structure when using current directory template
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
-        
+
         # Determine agent directory: CLI param > pyproject.toml detection > default
         detected_agent_directory = "app"  # default
         if not agent_directory:  # Only try to detect if not provided via CLI
@@ -253,9 +253,17 @@ def enhance(
             if pyproject_path.exists():
                 try:
                     import tomllib
+
                     with open(pyproject_path, "rb") as f:
                         pyproject_data = tomllib.load(f)
-                    packages = pyproject_data.get("tool", {}).get("hatch", {}).get("build", {}).get("targets", {}).get("wheel", {}).get("packages", [])
+                    packages = (
+                        pyproject_data.get("tool", {})
+                        .get("hatch", {})
+                        .get("build", {})
+                        .get("targets", {})
+                        .get("wheel", {})
+                        .get("packages", [])
+                    )
                     if packages:
                         # Find the first package that isn't 'frontend'
                         for pkg in packages:
@@ -264,15 +272,19 @@ def enhance(
                                 break
                 except Exception:
                     pass  # Fall back to default
-        
+
         final_agent_directory = agent_directory or detected_agent_directory
-        
+
         # Show info about agent directory selection
         if agent_directory:
-            console.print(f"ℹ️  Using CLI-specified agent directory: [cyan]{agent_directory}[/cyan]")
+            console.print(
+                f"ℹ️  Using CLI-specified agent directory: [cyan]{agent_directory}[/cyan]"
+            )
         elif detected_agent_directory != "app":
-            console.print(f"ℹ️  Auto-detected agent directory: [cyan]{detected_agent_directory}[/cyan]")
-        
+            console.print(
+                f"ℹ️  Auto-detected agent directory: [cyan]{detected_agent_directory}[/cyan]"
+            )
+
         agent_folder = current_dir / final_agent_directory
 
         if not agent_folder.exists() or not agent_folder.is_dir():
@@ -289,7 +301,9 @@ def enhance(
                 f"📁 [bold]Expected Structure:[/bold] [cyan]/{final_agent_directory}[/cyan] folder containing your agent code"
             )
             console.print(f"📍 [bold]Current Directory:[/bold] {current_dir}")
-            console.print(f"❌ [bold red]Missing:[/bold red] /{final_agent_directory} folder")
+            console.print(
+                f"❌ [bold red]Missing:[/bold red] /{final_agent_directory} folder"
+            )
             console.print()
             console.print(
                 f"The enhance command can still proceed, but for best compatibility"
@@ -298,19 +312,17 @@ def enhance(
             console.print()
 
             # Ask for confirmation after showing the structure warning
-            console.print(
-                f"💡 Options:"
-            )
+            console.print("💡 Options:")
             console.print(
                 f"   • Create a /{final_agent_directory} folder and move your agent code there"
             )
             if final_agent_directory == "app":
                 console.print(
-                    f"   • Use [cyan]--agent-directory <custom_name>[/cyan] if your agent code is in a different directory"
+                    "   • Use [cyan]--agent-directory <custom_name>[/cyan] if your agent code is in a different directory"
                 )
             else:
                 console.print(
-                    f"   • Use [cyan]--agent-directory <custom_name>[/cyan] to specify your existing agent directory"
+                    "   • Use [cyan]--agent-directory <custom_name>[/cyan] to specify your existing agent directory"
                 )
             console.print()
 

@@ -108,7 +108,7 @@ steps:
       - "-c"
       - |
         uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
-        uv run app/agent_engine_app.py \
+        uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --service-account ${_APP_SA_EMAIL_STAGING} \

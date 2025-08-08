@@ -34,14 +34,14 @@ playground:
 	@echo "| 💡 Try asking: {{cookiecutter.example_question}}|"
 {%- if "adk" in cookiecutter.tags %}
 	@echo "|                                                                             |"
-	@echo "| 🔍 IMPORTANT: Select the 'app' folder to interact with your agent.          |"
+	@echo "| 🔍 IMPORTANT: Select the '{{cookiecutter.agent_directory}}' folder to interact with your agent.          |"
 {%- endif %}
 	@echo "==============================================================================="
 {%- if "adk" in cookiecutter.tags %}
-	uv run adk web --port 8501
+	uv run adk web . --port 8501
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload &
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload &
 {%- endif %}
 {%- if cookiecutter.agent_name == 'live_api' %}
 	(cd frontend && PORT=8501 npm start)
@@ -73,13 +73,13 @@ backend:
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run app/agent_engine_app.py
+	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}

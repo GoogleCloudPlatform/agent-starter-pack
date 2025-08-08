@@ -1193,7 +1193,7 @@ import asyncio
 
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
-from app.agent import root_agent
+from {{cookiecutter.agent_directory}}.agent import root_agent
 from google.genai import types as genai_types
 
 
@@ -1201,10 +1201,10 @@ async def main():
     """Runs the agent with a sample query."""
     session_service = InMemorySessionService()
     await session_service.create_session(
-        app_name="app", user_id="test_user", session_id="test_session"
+        app_name="{{cookiecutter.agent_directory}}", user_id="test_user", session_id="test_session"
     )
     runner = Runner(
-        agent=root_agent, app_name="app", session_service=session_service
+        agent=root_agent, app_name="{{cookiecutter.agent_directory}}", session_service=session_service
     )
     query = "I want a recipe for pancakes"
     async for event in runner.run_async(

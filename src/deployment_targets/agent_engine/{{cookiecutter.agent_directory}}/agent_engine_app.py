@@ -30,10 +30,10 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
 
-from app.agent import root_agent
-from app.utils.gcs import create_bucket_if_not_exists
-from app.utils.tracing import CloudTraceLoggingSpanExporter
-from app.utils.typing import Feedback
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
+from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.utils.typing import Feedback
 
 
 class AgentEngineApp(AdkApp):
@@ -95,9 +95,9 @@ from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
 from vertexai import agent_engines
 
-from app.utils.gcs import create_bucket_if_not_exists
-from app.utils.tracing import CloudTraceLoggingSpanExporter
-from app.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
+from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
+from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
 
 
 class AgentEngineApp:
@@ -110,7 +110,7 @@ class AgentEngineApp:
     def set_up(self) -> None:
         """The set_up method is used to define application initialization logic"""
         # Lazy import agent at setup time to avoid deployment dependencies
-        from app.agent import agent
+        from {{cookiecutter.agent_directory}}.agent import agent
 
         logging_client = google_cloud_logging.Client(project=self.project_id)
         self.logger = logging_client.logger(__name__)
@@ -206,7 +206,7 @@ def deploy_agent_engine_app(
     location: str,
     agent_name: str | None = None,
     requirements_file: str = ".requirements.txt",
-    extra_packages: list[str] = ["./app"],
+    extra_packages: list[str] = ["./{{cookiecutter.agent_directory}}"],
     env_vars: dict[str, str] = {},
     service_account: str | None = None,
 ) -> agent_engines.AgentEngine:
@@ -305,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--extra-packages",
         nargs="+",
-        default=["./app"],
+        default=["./{{cookiecutter.agent_directory}}"],
         help="Additional packages to include",
     )
     parser.add_argument(

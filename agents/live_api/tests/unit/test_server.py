@@ -57,8 +57,8 @@ def mock_dependencies() -> Generator[None, None, None]:
     Patches genai client and tool functions.
     """
     with (
-        patch("app.server.genai_client") as mock_genai,
-        patch("app.server.tool_functions") as mock_tools,
+        patch("{{cookiecutter.agent_directory}}.server.genai_client") as mock_genai,
+        patch("{{cookiecutter.agent_directory}}.server.tool_functions") as mock_tools,
     ):
         mock_genai.aio.live.connect = AsyncMock()
         mock_tools.return_value = {}
@@ -71,7 +71,7 @@ async def test_websocket_endpoint() -> None:
     Test the websocket endpoint to ensure it correctly handles
     websocket connections and messages.
     """
-    from app.server import app
+    from {{cookiecutter.agent_directory}}.server import app
 
     mock_session = AsyncMock()
     mock_session._ws = AsyncMock()
@@ -90,7 +90,7 @@ async def test_websocket_endpoint() -> None:
         None,  # Add None to trigger StopAsyncIteration after first message
     ]
 
-    with patch("app.server.genai_client") as mock_genai:
+    with patch("{{cookiecutter.agent_directory}}.server.genai_client") as mock_genai:
         mock_genai.aio.live.connect.return_value.__aenter__.return_value = mock_session
         client = TestClient(app)
         with client.websocket_connect("/ws") as websocket:
@@ -132,9 +132,9 @@ async def test_websocket_endpoint() -> None:
 @pytest.mark.asyncio
 def test_websocket_error_handling() -> None:
     """Test websocket error handling."""
-    from app.server import app
+    from {{cookiecutter.agent_directory}}.server import app
 
-    with patch("app.server.genai_client") as mock_genai:
+    with patch("{{cookiecutter.agent_directory}}.server.genai_client") as mock_genai:
         mock_genai.aio.live.connect.side_effect = Exception("Connection failed")
 
         client = TestClient(app)

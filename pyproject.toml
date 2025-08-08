@@ -72,8 +72,8 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 [tool.ruff]
 line-length = 88
 target-version = "py310"
-include = ["./agents/**/*.py", "src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py"]
-exclude = ["./agents/agentic_rag/**/*.py"]
+include = ["src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py"]
+exclude = ["./agents/**/*.py"]
 
 [tool.ruff.lint]
 preview = true
@@ -109,7 +109,7 @@ ignore_missing_imports = true
 explicit_package_bases = true
 disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
 exclude = '''(?x)(
-    ^agents/agentic_rag/.*$  # exclude all files under agentic_rag directory
+    ^agents/.*$  # exclude all files under agents
 )'''
 
 [tool.codespell]

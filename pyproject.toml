@@ -1,6 +1,6 @@
 [project]
 name = "agent-starter-pack"
-version = "0.11.2"
+version = "0.12.0"
 description = "CLI to bootstrap production-ready Google Cloud GenAI agent projects from templates."
 authors = [
     { name = "Google LLC", email = "agent-starter-pack@google.com" },
@@ -71,9 +71,9 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 
 [tool.ruff]
 line-length = 88
-target-version = "py310"
+target-version = "py311"
 include = ["src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py"]
-exclude = ["./agents/**/*.py"]
+exclude = ["./agents/**/*.py", "./tests/cicd/scripts/**/*.py"]
 
 [tool.ruff.lint]
 preview = true
@@ -110,6 +110,7 @@ explicit_package_bases = true
 disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
 exclude = '''(?x)(
     ^agents/.*$  # exclude all files under agents
+    ^tests/cicd/scripts/.*$  # exclude cicd scripts
 )'''
 
 [tool.codespell]

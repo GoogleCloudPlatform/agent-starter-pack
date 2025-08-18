@@ -14,9 +14,9 @@
 
 import logging
 import pathlib
+import tomllib
 
 import click
-import tomllib
 from rich.console import Console
 from rich.table import Table
 

@@ -196,7 +196,7 @@ For stateful agents, the starter pack supports persistent sessions.
 
 ### Monitoring & Observability
 *   **Technology:** Uses OpenTelemetry to emit events to Google Cloud Trace and Logging.
-*   **Custom Tracer:** A custom tracer in `app/utils/tracing.py` handles large payloads by linking to GCS, overcoming default service limits.
+*   **Custom Tracer:** A custom tracer in `app/utils/tracing.py` (or a different agent directory instead of app) handles large payloads by linking to GCS, overcoming default service limits.
 *   **Infrastructure:** A Log Router to sink data to BigQuery is provisioned by Terraform.
 
 ---

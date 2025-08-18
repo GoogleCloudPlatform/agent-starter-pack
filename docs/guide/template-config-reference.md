@@ -1,6 +1,13 @@
-# `templateconfig.yaml` Reference
+# Template Configuration Reference
 
-This document provides a detailed reference for all the available fields in the `templateconfig.yaml` file. This file is used to configure both the built-in agents provided by the starter pack and your own remote templates.
+This document provides a detailed reference for template configuration options.
+
+## Configuration Files
+
+- **Built-in templates**: Use `templateconfig.yaml` files
+- **Remote templates**: Configure settings in `pyproject.toml` under the `[tool.agent-starter-pack.settings]` section
+
+The configuration fields are the same for both types of templates.
 
 ## Top-Level Fields
 
@@ -21,6 +28,7 @@ This object contains fields that control the generated project's features and be
 | `deployment_targets`        | list(string)   | A list of deployment targets your template supports. Options: `agent_engine`, `cloud_run`.                                                  |
 | `tags`                      | list(string)   | A list of tags for categorization. The `adk` tag enables special integrations with the Agent Development Kit.                                 |
 | `frontend_type`             | string         | Specifies the frontend to use. Examples: `streamlit`, `live_api_react`. Defaults to `streamlit`.                                             |
+| `agent_directory`           | string         | The name of the directory where agent code will be placed. Defaults to `app`. Can be overridden by the CLI `--agent-directory` parameter.    |
 | `requires_data_ingestion`   | boolean        | If `true`, the user will be prompted to configure a datastore.                                                                              |
 | `requires_session`          | boolean        | If `true`, the user will be prompted to choose a session storage type (e.g., `alloydb`) when using the `cloud_run` target.                    |
 | `interactive_command`       | string         | The `make` command to run for starting the agent, after the agent code is being created (e.g., `make playground`, `make dev`). Defaults to `playground`. |

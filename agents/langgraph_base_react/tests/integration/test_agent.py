@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # mypy: ignore-errors
-from app.agent import agent
+from {{cookiecutter.agent_directory}}.agent import agent
 
 
 def test_agent_stream() -> None:

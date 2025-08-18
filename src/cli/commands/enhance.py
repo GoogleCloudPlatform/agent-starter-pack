@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+from typing import Any
 
 import click
 from rich.console import Console
@@ -48,7 +49,7 @@ def display_base_template_selection(current_base: str) -> str:
     choice_num = 1
     current_choice = None
 
-    for _num, agent in agents.items():
+    for agent in agents.values():
         template_choices[choice_num] = agent["name"]
         current_indicator = " (current)" if agent["name"] == current_base else ""
         console.print(
@@ -89,6 +90,10 @@ def display_base_template_selection(current_base: str) -> str:
     "--base-template",
     help="Base template to inherit from (e.g., adk_base, langgraph_base_react, agentic_rag)",
 )
+@click.option(
+    "--agent-directory",
+    help="Custom directory name for agent files (default: 'app' or auto-detected from pyproject.toml)",
+)
 @shared_template_options
 @handle_cli_error
 def enhance(
@@ -105,6 +110,7 @@ def enhance(
     region: str,
     skip_checks: bool,
     base_template: str | None,
+    agent_directory: str | None,
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -113,7 +119,8 @@ def enhance(
     creating a new project directory.
 
     For best compatibility, your project should follow the agent-starter-pack structure
-    with agent code organized in an /app folder (containing agent.py, etc.).
+    with agent code organized in an agent directory (default: /app, configurable via
+    --agent-directory).
 
     TEMPLATE_PATH can be:
     - A local directory path (e.g., . for current directory)
@@ -191,10 +198,13 @@ def enhance(
             load_remote_template_config,
         )
 
-        # Prepare CLI overrides for base template
-        cli_overrides = {}
+        # Prepare CLI overrides for base template and agent directory
+        cli_overrides: dict[str, Any] = {}
         if base_template:
             cli_overrides["base_template"] = base_template
+        if agent_directory:
+            cli_overrides["settings"] = cli_overrides.get("settings", {})
+            cli_overrides["settings"]["agent_directory"] = agent_directory
 
         # Load config from current directory for inheritance info
         current_dir = pathlib.Path.cwd()
@@ -209,6 +219,10 @@ def enhance(
             if selected_base_template != original_base_template_name:
                 # Update CLI overrides with the selected base template
                 cli_overrides["base_template"] = selected_base_template
+                # Preserve agent_directory override if it was set
+                if agent_directory:
+                    cli_overrides["settings"] = cli_overrides.get("settings", {})
+                    cli_overrides["settings"]["agent_directory"] = agent_directory
                 base_template = selected_base_template
                 console.print(
                     f"✅ Selected base template: [cyan]{selected_base_template}[/cyan]"
@@ -232,9 +246,53 @@ def enhance(
     # Validate project structure when using current directory template
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
-        app_folder = current_dir / "app"
 
-        if not app_folder.exists() or not app_folder.is_dir():
+        # Determine agent directory: CLI param > pyproject.toml detection > default
+        detected_agent_directory = "app"  # default
+        if not agent_directory:  # Only try to detect if not provided via CLI
+            pyproject_path = current_dir / "pyproject.toml"
+            if pyproject_path.exists():
+                try:
+                    import tomllib
+
+                    with open(pyproject_path, "rb") as f:
+                        pyproject_data = tomllib.load(f)
+                    packages = (
+                        pyproject_data.get("tool", {})
+                        .get("hatch", {})
+                        .get("build", {})
+                        .get("targets", {})
+                        .get("wheel", {})
+                        .get("packages", [])
+                    )
+                    if packages:
+                        # Find the first package that isn't 'frontend'
+                        for pkg in packages:
+                            if pkg != "frontend":
+                                detected_agent_directory = pkg
+                                break
+                except Exception as e:
+                    if debug:
+                        console.print(
+                            f"[dim]Could not auto-detect agent directory: {e}[/dim]"
+                        )
+                    pass  # Fall back to default
+
+        final_agent_directory = agent_directory or detected_agent_directory
+
+        # Show info about agent directory selection
+        if agent_directory:
+            console.print(
+                f"ℹ️  Using CLI-specified agent directory: [cyan]{agent_directory}[/cyan]"
+            )
+        elif detected_agent_directory != "app":
+            console.print(
+                f"ℹ️  Auto-detected agent directory: [cyan]{detected_agent_directory}[/cyan]"
+            )
+
+        agent_folder = current_dir / final_agent_directory
+
+        if not agent_folder.exists() or not agent_folder.is_dir():
             console.print()
             console.print(
                 "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -245,41 +303,60 @@ def enhance(
             )
             console.print()
             console.print(
-                "📁 [bold]Expected Structure:[/bold] [cyan]/app[/cyan] folder containing your agent code"
+                f"📁 [bold]Expected Structure:[/bold] [cyan]/{final_agent_directory}[/cyan] folder containing your agent code"
             )
             console.print(f"📍 [bold]Current Directory:[/bold] {current_dir}")
-            console.print("❌ [bold red]Missing:[/bold red] /app folder")
+            console.print(
+                f"❌ [bold red]Missing:[/bold red] /{final_agent_directory} folder"
+            )
             console.print()
             console.print(
-                "[dim]The enhance command can still proceed, but for best compatibility"
-                " your agent code should be organized in an /app folder structure.[/dim]"
+                f"The enhance command can still proceed, but for best compatibility"
+                f" your agent code should be organized in a /{final_agent_directory} folder structure."
             )
             console.print()
 
             # Ask for confirmation after showing the structure warning
+            console.print("💡 Options:")
             console.print(
-                "💡 [dim]Consider creating an /app folder for better compatibility.[/dim]"
+                f"   • Create a /{final_agent_directory} folder and move your agent code there"
             )
+            if final_agent_directory == "app":
+                console.print(
+                    "   • Use [cyan]--agent-directory <custom_name>[/cyan] if your agent code is in a different directory"
+                )
+            else:
+                console.print(
+                    "   • Use [cyan]--agent-directory <custom_name>[/cyan] to specify your existing agent directory"
+                )
             console.print()
 
             if not auto_approve:
                 if not click.confirm(
-                    "Continue with enhancement despite missing /app folder?",
+                    f"Continue with enhancement despite missing /{final_agent_directory} folder?",
                     default=True,
                 ):
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
             # Check for common agent files
-            agent_py = app_folder / "agent.py"
+            agent_py = agent_folder / "agent.py"
             if agent_py.exists():
                 console.print(
-                    "Detected existing agent structure with [cyan]/app/agent.py[/cyan]"
+                    f"Detected existing agent structure with [cyan]/{final_agent_directory}/agent.py[/cyan]"
                 )
             else:
                 console.print(
-                    "ℹ️  [blue]Found /app folder[/blue] - ensure your agent code is properly organized within it"
+                    f"ℹ️  [blue]Found /{final_agent_directory} folder[/blue] - ensure your agent code is properly organized within it, including an agent.py file"
                 )
+
+    # Prepare CLI overrides to pass to create command
+    final_cli_overrides: dict[str, Any] = {}
+    if base_template:
+        final_cli_overrides["base_template"] = base_template
+    if agent_directory:
+        final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})
+        final_cli_overrides["settings"]["agent_directory"] = agent_directory
 
     # Call the create command with in-folder mode enabled
     ctx.invoke(
@@ -297,6 +374,8 @@ def enhance(
         region=region,
         skip_checks=skip_checks,
         in_folder=True,  # Always use in-folder mode for enhance
+        agent_directory=agent_directory,
         base_template=base_template,
         skip_welcome=True,  # Skip welcome message since enhance shows its own
+        cli_overrides=final_cli_overrides if final_cli_overrides else None,
     )

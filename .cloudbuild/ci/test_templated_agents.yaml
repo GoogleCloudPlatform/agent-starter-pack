@@ -35,4 +35,4 @@ logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
   env:
-    - "_TEST_AGENT_COMBINATION=${_TEST_AGENT_COMBINATION}"
+    - "_TEST_AGENT_COMBINATION=live_api,cloud_run"

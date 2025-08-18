@@ -38,7 +38,7 @@ cd my-awesome-agent
 
 Inside, you'll find a complete project structure:
 
-*   `app/`: Backend agent code (prompts, tools, business logic).
+*   `app/`: Backend agent code (prompts, tools, business logic). Directory name is configurable via the `--agent-directory` parameter.
 *   `.cloudbuild/`: CI/CD pipeline configurations for Google Cloud Build (if you selected Cloud Build as your CI/CD runner).
 *   `.github/`: CI/CD pipeline configurations for GitHub Actions (if you selected GitHub Actions as your CI/CD runner).
 *   `deployment/`: Terraform infrastructure-as-code files.
@@ -51,7 +51,7 @@ Inside, you'll find a complete project structure:
 Your development loop will look like this:
 
 1.  **Prototype:** Use the notebooks in `notebooks/` for rapid experimentation with your agent's core logic. This is ideal for trying new prompts or tools before integrating them.
-2.  **Integrate:** Edit `app/agent.py` and other files in the `app/` directory to incorporate your new logic into the main application.
+2.  **Integrate:** Edit `app/agent.py` and other files in the agent directory (usually `app/`, but configurable) to incorporate your new logic into the main application.
 3.  **Test:** Run the interactive UI playground to test your changes. It features hot-reloading, chat history, and user feedback.
 
 ```bash

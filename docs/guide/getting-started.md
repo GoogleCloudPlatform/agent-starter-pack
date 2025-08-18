@@ -55,7 +55,7 @@ cd my-awesome-agent && make install && make playground
 
 Inside your new project directory (`my-awesome-agent`), you'll find:
 
-*   `app/`: Backend agent code.
+*   `app/`: Backend agent code (or custom directory name if configured).
 *   `deployment/`: Terraform infrastructure code.
 *   `tests/`: Unit and integration tests for your agent.
 *   `notebooks/`: Jupyter notebooks for getting started with evaluation.

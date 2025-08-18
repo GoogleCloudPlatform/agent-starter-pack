@@ -78,6 +78,9 @@ Session storage type (for Cloud Run deployment):
 ### `--output-dir`, `-o` DIRECTORY
 Output directory for the project (default: current directory)
 
+### `--agent-directory`, `-dir` DIRECTORY
+Name of the agent directory (overrides template default, usually `app`). This determines where your agent code files will be located within the project structure.
+
 ### `--in-folder`
 Create agent files directly in the current directory instead of creating a new project subdirectory.
 
@@ -150,6 +153,9 @@ uvx agent-starter-pack create my-agent -a template-url --region europe-west1 --c
 
 # In-folder creation (add to existing project)
 uvx agent-starter-pack create my-agent -a adk@data-science --in-folder
+
+# Customize agent directory name
+uvx agent-starter-pack create my-agent -a adk_base --agent-directory chatbot
 
 # Skip all prompts for automation
 uvx agent-starter-pack create my-agent -a template-url --auto-approve --skip-checks

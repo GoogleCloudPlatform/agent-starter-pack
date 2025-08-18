@@ -61,6 +61,9 @@ description = "A simple template that demonstrates custom greetings"
 [tool.agent-starter-pack.settings]
 # This template will only support the 'agent_engine' deployment target
 deployment_targets = ["agent_engine"]
+# Optional: Customize the directory name for agent files (default: "app")
+agent_directory = "app"
+
 ```
 
 ### Step 3: Create Your Custom Agent Logic
@@ -150,6 +153,8 @@ description = "Custom description"  # Optional: falls back to [project].descript
 [tool.agent-starter-pack.settings]
 deployment_targets = ["cloud_run", "agent_engine"]
 frontend_type = "adk_streamlit"
+# Optional: Customize the directory name for agent files (default: "app")
+agent_directory = "app"
 ```
 
 ## Configuration Reference
@@ -174,7 +179,24 @@ base_template = "adk_base"  # Override default
 # name and description will use [project] values
 ```
 
+### Agent Directory Configuration
+
+By default, agent files are expected to be in an `app/` directory. You can customize this using the `agent_directory` setting:
+
+```toml
+[tool.agent-starter-pack.settings]
+agent_directory = "my_agent"  # Custom directory name
+```
+
+This is useful when:
+- You want to use a different directory name for consistency with your project structure
+- You're creating specialized templates with domain-specific naming (e.g., `chatbot/`, `assistant/`, `agent/`)
+- You need to avoid conflicts with existing codebases that use `app/` for other purposes
+
+**Important:** When using a custom `agent_directory`, ensure your Python imports and Docker configurations match the new directory name.
+
 For complete configuration options, see the [Template Config Reference](../guide/template-config-reference.md).
+
 
 ## How File Merging Works
 
@@ -271,7 +293,7 @@ uvx agent-starter-pack create test-project -a local@./your-template --deployment
 
 Before publishing, verify:
 - [ ] `pyproject.toml` has all required dependencies
-- [ ] Agent code is in `/app` directory structure
+- [ ] Agent code is in appropriate directory structure (usually `/app` or configured `agent_directory`)
 - [ ] `uv lock` generates without errors
 - [ ] Local testing creates working agent
 - [ ] README documents usage and requirements

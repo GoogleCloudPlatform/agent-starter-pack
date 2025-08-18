@@ -18,11 +18,11 @@ import pytest
 {%- if "adk" in cookiecutter.tags %}
 from google.adk.events.event import Event
 
-from app.agent import root_agent
-from app.agent_engine_app import AgentEngineApp
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- else %}
 
-from app.agent_engine_app import AgentEngineApp
+from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- endif %}
 
 

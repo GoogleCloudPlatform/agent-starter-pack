@@ -19,7 +19,7 @@ on:
     branches:
       - main
     paths:
-      - 'app/**'
+      - '{{cookiecutter.agent_directory}}/**'
       - 'data_ingestion/**'
       - 'tests/**'
       - 'deployment/**'

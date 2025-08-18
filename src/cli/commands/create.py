@@ -101,6 +101,11 @@ def shared_template_options(f: Callable) -> Callable:
         type=click.Choice(["agent_engine", "cloud_run"]),
         help="Deployment target name",
     )(f)
+    f = click.option(
+        "--agent-directory",
+        "-dir",
+        help="Name of the agent directory (overrides template default)",
+    )(f)
     return f
 
 
@@ -232,8 +237,10 @@ def create(
     region: str,
     skip_checks: bool,
     in_folder: bool,
+    agent_directory: str | None,
     base_template: str | None = None,
     skip_welcome: bool = False,
+    cli_overrides: dict | None = None,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
@@ -434,6 +441,14 @@ def create(
                 / ".template"
             )
             config = load_template_config(template_path)
+
+            # Apply CLI overrides for local templates if provided (e.g., from enhance command)
+            if cli_overrides:
+                config = merge_template_configs(config, cli_overrides)
+                if debug:
+                    logging.debug(
+                        f"Applied CLI overrides to local template config: {cli_overrides}"
+                    )
         # Data ingestion and datastore selection
         if include_data_ingestion or datastore:
             include_data_ingestion = True
@@ -610,6 +625,13 @@ def create(
         if debug:
             logging.debug(f"Output directory: {destination_dir}")
 
+        # Construct CLI overrides for template processing
+        final_cli_overrides = cli_overrides or {}
+        if agent_directory:
+            if "settings" not in final_cli_overrides:
+                final_cli_overrides["settings"] = {}
+            final_cli_overrides["settings"]["agent_directory"] = agent_directory
+
         try:
             # Process template (handles both local and remote templates)
             process_template(
@@ -623,8 +645,9 @@ def create(
                 session_type=final_session_type,
                 output_dir=destination_dir,
                 remote_template_path=template_source_path,
-                remote_config=config if template_source_path else None,
+                remote_config=config,
                 in_folder=in_folder,
+                cli_overrides=final_cli_overrides,
             )
 
             # Replace region in all files if a different region was specified

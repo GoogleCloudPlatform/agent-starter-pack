@@ -20,11 +20,11 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from app.agent import root_agent
+from {{cookiecutter.agent_directory}}.agent import root_agent
 
 
 @patch(
-    "app.agent.retrieve_docs",
+    "{{cookiecutter.agent_directory}}.agent.retrieve_docs",
     return_value="dummy content",
 )
 def test_agent_stream(mock_retrieve: MagicMock) -> None:

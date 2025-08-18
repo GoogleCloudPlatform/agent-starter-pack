@@ -140,3 +140,143 @@ class TestEnhanceCommand:
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
                 assert call_args[1]["base_template"] == "langgraph_base_react"
+
+    def test_enhance_with_agent_directory_cli_param(self) -> None:
+        """Test that enhance respects --agent-directory CLI parameter."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create chatbot directory structure (custom agent directory)
+            pathlib.Path("chatbot").mkdir()
+            pathlib.Path("chatbot/agent.py").touch()
+
+            with patch("src.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [".", "--agent-directory", "chatbot", "--auto-approve"],
+                )
+
+                # Should call create with the specified agent directory in cli_overrides
+                mock_create.assert_called_once()
+                call_args = mock_create.call_args
+                cli_overrides = call_args[1]["cli_overrides"]
+                assert cli_overrides is not None
+                assert cli_overrides["settings"]["agent_directory"] == "chatbot"
+
+    @patch("tomllib.load")
+    def test_enhance_auto_detects_agent_directory_from_pyproject(
+        self, mock_tomllib_load: MagicMock
+    ) -> None:
+        """Test that enhance auto-detects agent directory from pyproject.toml."""
+        runner = CliRunner()
+
+        # Mock pyproject.toml content with custom packages
+        mock_tomllib_load.return_value = {
+            "tool": {
+                "hatch": {
+                    "build": {
+                        "targets": {"wheel": {"packages": ["my_agent", "frontend"]}}
+                    }
+                }
+            }
+        }
+
+        with runner.isolated_filesystem():
+            # Create custom agent directory structure
+            pathlib.Path("my_agent").mkdir()
+            pathlib.Path("my_agent/agent.py").touch()
+            pathlib.Path("pyproject.toml").touch()
+
+            with patch("src.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [".", "--auto-approve"],
+                )
+
+                # Should call create and detect 'my_agent' from pyproject.toml
+                mock_create.assert_called_once()
+                # The detected agent directory should be used internally
+                # (this tests the detection logic runs successfully)
+
+    def test_enhance_cli_agent_directory_overrides_detection(self) -> None:
+        """Test that CLI --agent-directory parameter overrides auto-detection."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create both directories
+            pathlib.Path("detected_agent").mkdir()
+            pathlib.Path("detected_agent/agent.py").touch()
+            pathlib.Path("cli_agent").mkdir()
+            pathlib.Path("cli_agent/agent.py").touch()
+
+            # Create pyproject.toml that would detect 'detected_agent'
+            pyproject_content = """
+[tool.hatch.build.targets.wheel]
+packages = ["detected_agent", "frontend"]
+"""
+            pathlib.Path("pyproject.toml").write_text(
+                pyproject_content, encoding="utf-8"
+            )
+
+            with patch("src.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [".", "--agent-directory", "cli_agent", "--auto-approve"],
+                )
+
+                # CLI parameter should override auto-detection
+                mock_create.assert_called_once()
+                call_args = mock_create.call_args
+                cli_overrides = call_args[1]["cli_overrides"]
+                assert cli_overrides is not None
+                assert cli_overrides["settings"]["agent_directory"] == "cli_agent"
+
+    def test_enhance_warns_about_missing_agent_directory(self) -> None:
+        """Test that enhance shows warning when agent directory doesn't exist."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Don't create any agent directory
+
+            with patch("src.cli.commands.enhance.create") as mock_create:
+                result = runner.invoke(
+                    enhance,
+                    [".", "--agent-directory", "missing_agent", "--auto-approve"],
+                )
+
+                # Should show warning about missing directory but still proceed
+                assert "PROJECT STRUCTURE WARNING" in result.output
+                assert "missing_agent" in result.output
+                mock_create.assert_called_once()
+
+    def test_enhance_with_combined_params(self) -> None:
+        """Test enhance with both --base-template and --agent-directory."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create custom agent directory
+            pathlib.Path("my_chatbot").mkdir()
+            pathlib.Path("my_chatbot/agent.py").touch()
+
+            with patch("src.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [
+                        ".",
+                        "--base-template",
+                        "langgraph_base_react",
+                        "--agent-directory",
+                        "my_chatbot",
+                        "--auto-approve",
+                    ],
+                )
+
+                # Should call create with both parameters
+                mock_create.assert_called_once()
+                call_args = mock_create.call_args
+                assert call_args[1]["base_template"] == "langgraph_base_react"
+
+                cli_overrides = call_args[1]["cli_overrides"]
+                assert cli_overrides is not None
+                assert cli_overrides["base_template"] == "langgraph_base_react"
+                assert cli_overrides["settings"]["agent_directory"] == "my_chatbot"

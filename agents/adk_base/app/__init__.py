@@ -12,21 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM python:3.11-slim
+from .agent import root_agent
 
-RUN pip install --no-cache-dir uv==0.6.12
-
-WORKDIR /code
-
-COPY ./pyproject.toml ./README.md ./uv.lock* ./
-
-COPY ./{{cookiecutter.agent_directory}} ./{{cookiecutter.agent_directory}}
-
-RUN uv sync --frozen
-
-ARG COMMIT_SHA=""
-ENV COMMIT_SHA=${COMMIT_SHA}
-
-EXPOSE 8080
-
-CMD ["uv", "run", "uvicorn", "{{cookiecutter.agent_directory}}.server:app", "--host", "0.0.0.0", "--port", "8080"]
+__all__ = ["root_agent"]

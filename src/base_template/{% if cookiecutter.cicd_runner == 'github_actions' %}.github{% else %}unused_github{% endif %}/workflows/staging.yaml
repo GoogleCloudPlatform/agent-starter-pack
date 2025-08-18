@@ -19,7 +19,7 @@ on:
     branches:
       - main
     paths:
-      - 'app/**'
+      - '{{cookiecutter.agent_directory}}/**'
       - 'data_ingestion/**'
       - 'tests/**'
       - 'deployment/**'
@@ -119,7 +119,7 @@ jobs:
       - name: Deploy to Staging (Agent Engine)
         run: |
           uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
-          uv run app/agent_engine_app.py \
+          uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
             --project {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %} \
             --location {% raw %}${{ vars.REGION }}{% endraw %} \
             --service-account {% raw %}${{ vars.APP_SA_EMAIL_STAGING }}{% endraw %} \

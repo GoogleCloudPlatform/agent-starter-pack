@@ -9,7 +9,7 @@ This project is organized as follows:
 
 ```
 {{cookiecutter.project_name}}/
-├── app/                 # Core application code
+├── {{cookiecutter.agent_directory}}/                 # Core application code
 │   ├── agent.py         # Main agent logic
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 │   ├── server.py        # FastAPI Backend server
@@ -83,7 +83,7 @@ For full command options and usage, refer to the [Makefile](Makefile).
 {% if cookiecutter.agent_name == 'live_api' %}
 ## Usage
 
-This template follows a "bring your own agent" approach - you focus on your business logic in `app/agent.py`, and the template handles the surrounding components (UI, infrastructure, deployment, monitoring).
+This template follows a "bring your own agent" approach - you focus on your business logic in `{{cookiecutter.agent_directory}}/agent.py`, and the template handles the surrounding components (UI, infrastructure, deployment, monitoring).
 
 Here’s the recommended workflow for local development:
 
@@ -124,7 +124,7 @@ Here’s the recommended workflow for local development:
     *   Open the Streamlit UI in your browser (usually `http://localhost:8501` or `http://localhost:3001`).
     *   Click the play button in the UI to connect to the backend.
     *   Interact with the agent! Try prompts like: *"Using the tool you have, define Governance in the context MLOPs"*
-    *   Modify the agent logic in `app/agent.py`. The backend server (FastAPI with `uvicorn --reload`) should automatically restart when you save changes. Refresh the frontend if needed to see behavioral changes.
+    *   Modify the agent logic in `{{cookiecutter.agent_directory}}/agent.py`. The backend server (FastAPI with `uvicorn --reload`) should automatically restart when you save changes. Refresh the frontend if needed to see behavioral changes.
 
 <details>
 <summary><b>Cloud Shell Usage</b></summary>
@@ -162,7 +162,7 @@ To run the agent using Google Cloud Shell:
 This template follows a "bring your own agent" approach - you focus on your business logic, and the template handles everything else (UI, infrastructure, deployment, monitoring).
 
 1. **Prototype:** Build your Generative AI Agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
-2. **Integrate:** Import your agent into the app by editing `app/agent.py`.
+2. **Integrate:** Import your agent into the app by editing `{{cookiecutter.agent_directory}}/agent.py`.
 3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
 4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
 5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.

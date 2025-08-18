@@ -34,9 +34,6 @@ from .remote_template import (
     render_and_merge_makefiles,
 )
 
-ADK_FILES = ["app/__init__.py"]
-NON_ADK_FILES: list[str] = []
-
 
 @dataclass
 class TemplateConfig:
@@ -72,7 +69,11 @@ class TemplateConfig:
             raise ValueError(f"Error loading template config: {err}") from err
 
 
-OVERWRITE_FOLDERS = ["app", "frontend", "tests", "notebooks"]
+def get_overwrite_folders(agent_directory: str) -> list[str]:
+    """Get folders to overwrite with configurable agent directory."""
+    return [agent_directory, "frontend", "tests", "notebooks"]
+
+
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine"]
 DEFAULT_FRONTEND = "streamlit"
@@ -446,6 +447,7 @@ def process_template(
     remote_template_path: pathlib.Path | None = None,
     remote_config: dict[str, Any] | None = None,
     in_folder: bool = False,
+    cli_overrides: dict[str, Any] | None = None,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -462,11 +464,24 @@ def process_template(
         remote_template_path: Optional path to remote template for overlay
         remote_config: Optional remote template configuration
         in_folder: Whether to template directly into the output directory instead of creating a subdirectory
+        cli_overrides: Optional CLI override values that should take precedence over template config
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
     logging.debug(f"Include pipeline: {datastore}")
     logging.debug(f"Output directory: {output_dir}")
+
+    def get_agent_directory(
+        template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
+    ) -> str:
+        """Get agent directory with CLI override support."""
+        if (
+            cli_overrides
+            and "settings" in cli_overrides
+            and "agent_directory" in cli_overrides["settings"]
+        ):
+            return cli_overrides["settings"]["agent_directory"]
+        return template_config.get("settings", {}).get("agent_directory", "app")
 
     # Handle remote vs local templates
     is_remote = remote_template_path is not None
@@ -519,7 +534,21 @@ def process_template(
             base_template_path = (
                 pathlib.Path(__file__).parent.parent.parent / "base_template"
             )
-            copy_files(base_template_path, project_template, agent_name, overwrite=True)
+            # Get agent directory from config early for use in file copying
+            # Load config early to get agent_directory
+            if is_remote:
+                early_config = remote_config or {}
+            else:
+                template_path = pathlib.Path(template_dir)
+                early_config = load_template_config(template_path)
+            agent_directory = get_agent_directory(early_config, cli_overrides)
+            copy_files(
+                base_template_path,
+                project_template,
+                agent_name,
+                overwrite=True,
+                agent_directory=agent_directory,
+            )
             logging.debug(f"1. Copied base template from {base_template_path}")
 
             # 2. Process deployment target if specified
@@ -535,6 +564,7 @@ def process_template(
                         project_template,
                         agent_name=agent_name,
                         overwrite=True,
+                        agent_directory=agent_directory,
                     )
                     logging.debug(
                         f"2. Processed deployment files for target: {deployment_target}"
@@ -556,27 +586,11 @@ def process_template(
             copy_frontend_files(frontend_type, project_template)
             logging.debug(f"4. Processed frontend files for type: {frontend_type}")
 
-            # 5. Copy agent-specific files to override base template
-            if agent_path.exists():
-                for folder in OVERWRITE_FOLDERS:
-                    agent_folder = agent_path / folder
-                    project_folder = project_template / folder
-                    if agent_folder.exists():
-                        logging.debug(f"5. Copying agent folder {folder} with override")
-                        copy_files(
-                            agent_folder, project_folder, agent_name, overwrite=True
-                        )
-
-            # 6. Finally, overlay remote template files if present
+            # 6. Skip remote template files during cookiecutter processing
+            # Remote files will be copied after cookiecutter to avoid Jinja conflicts
             if is_remote and remote_template_path:
                 logging.debug(
-                    f"6. Overlaying remote template files from {remote_template_path}"
-                )
-                copy_files(
-                    remote_template_path,
-                    project_template,
-                    agent_name=agent_name,
-                    overwrite=True,
+                    "6. Skipping remote template files during cookiecutter processing - will copy after templating"
                 )
 
             # Load and validate template config first
@@ -601,6 +615,45 @@ def process_template(
 
             # Use the already loaded config
             template_config = config
+
+            # 5. Copy agent-specific files to override base template (using final config)
+            if agent_path.exists():
+                agent_directory = get_agent_directory(template_config, cli_overrides)
+
+                # Get the template's default agent directory (usually "app")
+                template_agent_directory = template_config.get("settings", {}).get(
+                    "agent_directory", "app"
+                )
+
+                # Copy agent directory (always from "app" to target directory)
+                source_agent_folder = agent_path / template_agent_directory
+                target_agent_folder = project_template / agent_directory
+                if source_agent_folder.exists():
+                    logging.debug(
+                        f"5. Copying agent folder {template_agent_directory} -> {agent_directory} with override"
+                    )
+                    copy_files(
+                        source_agent_folder,
+                        target_agent_folder,
+                        agent_name,
+                        overwrite=True,
+                        agent_directory=agent_directory,
+                    )
+
+                # Copy other folders (frontend, tests, notebooks)
+                other_folders = ["frontend", "tests", "notebooks"]
+                for folder in other_folders:
+                    agent_folder = agent_path / folder
+                    project_folder = project_template / folder
+                    if agent_folder.exists():
+                        logging.debug(f"5. Copying {folder} folder with override")
+                        copy_files(
+                            agent_folder,
+                            project_folder,
+                            agent_name,
+                            overwrite=True,
+                            agent_directory=agent_directory,
+                        )
 
             # Check if data processing should be included
             if include_data_ingestion and datastore:
@@ -649,6 +702,7 @@ def process_template(
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
+                "agent_directory": get_agent_directory(template_config, cli_overrides),
                 "adk_cheatsheet": adk_cheatsheet_content,
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [
@@ -664,7 +718,9 @@ def process_template(
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                     # Don't render agent.py unless it's agentic_rag
-                    "app/agent.py" if agent_name != "agentic_rag" else "",
+                    f"{get_agent_directory(template_config, cli_overrides)}/agent.py"
+                    if agent_name != "agentic_rag"
+                    else "",
                 ],
             }
 
@@ -689,6 +745,21 @@ def process_template(
                 },
             )
             logging.debug("Template processing completed successfully")
+
+            # Now overlay remote template files if present (after cookiecutter processing)
+            if is_remote and remote_template_path:
+                generated_project_dir = temp_path / project_name
+                logging.debug(
+                    f"Copying remote template files from {remote_template_path} to {generated_project_dir}"
+                )
+                copy_files(
+                    remote_template_path,
+                    generated_project_dir,
+                    agent_name=agent_name,
+                    overwrite=True,
+                    agent_directory=agent_directory,
+                )
+                logging.debug("Remote template files copied successfully")
 
             # Move the generated project to the final destination
             generated_project_dir = temp_path / project_name
@@ -842,15 +913,7 @@ def process_template(
             )
 
             # Delete appropriate files based on ADK tag
-            if "adk" in tags:
-                files_to_delete = [final_destination / f for f in NON_ADK_FILES]
-            else:
-                files_to_delete = [final_destination / f for f in ADK_FILES]
-
-            for file_path in files_to_delete:
-                if file_path.exists():
-                    file_path.unlink()
-                    logging.debug(f"Deleted {file_path}")
+            agent_directory = get_agent_directory(template_config, cli_overrides)
 
             # Clean up unused_* files and directories created by conditional templates
             import glob
@@ -923,11 +986,15 @@ def process_template(
             os.chdir(original_dir)
 
 
-def should_exclude_path(path: pathlib.Path, agent_name: str) -> bool:
+def should_exclude_path(
+    path: pathlib.Path, agent_name: str, agent_directory: str = "app"
+) -> bool:
     """Determine if a path should be excluded based on the agent type."""
     if agent_name == "live_api":
-        # Exclude the unit test utils folder and app/utils folder for live_api
-        if "tests/unit/test_utils" in str(path) or "app/utils" in str(path):
+        # Exclude the unit test utils folder and agent utils folder for live_api
+        if "tests/unit/test_utils" in str(path) or f"{agent_directory}/utils" in str(
+            path
+        ):
             logging.debug(f"Excluding path for live_api: {path}")
             return True
     return False
@@ -938,6 +1005,7 @@ def copy_files(
     dst: pathlib.Path,
     agent_name: str | None = None,
     overwrite: bool = False,
+    agent_directory: str = "app",
 ) -> None:
     """
     Copy files with configurable behavior for exclusions and overwrites.
@@ -947,6 +1015,7 @@ def copy_files(
         dst: Destination path
         agent_name: Name of the agent (for agent-specific exclusions)
         overwrite: Whether to overwrite existing files (True) or skip them (False)
+        agent_directory: Name of the agent directory (for agent-specific exclusions)
     """
 
     def should_skip(path: pathlib.Path) -> bool:
@@ -957,7 +1026,9 @@ def copy_files(
             return True
         if ".git" in path.parts:
             return True
-        if agent_name is not None and should_exclude_path(path, agent_name):
+        if agent_name is not None and should_exclude_path(
+            path, agent_name, agent_directory
+        ):
             return True
         if path.is_dir() and path.name == ".template":
             return True
@@ -970,9 +1041,10 @@ def copy_files(
             if should_skip(item):
                 logging.debug(f"Skipping file/directory: {item}")
                 continue
+
             d = dst / item.name
             if item.is_dir():
-                copy_files(item, d, agent_name, overwrite)
+                copy_files(item, d, agent_name, overwrite, agent_directory)
             else:
                 if overwrite or not d.exists():
                     logging.debug(f"Copying file: {item} -> {d}")
@@ -1012,7 +1084,10 @@ def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> N
 
 
 def copy_deployment_files(
-    deployment_target: str, agent_name: str, project_template: pathlib.Path
+    deployment_target: str,
+    agent_name: str,
+    project_template: pathlib.Path,
+    agent_directory: str = "app",
 ) -> None:
     """Copy files from the specified deployment target folder."""
     if not deployment_target:
@@ -1028,7 +1103,11 @@ def copy_deployment_files(
         logging.debug(f"Copying deployment files from {deployment_path}")
         # Pass agent_name to respect agent-specific exclusions
         copy_files(
-            deployment_path, project_template, agent_name=agent_name, overwrite=True
+            deployment_path,
+            project_template,
+            agent_name=agent_name,
+            overwrite=True,
+            agent_directory=agent_directory,
         )
     else:
         logging.warning(f"Deployment target directory not found: {deployment_path}")

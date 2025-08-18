@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from google.api_core import exceptions
 from google.cloud import alloydb_v1
-from google.cloud import compute_v1
+from googleapiclient import discovery
 
 # Configure logging
 logging.basicConfig(
@@ -300,9 +300,48 @@ def delete_vpc_peering_connections(compute_client, project_id: str, retry_count:
             return 0, 0
 
 
+def delete_single_subnet(compute_client, project_id: str, subnet: dict, region: str) -> bool:
+    """
+    Delete a single subnet with error handling.
+    
+    Args:
+        compute_client: The Compute client
+        project_id: The GCP project ID
+        subnet: The subnet resource
+        region: The region of the subnet
+        
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    subnet_name = subnet['name']
+    try:
+        logger.info(f"🗑️ Deleting subnet: {subnet_name} in region {region}")
+        
+        operation = compute_client.subnetworks().delete(
+            project=project_id,
+            region=region,
+            subnetwork=subnet_name
+        ).execute()
+        
+        # Wait for operation to complete
+        if wait_for_compute_operation(compute_client, project_id, operation, region=region):
+            logger.info(f"✅ Successfully deleted subnet: {subnet_name}")
+            return True
+        else:
+            logger.error(f"❌ Failed to delete subnet: {subnet_name}")
+            return False
+            
+    except exceptions.NotFound:
+        logger.info(f"✅ Subnet {subnet_name} not found (already deleted)")
+        return True
+    except Exception as e:
+        logger.error(f"❌ Error deleting subnet {subnet_name}: {e}")
+        return False
+
+
 def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tuple[int, int]:
     """
-    Delete all subnets in a project.
+    Delete all subnets in a project in parallel.
     
     Args:
         compute_client: The Compute client
@@ -335,29 +374,25 @@ def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tup
         total_subnets = len(all_subnets)
         deleted_subnets = 0
         
-        for subnet, region in all_subnets:
-            subnet_name = subnet['name']
-            try:
-                logger.info(f"🗑️ Deleting subnet: {subnet_name} in region {region}")
-                
-                operation = compute_client.subnetworks().delete(
-                    project=project_id,
-                    region=region,
-                    subnetwork=subnet_name
-                ).execute()
-                
-                # Wait for operation to complete
-                if wait_for_compute_operation(compute_client, project_id, operation, region=region):
-                    logger.info(f"✅ Successfully deleted subnet: {subnet_name}")
-                    deleted_subnets += 1
-                else:
-                    logger.error(f"❌ Failed to delete subnet: {subnet_name}")
-                    
-            except exceptions.NotFound:
-                logger.info(f"✅ Subnet {subnet_name} not found (already deleted)")
-                deleted_subnets += 1
-            except Exception as e:
-                logger.error(f"❌ Error deleting subnet {subnet_name}: {e}")
+        # Delete subnets in parallel
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # Submit all subnet deletion tasks
+            future_to_subnet = {
+                executor.submit(delete_single_subnet, compute_client, project_id, subnet, region): (subnet['name'], region)
+                for subnet, region in all_subnets
+            }
+            
+            # Wait for all deletions to complete
+            for future in as_completed(future_to_subnet):
+                subnet_name, region = future_to_subnet[future]
+                try:
+                    if future.result():
+                        deleted_subnets += 1
+                        logger.info(f"✅ Subnet deletion completed: {subnet_name} in {region}")
+                    else:
+                        logger.error(f"❌ Subnet deletion failed: {subnet_name} in {region}")
+                except Exception as exc:
+                    logger.error(f"❌ Subnet deletion raised exception {subnet_name} in {region}: {exc}")
         
         return deleted_subnets, total_subnets
         
@@ -508,7 +543,7 @@ def delete_alloydb_and_network_resources_in_project(
     try:
         # Initialize clients
         alloydb_client = alloydb_v1.AlloyDBAdminClient()
-        compute_client = compute_v1.ComputeClient()
+        compute_client = discovery.build('compute', 'v1')
         parent = f"projects/{project_id}/locations/{region}"
 
         # List all clusters in the project
@@ -518,8 +553,17 @@ def delete_alloydb_and_network_resources_in_project(
         if not clusters:
             logger.info(f"✅ No AlloyDB clusters found in {project_id}")
             # Still need to clean up network resources even if no AlloyDB clusters
-            deleted_peerings, total_peerings = delete_vpc_peering_connections(compute_client, project_id)
-            deleted_subnets, total_subnets = delete_subnets(compute_client, project_id)
+            # Run VPC peering and subnet deletion in parallel since they are independent
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                # Submit both tasks
+                peering_future = executor.submit(delete_vpc_peering_connections, compute_client, project_id)
+                subnet_future = executor.submit(delete_subnets, compute_client, project_id)
+                
+                # Wait for both to complete
+                deleted_peerings, total_peerings = peering_future.result()
+                deleted_subnets, total_subnets = subnet_future.result()
+            
+            # Delete VPC networks after subnets are deleted (dependency requirement)
             deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
             return 0, 0, 0, 0, deleted_peerings, total_peerings, deleted_subnets, total_subnets, deleted_networks, total_networks
 
@@ -603,8 +647,18 @@ def delete_alloydb_and_network_resources_in_project(
         
         # Delete network resources after AlloyDB cleanup
         logger.info(f"🌐 Starting network cleanup in project {project_id}...")
-        deleted_peerings, total_peerings = delete_vpc_peering_connections(compute_client, project_id)
-        deleted_subnets, total_subnets = delete_subnets(compute_client, project_id)  
+        
+        # Run VPC peering and subnet deletion in parallel since they are independent
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            # Submit both tasks
+            peering_future = executor.submit(delete_vpc_peering_connections, compute_client, project_id)
+            subnet_future = executor.submit(delete_subnets, compute_client, project_id)
+            
+            # Wait for both to complete
+            deleted_peerings, total_peerings = peering_future.result()
+            deleted_subnets, total_subnets = subnet_future.result()
+        
+        # Delete VPC networks after subnets are deleted (dependency requirement)
         deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
         
         logger.info(

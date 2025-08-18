@@ -74,6 +74,10 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 *   `--region`: GCP region (e.g., `us-central1`).
 *   `--auto-approve`: **Skips all interactive prompts (crucial for automation).**
 *   `--debug`: Enables debug logging during creation.
+*   `--agent-directory, -dir`: Name of the agent directory (overrides template default).
+*   `-o, --output-dir`: Output directory for the project (default: current directory).
+*   `--in-folder, -if`: Template files directly into the current directory instead of creating a new project directory.
+*   `--skip-checks`: Skip verification checks for GCP and Vertex AI.
 
 **Automated Creation Example:**
 ```bash
@@ -217,8 +221,16 @@ uvx agent-starter-pack setup-cicd [OPTIONS]
 *   `--prod-project`: (REQUIRED) The Google Cloud Project ID for your production environment.
 *   `--repository-name`: (REQUIRED) The name for the new GitHub repository that will be created.
 *   `--repository-owner`: (REQUIRED) Your GitHub username or organization where the repo will be created.
-*   `--git-provider`: (REQUIRED) The Git provider to use (github, gitlab, etc.). Only "github" is supported. 
 *   `--auto-approve`: Skips all interactive confirmation prompts.
+*   `--dev-project`: Development project ID (optional).
+*   `--cicd-project`: CICD project ID (defaults to prod project if not specified).
+*   `--region`: GCP region (auto-detects from Terraform vars if not specified).
+*   `--host-connection-name`: Host connection name (optional).
+*   `--github-pat`: GitHub Personal Access Token for programmatic auth.
+*   `--github-app-installation-id`: GitHub App Installation ID for programmatic auth.
+*   `--local-state`: Use local Terraform state instead of remote GCS backend.
+*   `--debug`: Enable debug logging.
+*   `--create-repository`: Flag indicating whether to create a new repository.
 
 
 **Automated Example:**
@@ -228,10 +240,9 @@ uvx agent-starter-pack setup-cicd \
   --prod-project the-user-prod-project \
   --repository-name the-user-repo-name \
   --repository-owner the-username \
-  --git-provider github \
   --auto-approve
 ```
-* Note: As a coding agent, you must run this command non-interactively. Before executing, you must ask the user to provide the following required flags: `--staging-project`, `--prod-project`, `--repository-name`, `--repository-owner`, and `--git-provider`. Once you have these values, you can construct and run the command with the `--auto-approve` flag.
+* Note: As a coding agent, you must run this command non-interactively. Before executing, you must ask the user to provide the following required flags: `--staging-project`, `--prod-project`, `--repository-name`, and `--repository-owner`. Once you have these values, you can construct and run the command with the `--auto-approve` flag.
 * Note: If the user tells that `setup-cicd` is not a viable option or it wants to use a different git provider, you must not use this command. Instead, you should look at the `deployment/README.md` to get instructions on how to manually deploy the agent.
 ---
 ### Section 6: Operational Guidelines for Coding Agents

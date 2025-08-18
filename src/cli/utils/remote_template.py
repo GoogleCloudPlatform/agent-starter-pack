@@ -19,10 +19,10 @@ import re
 import shutil
 import subprocess
 import tempfile
-import tomllib
 from dataclasses import dataclass
 from typing import Any
 
+import tomli as tomllib
 from jinja2 import Environment
 
 

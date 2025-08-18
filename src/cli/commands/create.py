@@ -19,10 +19,10 @@ import pathlib
 import shutil
 import subprocess
 import tempfile
-import tomllib
 from collections.abc import Callable
 
 import click
+import tomli as tomllib
 from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt

@@ -2,9 +2,10 @@
 
 # mypy: ignore-errors
 """
-Script to force delete all AlloyDB clusters and instances from specified projects.
+Script to force delete all AlloyDB clusters, instances, and related network resources from specified projects.
 
-This script deletes all AlloyDB clusters and their instances from projects specified via environment variables.
+This script deletes all AlloyDB clusters, their instances, and associated network resources 
+(VPC networks, subnets, and peering connections) from projects specified via environment variables.
 
 Environment Variables:
 - PROJECT_IDS: Comma-separated list of project IDs (e.g., "proj1,proj2,proj3")
@@ -24,6 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from google.api_core import exceptions
 from google.cloud import alloydb_v1
+from google.cloud import compute_v1
 
 # Configure logging
 logging.basicConfig(
@@ -228,33 +230,298 @@ def delete_single_cluster(client, cluster_name: str, retry_count: int = 0) -> bo
             return False
 
 
-def delete_alloydb_resources_in_project(
-    project_id: str, region: str = DEFAULT_REGION
-) -> tuple[int, int, int, int]:
+def delete_vpc_peering_connections(compute_client, project_id: str, retry_count: int = 0) -> tuple[int, int]:
     """
-    Delete all AlloyDB clusters and instances in a specific project.
+    Delete all VPC peering connections in a project.
+    
+    Args:
+        compute_client: The Compute client
+        project_id: The GCP project ID
+        retry_count: Current retry attempt number
+        
+    Returns:
+        Tuple of (deleted_peerings, total_peerings)
+    """
+    try:
+        logger.info(f"🔍 Listing VPC peering connections in project {project_id}...")
+        
+        # List all networks first to find peering connections
+        request = compute_client.networks().list(project=project_id)
+        response = request.execute()
+        networks = response.get('items', [])
+        
+        total_peerings = 0
+        deleted_peerings = 0
+        
+        for network in networks:
+            network_name = network['name']
+            peerings = network.get('peerings', [])
+            
+            if peerings:
+                logger.info(f"🎯 Found {len(peerings)} peering connection(s) in network {network_name}")
+                total_peerings += len(peerings)
+                
+                for peering in peerings:
+                    peering_name = peering['name']
+                    try:
+                        logger.info(f"🗑️ Deleting VPC peering: {peering_name} in network {network_name}")
+                        
+                        operation = compute_client.networks().removePeering(
+                            project=project_id,
+                            network=network_name,
+                            body={'name': peering_name}
+                        ).execute()
+                        
+                        # Wait for operation to complete
+                        if wait_for_compute_operation(compute_client, project_id, operation):
+                            logger.info(f"✅ Successfully deleted VPC peering: {peering_name}")
+                            deleted_peerings += 1
+                        else:
+                            logger.error(f"❌ Failed to delete VPC peering: {peering_name}")
+                            
+                    except exceptions.NotFound:
+                        logger.info(f"✅ VPC peering {peering_name} not found (already deleted)")
+                        deleted_peerings += 1
+                    except Exception as e:
+                        logger.error(f"❌ Error deleting VPC peering {peering_name}: {e}")
+        
+        if total_peerings == 0:
+            logger.info(f"✅ No VPC peering connections found in {project_id}")
+            
+        return deleted_peerings, total_peerings
+        
+    except Exception as e:
+        if retry_count < MAX_RETRIES:
+            logger.warning(f"⏱️ Error listing VPC peerings, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})")
+            time.sleep(RETRY_DELAY)
+            return delete_vpc_peering_connections(compute_client, project_id, retry_count + 1)
+        else:
+            logger.error(f"❌ Failed to delete VPC peerings after {MAX_RETRIES} retries: {e}")
+            return 0, 0
+
+
+def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tuple[int, int]:
+    """
+    Delete all subnets in a project.
+    
+    Args:
+        compute_client: The Compute client
+        project_id: The GCP project ID
+        retry_count: Current retry attempt number
+        
+    Returns:
+        Tuple of (deleted_subnets, total_subnets)
+    """
+    try:
+        logger.info(f"🔍 Listing subnets in project {project_id}...")
+        
+        # List all subnets across all regions
+        request = compute_client.subnetworks().aggregatedList(project=project_id)
+        response = request.execute()
+        
+        all_subnets = []
+        for zone, zone_data in response.get('items', {}).items():
+            if 'subnetworks' in zone_data:
+                for subnet in zone_data['subnetworks']:
+                    # Extract region from zone (e.g., "regions/us-central1" -> "us-central1")
+                    region = zone.split('/')[-1] if '/' in zone else zone.replace('regions/', '')
+                    all_subnets.append((subnet, region))
+        
+        if not all_subnets:
+            logger.info(f"✅ No subnets found in {project_id}")
+            return 0, 0
+            
+        logger.info(f"🎯 Found {len(all_subnets)} subnet(s) in {project_id}")
+        total_subnets = len(all_subnets)
+        deleted_subnets = 0
+        
+        for subnet, region in all_subnets:
+            subnet_name = subnet['name']
+            try:
+                logger.info(f"🗑️ Deleting subnet: {subnet_name} in region {region}")
+                
+                operation = compute_client.subnetworks().delete(
+                    project=project_id,
+                    region=region,
+                    subnetwork=subnet_name
+                ).execute()
+                
+                # Wait for operation to complete
+                if wait_for_compute_operation(compute_client, project_id, operation, region=region):
+                    logger.info(f"✅ Successfully deleted subnet: {subnet_name}")
+                    deleted_subnets += 1
+                else:
+                    logger.error(f"❌ Failed to delete subnet: {subnet_name}")
+                    
+            except exceptions.NotFound:
+                logger.info(f"✅ Subnet {subnet_name} not found (already deleted)")
+                deleted_subnets += 1
+            except Exception as e:
+                logger.error(f"❌ Error deleting subnet {subnet_name}: {e}")
+        
+        return deleted_subnets, total_subnets
+        
+    except Exception as e:
+        if retry_count < MAX_RETRIES:
+            logger.warning(f"⏱️ Error listing subnets, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})")
+            time.sleep(RETRY_DELAY)
+            return delete_subnets(compute_client, project_id, retry_count + 1)
+        else:
+            logger.error(f"❌ Failed to delete subnets after {MAX_RETRIES} retries: {e}")
+            return 0, 0
+
+
+def delete_vpc_networks(compute_client, project_id: str, retry_count: int = 0) -> tuple[int, int]:
+    """
+    Delete all VPC networks in a project (excluding default network).
+    
+    Args:
+        compute_client: The Compute client
+        project_id: The GCP project ID
+        retry_count: Current retry attempt number
+        
+    Returns:
+        Tuple of (deleted_networks, total_networks)
+    """
+    try:
+        logger.info(f"🔍 Listing VPC networks in project {project_id}...")
+        
+        request = compute_client.networks().list(project=project_id)
+        response = request.execute()
+        networks = response.get('items', [])
+        
+        # Filter out default network (usually shouldn't be deleted)
+        custom_networks = [net for net in networks if net['name'] != 'default']
+        
+        if not custom_networks:
+            logger.info(f"✅ No custom VPC networks found in {project_id}")
+            return 0, 0
+            
+        logger.info(f"🎯 Found {len(custom_networks)} custom VPC network(s) in {project_id}")
+        total_networks = len(custom_networks)
+        deleted_networks = 0
+        
+        for network in custom_networks:
+            network_name = network['name']
+            try:
+                logger.info(f"🗑️ Deleting VPC network: {network_name}")
+                
+                operation = compute_client.networks().delete(
+                    project=project_id,
+                    network=network_name
+                ).execute()
+                
+                # Wait for operation to complete
+                if wait_for_compute_operation(compute_client, project_id, operation):
+                    logger.info(f"✅ Successfully deleted VPC network: {network_name}")
+                    deleted_networks += 1
+                else:
+                    logger.error(f"❌ Failed to delete VPC network: {network_name}")
+                    
+            except exceptions.NotFound:
+                logger.info(f"✅ VPC network {network_name} not found (already deleted)")
+                deleted_networks += 1
+            except Exception as e:
+                logger.error(f"❌ Error deleting VPC network {network_name}: {e}")
+        
+        return deleted_networks, total_networks
+        
+    except Exception as e:
+        if retry_count < MAX_RETRIES:
+            logger.warning(f"⏱️ Error listing VPC networks, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})")
+            time.sleep(RETRY_DELAY)
+            return delete_vpc_networks(compute_client, project_id, retry_count + 1)
+        else:
+            logger.error(f"❌ Failed to delete VPC networks after {MAX_RETRIES} retries: {e}")
+            return 0, 0
+
+
+def wait_for_compute_operation(compute_client, project_id: str, operation: dict, region: str = None, timeout: int = OPERATION_TIMEOUT) -> bool:
+    """
+    Wait for a Compute Engine operation to complete.
+    
+    Args:
+        compute_client: The Compute client
+        project_id: The GCP project ID
+        operation: The operation to wait for
+        region: The region for regional operations (None for global operations)
+        timeout: Maximum time to wait in seconds
+        
+    Returns:
+        True if operation completed successfully, False otherwise
+    """
+    operation_name = operation['name']
+    logger.info(f"⏳ Waiting for compute operation {operation_name} to complete...")
+    
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            if region:
+                # Regional operation
+                result = compute_client.regionOperations().get(
+                    project=project_id,
+                    region=region,
+                    operation=operation_name
+                ).execute()
+            else:
+                # Global operation
+                result = compute_client.globalOperations().get(
+                    project=project_id,
+                    operation=operation_name
+                ).execute()
+            
+            if result['status'] == 'DONE':
+                if 'error' in result:
+                    logger.error(f"❌ Compute operation failed: {result['error']}")
+                    return False
+                else:
+                    logger.info(f"✅ Compute operation {operation_name} completed successfully")
+                    return True
+            
+            time.sleep(5)  # Wait 5 seconds before checking again
+            
+        except Exception as e:
+            logger.error(f"❌ Error checking compute operation status: {e}")
+            return False
+    
+    logger.error(f"❌ Compute operation {operation_name} timed out after {timeout} seconds")
+    return False
+
+
+def delete_alloydb_and_network_resources_in_project(
+    project_id: str, region: str = DEFAULT_REGION
+) -> tuple[int, int, int, int, int, int, int, int]:
+    """
+    Delete all AlloyDB clusters, instances, and network resources in a specific project.
 
     Args:
         project_id: The GCP project ID
         region: The GCP region (default: europe-west1)
 
     Returns:
-        Tuple of (deleted_instances, total_instances, deleted_clusters, total_clusters)
+        Tuple of (deleted_instances, total_instances, deleted_clusters, total_clusters, 
+                 deleted_peerings, total_peerings, deleted_subnets, total_subnets, 
+                 deleted_networks, total_networks)
     """
-    logger.info(f"🔍 Checking for AlloyDB resources in project {project_id}...")
+    logger.info(f"🔍 Checking for AlloyDB and network resources in project {project_id}...")
 
     try:
-        # Initialize AlloyDB client
-        client = alloydb_v1.AlloyDBAdminClient()
+        # Initialize clients
+        alloydb_client = alloydb_v1.AlloyDBAdminClient()
+        compute_client = compute_v1.ComputeClient()
         parent = f"projects/{project_id}/locations/{region}"
 
         # List all clusters in the project
         logger.info(f"📋 Listing all AlloyDB clusters in {project_id}...")
-        clusters = list(client.list_clusters(parent=parent))
+        clusters = list(alloydb_client.list_clusters(parent=parent))
 
         if not clusters:
             logger.info(f"✅ No AlloyDB clusters found in {project_id}")
-            return 0, 0, 0, 0
+            # Still need to clean up network resources even if no AlloyDB clusters
+            deleted_peerings, total_peerings = delete_vpc_peering_connections(compute_client, project_id)
+            deleted_subnets, total_subnets = delete_subnets(compute_client, project_id)
+            deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
+            return 0, 0, 0, 0, deleted_peerings, total_peerings, deleted_subnets, total_subnets, deleted_networks, total_networks
 
         logger.info(f"🎯 Found {len(clusters)} AlloyDB cluster(s) in {project_id}")
 
@@ -273,7 +540,7 @@ def delete_alloydb_resources_in_project(
 
             # List and delete instances in this cluster
             try:
-                instances = list(client.list_instances(parent=cluster_name))
+                instances = list(alloydb_client.list_instances(parent=cluster_name))
                 cluster_total_instances = len(instances)
                 
                 if instances:
@@ -283,7 +550,7 @@ def delete_alloydb_resources_in_project(
                     with ThreadPoolExecutor(max_workers=5) as executor:
                         # Submit all instance deletion tasks
                         future_to_instance = {
-                            executor.submit(delete_single_instance, client, instance.name): instance.name
+                            executor.submit(delete_single_instance, alloydb_client, instance.name): instance.name
                             for instance in instances
                         }
                         
@@ -305,7 +572,7 @@ def delete_alloydb_resources_in_project(
                 logger.error(f"❌ Error processing instances in cluster {cluster_name}: {e}")
 
             # Delete the cluster itself (force=True will delete any remaining instances)
-            if delete_single_cluster(client, cluster_name):
+            if delete_single_cluster(alloydb_client, cluster_name):
                 cluster_deleted_clusters = 1
 
             return cluster_deleted_instances, cluster_total_instances, cluster_deleted_clusters
@@ -333,16 +600,30 @@ def delete_alloydb_resources_in_project(
         logger.info(
             f"🎉 Deleted {deleted_instances}/{total_instances} instance(s) and {deleted_clusters}/{len(clusters)} cluster(s) in {project_id}"
         )
-        return deleted_instances, total_instances, deleted_clusters, len(clusters)
+        
+        # Delete network resources after AlloyDB cleanup
+        logger.info(f"🌐 Starting network cleanup in project {project_id}...")
+        deleted_peerings, total_peerings = delete_vpc_peering_connections(compute_client, project_id)
+        deleted_subnets, total_subnets = delete_subnets(compute_client, project_id)  
+        deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
+        
+        logger.info(
+            f"🌐 Network cleanup completed: {deleted_peerings}/{total_peerings} peerings, "
+            f"{deleted_subnets}/{total_subnets} subnets, {deleted_networks}/{total_networks} networks deleted"
+        )
+        
+        return (deleted_instances, total_instances, deleted_clusters, len(clusters), 
+                deleted_peerings, total_peerings, deleted_subnets, total_subnets, 
+                deleted_networks, total_networks)
 
     except Exception as e:
         logger.error(f"❌ Error processing project {project_id}: {e}")
-        return 0, 0, 0, 0
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 def main():
-    """Main function to delete AlloyDB resources from all specified projects."""
-    logger.info("🚀 Starting AlloyDB cleanup across multiple projects...")
+    """Main function to delete AlloyDB and network resources from all specified projects."""
+    logger.info("🚀 Starting AlloyDB and network cleanup across multiple projects...")
 
     try:
         project_ids = get_project_ids()
@@ -355,29 +636,57 @@ def main():
     total_found_instances = 0
     total_deleted_clusters = 0
     total_found_clusters = 0
+    total_deleted_peerings = 0
+    total_found_peerings = 0
+    total_deleted_subnets = 0
+    total_found_subnets = 0
+    total_deleted_networks = 0
+    total_found_networks = 0
     failed_projects = []
 
     for project_id in project_ids:
         try:
-            deleted_instances, found_instances, deleted_clusters, found_clusters = delete_alloydb_resources_in_project(project_id)
+            (deleted_instances, found_instances, deleted_clusters, found_clusters,
+             deleted_peerings, found_peerings, deleted_subnets, found_subnets,
+             deleted_networks, found_networks) = delete_alloydb_and_network_resources_in_project(project_id)
+            
             total_deleted_instances += deleted_instances
             total_found_instances += found_instances
             total_deleted_clusters += deleted_clusters
             total_found_clusters += found_clusters
+            total_deleted_peerings += deleted_peerings
+            total_found_peerings += found_peerings
+            total_deleted_subnets += deleted_subnets
+            total_found_subnets += found_subnets
+            total_deleted_networks += deleted_networks
+            total_found_networks += found_networks
         except Exception as e:
             logger.error(f"❌ Failed to process project {project_id}: {e}")
             failed_projects.append(project_id)
 
     # Summary
-    logger.info("\n" + "=" * 60)
+    logger.info("\n" + "=" * 80)
     logger.info("📊 CLEANUP SUMMARY")
-    logger.info("=" * 60)
-    logger.info(f"🎯 Total AlloyDB instances found: {total_found_instances}")
-    logger.info(f"✅ Total AlloyDB instances deleted: {total_deleted_instances}")
-    logger.info(f"🎯 Total AlloyDB clusters found: {total_found_clusters}")
-    logger.info(f"✅ Total AlloyDB clusters deleted: {total_deleted_clusters}")
-    logger.info(f"❌ Failed instance deletions: {total_found_instances - total_deleted_instances}")
-    logger.info(f"❌ Failed cluster deletions: {total_found_clusters - total_deleted_clusters}")
+    logger.info("=" * 80)
+    logger.info("🔴 ALLOYDB RESOURCES:")
+    logger.info(f"  🎯 Total AlloyDB instances found: {total_found_instances}")
+    logger.info(f"  ✅ Total AlloyDB instances deleted: {total_deleted_instances}")
+    logger.info(f"  🎯 Total AlloyDB clusters found: {total_found_clusters}")
+    logger.info(f"  ✅ Total AlloyDB clusters deleted: {total_deleted_clusters}")
+    logger.info(f"  ❌ Failed instance deletions: {total_found_instances - total_deleted_instances}")
+    logger.info(f"  ❌ Failed cluster deletions: {total_found_clusters - total_deleted_clusters}")
+    logger.info("")
+    logger.info("🌐 NETWORK RESOURCES:")
+    logger.info(f"  🎯 Total VPC peering connections found: {total_found_peerings}")
+    logger.info(f"  ✅ Total VPC peering connections deleted: {total_deleted_peerings}")
+    logger.info(f"  🎯 Total subnets found: {total_found_subnets}")
+    logger.info(f"  ✅ Total subnets deleted: {total_deleted_subnets}")
+    logger.info(f"  🎯 Total VPC networks found: {total_found_networks}")
+    logger.info(f"  ✅ Total VPC networks deleted: {total_deleted_networks}")
+    logger.info(f"  ❌ Failed peering deletions: {total_found_peerings - total_deleted_peerings}")
+    logger.info(f"  ❌ Failed subnet deletions: {total_found_subnets - total_deleted_subnets}")
+    logger.info(f"  ❌ Failed network deletions: {total_found_networks - total_deleted_networks}")
+    logger.info("")
     logger.info(
         f"📁 Projects processed: {len(project_ids) - len(failed_projects)}/{len(project_ids)}"
     )
@@ -385,9 +694,13 @@ def main():
     if failed_projects:
         logger.warning(f"⚠️ Failed to process projects: {', '.join(failed_projects)}")
         sys.exit(1)
-    elif (total_found_instances > total_deleted_instances) or (total_found_clusters > total_deleted_clusters):
+    elif ((total_found_instances > total_deleted_instances) or 
+          (total_found_clusters > total_deleted_clusters) or
+          (total_found_peerings > total_deleted_peerings) or
+          (total_found_subnets > total_deleted_subnets) or
+          (total_found_networks > total_deleted_networks)):
         logger.warning(
-            f"⚠️ Some AlloyDB resources could not be deleted"
+            f"⚠️ Some AlloyDB or network resources could not be deleted"
         )
         sys.exit(1)
     else:

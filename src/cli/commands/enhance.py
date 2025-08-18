@@ -253,7 +253,7 @@ def enhance(
             pyproject_path = current_dir / "pyproject.toml"
             if pyproject_path.exists():
                 try:
-                    import tomllib
+                    import tomli as tomllib
 
                     with open(pyproject_path, "rb") as f:
                         pyproject_data = tomllib.load(f)

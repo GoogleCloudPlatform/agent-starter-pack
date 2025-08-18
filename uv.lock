@@ -20,6 +20,7 @@ dependencies = [
     { name = "google-cloud-aiplatform" },
     { name = "pyyaml" },
     { name = "rich" },
+    { name = "tomli" },
 ]
 
 [package.optional-dependencies]
@@ -77,6 +78,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "rich", specifier = ">=13.7.0" },
     { name = "ruff", marker = "extra == 'lint'" },
+    { name = "tomli", specifier = ">=1.2.0" },
 ]
 provides-extras = ["jupyter", "lint"]
 

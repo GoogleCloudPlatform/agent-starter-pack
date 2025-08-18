@@ -15,6 +15,7 @@ dependencies = [
     "rich>=13.7.0",
     "pyyaml>=6.0.1",
     "backoff>=2.2.1",
+    "tomli>=1.2.0",
 ]
 
 [dependency-groups]

@@ -18,12 +18,17 @@ import os
 import pathlib
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable
 
 import click
-import tomli as tomllib
 from click.core import ParameterSource
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 

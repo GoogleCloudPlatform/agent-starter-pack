@@ -18,11 +18,15 @@ import pathlib
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from typing import Any
 
-import tomli as tomllib
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 from jinja2 import Environment
 
 

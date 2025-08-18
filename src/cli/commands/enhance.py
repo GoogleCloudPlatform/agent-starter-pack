@@ -13,11 +13,17 @@
 # limitations under the License.
 
 import pathlib
+import sys
 from typing import Any
 
 import click
 from rich.console import Console
 from rich.prompt import IntPrompt
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.template import get_available_agents
@@ -253,8 +259,6 @@ def enhance(
             pyproject_path = current_dir / "pyproject.toml"
             if pyproject_path.exists():
                 try:
-                    import tomli as tomllib
-
                     with open(pyproject_path, "rb") as f:
                         pyproject_data = tomllib.load(f)
                     packages = (

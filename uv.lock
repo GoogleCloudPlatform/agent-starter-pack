@@ -11,7 +11,7 @@ resolution-markers = [
 
 [[package]]
 name = "agent-starter-pack"
-version = "0.12.0"
+version = "0.12.1"
 source = { editable = "." }
 dependencies = [
     { name = "backoff" },
@@ -20,7 +20,7 @@ dependencies = [
     { name = "google-cloud-aiplatform" },
     { name = "pyyaml" },
     { name = "rich" },
-    { name = "tomli" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 
 [package.optional-dependencies]
@@ -78,7 +78,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.1" },
     { name = "rich", specifier = ">=13.7.0" },
     { name = "ruff", marker = "extra == 'lint'" },
-    { name = "tomli", specifier = ">=1.2.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1.0" },
 ]
 provides-extras = ["jupyter", "lint"]
 

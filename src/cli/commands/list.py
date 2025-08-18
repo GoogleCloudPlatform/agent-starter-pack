@@ -14,9 +14,14 @@
 
 import logging
 import pathlib
+import sys
 
 import click
-import tomli as tomllib
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 from rich.console import Console
 from rich.table import Table
 

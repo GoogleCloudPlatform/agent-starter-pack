@@ -72,6 +72,9 @@ variable "app_sa_roles" {
   default = [
 {%- if cookiecutter.session_type == "alloydb" %}
     "roles/secretmanager.secretAccessor",
+{%- elif cookiecutter.deployment_target == 'gke' %}
+    #TODO: gke roles
+    "roles/secretmanager.secretAccessor",
 {%- endif %}
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
@@ -91,6 +94,9 @@ variable "cicd_roles" {
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "roles/run.invoker",
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'gke' %}
+    #TODO: cicd roles for gke
+{%- endif %}
     "roles/storage.admin",
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
@@ -108,6 +114,9 @@ variable "cicd_sa_deployment_required_roles" {
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "roles/run.developer",
 {%- endif %}    
+{%- if cookiecutter.deployment_target == 'gke' %}
+    #TODO: cicd roles for gke
+{%- endif %}
     "roles/iam.serviceAccountUser",
     "roles/aiplatform.user",
     "roles/storage.admin"

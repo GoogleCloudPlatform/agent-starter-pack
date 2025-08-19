@@ -13,76 +13,149 @@
 # limitations under the License.
 
 # GKE Cluster
-resource "google_container_cluster" "primary" {
+resource "google_container_cluster" "default" {
   for_each = local.deploy_project_ids
 
-  name     = "${var.project_name}-gke-cluster"
-  location = var.region
-  project  = local.deploy_project_ids[each.key]
+  name                = var.project_name
+  location            = var.region
+  project             = var.prod_project_id
 
-  # We can't create a cluster with no node pool defined, but we want to use
-  # a separately managed node pool. So we create the smallest possible default
-  # node pool and immediately delete it.
-  remove_default_node_pool = true
-  initial_node_count       = 1
+  enable_autopilot         = true
+  enable_l4_ilb_subsetting = true
 
-  network    = google_compute_network.default[each.key].id
-  subnetwork = google_compute_subnetwork.default[each.key].id
+  # Set `deletion_protection` to `true` will ensure that one cannot
+  # accidentally delete this instance by use of Terraform.
+  deletion_protection = false
+
+{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+  secret_manager_config { enabled = true }
+{%- endif %}
+}
+
+{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+
+# VPC Network for AlloyDB
+resource "google_compute_network" "default" {
+  for_each = local.deploy_project_ids
+  
+  name                    = "${var.project_name}-alloydb-network"
+  project                 = local.deploy_project_ids[each.key]
+  auto_create_subnetworks = false
+  
+  depends_on = [google_project_service.deploy_project_services]
+}
+
+# Subnet for AlloyDB
+resource "google_compute_subnetwork" "default" {
+  for_each = local.deploy_project_ids
+  
+  name          = "${var.project_name}-alloydb-network"
+  ip_cidr_range = "10.0.0.0/24"
+  region        = var.region
+  network       = google_compute_network.default[each.key].id
+  project       = local.deploy_project_ids[each.key]
+
+  # This is required for Cloud Run VPC connectors
+  purpose       = "PRIVATE"
+
+  private_ip_google_access = true
+}
+
+# Private IP allocation for AlloyDB
+resource "google_compute_global_address" "private_ip_alloc" {
+  for_each = local.deploy_project_ids
+  
+  name          = "${var.project_name}-private-ip"
+  project       = local.deploy_project_ids[each.key]
+  address_type  = "INTERNAL"
+  purpose       = "VPC_PEERING"
+  prefix_length = 16
+  network       = google_compute_network.default[each.key].id
 
   depends_on = [google_project_service.deploy_project_services]
 }
 
-resource "google_container_node_pool" "primary" {
+# VPC connection for AlloyDB
+resource "google_service_networking_connection" "vpc_connection" {
   for_each = local.deploy_project_ids
+  
+  network                 = google_compute_network.default[each.key].id
+  service                 = "servicenetworking.googleapis.com"
+  reserved_peering_ranges = [google_compute_global_address.private_ip_alloc[each.key].name]
+}
 
-  name       = "${var.project_name}-node-pool"
-  location   = var.region
-  cluster    = google_container_cluster.primary[each.key].name
+# AlloyDB Cluster
+resource "google_alloydb_cluster" "session_db_cluster" {
+  for_each = local.deploy_project_ids
+  
   project    = local.deploy_project_ids[each.key]
-  node_count = 1
+  cluster_id = "${var.project_name}-alloydb-cluster"
+  location   = var.region
 
-  node_config {
-    preemptible  = true
-    machine_type = "e2-medium"
+  network_config {
+    network = google_compute_network.default[each.key].id
+  }
 
-    # Google recommends custom service accounts that have cloud-platform scope and permissions granted via IAM Roles.
-    service_account = google_service_account.gke_sa[each.key].email
-    oauth_scopes = [
-      "https://www.googleapis.com/auth/cloud-platform"
-    ]
+  depends_on = [
+    google_service_networking_connection.vpc_connection
+  ]
+}
+
+# AlloyDB Instance
+resource "google_alloydb_instance" "session_db_instance" {
+  for_each = local.deploy_project_ids
+  
+  cluster       = google_alloydb_cluster.session_db_cluster[each.key].name
+  instance_id   = "${var.project_name}-alloydb-instance"
+  instance_type = "PRIMARY"
+
+  availability_type = "REGIONAL" # Regional redundancy
+
+  machine_config {
+    cpu_count = 2
   }
 }
 
-# Service account for GKE nodes
-resource "google_service_account" "gke_sa" {
+# Generate a random password for the database user
+resource "random_password" "db_password" {
   for_each = local.deploy_project_ids
-
-  account_id   = "${var.project_name}-gke-sa"
-  display_name = "GKE Service Account"
-  project      = local.deploy_project_ids[each.key]
+  
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-# IAM role for GKE service account
-resource "google_project_iam_member" "gke_sa_roles" {
-  for_each = toset([
-    "roles/monitoring.metricWriter",
-    "roles/monitoring.viewer",
-    "roles/logging.logWriter",
-  ])
+# Store the password in Secret Manager
+resource "google_secret_manager_secret" "db_password" {
+  for_each = local.deploy_project_ids
+  
+  project   = local.deploy_project_ids[each.key]
+  secret_id = "${var.project_name}-db-password"
 
-  project = var.staging_project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.gke_sa["staging"].email}"
+  replication {
+    auto {}
+  }
+
+  depends_on = [google_project_service.deploy_project_services]
 }
 
-resource "google_project_iam_member" "gke_sa_roles_prod" {
-  for_each = toset([
-    "roles/monitoring.metricWriter",
-    "roles/monitoring.viewer",
-    "roles/logging.logWriter",
-  ])
-
-  project = var.prod_project_id
-  role    = each.key
-  member  = "serviceAccount:${google_service_account.gke_sa["prod"].email}"
+resource "google_secret_manager_secret_version" "db_password" {
+  for_each = local.deploy_project_ids
+  
+  secret      = google_secret_manager_secret.db_password[each.key].id
+  secret_data = random_password.db_password[each.key].result
 }
+
+resource "google_alloydb_user" "db_user" {
+  for_each = local.deploy_project_ids
+  
+  cluster        = google_alloydb_cluster.session_db_cluster[each.key].name
+  user_id        = "postgres"
+  user_type      = "ALLOYDB_BUILT_IN"
+  password       = random_password.db_password[each.key].result
+  database_roles = ["alloydbsuperuser"]
+
+  depends_on = [google_alloydb_instance.session_db_instance]
+}
+
+{%- endif %}

@@ -36,7 +36,7 @@ resource "google_storage_bucket" "logs_data_bucket" {
 
   depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+{% if cookiecutter.deployment_target == 'cloud_run' or cookiecutter.deployment_target == 'gke' %}
 resource "google_artifact_registry_repository" "repo-artifacts-genai" {
   location      = var.region
   repository_id = "${var.project_name}-repo"

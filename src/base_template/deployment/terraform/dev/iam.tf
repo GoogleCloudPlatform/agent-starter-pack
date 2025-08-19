@@ -55,9 +55,31 @@ resource "google_project_iam_member" "app_sa_roles" {
   member     = "serviceAccount:${google_service_account.app_sa.email}"
   depends_on = [resource.google_project_service.services]
 }
+{% elif cookiecutter.deployment_target == 'gke' %}
+resource "google_service_account" "gke_app_sa" {
+  account_id   = "${var.project_name}-gke"
+  display_name = "${var.project_name} GKE App Service Account"
+  project      = var.dev_project_id
+  depends_on   = [resource.google_project_service.services]
+}
 
-{% if cookiecutter.deployment_target == 'agent_engine' %}
-# Grant required permissions to Vertex AI service account for Agent Engine
+# Grant Cloud Run SA the required permissions to run the application
+resource "google_project_iam_member" "gke_app_sa_roles" {
+  for_each = {
+    for pair in setproduct(keys(local.project_ids), var.gke_app_roles) :
+    join(",", pair) => {
+      project = local.project_ids[pair[0]]
+      role    = pair[1]
+    }
+  }
+
+  project    = each.value.project
+  role       = each.value.role
+  member     = "serviceAccount:${google_service_account.gke_app_sa.email}"
+  depends_on = [resource.google_project_service.services]
+}
+{% elif cookiecutter.deployment_target == 'agent_engine' %}
+# Grant required permissions to Vertex AI service account
 resource "google_project_iam_member" "vertex_ai_sa_permissions" {
   for_each = {
     for pair in setproduct(keys(local.project_ids), var.app_sa_roles) :

@@ -568,7 +568,7 @@ def create(
 
             if (
                 final_deployment is not None
-                and final_deployment in ("cloud_run")
+                and final_deployment in ("cloud_run", "gke")
                 and not session_type
             ):
                 if auto_approve:

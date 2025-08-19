@@ -12,13 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A base ReAct agent built with Google's Agent Development Kit (ADK)"
-example_question: "What's the weather in San Francisco?"
-settings:
-  requires_data_ingestion: false
-  requires_session: true
-  deployment_targets: ["agent_engine", "cloud_run", "gke"]
-  extra_dependencies: ["google-adk~=1.8.0"]
-  tags: ["adk"]
-  frontend_type: "None"
-    
+FROM python:3.11-slim
+
+RUN pip install --no-cache-dir uv==0.6.12
+
+WORKDIR /code
+
+COPY ./pyproject.toml ./README.md ./uv.lock* ./
+
+COPY ./app ./app
+
+RUN uv sync --frozen
+
+ARG COMMIT_SHA=""
+ENV COMMIT_SHA=${COMMIT_SHA}
+
+EXPOSE 8080
+
+CMD ["uv", "run", "uvicorn", "app.server:app", "--host", "0.0.0.0", "--port", "8080"]

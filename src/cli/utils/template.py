@@ -75,7 +75,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
-DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine"]
+DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine", "gke"]
 DEFAULT_FRONTEND = "streamlit"
 
 
@@ -196,6 +196,10 @@ def prompt_deployment_target(
         "cloud_run": {
             "display_name": "Cloud Run",
             "description": "GCP Serverless container execution",
+        },
+        "gke": {
+            "display_name": "Google Kubernetes Engine (GKE)",
+            "description": "Managed Kubernetes service for containerized applications",
         },
     }
 

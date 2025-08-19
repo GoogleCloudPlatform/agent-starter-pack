@@ -213,6 +213,35 @@ def normalize_project_name(project_name: str) -> str:
     help="Template identifier to use. Can be a local agent name (e.g., `chat_agent`), a local path (`local@/path/to/template`), an `adk-samples` shortcut (e.g., `adk@data-science`), or a remote Git URL. Both shorthand (e.g., `github.com/org/repo/path@main`) and full URLs from your browser (e.g., `https://github.com/org/repo/tree/main/path`) are supported. Lists available local templates if omitted.",
 )
 @click.option(
+    "--deployment-target",
+    "-d",
+    type=click.Choice(["agent_engine", "cloud_run", "gke"]),
+    help="Deployment target name",
+)
+@click.option(
+    "--cicd-runner",
+    type=click.Choice(["google_cloud_build", "github_actions"]),
+    help="CI/CD runner to use",
+)
+@click.option(
+    "--include-data-ingestion",
+    "-i",
+    is_flag=True,
+    help="Include data ingestion pipeline in the project",
+)
+@click.option(
+    "--datastore",
+    "-ds",
+    type=click.Choice(DATASTORE_TYPES),
+    help="Type of datastore to use for data ingestion (requires --include-data-ingestion)",
+)
+@click.option(
+    "--session-type",
+    type=click.Choice(["in_memory", "alloydb"]),
+    help="Type of session storage to use",
+)
+@click.option("--debug", is_flag=True, help="Enable debug logging")
+@click.option(
     "--output-dir",
     "-o",
     type=click.Path(),

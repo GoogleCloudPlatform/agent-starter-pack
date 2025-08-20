@@ -14,9 +14,11 @@
 
 # ruff: noqa: E722
 import subprocess
+import time
 
 import google.auth
 from google.api_core.client_options import ClientOptions
+from google.api_core.exceptions import PermissionDenied
 from google.api_core.gapic_v1.client_info import ClientInfo
 from google.cloud.aiplatform import initializer
 from google.cloud.aiplatform_v1beta1.services.prediction_service import (
@@ -25,8 +27,93 @@ from google.cloud.aiplatform_v1beta1.services.prediction_service import (
 from google.cloud.aiplatform_v1beta1.types.prediction_service import (
     CountTokensRequest,
 )
+from rich.console import Console
+from rich.prompt import Confirm
 
 from src.cli.utils.version import PACKAGE_NAME, get_current_version
+
+console = Console()
+
+
+def enable_vertex_ai_api(project_id: str, auto_approve: bool = False) -> bool:
+    """Enable Vertex AI API with user confirmation and propagation waiting."""
+    api_name = "aiplatform.googleapis.com"
+
+    # First test if API is already working with a direct connection
+    if _test_vertex_ai_connection(project_id):
+        return True
+
+    if not auto_approve:
+        console.print(
+            f"Vertex AI API is not enabled in project '{project_id}'.", style="yellow"
+        )
+        console.print(
+            "To continue, we need to enable the Vertex AI API.", style="yellow"
+        )
+
+        if not Confirm.ask(
+            "Do you want to enable the Vertex AI API now?", default=True
+        ):
+            return False
+
+    try:
+        console.print("Enabling Vertex AI API...")
+        subprocess.run(
+            [
+                "gcloud",
+                "services",
+                "enable",
+                api_name,
+                "--project",
+                project_id,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        console.print("✓ Vertex AI API enabled successfully")
+
+        # Wait for API propagation
+        console.print("⏳ Waiting for API availability to propagate...")
+        max_wait_time = 180  # 3 minutes
+        check_interval = 10  # 10 seconds
+        start_time = time.time()
+
+        while time.time() - start_time < max_wait_time:
+            if _test_vertex_ai_connection(project_id):
+                console.print("✓ Vertex AI API is now available")
+                return True
+            time.sleep(check_interval)
+            console.print("⏳ Still waiting for API propagation...")
+
+        console.print(
+            "⚠️ API propagation took longer than expected, but continuing...",
+            style="yellow",
+        )
+        return True
+
+    except subprocess.CalledProcessError as e:
+        console.print(f"Failed to enable Vertex AI API: {e.stderr}", style="bold red")
+        return False
+
+
+def _test_vertex_ai_connection(project_id: str, location: str = "us-central1") -> bool:
+    """Test Vertex AI connection without raising exceptions."""
+    try:
+        credentials, _ = google.auth.default()
+        client = PredictionServiceClient(
+            credentials=credentials,
+            client_options=ClientOptions(
+                api_endpoint=f"{location}-aiplatform.googleapis.com"
+            ),
+            client_info=get_client_info(),
+            transport=initializer.global_config._api_transport,
+        )
+        request = get_dummy_request(project_id=project_id)
+        client.count_tokens(request=request)
+        return True
+    except Exception:
+        return False
 
 
 def get_user_agent() -> str:
@@ -52,8 +139,18 @@ def get_dummy_request(project_id: str) -> CountTokensRequest:
 def verify_vertex_connection(
     project_id: str,
     location: str = "us-central1",
+    auto_approve: bool = False,
 ) -> None:
     """Verifies Vertex AI connection with a test Gemini request."""
+    # First try direct connection - if it works, we're done
+    if _test_vertex_ai_connection(project_id, location):
+        return
+
+    # If that failed, try to enable the API
+    if not enable_vertex_ai_api(project_id, auto_approve):
+        raise Exception("Vertex AI API is not enabled and user declined to enable it")
+
+    # After enabling, test again with proper error handling
     credentials, _ = google.auth.default()
     client = PredictionServiceClient(
         credentials=credentials,
@@ -64,7 +161,31 @@ def verify_vertex_connection(
         transport=initializer.global_config._api_transport,
     )
     request = get_dummy_request(project_id=project_id)
-    client.count_tokens(request=request)
+
+    try:
+        client.count_tokens(request=request)
+    except PermissionDenied as e:
+        error_message = str(e)
+        # Check if the error is specifically about API not being enabled
+        if (
+            "has not been used" in error_message
+            and "aiplatform.googleapis.com" in error_message
+        ):
+            # This shouldn't happen since we checked above, but handle it gracefully
+            console.print(
+                "⚠️ API may still be propagating, retrying in 30 seconds...",
+                style="yellow",
+            )
+            time.sleep(30)
+            try:
+                client.count_tokens(request=request)
+            except PermissionDenied:
+                raise Exception(
+                    "Vertex AI API is enabled but not yet available. Please wait a few more minutes and try again."
+                ) from e
+        else:
+            # Re-raise other permission errors
+            raise
 
 
 def verify_credentials() -> dict:

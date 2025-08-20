@@ -1035,18 +1035,22 @@ def _handle_credential_verification(creds_info: dict) -> dict:
     return creds_info
 
 
-def _test_vertex_ai_connection(project_id: str, region: str) -> None:
+def _test_vertex_ai_connection(
+    project_id: str, region: str, auto_approve: bool = False
+) -> None:
     """Test connection to Vertex AI.
 
     Args:
         project_id: GCP project ID
         region: GCP region for deployment
+        auto_approve: Whether to auto-approve API enablement
     """
     console.print("> Testing GCP and Vertex AI Connection...")
     try:
         verify_vertex_connection(
             project_id=project_id,
             location=region,
+            auto_approve=auto_approve,
         )
         console.print(
             f"> ✓ Successfully verified connection to Vertex AI in project {project_id}"
@@ -1058,6 +1062,7 @@ def _test_vertex_ai_connection(project_id: str, region: str) -> None:
             f"Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
             style="bold red",
         )
+        raise
 
 
 def replace_region_in_files(

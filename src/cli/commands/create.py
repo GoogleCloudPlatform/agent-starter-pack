@@ -18,17 +18,11 @@ import os
 import pathlib
 import shutil
 import subprocess
-import sys
 import tempfile
 from collections.abc import Callable
 
 import click
 from click.core import ParameterSource
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
@@ -249,6 +243,8 @@ def create(
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
+        console = Console()
+
         # Display welcome banner (unless skipped)
         if not skip_welcome:
             display_welcome_banner(agent)
@@ -312,6 +308,7 @@ def create(
         selected_agent = None
         template_source_path = None
         temp_dir_to_clean = None
+        remote_spec = None
 
         if agent:
             if agent.startswith("local@"):
@@ -353,6 +350,20 @@ def create(
                     )
                     temp_dir_to_clean = str(temp_dir_path)
                     selected_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
+
+                    # Show informational message for ADK samples with smart defaults
+                    if remote_spec.is_adk_samples:
+                        config = load_remote_template_config(
+                            template_source_path, is_adk_sample=True
+                        )
+                        if not config.get("has_explicit_config", True):
+                            console = Console()
+                            console.print(
+                                "\n[blue]ℹ️  Note: The starter pack uses heuristics to template this ADK sample agent.[/]"
+                            )
+                            console.print(
+                                "[dim]   The starter pack attempts to create a working codebase, but you'll need to follow the generated README for complete setup.[/]"
+                            )
                 else:
                     # Handle local agent selection
                     agents = get_available_agents()
@@ -402,6 +413,20 @@ def create(
                     temp_dir_to_clean = str(temp_dir_path)
                     final_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
 
+                    # Show informational message for ADK samples with smart defaults
+                    if remote_spec.is_adk_samples:
+                        config = load_remote_template_config(
+                            template_source_path, is_adk_sample=True
+                        )
+                        if not config.get("has_explicit_config", True):
+                            console = Console()
+                            console.print(
+                                "\n[blue]ℹ️  Note: The starter pack uses heuristics to template this ADK sample agent.[/]"
+                            )
+                            console.print(
+                                "[dim]   The starter pack attempts to create a working codebase, but you'll need to follow the generated README for complete setup.[/]"
+                            )
+
         if debug:
             logging.debug(f"Selected agent: {final_agent}")
 
@@ -414,7 +439,9 @@ def create(
 
             # Load remote template config
             source_config = load_remote_template_config(
-                template_source_path, cli_overrides
+                template_source_path,
+                cli_overrides,
+                is_adk_sample=remote_spec.is_adk_samples if remote_spec else False,
             )
 
             # Remote templates now work even without pyproject.toml thanks to defaults
@@ -779,56 +806,10 @@ def display_adk_samples_selection() -> str:
         # Fetch the repository
         repo_path, _ = fetch_remote_template(spec)
 
-        # Scan for agents in the repository
-        adk_agents = {}
-        agent_count = 1
+        # Use shared ADK discovery function
+        from ..utils.remote_template import discover_adk_agents
 
-        # Search for pyproject.toml files to identify agents
-        for config_path in sorted(repo_path.glob("**/pyproject.toml")):
-            try:
-                with open(config_path, "rb") as f:
-                    pyproject_data = tomllib.load(f)
-
-                config = pyproject_data.get("tool", {}).get("agent-starter-pack", {})
-
-                # Skip pyproject.toml files that don't have agent-starter-pack config
-                if not config:
-                    continue
-
-                template_root = config_path.parent
-
-                # Use fallbacks to [project] section if needed
-                project_info = pyproject_data.get("project", {})
-                agent_name = (
-                    config.get("name") or project_info.get("name") or template_root.name
-                )
-                description = (
-                    config.get("description") or project_info.get("description") or ""
-                )
-
-                # Get the relative path from repo root
-                relative_path = template_root.relative_to(repo_path)
-
-                # For adk-samples, use just the agent name for the spec
-                # This handles cases like python/agents/gemini-fullstack -> gemini-fullstack
-                agent_spec_name = (
-                    relative_path.name
-                    if relative_path != relative_path.parent
-                    else str(relative_path)
-                )
-
-                adk_agents[agent_count] = {
-                    "name": agent_name,
-                    "description": description,
-                    "path": str(relative_path),
-                    "spec": f"adk@{agent_spec_name}",
-                }
-                agent_count += 1
-
-            except Exception as e:
-                logging.warning(
-                    f"Could not load agent from {config_path.parent.parent}: {e}"
-                )
+        adk_agents = discover_adk_agents(repo_path)
 
         if not adk_agents:
             console.print("No agents found in adk-samples repository", style="yellow")
@@ -836,9 +817,19 @@ def display_adk_samples_selection() -> str:
             return display_agent_selection()
 
         console.print("\n> Available agents from [bold blue]google/adk-samples[/]:")
+
+        # Show explanation for inferred agents at the top
+        from ..utils.remote_template import display_adk_caveat_if_needed
+
+        display_adk_caveat_if_needed(adk_agents)
+
         for num, agent in adk_agents.items():
+            name_with_indicator = agent["name"]
+            if not agent.get("has_explicit_config", True):
+                name_with_indicator += " *"
+
             console.print(
-                f"{num}. [bold]{agent['name']}[/] - [dim]{agent['description']}[/]"
+                f"{num}. [bold]{name_with_indicator}[/] - [dim]{agent['description']}[/]"
             )
 
         # Add option to go back to local agents

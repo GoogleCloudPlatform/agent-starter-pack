@@ -752,6 +752,53 @@ def process_template(
                 logging.debug(
                     f"Copying remote template files from {remote_template_path} to {generated_project_dir}"
                 )
+
+                # Preserve base template README and pyproject.toml files before overwriting
+                preserve_files = ["README.md"]
+
+                # Only preserve pyproject.toml if the remote template doesn't have starter pack integration
+                remote_pyproject = remote_template_path / "pyproject.toml"
+                if remote_pyproject.exists():
+                    try:
+                        remote_pyproject_content = remote_pyproject.read_text()
+                        # Check for starter pack integration markers
+                        has_starter_pack_integration = (
+                            "[tool.agent-starter-pack]" in remote_pyproject_content
+                        )
+                        if not has_starter_pack_integration:
+                            preserve_files.append("pyproject.toml")
+                            logging.debug(
+                                "Remote pyproject.toml lacks starter pack integration - will preserve base template version"
+                            )
+                        else:
+                            logging.debug(
+                                "Remote pyproject.toml has starter pack integration - using remote version only"
+                            )
+                    except Exception as e:
+                        logging.warning(
+                            f"Could not read remote pyproject.toml: {e}. Will preserve base template version."
+                        )
+                        preserve_files.append("pyproject.toml")
+                else:
+                    preserve_files.append("pyproject.toml")
+
+                for preserve_file in preserve_files:
+                    base_file = generated_project_dir / preserve_file
+                    remote_file = remote_template_path / preserve_file
+
+                    if base_file.exists() and remote_file.exists():
+                        # Preserve the base template file with starter_pack prefix
+                        base_name = pathlib.Path(preserve_file).stem
+                        extension = pathlib.Path(preserve_file).suffix
+                        preserved_file = (
+                            generated_project_dir
+                            / f"starter_pack_{base_name}{extension}"
+                        )
+                        shutil.copy2(base_file, preserved_file)
+                        logging.debug(
+                            f"Preserved base template {preserve_file} as starter_pack_{base_name}{extension}"
+                        )
+
                 copy_files(
                     remote_template_path,
                     generated_project_dir,
@@ -884,11 +931,35 @@ def process_template(
                 )
 
                 if generated_project_dir.exists():
+                    # Check for existing README and pyproject.toml files before removing destination
+                    existing_preserved_files = []
                     if final_destination.exists():
+                        for item in final_destination.iterdir():
+                            if item.is_file() and (
+                                item.name.lower().startswith("readme")
+                                or item.name == "pyproject.toml"
+                            ):
+                                existing_preserved_files.append(
+                                    (item.name, item.read_text())
+                                )
                         shutil.rmtree(final_destination)
+
                     shutil.copytree(
                         generated_project_dir, final_destination, dirs_exist_ok=True
                     )
+
+                    # Restore existing README and pyproject.toml files with starter_pack prefix
+                    for file_name, file_content in existing_preserved_files:
+                        base_name = pathlib.Path(file_name).stem
+                        extension = pathlib.Path(file_name).suffix
+                        preserved_file_path = (
+                            final_destination / f"starter_pack_{base_name}{extension}"
+                        )
+                        preserved_file_path.write_text(file_content)
+                        logging.debug(
+                            f"File preservation: existing {file_name} preserved as starter_pack_{base_name}{extension}"
+                        )
+
                     logging.debug(
                         f"Project successfully created at {final_destination}"
                     )

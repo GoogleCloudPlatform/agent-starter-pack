@@ -31,7 +31,9 @@ from ..utils.template import get_available_agents
 console = Console()
 
 
-def display_agents_from_path(base_path: pathlib.Path, source_name: str) -> None:
+def display_agents_from_path(
+    base_path: pathlib.Path, source_name: str, is_adk_samples: bool = False
+) -> None:
     """Scans a directory and displays available agents."""
     table = Table(
         title=f"Available agents in [bold blue]{source_name}[/]",
@@ -47,41 +49,66 @@ def display_agents_from_path(base_path: pathlib.Path, source_name: str) -> None:
         return
 
     found_agents = False
-    # Search for pyproject.toml files to identify agents (explicit opt-in)
-    for config_path in sorted(base_path.glob("**/pyproject.toml")):
-        try:
-            with open(config_path, "rb") as f:
-                pyproject_data = tomllib.load(f)
+    adk_agents = {}
 
-            config = pyproject_data.get("tool", {}).get("agent-starter-pack", {})
+    if is_adk_samples:
+        # For ADK samples, use the shared discovery function
+        from ..utils.remote_template import discover_adk_agents
 
-            # Skip pyproject.toml files that don't have agent-starter-pack config
-            if not config:
-                continue
+        adk_agents = discover_adk_agents(base_path)
 
-            template_root = config_path.parent
+        for agent_info in adk_agents.values():
+            # Add indicator for inferred agents
+            name_with_indicator = agent_info["name"]
+            if not agent_info.get("has_explicit_config", True):
+                name_with_indicator += " *"
 
-            # Use fallbacks to [project] section if needed
-            project_info = pyproject_data.get("project", {})
-            agent_name = (
-                config.get("name") or project_info.get("name") or template_root.name
+            table.add_row(
+                name_with_indicator, f"/{agent_info['path']}", agent_info["description"]
             )
-            description = (
-                config.get("description") or project_info.get("description") or ""
-            )
-
-            # Display the agent's path relative to the scanned directory
-            relative_path = template_root.relative_to(base_path)
-
-            table.add_row(agent_name, f"/{relative_path}", description)
             found_agents = True
+    else:
+        # Original logic for non-ADK sources: Search for pyproject.toml files with explicit config
+        for config_path in sorted(base_path.glob("**/pyproject.toml")):
+            try:
+                with open(config_path, "rb") as f:
+                    pyproject_data = tomllib.load(f)
 
-        except Exception as e:
-            logging.warning(f"Could not load agent from {config_path.parent}: {e}")
+                config = pyproject_data.get("tool", {}).get("agent-starter-pack", {})
+
+                # Skip pyproject.toml files that don't have agent-starter-pack config
+                if not config:
+                    continue
+
+                template_root = config_path.parent
+
+                # Use fallbacks to [project] section if needed
+                project_info = pyproject_data.get("project", {})
+                agent_name = (
+                    config.get("name") or project_info.get("name") or template_root.name
+                )
+                description = (
+                    config.get("description") or project_info.get("description") or ""
+                )
+
+                # Display the agent's path relative to the scanned directory
+                relative_path = template_root.relative_to(base_path)
+
+                table.add_row(agent_name, f"/{relative_path}", description)
+                found_agents = True
+
+            except Exception as e:
+                logging.warning(f"Could not load agent from {config_path.parent}: {e}")
 
     if not found_agents:
         console.print(f"No agents found in {source_name}", style="yellow")
     else:
+        # Show explanation for inferred agents at the top (only for ADK samples)
+        if is_adk_samples:
+            from ..utils.remote_template import display_adk_caveat_if_needed
+
+            display_adk_caveat_if_needed(adk_agents)
+
         console.print(table)
 
 
@@ -103,7 +130,14 @@ def list_remote_agents(remote_source: str, scan_from_root: bool = False) -> None
         repo_path, template_path = template_dir_path
         scan_path = repo_path if scan_from_root else template_path
 
-        display_agents_from_path(scan_path, remote_source)
+        # Check if this is ADK samples to enable inference
+        is_adk_samples = (
+            spec.is_adk_samples if hasattr(spec, "is_adk_samples") else False
+        )
+
+        display_agents_from_path(
+            scan_path, remote_source, is_adk_samples=is_adk_samples
+        )
 
     except (RuntimeError, FileNotFoundError) as e:
         console.print(f"Error: {e}", style="bold red")

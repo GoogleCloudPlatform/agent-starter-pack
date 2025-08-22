@@ -28,6 +28,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 from jinja2 import Environment
+from rich.console import Console
 
 
 @dataclass
@@ -94,10 +95,14 @@ def parse_agent_spec(agent_spec: str) -> RemoteTemplateSpec | None:
             template_path = path_parts[0]
             git_ref = path_parts[1]
 
+        # Check if this is the ADK samples repository
+        is_adk_samples = repo_url == "https://github.com/google/adk-samples"
+
         return RemoteTemplateSpec(
             repo_url=repo_url,
             template_path=template_path.strip("/"),
             git_ref=git_ref,
+            is_adk_samples=is_adk_samples,
         )
 
     # GitHub shorthand: <org>/<repo>[/<path>][@<ref>]
@@ -108,10 +113,15 @@ def parse_agent_spec(agent_spec: str) -> RemoteTemplateSpec | None:
         repo = match.group(2)
         template_path = match.group(3) or ""
         git_ref = match.group(4) or "main"
+
+        # Check if this is the ADK samples repository
+        is_adk_samples = org == "google" and repo == "adk-samples"
+
         return RemoteTemplateSpec(
             repo_url=f"https://github.com/{org}/{repo}",
             template_path=template_path,
             git_ref=git_ref,
+            is_adk_samples=is_adk_samples,
         )
 
     return None
@@ -187,29 +197,66 @@ def fetch_remote_template(
         ) from e
 
 
+def _infer_agent_directory_for_adk(
+    template_dir: pathlib.Path, is_adk_sample: bool
+) -> dict[str, Any]:
+    """Infer agent configuration for ADK samples only using Python conventions.
+
+    Args:
+        template_dir: Path to template directory
+        is_adk_sample: Whether this is an ADK sample
+
+    Returns:
+        Dictionary with inferred configuration, or empty dict if not ADK sample
+    """
+    if not is_adk_sample:
+        return {}
+
+    # Convert folder name to Python package convention (hyphens to underscores)
+    folder_name = template_dir.name
+    agent_directory = folder_name.replace("-", "_")
+
+    logging.debug(
+        f"Inferred agent_directory '{agent_directory}' from folder name '{folder_name}' for ADK sample"
+    )
+
+    return {
+        "settings": {
+            "agent_directory": agent_directory,
+        },
+        "has_explicit_config": False,  # Track that this was inferred
+    }
+
+
 def load_remote_template_config(
-    template_dir: pathlib.Path, cli_overrides: dict[str, Any] | None = None
+    template_dir: pathlib.Path,
+    cli_overrides: dict[str, Any] | None = None,
+    is_adk_sample: bool = False,
 ) -> dict[str, Any]:
     """Load template configuration from remote template's pyproject.toml with CLI overrides.
 
     Loads configuration from [tool.agent-starter-pack] section with fallbacks
     to [project] section for name and description if not specified. CLI overrides
-    take precedence over all other sources.
+    take precedence over all other sources. For ADK samples without explicit config,
+    uses smart inference for agent directory naming.
 
     Args:
         template_dir: Path to template directory
         cli_overrides: Configuration overrides from CLI (takes highest precedence)
+        is_adk_sample: Whether this is an ADK sample (enables smart inference)
 
     Returns:
         Template configuration dictionary with merged sources
     """
-    config = {}
+    config: dict[str, Any] = {}
+    has_explicit_config = False
 
     # Start with defaults
     defaults = {
         "base_template": "adk_base",
         "name": template_dir.name,
         "description": "",
+        "agent_directory": "app",  # Default for non-ADK samples
     }
     config.update(defaults)
 
@@ -226,9 +273,13 @@ def load_remote_template_config(
             # Fallback to [project] fields if not specified in agent-starter-pack section
             project_info = pyproject_data.get("project", {})
 
+            # Track if we have explicit configuration
+            has_explicit_config = bool(toml_config)
+
             # Apply pyproject.toml configuration (overrides defaults)
             if toml_config:
                 config.update(toml_config)
+                logging.debug("Found explicit [tool.agent-starter-pack] configuration")
 
             # Apply [project] fallbacks if not already set
             if "name" not in toml_config and "name" in project_info:
@@ -240,6 +291,31 @@ def load_remote_template_config(
             logging.debug(f"Loaded template config from {pyproject_path}")
         except Exception as e:
             logging.error(f"Error loading pyproject.toml config: {e}")
+    else:
+        # No pyproject.toml found
+        if is_adk_sample:
+            logging.debug(
+                f"No pyproject.toml found for ADK sample {template_dir.name}, will use inference"
+            )
+        else:
+            logging.debug(
+                f"No pyproject.toml found for template {template_dir.name}, using defaults"
+            )
+
+    # Apply ADK inference if no explicit config and this is an ADK sample
+    if not has_explicit_config and is_adk_sample:
+        try:
+            inferred_config = _infer_agent_directory_for_adk(
+                template_dir, is_adk_sample
+            )
+            config.update(inferred_config)
+            logging.debug("Applied ADK inference for template without explicit config")
+        except Exception as e:
+            logging.warning(f"Failed to apply ADK inference for {template_dir}: {e}")
+            # Continue with default configuration
+
+    # Add metadata about configuration source
+    config["has_explicit_config"] = bool(has_explicit_config)
 
     # Apply CLI overrides (highest precedence) using deep merge
     if cli_overrides:
@@ -289,6 +365,97 @@ def merge_template_configs(
 
     # Perform the deep merge
     return deep_merge(merged_config, remote_config)
+
+
+def discover_adk_agents(repo_path: pathlib.Path) -> dict[int, dict[str, Any]]:
+    """Discover and load all ADK agents from a repository with inference support.
+
+    Args:
+        repo_path: Path to the cloned ADK samples repository
+
+    Returns:
+        Dictionary mapping agent numbers to agent info with keys:
+        - name: Agent display name
+        - description: Agent description
+        - path: Relative path from repo root
+        - spec: adk@ specification string
+        - has_explicit_config: Whether agent has explicit configuration
+    """
+    import logging
+
+    adk_agents = {}
+
+    # Search specifically for agents in python/agents/* directories
+    agents_dir = repo_path / "python" / "agents"
+    logging.debug(f"Looking for agents in: {agents_dir}")
+    if agents_dir.exists():
+        all_items = list(agents_dir.iterdir())
+        logging.debug(
+            f"Found items in agents directory: {[item.name for item in all_items]}"
+        )
+
+        # Collect all agents first, then sort by configuration type
+        all_agents = []
+
+        for agent_dir in sorted(agents_dir.iterdir()):
+            if not agent_dir.is_dir():
+                logging.debug(f"Skipping non-directory: {agent_dir.name}")
+                continue
+            logging.debug(f"Processing agent directory: {agent_dir.name}")
+
+            try:
+                # Load configuration with ADK inference support
+                config = load_remote_template_config(
+                    template_dir=agent_dir, is_adk_sample=True
+                )
+
+                agent_name = config.get("name", agent_dir.name)
+                description = config.get("description", "")
+                has_explicit_config = config.get("has_explicit_config", False)
+
+                # Get the relative path from repo root
+                relative_path = agent_dir.relative_to(repo_path)
+                agent_spec_name = agent_dir.name
+
+                agent_info = {
+                    "name": agent_name,
+                    "description": description,
+                    "path": str(relative_path),
+                    "spec": f"adk@{agent_spec_name}",
+                    "has_explicit_config": has_explicit_config,
+                }
+                all_agents.append(agent_info)
+
+            except Exception as e:
+                logging.warning(f"Could not load agent from {agent_dir}: {e}")
+
+        # Sort agents: explicit config first, then inferred (both alphabetically within their groups)
+        all_agents.sort(key=lambda x: (not x["has_explicit_config"], x["name"].lower()))
+
+        # Convert to numbered dictionary
+        for i, agent_info in enumerate(all_agents, 1):
+            adk_agents[i] = agent_info
+
+    return adk_agents
+
+
+def display_adk_caveat_if_needed(agents: dict[int, dict[str, Any]]) -> None:
+    """Display helpful note for agents that use inference.
+
+    Args:
+        agents: Dictionary of agent info from discover_adk_agents
+    """
+    console = Console()
+    inferred_agents = [
+        a for a in agents.values() if not a.get("has_explicit_config", True)
+    ]
+    if inferred_agents:
+        console.print(
+            "\n[blue]ℹ️  Note: Agents marked with * are templated using starter pack heuristics for ADK samples.[/]"
+        )
+        console.print(
+            "[dim]   The starter pack attempts to create a working codebase, but you'll need to follow the generated README for complete setup.[/]"
+        )
 
 
 def render_and_merge_makefiles(

@@ -163,7 +163,7 @@ class TestEnhanceCommand:
                 assert cli_overrides is not None
                 assert cli_overrides["settings"]["agent_directory"] == "chatbot"
 
-    @patch("tomllib.load")
+    @patch("src.cli.commands.enhance.tomllib.load")
     def test_enhance_auto_detects_agent_directory_from_pyproject(
         self, mock_tomllib_load: MagicMock
     ) -> None:

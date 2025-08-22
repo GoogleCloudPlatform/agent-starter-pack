@@ -196,7 +196,7 @@ requires_data_ingestion = false
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data=config_content)),
-            patch("tomllib.load") as mock_toml_load,
+            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
         ):
             mock_toml_load.return_value = {
                 "tool": {
@@ -225,6 +225,8 @@ requires_data_ingestion = false
                 "base_template": "adk_base",
                 "name": "template",
                 "description": "",
+                "agent_directory": "app",
+                "has_explicit_config": False,
             }
 
     @patch("src.cli.utils.remote_template.logging")
@@ -248,6 +250,8 @@ requires_data_ingestion = false
                 "base_template": "adk_base",
                 "name": "template",
                 "description": "",
+                "agent_directory": "app",
+                "has_explicit_config": False,
             }
             mock_logging.error.assert_called_once()
 
@@ -273,7 +277,7 @@ requires_data_ingestion = true
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data=config_content)),
-            patch("tomllib.load") as mock_toml_load,
+            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
         ):
             mock_toml_load.return_value = {
                 "tool": {

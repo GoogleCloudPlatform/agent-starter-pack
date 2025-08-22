@@ -4,7 +4,7 @@ install:
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %} 
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}
 {%- else %}
-	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %} --extra jupyter{% if cookiecutter.agent_name == 'live_api' %} && (cd frontend && npm install){%- endif %}
+	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %}{% if cookiecutter.agent_name == 'live_api' %} && (cd frontend && npm install){%- endif %}
 {%- endif %}
 
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}

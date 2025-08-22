@@ -289,19 +289,16 @@ class TestCreateCommand:
     ) -> None:
         """Test create command with existing project directory"""
         runner = CliRunner()
-        # The correct path is based on the simplified mock_resolve
-        expected_path = Path("/mock/cwd/existing-project")
 
         with patch("pathlib.Path.exists", return_value=True):
             # This should now exit cleanly, not raise an exception
             result = runner.invoke(create, ["existing-project"], catch_exceptions=False)
 
-        # FIX: The function should now return cleanly, resulting in exit code 0.
+        # The function should return cleanly, resulting in exit code 0.
         assert result.exit_code == 0
-        mock_console.print.assert_any_call(
-            f"Error: Project directory '{expected_path}' already exists",
-            style="bold red",
-        )
+        # The error message should be in the output
+        assert "Error: Project directory" in result.output
+        assert "already exists" in result.output
 
     def test_create_gcp_credential_change(
         self,

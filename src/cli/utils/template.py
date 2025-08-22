@@ -686,7 +686,7 @@ def process_template(
                 llm_txt_content = f.read()
 
             cookiecutter_config = {
-                "project_name": "my-project",
+                "project_name": project_name,
                 "agent_name": agent_name,
                 "package_version": get_current_version(),
                 "agent_description": template_config.get("description", ""),

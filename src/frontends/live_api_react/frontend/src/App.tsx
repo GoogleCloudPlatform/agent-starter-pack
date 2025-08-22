@@ -21,8 +21,9 @@ import SidePanel from "./components/side-panel/SidePanel";
 import ControlTray from "./components/control-tray/ControlTray";
 import cn from "classnames";
 
-const defaultHost = "localhost:8000";
-const defaultUri = `ws://${defaultHost}/`;
+// Use relative URLs that work with integrated setup and deployments
+const defaultHost = window.location.host;
+const defaultUri = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${defaultHost}/`;
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);

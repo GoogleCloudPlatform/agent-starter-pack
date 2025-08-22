@@ -114,17 +114,57 @@ The project maintains parallel CI/CD implementations. **Any change to CI/CD logi
 
 When adding a new variable or secret, ensure it is configured correctly for both systems in the Terraform scripts that manage them (e.g., `github_actions_variable` resource and Cloud Build trigger substitutions).
 
+## Advanced Template System Patterns
+
+### 4-Layer Architecture
+Template processing follows this hierarchy (later layers override earlier ones):
+1. **Base Template** (`src/base_template/`) - Applied to ALL projects
+2. **Deployment Targets** (`src/deployment_targets/`) - Environment overrides  
+3. **Frontend Types** (`src/frontends/`) - UI-specific files
+4. **Agent Templates** (`agents/*/`) - Individual agent logic
+
+**Rule**: Always place changes in the correct layer. Check if deployment targets need corresponding updates.
+
+### Template Processing Flow
+1. Variable resolution from `cookiecutter.json`
+2. File copying (base → overlays)
+3. Jinja2 rendering of content
+4. File/directory name rendering
+
+### Cross-File Dependencies
+Changes often require coordinated updates:
+- **Configuration**: `templateconfig.yaml` → `cookiecutter.json` → rendered templates
+- **CI/CD**: `.github/workflows/` ↔ `.cloudbuild/` (must stay in sync)
+- **Infrastructure**: Base terraform → deployment target overrides
+
+### Conditional Logic Patterns
+```jinja
+{%- if cookiecutter.agent_name == "live_api" %}
+# Agent-specific logic
+{%- elif cookiecutter.deployment_target == "cloud_run" %}
+# Deployment-specific logic  
+{%- endif %}
+```
+
+### Testing Strategy
+Test changes across multiple dimensions:
+- Agent types (live_api, adk_base, etc.)
+- Deployment targets (cloud_run, agent_engine)
+- Feature combinations (data_ingestion, frontend_type)
+
+### Common Pitfalls
+- **Hardcoded URLs**: Use relative paths for frontend connections
+- **Missing Conditionals**: Wrap agent-specific code in proper `{% if %}` blocks
+- **Dependency Conflicts**: Some agents lack certain extras (e.g., live_api + lint)
+
 ## File Modification Checklist
 
-Before finalizing any change, verify the following:
-
--   [ ] **Jinja Syntax:** Are all `{% if %}` and `{% for %}` blocks correctly closed with `{% endif %}` and `{% endfor %}`?
--   [ ] **Variable Consistency:** Is the `cookiecutter.` variable name spelled correctly and used consistently across all modified files?
--   [ ] **Cross-Target Impact:** If you changed the `base_template`, have you checked if any `deployment_targets` need corresponding updates?
--   [ ] **CI/CD Parity:** If you modified a CI/CD workflow, did you apply the equivalent change to the other system (GitHub Actions vs. Cloud Build)?
--   [ ] **Terraform Validation:** If you changed Terraform files, are resource references correct? Does it pass `terraform validate`?
--   [ ] **Documentation:** Does any user-facing documentation in `docs/` need to be updated to reflect the change?
+-   [ ] **Jinja Syntax:** All `{% if %}` and `{% for %}` blocks correctly closed?
+-   [ ] **Variable Consistency:** `cookiecutter.` variables spelled correctly?
+-   [ ] **Cross-Target Impact:** Base template changes checked against deployment targets?
+-   [ ] **CI/CD Parity:** Changes applied to both GitHub Actions and Cloud Build?
+-   [ ] **Multi-Agent Testing:** Tested with different agent types and configurations?
 
 ### Key Tooling
 
--   **`uv` for Python Command Execution:** `uv` is the primary tool used for managing Python dependencies and executing Python commands within the project, including CLI operations and CI/CD steps. This ensures consistent, isolated, and efficient execution environments.
+-   **`uv` for Python:** Primary tool for dependency management and CLI execution

@@ -16,11 +16,14 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, Literal
 
 import backoff
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from google.cloud import logging as google_cloud_logging
 from google.genai import types
 from google.genai.types import LiveServerToolCall
@@ -36,6 +39,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Get the path to the frontend build directory
+current_dir = Path(__file__).parent
+frontend_build_dir = current_dir.parent / "frontend" / "build"
+
+# Mount static files if build directory exists
+if frontend_build_dir.exists():
+    app.mount(
+        "/static",
+        StaticFiles(directory=str(frontend_build_dir / "static")),
+        name="static",
+    )
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -382,7 +397,40 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     """
     logger.log_struct(feedback.model_dump(), severity="INFO")
     return {"status": "success"}
+{% if cookiecutter.agent_name == "live_api" %}
 
+@app.get("/")
+async def serve_frontend_root() -> FileResponse:
+    """Serve the frontend index.html at the root path."""
+    index_file = frontend_build_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    raise HTTPException(
+        status_code=404,
+        detail="Frontend not built. Run 'npm run build' in the frontend directory.",
+    )
+
+
+@app.get("/{full_path:path}")
+async def serve_frontend_spa(full_path: str) -> FileResponse:
+    """Catch-all route to serve the frontend for SPA routing.
+
+    This ensures that client-side routes are handled by the React app.
+    Excludes API routes (ws, feedback) and static assets.
+    """
+    # Don't intercept API routes
+    if full_path.startswith(("ws", "feedback", "static", "api")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # Serve index.html for all other routes (SPA routing)
+    index_file = frontend_build_dir / "index.html"
+    if index_file.exists():
+        return FileResponse(str(index_file))
+    raise HTTPException(
+        status_code=404,
+        detail="Frontend not built. Run 'npm run build' in the frontend directory.",
+    )
+{% endif %}
 
 # Main execution
 if __name__ == "__main__":

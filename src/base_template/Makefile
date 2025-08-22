@@ -23,14 +23,23 @@ install:
 {%- endif %}
 {%- endfor %}{%- endif %}
 
+{%- if cookiecutter.agent_name == 'live_api' %}
+# Build the frontend for production
+build-frontend:
+	(cd frontend && npm run build)
+
+{%- endif %}
 # Launch local dev playground
-playground:
+playground:{%- if cookiecutter.agent_name == 'live_api' %} build-frontend{%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("playground") %}
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("playground")}}
 {%- else %}
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
+{%- if cookiecutter.agent_name == 'live_api' %}
+	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
+{%- endif %}
 	@echo "| 💡 Try asking: {{cookiecutter.example_question}}|"
 {%- if "adk" in cookiecutter.tags %}
 	@echo "|                                                                             |"
@@ -41,11 +50,13 @@ playground:
 	uv run adk web . --port 8501
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.agent_name == 'live_api' %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
+{%- else %}
 	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload &
 {%- endif %}
-{%- if cookiecutter.agent_name == 'live_api' %}
-	(cd frontend && PORT=8501 npm start)
-{%- else %}
+{%- endif %}
+{%- if cookiecutter.agent_name != 'live_api' %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 {%- endif %}
 {%- endif %}
@@ -84,7 +95,7 @@ local-backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}
 
-# Start the frontend UI for development
+# Start the frontend UI separately for development (requires backend running separately)
 ui:
 	(cd frontend && PORT=8501 npm start)
 {%- endif %}
@@ -122,6 +133,7 @@ test:
 
 # Run code quality checks (codespell, ruff, mypy)
 lint:
+	uv sync --dev --extra lint
 	uv run codespell
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff

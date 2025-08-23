@@ -28,6 +28,17 @@ resource "google_service_account" "app_sa" {
   depends_on   = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
+{% if cookiecutter.deployment_target == 'gke' %}
+resource "google_service_account" "gke_app_sa" {
+  for_each = local.deploy_project_ids
+
+  account_id   = "${var.project_name}-gke"
+  display_name = "GKE Generative AI app SA"
+  project      = each.value
+  depends_on   = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
+}
+{% endif %}
+
 {% if cookiecutter.data_ingestion %}
 # Service account to run Vertex AI pipeline
 resource "google_service_account" "vertexai_pipeline_app_sa" {

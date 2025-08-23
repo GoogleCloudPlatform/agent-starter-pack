@@ -1,0 +1,56 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+kind: Deployment
+metadata:
+  name: adk-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: adk-agent
+  template:
+    metadata:
+      labels:
+        app: adk-agent
+    spec:
+      serviceAccount: adk-agent-sa
+      containers:
+      - name: adk-agent
+        imagePullPolicy: Always
+        image: $GOOGLE_CLOUD_LOCATION-docker.pkg.dev/$GOOGLE_CLOUD_PROJECT/adk-repo/adk-agent:latest
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+            ephemeral-storage: "128Mi"
+          requests:
+            memory: "128Mi"
+            cpu: "500m"
+            ephemeral-storage: "128Mi"
+        ports:
+        - containerPort: 8080
+        env:
+          - name: PORT
+            value: "8080"
+          - name: GOOGLE_CLOUD_PROJECT
+            value: $GOOGLE_CLOUD_PROJECT
+          - name: GOOGLE_CLOUD_LOCATION
+            value: $GOOGLE_CLOUD_LOCATION
+          - name: GOOGLE_GENAI_USE_VERTEXAI
+            value: "$GOOGLE_GENAI_USE_VERTEXAI"
+          # If using AI Studio, set GOOGLE_GENAI_USE_VERTEXAI to false and set the following:
+          # - name: GOOGLE_API_KEY
+          #   value: $GOOGLE_API_KEY
+          # Add any other necessary environment variables your agent might need

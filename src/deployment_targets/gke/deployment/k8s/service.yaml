@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A base ReAct agent built with Google's Agent Development Kit (ADK)"
-example_question: "What's the weather in San Francisco?"
-settings:
-  requires_data_ingestion: false
-  requires_session: true
-  deployment_targets: ["agent_engine", "cloud_run", "gke"]
-  extra_dependencies: ["google-adk~=1.8.0"]
-  tags: ["adk"]
-  frontend_type: "None"
-    
+apiVersion: v1
+kind: Service
+metadata:
+  name: adk-agent
+spec:       
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 8080
+  selector:
+    app: adk-agent

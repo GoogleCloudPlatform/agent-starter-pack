@@ -18,6 +18,7 @@ Example usage:
 
 import logging
 import os
+import ssl
 import sys
 import time
 import uuid
@@ -26,6 +27,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from google.api_core import exceptions
 from google.cloud import alloydb_v1
 from googleapiclient import discovery
+import subprocess
 
 # Configure logging
 logging.basicConfig(
@@ -300,15 +302,16 @@ def delete_vpc_peering_connections(compute_client, project_id: str, retry_count:
             return 0, 0
 
 
-def delete_single_subnet(compute_client, project_id: str, subnet: dict, region: str) -> bool:
+def delete_single_subnet(compute_client, project_id: str, subnet: dict, region: str, retry_count: int = 0) -> bool:
     """
-    Delete a single subnet with error handling.
+    Delete a single subnet with error handling and retry logic.
     
     Args:
         compute_client: The Compute client
         project_id: The GCP project ID
         subnet: The subnet resource
         region: The region of the subnet
+        retry_count: Current retry attempt number
         
     Returns:
         True if deleted successfully, False otherwise
@@ -334,9 +337,177 @@ def delete_single_subnet(compute_client, project_id: str, subnet: dict, region: 
     except exceptions.NotFound:
         logger.info(f"✅ Subnet {subnet_name} not found (already deleted)")
         return True
+    except (ssl.SSLError, ConnectionError, OSError) as e:
+        # Handle SSL and connection errors with retry logic
+        if retry_count < MAX_RETRIES:
+            logger.warning(
+                f"⏱️ Network error deleting {subnet_name}, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES}): {e}"
+            )
+            time.sleep(RETRY_DELAY)
+            return delete_single_subnet(compute_client, project_id, subnet, region, retry_count + 1)
+        else:
+            logger.error(f"❌ Failed to delete {subnet_name} after {MAX_RETRIES} retries due to network errors: {e}")
+            return False
     except Exception as e:
-        logger.error(f"❌ Error deleting subnet {subnet_name}: {e}")
-        return False
+        # Handle other errors with retry logic
+        if retry_count < MAX_RETRIES and ("IncompleteRead" in str(e) or "SSL" in str(e) or "Connection" in str(e)):
+            logger.warning(
+                f"⏱️ Network-related error deleting {subnet_name}, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES}): {e}"
+            )
+            time.sleep(RETRY_DELAY)
+            return delete_single_subnet(compute_client, project_id, subnet, region, retry_count + 1)
+        elif "resourceInUseByAnotherResource" in str(e) and "serverless" in str(e).lower():
+            logger.warning(f"⚠️ Skipping subnet {subnet_name} - in use by serverless service (requires manual cleanup)")
+            return False
+        else:
+            logger.error(f"❌ Error deleting subnet {subnet_name}: {e}")
+            return False
+
+
+def delete_cloud_run_services(project_id: str, region: str = DEFAULT_REGION) -> tuple[int, int]:
+    """
+    Delete all Cloud Run services in a project and region using gcloud CLI.
+    
+    Args:
+        project_id: The GCP project ID
+        region: The GCP region
+        
+    Returns:
+        Tuple of (deleted_services, total_services)
+    """
+    try:
+        logger.info(f"🔍 Listing Cloud Run services in project {project_id}, region {region}...")
+        
+        # List all Cloud Run services using gcloud CLI
+        list_cmd = [
+            "gcloud", "run", "services", "list",
+            f"--project={project_id}",
+            f"--region={region}",
+            "--format=value(metadata.name)"
+        ]
+        
+        result = subprocess.run(list_cmd, capture_output=True, text=True, timeout=60)
+        
+        if result.returncode != 0:
+            logger.error(f"❌ Failed to list Cloud Run services: {result.stderr}")
+            return 0, 0
+        
+        services = [name.strip() for name in result.stdout.strip().split('\n') if name.strip()]
+        
+        if not services:
+            logger.info(f"✅ No Cloud Run services found in {project_id}")
+            return 0, 0
+            
+        logger.info(f"🎯 Found {len(services)} Cloud Run service(s) in {project_id}")
+        total_services = len(services)
+        deleted_services = 0
+        
+        for service_name in services:
+            try:
+                logger.info(f"🗑️ Deleting Cloud Run service: {service_name}")
+                
+                delete_cmd = [
+                    "gcloud", "run", "services", "delete", service_name,
+                    f"--project={project_id}",
+                    f"--region={region}",
+                    "--quiet"
+                ]
+                
+                result = subprocess.run(delete_cmd, capture_output=True, text=True, timeout=300)
+                
+                if result.returncode == 0:
+                    logger.info(f"✅ Successfully deleted Cloud Run service: {service_name}")
+                    deleted_services += 1
+                else:
+                    logger.error(f"❌ Failed to delete Cloud Run service {service_name}: {result.stderr}")
+                    
+            except subprocess.TimeoutExpired:
+                logger.error(f"❌ Timeout deleting Cloud Run service: {service_name}")
+            except Exception as e:
+                logger.error(f"❌ Error deleting Cloud Run service {service_name}: {e}")
+        
+        return deleted_services, total_services
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to delete Cloud Run services: {e}")
+        return 0, 0
+
+
+def delete_reserved_addresses(compute_client, project_id: str) -> tuple[int, int]:
+    """
+    Delete all reserved IP addresses in a project.
+    
+    Args:
+        compute_client: The Compute client
+        project_id: The GCP project ID
+        
+    Returns:
+        Tuple of (deleted_addresses, total_addresses)
+    """
+    try:
+        logger.info(f"🔍 Listing reserved IP addresses in project {project_id}...")
+        
+        # List all addresses across all regions
+        request = compute_client.addresses().aggregatedList(project=project_id)
+        response = request.execute()
+        
+        all_addresses = []
+        for zone, zone_data in response.get('items', {}).items():
+            if 'addresses' in zone_data:
+                for address in zone_data['addresses']:
+                    # Extract region from zone (e.g., "regions/us-central1" -> "us-central1")
+                    region = zone.split('/')[-1] if '/' in zone else zone.replace('regions/', '')
+                    all_addresses.append((address, region))
+        
+        if not all_addresses:
+            logger.info(f"✅ No reserved IP addresses found in {project_id}")
+            return 0, 0
+            
+        logger.info(f"🎯 Found {len(all_addresses)} reserved IP address(es) in {project_id}")
+        total_addresses = len(all_addresses)
+        deleted_addresses = 0
+        
+        for address, region in all_addresses:
+            address_name = address['name']
+            try:
+                logger.info(f"🗑️ Deleting reserved IP address: {address_name} in region {region}")
+                
+                if region == 'global':
+                    # Use global operations for global addresses
+                    operation = compute_client.globalAddresses().delete(
+                        project=project_id,
+                        address=address_name
+                    ).execute()
+                    success = wait_for_compute_operation(compute_client, project_id, operation)
+                else:
+                    # Use regional operations for regional addresses
+                    operation = compute_client.addresses().delete(
+                        project=project_id,
+                        region=region,
+                        address=address_name
+                    ).execute()
+                    success = wait_for_compute_operation(compute_client, project_id, operation, region=region)
+                
+                if success:
+                    logger.info(f"✅ Successfully deleted reserved IP address: {address_name}")
+                    deleted_addresses += 1
+                else:
+                    logger.error(f"❌ Failed to delete reserved IP address: {address_name}")
+                    
+            except exceptions.NotFound:
+                logger.info(f"✅ Reserved IP address {address_name} not found (already deleted)")
+                deleted_addresses += 1
+            except Exception as e:
+                if "resourceInUseByAnotherResource" in str(e) and "serverless" in str(e).lower():
+                    logger.warning(f"⚠️ Skipping address {address_name} - in use by serverless service (will retry after service cleanup)")
+                else:
+                    logger.error(f"❌ Error deleting reserved IP address {address_name}: {e}")
+        
+        return deleted_addresses, total_addresses
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to delete reserved IP addresses: {e}")
+        return 0, 0
 
 
 def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tuple[int, int]:
@@ -374,8 +545,8 @@ def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tup
         total_subnets = len(all_subnets)
         deleted_subnets = 0
         
-        # Delete subnets in parallel
-        with ThreadPoolExecutor(max_workers=5) as executor:
+        # Delete subnets in parallel with reduced concurrency to avoid network issues
+        with ThreadPoolExecutor(max_workers=2) as executor:
             # Submit all subnet deletion tasks
             future_to_subnet = {
                 executor.submit(delete_single_subnet, compute_client, project_id, subnet, region): (subnet['name'], region)
@@ -553,6 +724,13 @@ def delete_alloydb_and_network_resources_in_project(
         if not clusters:
             logger.info(f"✅ No AlloyDB clusters found in {project_id}")
             # Still need to clean up network resources even if no AlloyDB clusters
+            
+            # First delete Cloud Run services as they may hold serverless address reservations
+            deleted_services, total_services = delete_cloud_run_services(project_id, region)
+            
+            # Then delete reserved IP addresses as they may block subnet deletion
+            deleted_addresses, total_addresses = delete_reserved_addresses(compute_client, project_id)
+            
             # Run VPC peering and subnet deletion in parallel since they are independent
             with ThreadPoolExecutor(max_workers=2) as executor:
                 # Submit both tasks
@@ -647,6 +825,12 @@ def delete_alloydb_and_network_resources_in_project(
         
         # Delete network resources after AlloyDB cleanup
         logger.info(f"🌐 Starting network cleanup in project {project_id}...")
+        
+        # First delete Cloud Run services as they may hold serverless address reservations
+        deleted_services, total_services = delete_cloud_run_services(project_id, region)
+        
+        # Then delete reserved IP addresses as they may block subnet deletion
+        deleted_addresses, total_addresses = delete_reserved_addresses(compute_client, project_id)
         
         # Run VPC peering and subnet deletion in parallel since they are independent
         with ThreadPoolExecutor(max_workers=2) as executor:

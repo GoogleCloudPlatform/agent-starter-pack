@@ -47,7 +47,7 @@ playground:{%- if cookiecutter.agent_name == 'live_api' %} build-frontend{%- end
 {%- endif %}
 	@echo "==============================================================================="
 {%- if "adk" in cookiecutter.tags %}
-	uv run adk web . --port 8501
+	uv run adk web . --port 8501 --reload_agents
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 {%- if cookiecutter.agent_name == 'live_api' %}

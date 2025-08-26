@@ -18,15 +18,24 @@ uvx agent-starter-pack enhance [TEMPLATE_PATH] [OPTIONS]
 
 ## Options
 
-The `enhance` command supports all the same options as [`create`](./create.md), plus:
+The `enhance` command supports all the same options as [`create`](./create.md), including `--agent-directory`, `--deployment-target`, `--include-data-ingestion`, etc., plus enhance-specific options:
 
-### `--base-template` TEMPLATE
+### Enhance-Specific Options
+
+#### `--base-template` TEMPLATE
 Override the base template for inheritance when enhancing your existing project. Available base templates include:
 - `adk_base` - Basic agent template (default)
 - `langgraph_base_react` - LangGraph-based ReAct agent
 - `agentic_rag` - RAG-enabled agent template
 
-### Other Options
+### Key Shared Options
+
+#### `--agent-directory`, `-dir` DIRECTORY
+Name of the agent directory (overrides template default, usually `app`). This determines where your agent code files will be located within the project structure.
+
+**Auto-detection:** When not specified, the enhance command attempts to auto-detect your agent directory from your `pyproject.toml` file by examining the `tool.hatch.build.targets.wheel.packages` configuration.
+
+### Other Shared Options
 - `--name, -n` - Project name (defaults to current directory name)
 - `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
 - `--include-data-ingestion, -i` - Include data ingestion pipeline
@@ -52,6 +61,9 @@ uvx agent-starter-pack enhance --name my-enhanced-agent
 ### Advanced Options
 
 ```bash
+# Enhance with custom agent directory
+uvx agent-starter-pack enhance . --agent-directory chatbot
+
 # Enhance with specific deployment target
 uvx agent-starter-pack enhance adk@data-science --deployment-target cloud_run
 
@@ -85,11 +97,17 @@ your-project/
 └── README.md
 ```
 
-**⚠️ Missing /app Folder:**
-If your project doesn't have an `/app` folder, the command will:
+**⚠️ Missing Agent Folder:**
+If your project doesn't have an agent directory (default: `/app`), the command will:
 1. Display a warning about project structure
 2. Explain the expected structure
 3. Ask for confirmation to proceed (unless `--auto-approve` is used)
+
+**💡 Custom Agent Directory:**
+Use `--agent-directory` to specify a different directory name if your agent code is organized differently:
+```bash
+uvx agent-starter-pack enhance . --agent-directory my_agent
+```
 
 ## How It Works
 
@@ -168,7 +186,7 @@ The `enhance` command automatically creates a complete backup of your project be
 ## Troubleshooting
 
 **"Project structure warning"**
-- Organize your agent code in an `/app` folder
+- Organize your agent code in an `/app` folder (or specify custom directory with `--agent-directory`)
 - Use `--auto-approve` to skip the confirmation prompt
 
 **"Enhancement cancelled"**

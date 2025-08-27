@@ -98,6 +98,21 @@ local-backend:
 # Start the frontend UI separately for development (requires backend running separately)
 ui:
 	(cd frontend && PORT=8501 npm start)
+
+# Launch dev playground with both frontend and backend hot-reload
+playground-dev:
+	@echo "==============================================================================="
+	@echo "| 🚀 Starting your agent playground in DEV MODE...                           |"
+	@echo "|                                                                             |"
+	@echo "| 🌐 Frontend: http://localhost:8501                                         |"
+	@echo "| 🌐 Backend:  http://localhost:8000                                         |"
+	@echo "| 💡 Try asking: What's the weather in San Francisco?                         |"
+	@echo "| 🔄 Both frontend and backend will auto-reload on changes                    |"
+	@echo "==============================================================================="
+	@echo "Starting backend server..."
+	$(MAKE) local-backend &
+	@echo "Starting frontend dev server..."
+	$(MAKE) ui
 {%- endif %}
 {%- endif %}
 

@@ -121,9 +121,39 @@
       transition-delay: 0.1s;
     }
 
-    .indicators .streaming-indicator {
-      width: 30px;
+    .connection-settings {
       opacity: 0;
+      display: none;
+      transition: all 0.2s ease-in allow-discrete;
+    }
+
+    .control-tray {
+      opacity: 0;
+      display: none;
+      transition: all 0.2s ease-in allow-discrete;
+      
+      .actions-nav {
+        opacity: 0;
+        display: none;
+      }
+      
+      .connection-status {
+        opacity: 0;
+        display: none;
+      }
+    }
+
+    .indicators {
+      .react-select {
+        opacity: 0;
+        display: none;
+        transition: all 0.2s ease-in allow-discrete;
+      }
+      
+      .streaming-indicator {
+        width: 30px;
+        opacity: 0;
+      }
     }
 
     .opener {
@@ -134,6 +164,15 @@
       opacity: 0;
       display: none;
       transition: all 0.2s ease-in allow-discrete;
+    }
+
+    .audio-pulse-bottom {
+      .pulse-container {
+        .pulse-label {
+          opacity: 0;
+          display: none;
+        }
+      }
     }
   }
 
@@ -176,6 +215,214 @@
     overflow-x: hidden;
     overflow-y: auto;
     /*scrollbar-gutter: stable both-edges;*/
+  }
+
+  .connection-settings {
+    border-bottom: 1px solid var(--Neutral-20);
+    
+    .connection-expander {
+      background: var(--Neutral-10);
+      border: none;
+      color: var(--Neutral-90);
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 12px 25px;
+      width: 100%;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      
+      &:hover {
+        background: var(--Neutral-15);
+      }
+      
+      span {
+        font-size: 12px;
+      }
+    }
+    
+    .connection-content {
+      padding: 0 25px 12px;
+      background: var(--Neutral-05);
+      
+      .setting-group {
+        margin-bottom: 12px;
+        
+        label {
+          display: block;
+          color: var(--Neutral-80);
+          font-size: 13px;
+          margin-bottom: 4px;
+        }
+        
+        .setting-input {
+          width: 100%;
+          background: var(--Neutral-15);
+          border: 1px solid var(--Neutral-20);
+          border-radius: 4px;
+          color: var(--Neutral-90);
+          font-size: 13px;
+          padding: 8px 12px;
+          
+          &:focus {
+            outline: none;
+            border-color: var(--Blue-500);
+          }
+        }
+      }
+      
+      .feedback-button {
+        background: var(--Neutral-20);
+        border: 1px solid var(--Neutral-30);
+        border-radius: 4px;
+        color: var(--Neutral-90);
+        cursor: pointer;
+        font-size: 13px;
+        padding: 8px 16px;
+        
+        &:hover {
+          background: var(--Neutral-25);
+        }
+      }
+    }
+  }
+
+  .control-tray {
+    border-bottom: 1px solid var(--Neutral-20);
+    padding: 12px 25px;
+
+    .actions-nav {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+
+      .action-button {
+        background: var(--Neutral-15);
+        border: 1px solid var(--Neutral-20);
+        border-radius: 8px;
+        color: var(--Neutral-70);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        width: 40px;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: var(--Neutral-20);
+          color: var(--Neutral-90);
+        }
+
+        &.connect-toggle {
+          background: var(--Blue-600);
+          border-color: var(--Blue-600);
+          color: white;
+          
+          &:hover {
+            background: var(--Blue-700);
+          }
+          
+          &.connected {
+            background: var(--Red-600);
+            border-color: var(--Red-600);
+            
+            &:hover {
+              background: var(--Red-700);
+            }
+          }
+        }
+
+        &.mic-button {
+          &:hover {
+            color: var(--Blue-500);
+          }
+        }
+
+        // Active state for buttons when they're "on"
+        &.active {
+          background: var(--Blue-600) !important;
+          border-color: var(--Blue-600) !important;
+          color: white !important;
+          
+          &:hover {
+            background: var(--Blue-700) !important;
+            border-color: var(--Blue-700) !important;
+          }
+        }
+
+        &.no-action {
+          cursor: default;
+          border-style: dashed;
+          
+          &:hover {
+            background: var(--Neutral-15);
+            color: var(--Neutral-70);
+          }
+        }
+
+        .material-symbols-outlined {
+          font-size: 20px;
+        }
+      }
+
+      &.disabled .action-button:not(.connect-toggle) {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+        
+        &:hover {
+          background: var(--Neutral-15);
+          color: var(--Neutral-70);
+        }
+      }
+      
+      // Ensure connect button is always clickable
+      .action-button.connect-toggle {
+        pointer-events: auto !important;
+        cursor: pointer !important;
+      }
+    }
+
+    .connection-status {
+      display: flex;
+      justify-content: center;
+
+      .text-indicator {
+        color: var(--Neutral-60);
+        font-size: 12px;
+        font-weight: 500;
+        
+        &.connected {
+          color: var(--Blue-500);
+        }
+      }
+    }
+  }
+
+  .audio-pulse-bottom {
+    border-top: 1px solid var(--Neutral-20);
+    padding: 12px 25px;
+    flex-shrink: 0;
+    background: var(--Neutral-05);
+
+    .pulse-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+
+      .pulse-label {
+        color: var(--Neutral-80);
+        font-size: 12px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
   }
 
   .input-container {

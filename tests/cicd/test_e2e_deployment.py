@@ -842,7 +842,7 @@ class TestE2EDeployment:
                             logger.info(
                                 f"Deleting Agent Engine: {engine.resource_name}"
                             )
-                            engine.delete()
+                            agent_engines.delete(resource_name=engine.name)
                             logger.info(
                                 f"Successfully deleted Agent Engine: {engine.resource_name}"
                             )

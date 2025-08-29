@@ -151,6 +151,7 @@ Test changes across multiple dimensions:
 - Agent types (live_api, adk_base, etc.)
 - Deployment targets (cloud_run, agent_engine)
 - Feature combinations (data_ingestion, frontend_type)
+- Example command for testing the starter pack creation - from the root of the repo run: `uv run agent-starter-pack create myagent-$(date +%s) --output-dir target`
 
 ### Common Pitfalls
 - **Hardcoded URLs**: Use relative paths for frontend connections

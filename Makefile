@@ -11,6 +11,7 @@ generate-lock:
 	uv run src/utils/generate_locks.py
 
 lint:
+	uv sync --dev --extra lint
 	uv run ruff check . --config pyproject.toml --diff
 	uv run ruff format . --check  --config pyproject.toml --diff
 	uv run mypy --config-file pyproject.toml ./src/cli ./tests ./src/frontends/streamlit

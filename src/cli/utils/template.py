@@ -448,6 +448,7 @@ def process_template(
     remote_config: dict[str, Any] | None = None,
     in_folder: bool = False,
     cli_overrides: dict[str, Any] | None = None,
+    agent_garden: bool = False,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -465,6 +466,7 @@ def process_template(
         remote_config: Optional remote template configuration
         in_folder: Whether to template directly into the output directory instead of creating a subdirectory
         cli_overrides: Optional CLI override values that should take precedence over template config
+        agent_garden: Whether this deployment is from Agent Garden
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
@@ -703,6 +705,7 @@ def process_template(
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
                 "agent_directory": get_agent_directory(template_config, cli_overrides),
+                "agent_garden": agent_garden,
                 "adk_cheatsheet": adk_cheatsheet_content,
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [

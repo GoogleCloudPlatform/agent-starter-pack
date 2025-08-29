@@ -115,6 +115,7 @@ def enhance(
     auto_approve: bool,
     region: str,
     skip_checks: bool,
+    agent_garden: bool,
     base_template: str | None,
     agent_directory: str | None,
 ) -> None:
@@ -379,6 +380,7 @@ def enhance(
         skip_checks=skip_checks,
         in_folder=True,  # Always use in-folder mode for enhance
         agent_directory=agent_directory,
+        agent_garden=agent_garden,
         base_template=base_template,
         skip_welcome=True,  # Skip welcome message since enhance shows its own
         cli_overrides=final_cli_overrides if final_cli_overrides else None,

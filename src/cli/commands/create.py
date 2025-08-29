@@ -58,6 +58,13 @@ def shared_template_options(f: Callable) -> Callable:
     """Decorator to add shared options for template-based commands."""
     # Apply options in reverse order since decorators are applied bottom-up
     f = click.option(
+        "-ag",
+        "--agent-garden",
+        is_flag=True,
+        help="Deployed from Agent Garden - customizes welcome messages",
+        default=False,
+    )(f)
+    f = click.option(
         "--skip-checks",
         is_flag=True,
         help="Skip verification checks for GCP and Vertex AI",
@@ -237,6 +244,7 @@ def create(
     skip_checks: bool,
     in_folder: bool,
     agent_directory: str | None,
+    agent_garden: bool = False,
     base_template: str | None = None,
     skip_welcome: bool = False,
     cli_overrides: dict | None = None,
@@ -247,7 +255,7 @@ def create(
 
         # Display welcome banner (unless skipped)
         if not skip_welcome:
-            display_welcome_banner(agent)
+            display_welcome_banner(agent, agent_garden=agent_garden)
         # Validate project name
         if len(project_name) > 26:
             console.print(
@@ -625,6 +633,7 @@ def create(
                     skip_checks=skip_checks,
                     region=region,
                     debug=debug,
+                    agent_garden=agent_garden,
                 )
             except Exception as e:
                 if debug:
@@ -680,6 +689,7 @@ def create(
                 remote_config=config,
                 in_folder=in_folder,
                 cli_overrides=final_cli_overrides,
+                agent_garden=agent_garden,
             )
 
             # Replace region in all files if a different region was specified
@@ -902,7 +912,11 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
 
 
 def setup_gcp_environment(
-    auto_approve: bool, skip_checks: bool, region: str, debug: bool
+    auto_approve: bool,
+    skip_checks: bool,
+    region: str,
+    debug: bool,
+    agent_garden: bool = False,
 ) -> dict:
     """Set up the GCP environment with proper credentials and project.
 
@@ -911,6 +925,7 @@ def setup_gcp_environment(
         skip_checks: Whether to skip verification checks
         region: GCP region for deployment
         debug: Whether debug logging is enabled
+        agent_garden: Whether this deployment is from Agent Garden
 
     Returns:
         Dictionary with credential information
@@ -934,12 +949,16 @@ def setup_gcp_environment(
             console.print("> Skipping Vertex AI connection test", style="yellow")
         else:
             # Test Vertex AI connection
-            _test_vertex_ai_connection(creds_info["project"], region)
+            _test_vertex_ai_connection(
+                creds_info["project"], region, agent_garden=agent_garden
+            )
     else:
         # Even with auto_approve, we should still set the GCP project
         set_gcp_project(creds_info["project"], set_quota_project=True)
         # Test Vertex AI connection
-        _test_vertex_ai_connection(creds_info["project"], region)
+        _test_vertex_ai_connection(
+            creds_info["project"], region, agent_garden=agent_garden
+        )
 
     return creds_info
 
@@ -1027,7 +1046,7 @@ def _handle_credential_verification(creds_info: dict) -> dict:
 
 
 def _test_vertex_ai_connection(
-    project_id: str, region: str, auto_approve: bool = False
+    project_id: str, region: str, auto_approve: bool = False, agent_garden: bool = False
 ) -> None:
     """Test connection to Vertex AI.
 
@@ -1035,13 +1054,16 @@ def _test_vertex_ai_connection(
         project_id: GCP project ID
         region: GCP region for deployment
         auto_approve: Whether to auto-approve API enablement
+        agent_garden: Whether this deployment is from Agent Garden
     """
     console.print("> Testing GCP and Vertex AI Connection...")
     try:
+        context = "agent-garden" if agent_garden else None
         verify_vertex_connection(
             project_id=project_id,
             location=region,
             auto_approve=auto_approve,
+            context=context,
         )
         console.print(
             f"> ✓ Successfully verified connection to Vertex AI in project {project_id}"

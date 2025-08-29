@@ -25,13 +25,14 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 
 def display_welcome_banner(
-    agent: str | None = None, enhance_mode: bool = False
+    agent: str | None = None, enhance_mode: bool = False, agent_garden: bool = False
 ) -> None:
     """Display the Agent Starter Pack welcome banner.
 
     Args:
         agent: Optional agent specification to customize the welcome message
         enhance_mode: Whether this is for enhancement mode
+        agent_garden: Whether this deployment is from Agent Garden
     """
     if enhance_mode:
         console.print(
@@ -41,6 +42,17 @@ def display_welcome_banner(
         console.print(
             "Enhancing your existing project with production-ready agent capabilities!\n",
             style="green",
+        )
+    elif agent_garden:
+        console.print(
+            "\n=== Welcome to Agent Garden! 🌱 ===",
+            style="bold blue",
+        )
+        console.print(
+            "Powered by [link=https://goo.gle/agent-starter-pack]Google Cloud - Agent Starter Pack [/link]\n",
+        )
+        console.print(
+            "This tool will help you deploy production-ready AI agents from Agent Garden to Google Cloud!\n"
         )
     elif agent and agent.startswith("adk@"):
         console.print(

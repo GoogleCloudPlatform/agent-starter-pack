@@ -35,12 +35,14 @@ from src.cli.utils.version import PACKAGE_NAME, get_current_version
 console = Console()
 
 
-def enable_vertex_ai_api(project_id: str, auto_approve: bool = False) -> bool:
+def enable_vertex_ai_api(
+    project_id: str, auto_approve: bool = False, context: str | None = None
+) -> bool:
     """Enable Vertex AI API with user confirmation and propagation waiting."""
     api_name = "aiplatform.googleapis.com"
 
     # First test if API is already working with a direct connection
-    if _test_vertex_ai_connection(project_id):
+    if _test_vertex_ai_connection(project_id, context=context):
         return True
 
     if not auto_approve:
@@ -80,7 +82,7 @@ def enable_vertex_ai_api(project_id: str, auto_approve: bool = False) -> bool:
         start_time = time.time()
 
         while time.time() - start_time < max_wait_time:
-            if _test_vertex_ai_connection(project_id):
+            if _test_vertex_ai_connection(project_id, context=context):
                 console.print("✓ Vertex AI API is now available")
                 return True
             time.sleep(check_interval)
@@ -97,7 +99,9 @@ def enable_vertex_ai_api(project_id: str, auto_approve: bool = False) -> bool:
         return False
 
 
-def _test_vertex_ai_connection(project_id: str, location: str = "us-central1") -> bool:
+def _test_vertex_ai_connection(
+    project_id: str, location: str = "us-central1", context: str | None = None
+) -> bool:
     """Test Vertex AI connection without raising exceptions."""
     try:
         credentials, _ = google.auth.default()
@@ -106,7 +110,7 @@ def _test_vertex_ai_connection(project_id: str, location: str = "us-central1") -
             client_options=ClientOptions(
                 api_endpoint=f"{location}-aiplatform.googleapis.com"
             ),
-            client_info=get_client_info(),
+            client_info=get_client_info(context),
             transport=initializer.global_config._api_transport,
         )
         request = get_dummy_request(project_id=project_id)
@@ -116,15 +120,16 @@ def _test_vertex_ai_connection(project_id: str, location: str = "us-central1") -
         return False
 
 
-def get_user_agent() -> str:
-    """Returns custom user agent header tuple (version, agent string)."""
+def get_user_agent(context: str | None = None) -> str:
+    """Returns a custom user agent string."""
     version = get_current_version()
-    return f"{version}-{PACKAGE_NAME}/{version}-{PACKAGE_NAME}"
+    prefix = "ag" if context == "agent-garden" else ""
+    return f"{prefix}{version}-{PACKAGE_NAME}/{prefix}{version}-{PACKAGE_NAME}"
 
 
-def get_client_info() -> ClientInfo:
+def get_client_info(context: str | None = None) -> ClientInfo:
     """Returns ClientInfo with custom user agent."""
-    user_agent = get_user_agent()
+    user_agent = get_user_agent(context)
     return ClientInfo(client_library_version=user_agent, user_agent=user_agent)
 
 
@@ -140,14 +145,15 @@ def verify_vertex_connection(
     project_id: str,
     location: str = "us-central1",
     auto_approve: bool = False,
+    context: str | None = None,
 ) -> None:
     """Verifies Vertex AI connection with a test Gemini request."""
     # First try direct connection - if it works, we're done
-    if _test_vertex_ai_connection(project_id, location):
+    if _test_vertex_ai_connection(project_id, location, context):
         return
 
     # If that failed, try to enable the API
-    if not enable_vertex_ai_api(project_id, auto_approve):
+    if not enable_vertex_ai_api(project_id, auto_approve, context):
         raise Exception("Vertex AI API is not enabled and user declined to enable it")
 
     # After enabling, test again with proper error handling
@@ -157,7 +163,7 @@ def verify_vertex_connection(
         client_options=ClientOptions(
             api_endpoint=f"{location}-aiplatform.googleapis.com"
         ),
-        client_info=get_client_info(),
+        client_info=get_client_info(context),
         transport=initializer.global_config._api_transport,
     )
     request = get_dummy_request(project_id=project_id)

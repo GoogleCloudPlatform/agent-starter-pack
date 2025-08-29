@@ -80,6 +80,14 @@ See [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pac
 
 Looking to explore more ADK examples? Check out the [ADK Samples Repository](https://github.com/google/adk-samples) for additional examples and use cases demonstrating ADK's capabilities.
 
+---
+
+## 🌟 Community Showcase
+
+Explore amazing projects built with the Agent Starter Pack! 
+
+**[View Community Showcase →](https://googlecloudplatform.github.io/agent-starter-pack/guide/community-showcase)**
+
 #### Extra Features
 
 The `agent-starter-pack` offers two key features to accelerate and simplify the development of your agent:

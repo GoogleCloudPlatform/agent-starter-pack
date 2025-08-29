@@ -50,4 +50,5 @@ Help us spread the word by giving us a star on GitHub!
 - **Setup:** [Installation Guide](/guide/installation)
 - **Going Live:** [Deployment Guide](/guide/deployment)
 - **Explore Templates:** [Agent Templates Overview](/agents/overview)
+- **Community:** [Community Showcase](/guide/community-showcase)
 - **Command Line:** [CLI Reference](/cli/)

@@ -8,6 +8,7 @@ This document serves as a long-form, comprehensive reference for building, orche
     *   1.1 ADK's Foundational Principles
     *   1.2 Essential Primitives
     *   1.3 Standard Project Layout
+    *   1.A Build Agents without Code (Agent Config)
 2.  [Agent Definitions (`LlmAgent`)](#2-agent-definitions-llmagent)
     *   2.1 Basic `LlmAgent` Setup
     *   2.2 Advanced `LlmAgent` Configuration
@@ -20,6 +21,7 @@ This document serves as a long-form, comprehensive reference for building, orche
     *   4.1 Agent Hierarchy
     *   4.2 Inter-Agent Communication Mechanisms
     *   4.3 Common Multi-Agent Patterns
+    *   4.A Distributed Communication (A2A Protocol)
 5.  [Building Custom Agents (`BaseAgent`)](#5-building-custom-agents-baseagent)
     *   5.1 When to Use Custom Agents
     *   5.2 Implementing `_run_async_impl`
@@ -46,6 +48,7 @@ This document serves as a long-form, comprehensive reference for building, orche
     *   10.1 Callback Mechanism: Interception & Control
     *   10.2 Types of Callbacks
     *   10.3 Callback Best Practices
+    *   10.A Global Control with Plugins
 11. [Authentication for Tools](#11-authentication-for-tools)
     *   11.1 Core Concepts: `AuthScheme` & `AuthCredential`
     *   11.2 Interactive OAuth/OIDC Flows
@@ -60,9 +63,10 @@ This document serves as a long-form, comprehensive reference for building, orche
     *   13.1 Agent Evaluation (`adk eval`)
     *   13.2 Safety & Guardrails
 14. [Debugging, Logging & Observability](#14-debugging-logging--observability)
-15. [Advanced I/O Modalities](#15-advanced-io-modalities)
+15. [Streaming & Advanced I/O](#15-streaming--advanced-io)
 16. [Performance Optimization](#16-performance-optimization)
 17. [General Best Practices & Common Pitfalls](#17-general-best-practices--common-pitfalls)
+18. [Official API & CLI References](#18-official-api--cli-references)
 
 ---
 
@@ -114,6 +118,114 @@ your_project_root/
 ```
 *   `adk web` and `adk run` automatically discover agents in subdirectories with `__init__.py` and `agent.py`.
 *   `.env` files are automatically loaded by `adk` tools when run from the root or agent directory.
+
+### 1.A Build Agents without Code (Agent Config)
+
+ADK allows you to define agents, tools, and even multi-agent workflows using a simple YAML format, eliminating the need to write Python code for orchestration. This is ideal for rapid prototyping and for non-programmers to configure agents.
+
+#### **Getting Started with Agent Config**
+
+*   **Create a Config-based Agent**:
+    ```bash
+    adk create --type=config my_yaml_agent
+    ```
+    This generates a `my_yaml_agent/` folder with `root_agent.yaml` and `.env` files.
+
+*   **Environment Setup** (in `.env` file):
+    ```bash
+    # For Google AI Studio (simpler setup)
+    GOOGLE_GENAI_USE_VERTEXAI=0
+    GOOGLE_API_KEY=<your-Google-Gemini-API-key>
+    
+    # For Google Cloud Vertex AI (production)
+    GOOGLE_GENAI_USE_VERTEXAI=1
+    GOOGLE_CLOUD_PROJECT=<your_gcp_project>
+    GOOGLE_CLOUD_LOCATION=us-central1
+    ```
+
+#### **Core Agent Config Structure**
+
+*   **Basic Agent (`root_agent.yaml`)**:
+    ```yaml
+    # yaml-language-server: $schema=https://raw.githubusercontent.com/google/adk-python/refs/heads/main/src/google/adk/agents/config_schemas/AgentConfig.json
+    name: assistant_agent
+    model: gemini-2.5-flash
+    description: A helper agent that can answer users' various questions.
+    instruction: You are an agent to help answer users' various questions.
+    ```
+
+*   **Agent with Built-in Tools**:
+    ```yaml
+    name: search_agent
+    model: gemini-2.0-flash
+    description: 'an agent whose job it is to perform Google search queries and answer questions about the results.'
+    instruction: You are an agent whose job is to perform Google search queries and answer questions about the results.
+    tools:
+      - name: google_search # Built-in ADK tool
+    ```
+
+*   **Agent with Custom Tools**:
+    ```yaml
+    agent_class: LlmAgent
+    model: gemini-2.5-flash
+    name: prime_agent
+    description: Handles checking if numbers are prime.
+    instruction: |
+      You are responsible for checking whether numbers are prime.
+      When asked to check primes, you must call the check_prime tool with a list of integers.
+      Never attempt to determine prime numbers manually.
+    tools:
+      - name: ma_llm.check_prime # Reference to Python function
+    ```
+
+*   **Multi-Agent System with Sub-Agents**:
+    ```yaml
+    agent_class: LlmAgent
+    model: gemini-2.5-flash
+    name: root_agent
+    description: Learning assistant that provides tutoring in code and math.
+    instruction: |
+      You are a learning assistant that helps students with coding and math questions.
+      
+      You delegate coding questions to the code_tutor_agent and math questions to the math_tutor_agent.
+      
+      Follow these steps:
+      1. If the user asks about programming or coding, delegate to the code_tutor_agent.
+      2. If the user asks about math concepts or problems, delegate to the math_tutor_agent.
+      3. Always provide clear explanations and encourage learning.
+    sub_agents:
+      - config_path: code_tutor_agent.yaml
+      - config_path: math_tutor_agent.yaml
+    ```
+
+#### **Running Agent Config Agents**
+
+From the agent directory, use any of these commands:
+*   `adk web` - Launch web UI interface
+*   `adk run` - Run in terminal without UI
+*   `adk api_server` - Run as a service for other applications
+
+#### **Deployment Support**
+
+Agent Config agents can be deployed using:
+*   `adk deploy cloud_run` - Deploy to Google Cloud Run
+*   `adk deploy agent_engine` - Deploy to Vertex AI Agent Engine
+
+#### **Key Features & Capabilities**
+
+*   **Supported Built-in Tools**: `google_search`, `load_artifacts`, `url_context`, `exit_loop`, `preload_memory`, `get_user_choice`, `enterprise_web_search`, `load_web_page`
+*   **Custom Tool Integration**: Reference Python functions using fully qualified module paths
+*   **Multi-Agent Orchestration**: Link agents via `config_path` references
+*   **Schema Validation**: Built-in YAML schema for IDE support and validation
+
+#### **Current Limitations** (Experimental Feature)
+
+*   **Model Support**: Only Gemini models currently supported
+*   **Language Support**: Custom tools must be written in Python
+*   **Unsupported Agent Types**: `LangGraphAgent`, `A2aAgent`
+*   **Unsupported Tools**: `AgentTool`, `LongRunningFunctionTool`, `VertexAiSearchTool`, `MCPToolset`, `CrewaiTool`, `LangchainTool`, `ExampleTool`
+
+For complete examples and reference, see the [ADK samples repository](https://github.com/search?q=repo%3Agoogle%2Fadk-python+path%3A%2F%5Econtributing%5C%2Fsamples%5C%2F%2F+.yaml&type=code).
 
 ---
 
@@ -228,18 +340,33 @@ This is the most reliable way to make an LLM produce predictable, parseable JSON
     agent = Agent(..., include_contents='none')
     ```
 
-*   **`planner`**: Assign a `BasePlanner` instance (e.g., `ReActPlanner`) to enable multi-step reasoning and planning. (Advanced, covered in Multi-Agents).
+*   **`planner`**: Assign a `BasePlanner` instance to enable multi-step reasoning.
+    *   **`BuiltInPlanner`**: Leverages a model's native "thinking" or planning capabilities (e.g., Gemini).
+        ```python
+        from google.adk.planners import BuiltInPlanner
+        from google.genai.types import ThinkingConfig
 
-*   **`executor`**: Assign a `BaseCodeExecutor` (e.g., `BuiltInCodeExecutor`) to allow the agent to execute code blocks.
-    ```python
-    from google.adk.code_executors import BuiltInCodeExecutor
-    agent = Agent(
-        name="code_agent",
-        model="gemini-2.5-flash",
-        instruction="Write and execute Python code to solve math problems.",
-        executor=[BuiltInCodeExecutor] # Allows agent to run Python code
-    )
-    ```
+        agent = Agent(
+            model="gemini-2.5-flash",
+            planner=BuiltInPlanner(
+                thinking_config=ThinkingConfig(include_thoughts=True)
+            ),
+            # ... tools ...
+        )
+        ```
+    *   **`PlanReActPlanner`**: Instructs the model to follow a structured Plan-Reason-Act output format, useful for models without built-in planning.
+
+*   **`code_executor`**: Assign a `BaseCodeExecutor` to allow the agent to execute code blocks.
+    *   **`BuiltInCodeExecutor`**: The standard, sandboxed code executor provided by ADK for safe execution.
+        ```python
+        from google.adk.code_executors import BuiltInCodeExecutor
+        agent = Agent(
+            name="code_agent",
+            model="gemini-2.5-flash",
+            instruction="Write and execute Python code to solve math problems.",
+            code_executor=BuiltInCodeExecutor() # Corrected from a list to an instance
+        )
+        ```
 
 *   **Callbacks**: Hooks for observing and modifying agent behavior at key lifecycle points (`before_model_callback`, `after_tool_callback`, etc.). (Covered in Callbacks).
 
@@ -541,6 +668,33 @@ interactive_planner_agent = LlmAgent(
 root_agent = interactive_planner_agent
 ```
 
+### 4.A. Distributed Communication (A2A Protocol)
+
+The Agent-to-Agent (A2A) Protocol enables agents to communicate over a network, even if they are written in different languages or run as separate services. Use A2A for integrating with third-party agents, building microservice-based agent architectures, or when a strong, formal API contract is needed. For internal code organization, prefer local sub-agents.
+
+*   **Exposing an Agent**: Make an existing ADK agent available to others over A2A.
+    *   **`to_a2a()` Utility**: The simplest method. Wraps your `root_agent` and creates a runnable FastAPI app, auto-generating the required `agent.json` card.
+        ```python
+        from google.adk.a2a.utils.agent_to_a2a import to_a2a
+        # root_agent is your existing ADK Agent instance
+        a2a_app = to_a2a(root_agent, port=8001)
+        # Run with: uvicorn your_module:a2a_app --host localhost --port 8001
+        ```
+    *   **`adk api_server --a2a`**: A CLI command that serves agents from a directory. Requires you to manually create an `agent.json` card for each agent you want to expose.
+
+*   **Consuming a Remote Agent**: Use a remote A2A agent as if it were a local agent.
+    *   **`RemoteA2aAgent`**: This agent acts as a client proxy. You initialize it with the URL to the remote agent's card.
+        ```python
+        from google.adk.a2a.remote_a2a_agent import RemoteA2aAgent
+
+        # This agent can now be used as a sub-agent or tool
+        prime_checker_agent = RemoteA2aAgent(
+            name="prime_agent",
+            description="A remote agent that checks if numbers are prime.",
+            agent_card="http://localhost:8001/a2a/check_prime_agent/.well-known/agent.json"
+        )
+        ```
+
 ---
 
 ## 5. Building Custom Agents (`BaseAgent`)
@@ -728,17 +882,30 @@ Tools extend an agent's abilities beyond text generation.
 
 ### 7.3 All Tool Types & Their Usage
 
-ADK supports a diverse ecosystem of tools.
+1.  **Custom Function Tools**:
+    *   **`FunctionTool`**: The most common type, wrapping a standard Python function.
+    *   **`LongRunningFunctionTool`**: Wraps an `async` function that `yields` intermediate results, for tasks that provide progress updates.
+    *   **`AgentTool`**: Wraps another `BaseAgent` instance, allowing it to be invoked as a tool by a parent agent.
 
-1.  **`FunctionTool`**: Wraps any Python callable. The most common tool type.
-2.  **`LongRunningFunctionTool`**: For `async` functions that `yield` intermediate results.
-3.  **`AgentTool`**: Wraps another `BaseAgent` instance, allowing it to be called as a tool.
-4.  **`OpenAPIToolset`**: Automatically generates tools from an OpenAPI (Swagger) specification.
-5.  **`MCPToolset`**: Connects to an external Model Context Protocol (MCP) server.
-6.  **Built-in Tools**: `google_search`, `BuiltInCodeExecutor`, `VertexAiSearchTool`. e.g `from google.adk.tools import google_search` 
-Note: google_search is a special tool automatically invoked by the model. It can be passed directly to the agent without wrapping in a custom function.
-7.  **Third-Party Tool Wrappers**: `LangchainTool`, `CrewaiTool`.
-8.  **Google Cloud Tools**: `ApiHubToolset`, `ApplicationIntegrationToolset`.
+2.  **Built-in Tools**: Ready-to-use tools provided by ADK.
+    *   `google_search`: Provides Google Search grounding.
+    *   `BuiltInCodeExecutor`: Enables sandboxed code execution.
+    *   `VertexAiSearchTool`: Provides grounding from your private Vertex AI Search data stores.
+    *   `BigQueryToolset`: A collection of tools for interacting with BigQuery (e.g., `list_datasets`, `execute_sql`).
+    > **Warning**: An agent can only use one type of built-in tool at a time and they cannot be used in sub-agents.
+
+3.  **Third-Party Tool Wrappers**: For seamless integration with other frameworks.
+    *   `LangchainTool`: Wraps a tool from the LangChain ecosystem.
+    *   `CrewaiTool`: Wraps a tool from the CrewAI library.
+
+4.  **OpenAPI & Protocol Tools**: For interacting with APIs and services.
+    *   **`OpenAPIToolset`**: Automatically generates a set of `RestApiTool`s from an OpenAPI (Swagger) v3 specification.
+    *   **`MCPToolset`**: Connects to an external Model Context Protocol (MCP) server to dynamically load its tools.
+
+5.  **Google Cloud Tools**: For deep integration with Google Cloud services.
+    *   **`ApiHubToolset`**: Turns any documented API from Apigee API Hub into a tool.
+    *   **`ApplicationIntegrationToolset`**: Turns Application Integration workflows and Integration Connectors (e.g., Salesforce, SAP) into callable tools.
+    *   **Toolbox for Databases**: An open-source MCP server that ADK can connect to for database interactions.
 
 ---
 
@@ -903,6 +1070,35 @@ def citation_replacement_callback(callback_context: CallbackContext) -> genai_ty
 # Used in an agent like this:
 # report_composer = LlmAgent(..., after_agent_callback=citation_replacement_callback)
 ```
+
+### 10.A. Global Control with Plugins
+
+Plugins are stateful, reusable modules for implementing cross-cutting concerns that apply globally to all agents, tools, and model calls managed by a `Runner`. Unlike Callbacks which are configured per-agent, Plugins are registered once on the `Runner`.
+
+*   **Use Cases**: Ideal for universal logging, application-wide policy enforcement, global caching, and collecting metrics.
+*   **Execution Order**: Plugin callbacks run **before** their corresponding agent-level callbacks. If a plugin callback returns a value, the agent-level callback is skipped.
+*   **Defining a Plugin**: Inherit from `BasePlugin` and implement callback methods.
+    ```python
+    from google.adk.plugins.base_plugin import BasePlugin
+    from google.adk.agents.callback_context import CallbackContext
+
+    class InvocationCounterPlugin(BasePlugin):
+        def __init__(self):
+            super().__init__(name="invocation_counter")
+            self.agent_runs = 0
+
+        async def before_agent_callback(self, callback_context: CallbackContext, **kwargs):
+            self.agent_runs += 1
+            print(f"[Plugin] Total agent runs: {self.agent_runs}")
+    ```
+*   **Registering a Plugin**:
+    ```python
+    from google.adk.runners import Runner
+    # runner = Runner(agent=root_agent, ..., plugins=[InvocationCounterPlugin()])
+    ```
+*   **Error Handling Callbacks**: Plugins support unique error hooks like `on_model_error_callback` and `on_tool_error_callback` for centralized error management.
+*   **Limitation**: Plugins are not supported by the `adk web` interface.
+
 ---
 
 ## 11. Authentication for Tools
@@ -960,6 +1156,7 @@ From local dev to production.
 Fully managed, scalable service for ADK agents on Google Cloud.
 
 *   **Features**: Auto-scaling, session management, observability integration.
+*   **ADK CLI**: `adk deploy agent_engine --project <id> --region <loc> ... /path/to/agent`
 *   **Deployment**: Use `vertexai.agent_engines.create()`.
     ```python
     from vertexai.preview import reasoning_engines # or agent_engines directly in later versions
@@ -981,6 +1178,7 @@ Fully managed, scalable service for ADK agents on Google Cloud.
 
 Serverless container platform for custom web applications.
 
+*   **ADK CLI**: `adk deploy cloud_run --project <id> --region <loc> ... /path/to/agent`
 *   **Deployment**:
     1.  Create a `Dockerfile` for your FastAPI app (using `google.adk.cli.fast_api.get_fast_api_app`).
     2.  Use `gcloud run deploy --source .`.
@@ -1006,6 +1204,7 @@ Serverless container platform for custom web applications.
 
 For maximum control, run your containerized agent in a Kubernetes cluster.
 
+*   **ADK CLI**: `adk deploy gke --project <id> --cluster_name <name> ... /path/to/agent`
 *   **Deployment**:
     1.  Build Docker image (`gcloud builds submit`).
     2.  Create Kubernetes Deployment and Service YAMLs.
@@ -1096,6 +1295,11 @@ Multi-layered defense against harmful content, misalignment, and unsafe actions.
 6.  **Network Controls & VPC-SC**: Confine agent activity within secure perimeters (VPC Service Controls) to prevent data exfiltration.
 7.  **Output Escaping in UIs**: Always properly escape LLM-generated content in web UIs to prevent XSS attacks and indirect prompt injections.
 
+**Grounding**: A key safety and reliability feature that connects agent responses to verifiable information.
+*   **Mechanism**: Uses tools like `google_search` or `VertexAiSearchTool` to fetch real-time or private data.
+*   **Benefit**: Reduces model hallucination by basing responses on retrieved facts.
+*   **Requirement**: When using `google_search`, your application UI **must** display the provided search suggestions and citations to comply with terms of service.
+
 ---
 
 ## 14. Debugging, Logging & Observability
@@ -1121,8 +1325,13 @@ Multi-layered defense against harmful content, misalignment, and unsafe actions.
             print(f"  ERROR: {event.error_message}")
     ```
 *   **Tool/Callback `print` statements**: Simple logging directly within your functions.
-*   **Python `logging` module**: Integrate with standard logging frameworks.
-*   **Tracing Integrations**: ADK supports OpenTelemetry (e.g., via Comet Opik) for distributed tracing.
+*   **Logging**: Use Python's standard `logging` module. Control verbosity with `adk web --log_level DEBUG` or `adk web -v`.
+*   **Observability Integrations**: ADK supports OpenTelemetry, enabling integration with platforms like:
+    *   Google Cloud Trace
+    *   AgentOps
+    *   Arize AX
+    *   Phoenix
+    *   Weave by WandB
     ```python
     # Example using Comet Opik integration (conceptual)
     # pip install comet_opik_adk
@@ -1134,22 +1343,41 @@ Multi-layered defense against harmful content, misalignment, and unsafe actions.
 
 ---
 
-## 15. Advanced I/O Modalities
+## 15. Streaming & Advanced I/O
 
-ADK (especially with Gemini Live API models) supports richer interactions.
+ADK supports real-time, bidirectional communication for interactive experiences like live voice conversations.
 
-*   **Audio**: Input via `Blob(mime_type="audio/pcm", data=bytes)`, Output via `genai_types.SpeechConfig` in `RunConfig`.
-*   **Vision (Images/Video)**: Input via `Blob(mime_type="image/jpeg", data=bytes)` or `Blob(mime_type="video/mp4", data=bytes)`. Models like `gemini-2.5-flash-exp` can process these.
-*   **Multimodal Input in `Content`**:
-    ```python
-    multimodal_content = genai_types.Content(
-        parts=[
-            genai_types.Part(text="Describe this image:"),
-            genai_types.Part(inline_data=genai_types.Blob(mime_type="image/jpeg", data=image_bytes))
-        ]
-    )
-    ```
-*   **Streaming Modalities**: `RunConfig.response_modalities=['TEXT', 'AUDIO']`.
+*   **Bidirectional Streaming**: Enables low-latency, two-way data flow (text, audio, video) between the client and agent, allowing for interruptions.
+*   **Core Components**:
+    *   **`Runner.run_live()`**: The entry point for starting a streaming session.
+    *   **`LiveRequestQueue`**: A queue for sending data (e.g., audio chunks) from the client to the agent during a live session.
+    *   **`RunConfig`**: A configuration object passed to `run_live()` to specify modalities (`['TEXT', 'AUDIO']`), speech synthesis options, etc.
+*   **Streaming Tools**: A special type of `FunctionTool` that can stream intermediate results back to the agent.
+    *   **Definition**: Must be an `async` function with a return type of `AsyncGenerator`.
+        ```python
+        from typing import AsyncGenerator
+
+        async def monitor_stock_price(symbol: str) -> AsyncGenerator[str, None]:
+            """Yields stock price updates as they occur."""
+            while True:
+                price = await get_live_price(symbol)
+                yield f"Update for {symbol}: ${price}"
+                await asyncio.sleep(5)
+        ```
+
+*   **Advanced I/O Modalities**: ADK (especially with Gemini Live API models) supports richer interactions.
+    *   **Audio**: Input via `Blob(mime_type="audio/pcm", data=bytes)`, Output via `genai_types.SpeechConfig` in `RunConfig`.
+    *   **Vision (Images/Video)**: Input via `Blob(mime_type="image/jpeg", data=bytes)` or `Blob(mime_type="video/mp4", data=bytes)`. Models like `gemini-2.5-flash-exp` can process these.
+    *   **Multimodal Input in `Content`**:
+        ```python
+        multimodal_content = genai_types.Content(
+            parts=[
+                genai_types.Part(text="Describe this image:"),
+                genai_types.Part(inline_data=genai_types.Blob(mime_type="image/jpeg", data=image_bytes))
+            ]
+        )
+        ```
+    *   **Streaming Modalities**: `RunConfig.response_modalities=['TEXT', 'AUDIO']`.
 
 ---
 
@@ -1222,3 +1450,15 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+---
+
+## 18. Official API & CLI References
+
+For detailed specifications of all classes, methods, and commands, refer to the official reference documentation.
+
+*   [Python API Reference](./api-reference/python/index.html)
+*   [Java API Reference](./api-reference/java/index.html)
+*   [CLI Reference](./api-reference/cli/index.html)
+*   [REST API Reference](./api-reference/rest/index.md)
+*   [Agent Config YAML Reference](./api-reference/agentconfig/index.html)

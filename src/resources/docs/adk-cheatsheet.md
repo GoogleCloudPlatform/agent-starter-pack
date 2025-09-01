@@ -198,6 +198,13 @@ ADK allows you to define agents, tools, and even multi-agent workflows using a s
       - config_path: math_tutor_agent.yaml
     ```
 
+#### **Loading Agent Config in Python**
+
+```python
+from google.adk.agents import config_agent_utils
+root_agent = config_agent_utils.from_config("{agent_folder}/root_agent.yaml")
+```
+
 #### **Running Agent Config Agents**
 
 From the agent directory, use any of these commands:

@@ -123,7 +123,7 @@ uvx agent-starter-pack enhance . \
   --auto-approve
 ```
 
-**Project Structure:** Expects agent code in `/app` directory (configurable via `--agent-directory`).
+**Project Structure:** Expects agent code in `app/` directory (configurable via `--agent-directory`).
 
 ---
 

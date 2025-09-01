@@ -31,9 +31,9 @@ Provides MLOps and infrastructure templates so developers focus on agent logic.
 Establishes production patterns from day one, saving setup time.
 
 ---
-### Section 2: Creating a New Agent Project
+### Section 2: Creating & Enhancing Agent Projects
 
-Start by creating a new agent project from a predefined template. This process supports both interactive and fully automated setup.
+Start by creating a new agent project from a predefined template, or enhance an existing project with agent capabilities. Both processes support interactive and fully automated setup.
 
 **Prerequisites:**
 Before you begin, ensure you have `uv`/`uvx`, `gcloud` CLI, `terraform`, `git`, and `gh` CLI (for automated CI/CD setup) installed and authenticated.
@@ -62,22 +62,30 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 ```
 
 **Arguments:**
-*   `PROJECT_NAME`: Name for your new project directory and base for GCP resource naming.
+*   `PROJECT_NAME`: Name for your new project directory and base for GCP resource naming (max 26 chars, converted to lowercase).
 
-**Key Options:**
-*   `-a, --agent`: Agent template (e.g., `adk_base`, `agentic_rag`).
-*   `-d, --deployment-target`: Target deployment environment (`cloud_run` or `agent_engine`).
-*   `--cicd-runner`: CI/CD pipeline runner (`google_cloud_build` or `github_actions`).
-*   `-ds, --datastore`: For RAG agents, the datastore (`vertex_ai_search` or `vertex_ai_vector_search`).
-*   `-i, --include-data-ingestion`: Include data ingestion pipeline scaffolding.
-*   `--session-type`: For agents requiring session management on Cloud Run, specifies the storage type (`in_memory`, `alloydb`, `agent_engine`).
-*   `--region`: GCP region (e.g., `us-central1`).
-*   `--auto-approve`: **Skips all interactive prompts (crucial for automation).**
-*   `--debug`: Enables debug logging during creation.
-*   `--agent-directory, -dir`: Name of the agent directory (overrides template default).
-*   `-o, --output-dir`: Output directory for the project (default: current directory).
-*   `--in-folder, -if`: Template files directly into the current directory instead of creating a new project directory.
-*   `--skip-checks`: Skip verification checks for GCP and Vertex AI.
+**Template Selection:**
+*   `-a, --agent`: Agent template - built-in agents (e.g., `adk_base`, `agentic_rag`), remote templates (`adk@gemini-fullstack`, `github.com/user/repo@branch`), or local projects (`local@./path`).
+
+**Deployment Options:**
+*   `-d, --deployment-target`: Target environment (`cloud_run` or `agent_engine`).
+*   `--cicd-runner`: CI/CD runner (`google_cloud_build` or `github_actions`).
+*   `--region`: GCP region (default: `us-central1`).
+
+**Data & Storage:**
+*   `-i, --include-data-ingestion`: Include data ingestion pipeline.
+*   `-ds, --datastore`: Datastore type (`vertex_ai_search`, `vertex_ai_vector_search`, `alloydb`).
+*   `--session-type`: Session storage (`in_memory`, `alloydb`, `agent_engine`).
+
+**Project Creation:**
+*   `-o, --output-dir`: Output directory (default: current directory).
+*   `--agent-directory, -dir`: Agent code directory name (default: `app`).
+*   `--in-folder`: Create files in current directory instead of new subdirectory.
+
+**Automation:**
+*   `--auto-approve`: **Skip all interactive prompts (crucial for automation).**
+*   `--skip-checks`: Skip GCP/Vertex AI verification checks.
+*   `--debug`: Enable debug logging.
 
 **Automated Creation Example:**
 ```bash
@@ -87,6 +95,35 @@ uvx agent-starter-pack create my-automated-agent \
   --region us-central1 \
   --auto-approve
 ```
+
+---
+
+### `agent-starter-pack enhance` Command
+
+Enhance your existing project with AI agent capabilities by adding agent-starter-pack features in-place. This command supports all the same options as `create` but templates directly into the current directory instead of creating a new project directory.
+
+**Usage:**
+```bash
+agent-starter-pack enhance [TEMPLATE_PATH] [OPTIONS]
+```
+
+**Key Differences from `create`:**
+*   Templates into current directory (equivalent to `create --in-folder`)
+*   `TEMPLATE_PATH` defaults to current directory (`.`)
+*   Project name defaults to current directory name
+*   Additional `--base-template` option to override template inheritance
+
+**Enhanced Project Example:**
+```bash
+# Enhance current directory with agent capabilities
+uvx agent-starter-pack enhance . \
+  --base-template adk_base \
+  -d cloud_run \
+  --region us-central1 \
+  --auto-approve
+```
+
+**Project Structure:** Expects agent code in `app/` directory (configurable via `--agent-directory`).
 
 ---
 
@@ -208,42 +245,53 @@ For stateful agents, the starter pack supports persistent sessions.
 ---
 
 ### `agent-starter-pack setup-cicd`
-Automates the entire CI/CD setup for a project on GitHub.
+Automates the complete CI/CD infrastructure setup for GitHub-based deployments. Intelligently detects your CI/CD runner (Google Cloud Build or GitHub Actions) and configures everything automatically.
 
 **Usage:**
 ```bash
 uvx agent-starter-pack setup-cicd [OPTIONS]
 ```
-**Prerequisites:** Run from the project root. `uv`, `gh` CLI, `gcloud` CLI, and `terraform` must be installed and authenticated. Requires `Owner` role on the GCP projects.
 
-**Automated CI/CD Setup Options:**
-*   `--staging-project`: (REQUIRED) The Google Cloud Project ID for your staging environment.
-*   `--prod-project`: (REQUIRED) The Google Cloud Project ID for your production environment.
-*   `--repository-name`: (REQUIRED) The name for the new GitHub repository that will be created.
-*   `--repository-owner`: (REQUIRED) Your GitHub username or organization where the repo will be created.
-*   `--auto-approve`: Skips all interactive confirmation prompts.
+**Prerequisites:** 
+- Run from the project root (directory with `pyproject.toml`)
+- Required tools: `gh` CLI (authenticated), `gcloud` CLI (authenticated), `terraform`
+- `Owner` role on GCP projects
+- GitHub token with `repo` and `workflow` scopes
+
+**Key Options:**
+*   `--staging-project`, `--prod-project`: GCP project IDs (will prompt if omitted).
+*   `--repository-name`, `--repository-owner`: GitHub repo details (will prompt if omitted).
+*   `--cicd-project`: CI/CD resources project (defaults to prod project).
 *   `--dev-project`: Development project ID (optional).
-*   `--cicd-project`: CICD project ID (defaults to prod project if not specified).
-*   `--region`: GCP region (auto-detects from Terraform vars if not specified).
-*   `--host-connection-name`: Host connection name (optional).
-*   `--github-pat`: GitHub Personal Access Token for programmatic auth.
-*   `--github-app-installation-id`: GitHub App Installation ID for programmatic auth.
-*   `--local-state`: Use local Terraform state instead of remote GCS backend.
+*   `--region`: GCP region (default: `us-central1`).
+*   `--auto-approve`: Skip all interactive prompts.
+*   `--local-state`: Use local Terraform state instead of GCS backend.
 *   `--debug`: Enable debug logging.
-*   `--create-repository`: Flag indicating whether to create a new repository.
 
+**What it does:**
+1. Creates/connects GitHub repository
+2. Sets up Terraform infrastructure with remote state
+3. Configures CI/CD runner connection (Cloud Build or GitHub Actions with WIF)
+4. Provisions staging/prod environments
+5. Sets up local Git repository with origin remote
 
 **Automated Example:**
 ```bash
 uvx agent-starter-pack setup-cicd \
-  --staging-project the-user-staging-project \
-  --prod-project the-user-prod-project \
-  --repository-name the-user-repo-name \
-  --repository-owner the-username \
+  --staging-project your-staging-project \
+  --prod-project your-prod-project \
+  --repository-name your-repo-name \
+  --repository-owner your-username \
   --auto-approve
 ```
-* Note: As a coding agent, you must run this command non-interactively. Before executing, you must ask the user to provide the following required flags: `--staging-project`, `--prod-project`, `--repository-name`, and `--repository-owner`. Once you have these values, you can construct and run the command with the `--auto-approve` flag.
-* Note: If the user tells that `setup-cicd` is not a viable option or it wants to use a different git provider, you must not use this command. Instead, you should look at the `deployment/README.md` to get instructions on how to manually deploy the agent.
+
+**After setup, push to trigger pipeline:**
+```bash
+git add . && git commit -m "Initial commit" && git push -u origin main
+```
+
+* Note: For coding agents - ask user for required project IDs and repo details before running with `--auto-approve`.
+* Note: If user prefers different git provider, refer to `deployment/README.md` for manual deployment.
 ---
 ### Section 6: Operational Guidelines for Coding Agents
 

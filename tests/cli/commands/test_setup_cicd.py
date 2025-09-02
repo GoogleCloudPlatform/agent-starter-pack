@@ -27,6 +27,7 @@ from cli.utils.cicd import ProjectConfig
 from src.cli.commands.setup_cicd import (
     display_intro_message,
     display_production_note,
+    prompt_for_repository_details,
     setup_cicd,
     setup_git_repository,
     update_build_triggers,
@@ -521,3 +522,131 @@ def mock_path_exists() -> MagicMock:
     """Mock Path.exists() to simulate pyproject.toml presence"""
     with patch("pathlib.Path.exists", return_value=True):
         yield
+
+
+class TestPromptForRepositoryDetails:
+    """Test cases for prompt_for_repository_details function"""
+
+    @patch("src.cli.commands.setup_cicd.click.prompt")
+    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
+    def test_prompt_with_all_params_and_create_flag(
+        self, mock_run_command: MagicMock, mock_prompt: MagicMock
+    ) -> None:
+        """Test when all params are provided with create_repository flag"""
+        mock_run_command.return_value.stdout = "default-owner"
+
+        name, owner, create = prompt_for_repository_details(
+            repository_name="my-repo",
+            repository_owner="my-owner",
+            create_repository=True,
+            use_existing_repository=False,
+        )
+
+        # Should not prompt for anything when all params and flags are provided
+        mock_prompt.assert_not_called()
+        assert name == "my-repo"
+        assert owner == "my-owner"
+        assert create is True
+
+    @patch("src.cli.commands.setup_cicd.click.prompt")
+    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
+    def test_prompt_with_all_params_and_use_existing_flag(
+        self, mock_run_command: MagicMock, mock_prompt: MagicMock
+    ) -> None:
+        """Test when all params are provided with use_existing_repository flag"""
+        mock_run_command.return_value.stdout = "default-owner"
+
+        name, owner, create = prompt_for_repository_details(
+            repository_name="my-repo",
+            repository_owner="my-owner",
+            create_repository=False,
+            use_existing_repository=True,
+        )
+
+        # Should not prompt for anything when all params and flags are provided
+        mock_prompt.assert_not_called()
+        assert name == "my-repo"
+        assert owner == "my-owner"
+        assert create is False
+
+    @patch("src.cli.commands.setup_cicd.console")
+    @patch("src.cli.commands.setup_cicd.click.prompt")
+    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
+    def test_prompt_with_params_no_flags(
+        self,
+        mock_run_command: MagicMock,
+        mock_prompt: MagicMock,
+        mock_console: MagicMock,
+    ) -> None:
+        """Test when params are provided but no create/use flags"""
+        mock_run_command.return_value.stdout = "default-owner"
+        mock_prompt.return_value = "1"  # Choose create new repository
+
+        name, owner, create = prompt_for_repository_details(
+            repository_name="my-repo",
+            repository_owner="my-owner",
+            create_repository=False,
+            use_existing_repository=False,
+        )
+
+        # Should only prompt for create vs use existing
+        mock_prompt.assert_called_once()
+        assert "1" in str(mock_prompt.call_args) or "2" in str(mock_prompt.call_args)
+        assert name == "my-repo"
+        assert owner == "my-owner"
+        assert create is True  # Selected option 1
+
+    @patch("src.cli.commands.setup_cicd.click.prompt")
+    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
+    def test_prompt_missing_owner(
+        self, mock_run_command: MagicMock, mock_prompt: MagicMock
+    ) -> None:
+        """Test when repository owner is missing"""
+        mock_run_command.return_value.stdout = "default-owner"
+        mock_prompt.side_effect = [
+            "1",  # Choose create first
+            "provided-owner",  # Then provide owner
+        ]
+
+        name, owner, create = prompt_for_repository_details(
+            repository_name="my-repo",
+            repository_owner=None,
+            create_repository=False,
+            use_existing_repository=False,
+        )
+
+        # Should prompt for create vs use, then owner
+        assert mock_prompt.call_count == 2
+        assert name == "my-repo"
+        assert owner == "provided-owner"
+        assert create is True
+
+    @patch("src.cli.commands.setup_cicd.click.prompt")
+    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
+    def test_prompt_missing_name(
+        self, mock_run_command: MagicMock, mock_prompt: MagicMock
+    ) -> None:
+        """Test when repository name is missing"""
+        mock_run_command.return_value.stdout = "default-owner"
+        mock_prompt.side_effect = [
+            "2",  # Choose use existing first
+            "provided-name",  # Then provide name
+        ]
+
+        name, owner, create = prompt_for_repository_details(
+            repository_name=None,
+            repository_owner="my-owner",
+            create_repository=False,
+            use_existing_repository=False,
+        )
+
+        # Should prompt for create vs use, then name
+        assert mock_prompt.call_count == 2
+        assert name == "provided-name"
+        assert owner == "my-owner"
+        assert create is False  # Selected option 2

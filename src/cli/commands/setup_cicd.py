@@ -272,15 +272,24 @@ def update_build_triggers(tf_dir: Path) -> None:
 
 
 def prompt_for_repository_details(
-    repository_name: str | None = None, repository_owner: str | None = None
+    repository_name: str | None = None,
+    repository_owner: str | None = None,
+    create_repository: bool = False,
+    use_existing_repository: bool = False,
 ) -> tuple[str, str, bool]:
     """Interactive prompt for repository details with option to use existing repo."""
     # Get current GitHub username as default owner
     result = run_command(["gh", "api", "user", "--jq", ".login"], capture_output=True)
     default_owner = result.stdout.strip()
-    create_repository = False
 
-    if not (repository_name and repository_owner):
+    # Step 1: Determine create_repository value
+    if create_repository and use_existing_repository:
+        raise ValueError(
+            "Cannot specify both create_repository and use_existing_repository"
+        )
+
+    # If neither flag is set, prompt for the choice
+    if not create_repository and not use_existing_repository:
         console.print("\n📦 Repository Configuration", style="bold blue")
         console.print("Choose an option:")
         console.print("1. Create new repository")
@@ -289,44 +298,41 @@ def prompt_for_repository_details(
         choice = click.prompt(
             "Select option", type=click.Choice(["1", "2"]), default="1"
         )
-        if choice == "1":
-            # New repository
-            create_repository = True
-            if not repository_name:
-                # Get project name from pyproject.toml
-                with open("pyproject.toml", encoding="utf-8") as f:
-                    for line in f:
-                        if line.strip().startswith("name ="):
-                            default_name = line.split("=")[1].strip().strip("\"'")
-                            break
-                    else:
-                        default_name = f"genai-app-{int(time.time())}"
-                repository_name = click.prompt(
-                    "Enter new repository name", default=default_name
-                )
-            if not repository_owner:
-                repository_owner = click.prompt(
-                    "Enter repository owner", default=default_owner
-                )
-        else:
-            # Existing repository
-            create_repository = False
-            while True:
-                repo_url = click.prompt(
-                    "Enter existing repository URL (e.g., https://github.com/owner/repo)"
-                )
-                # Extract owner and repo name from URL
-                match = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
-                if match:
-                    repository_owner = match.group(1)
-                    # Remove .git suffix if present
-                    repository_name = match.group(2).rstrip(".git")
-                    break
+        create_repository = choice == "1"
+    # If use_existing_repository is True, create_repository should be False
+    elif use_existing_repository:
+        create_repository = False
+    # Otherwise create_repository is already True from the flag
+
+    # Step 2: Get repository name if missing
+    if not repository_name:
+        # Get project name from pyproject.toml as default
+        try:
+            with open("pyproject.toml", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("name ="):
+                        default_name = line.split("=")[1].strip().strip("\"'")
+                        break
                 else:
-                    console.print(
-                        "❌ Invalid repository URL format. Please use https://github.com/owner/repo",
-                        style="bold red",
-                    )
+                    default_name = f"genai-app-{int(time.time())}"
+        except FileNotFoundError:
+            default_name = f"genai-app-{int(time.time())}"
+
+        prompt_text = (
+            "Enter new repository name"
+            if create_repository
+            else "Enter existing repository name"
+        )
+        repository_name = click.prompt(prompt_text, default=default_name)
+
+    # Step 3: Get repository owner if missing
+    if not repository_owner:
+        prompt_text = (
+            "Enter repository owner"
+            if create_repository
+            else "Enter existing repository owner"
+        )
+        repository_owner = click.prompt(prompt_text, default=default_owner)
 
     if repository_name is None or repository_owner is None:
         raise ValueError("Repository name and owner must be provided")
@@ -487,6 +493,12 @@ console = Console()
     default=False,
     help="Flag indicating whether to create a new repository",
 )
+@click.option(
+    "--use-existing-repository",
+    is_flag=True,
+    default=False,
+    help="Flag indicating whether to use an existing repository",
+)
 @backoff.on_exception(
     backoff.expo,
     (subprocess.CalledProcessError, click.ClickException),
@@ -508,8 +520,15 @@ def setup_cicd(
     debug: bool,
     auto_approve: bool,
     create_repository: bool,
+    use_existing_repository: bool,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
+
+    # Validate mutually exclusive flags
+    if create_repository and use_existing_repository:
+        raise click.UsageError(
+            "Cannot specify both --create-repository and --use-existing-repository flags"
+        )
 
     # Check if we're in the root folder by looking for pyproject.toml
     if not Path("pyproject.toml").exists():
@@ -592,36 +611,39 @@ def setup_cicd(
     console.print("\n🔍 Checking GitHub CLI scopes...")
     check_github_scopes(cicd_runner)
 
-    # Gather repository details if not provided
-    if not (repository_name and repository_owner):
-        if auto_approve:
-            # Auto-generate repository details when auto-approve is used
-            if not repository_owner:
-                repository_owner = run_command(
-                    ["gh", "api", "user", "--jq", ".login"], capture_output=True
-                ).stdout.strip()
-            if not repository_name:
-                # Get project name from pyproject.toml or generate one
-                try:
-                    with open("pyproject.toml", encoding="utf-8") as f:
-                        for line in f:
-                            if line.strip().startswith("name ="):
-                                repository_name = (
-                                    line.split("=")[1].strip().strip("\"'")
-                                )
-                                break
-                        else:
-                            repository_name = f"genai-app-{int(time.time())}"
-                except FileNotFoundError:
-                    repository_name = f"genai-app-{int(time.time())}"
-            console.print(
-                f"✅ Auto-generated repository: {repository_owner}/{repository_name}"
+    # Gather repository details
+    if auto_approve:
+        # Auto-generate repository details when auto-approve is used
+        if not repository_owner:
+            repository_owner = run_command(
+                ["gh", "api", "user", "--jq", ".login"], capture_output=True
+            ).stdout.strip()
+        if not repository_name:
+            # Get project name from pyproject.toml or generate one
+            try:
+                with open("pyproject.toml", encoding="utf-8") as f:
+                    for line in f:
+                        if line.strip().startswith("name ="):
+                            repository_name = line.split("=")[1].strip().strip("\"'")
+                            break
+                    else:
+                        repository_name = f"genai-app-{int(time.time())}"
+            except FileNotFoundError:
+                repository_name = f"genai-app-{int(time.time())}"
+        console.print(
+            f"✅ Auto-generated repository: {repository_owner}/{repository_name}"
+        )
+        # Keep the CLI argument value for create_repository
+    else:
+        # Use prompt_for_repository_details to fill in any missing information
+        repository_name, repository_owner, create_repository = (
+            prompt_for_repository_details(
+                repository_name,
+                repository_owner,
+                create_repository,
+                use_existing_repository,
             )
-            # Keep the CLI argument value for create_repository
-        else:
-            repository_name, repository_owner, create_repository = (
-                prompt_for_repository_details(repository_name, repository_owner)
-            )
+        )
 
     assert repository_name is not None, "Repository name must be provided"
     assert repository_owner is not None, "Repository owner must be provided"

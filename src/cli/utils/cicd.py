@@ -103,6 +103,111 @@ def create_github_connection(
     """
     console.print("\n🔗 Creating GitHub connection...")
 
+    # First, ensure Cloud Build API is enabled
+    console.print("🔧 Ensuring Cloud Build API is enabled...")
+    try:
+        run_command(
+            [
+                "gcloud",
+                "services",
+                "enable",
+                "cloudbuild.googleapis.com",
+                "--project",
+                project_id,
+            ],
+            capture_output=True,
+            check=False,  # Don't fail if already enabled
+        )
+        console.print("✅ Cloud Build API enabled")
+
+        # Wait for the API to fully initialize and create the service account
+        console.print(
+            "⏳ Waiting for Cloud Build service account to be created (this typically takes 5-10 seconds)..."
+        )
+        time.sleep(10)
+    except subprocess.CalledProcessError as e:
+        console.print(f"⚠️ Could not enable Cloud Build API: {e}", style="yellow")
+
+    # Get the Cloud Build service account and grant permissions with retry logic
+    try:
+        project_number_result = run_command(
+            [
+                "gcloud",
+                "projects",
+                "describe",
+                project_id,
+                "--format=value(projectNumber)",
+            ],
+            capture_output=True,
+            check=True,
+        )
+        project_number = project_number_result.stdout.strip()
+        cloud_build_sa = (
+            f"service-{project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+        )
+
+        console.print(
+            "🔧 Granting Secret Manager permissions to Cloud Build service account..."
+        )
+
+        # Try to grant permissions with retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                # Grant Secret Manager Admin role to Cloud Build service account
+                result = run_command(
+                    [
+                        "gcloud",
+                        "projects",
+                        "add-iam-policy-binding",
+                        project_id,
+                        f"--member=serviceAccount:{cloud_build_sa}",
+                        "--role=roles/secretmanager.admin",
+                        "--condition=None",
+                    ],
+                    capture_output=True,
+                    check=True,
+                )
+                console.print(
+                    "✅ Secret Manager permissions granted to Cloud Build service account"
+                )
+                break
+            except subprocess.CalledProcessError as e:
+                if "does not exist" in str(e.stderr) and attempt < max_retries - 1:
+                    console.print(
+                        f"⚠️ Service account not ready yet (attempt {attempt + 1}/{max_retries}). Retrying in 10 seconds...",
+                        style="yellow",
+                    )
+                    time.sleep(10)
+                elif attempt < max_retries - 1:
+                    console.print(
+                        f"⚠️ Failed to grant permissions (attempt {attempt + 1}/{max_retries}). Retrying in 5 seconds...",
+                        style="yellow",
+                    )
+                    time.sleep(5)
+                else:
+                    console.print(
+                        f"⚠️ Could not grant Secret Manager permissions after {max_retries} attempts",
+                        style="yellow",
+                    )
+                    console.print(
+                        "You may need to manually grant the permissions if the connection creation fails."
+                    )
+                    # Don't fail here, let the connection creation attempt proceed
+
+        # Wait for IAM changes to propagate
+        console.print(
+            "⏳ Waiting for IAM permissions to propagate (this typically takes 5-10 seconds)..."
+        )
+        time.sleep(10)  # Give IAM time to propagate before proceeding
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"⚠️ Could not setup Cloud Build service account: {e}", style="yellow"
+        )
+        console.print(
+            "You may need to manually grant the permissions if the connection creation fails."
+        )
+
     def try_create_connection() -> subprocess.CompletedProcess[str]:
         cmd = [
             "gcloud",

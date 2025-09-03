@@ -197,10 +197,6 @@ def display_agent_directory_selection(
     is_flag=True,
     help="Shortcut for --base-template adk_base",
 )
-@click.option(
-    "--agent-directory",
-    help="Custom directory name for agent files (default: 'app' or auto-detected from pyproject.toml)",
-)
 @shared_template_options
 @handle_cli_error
 def enhance(
@@ -483,6 +479,11 @@ def enhance(
     final_cli_overrides: dict[str, Any] = {}
     if base_template:
         final_cli_overrides["base_template"] = base_template
+    
+    # For current directory templates, ensure agent_directory is included in cli_overrides
+    if template_path == pathlib.Path(".") and agent_directory:
+        final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})
+        final_cli_overrides["settings"]["agent_directory"] = agent_directory
 
     # Call the create command with in-folder mode enabled
     ctx.invoke(

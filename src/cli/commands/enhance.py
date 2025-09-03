@@ -36,6 +36,19 @@ from .create import (
 
 console = Console()
 
+# Directories to exclude when scanning for agent directories
+_EXCLUDED_DIRS = {
+    ".git",
+    ".github",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    ".terraform",
+}
+
 
 def display_base_template_selection(current_base: str) -> str:
     """Display available base templates and prompt for selection."""
@@ -89,26 +102,15 @@ def display_agent_directory_selection(
     console.print("Choose where your agent code is located:")
 
     # Get all directories in the current path (excluding hidden and common non-agent dirs)
-    exclude_dirs = {
-        ".git",
-        ".github",
-        "__pycache__",
-        "node_modules",
-        ".venv",
-        "venv",
-        "build",
-        "dist",
-        ".terraform",
-    }
-    available_dirs = []
-
-    for item in current_dir.iterdir():
+    available_dirs = [
+        item.name
+        for item in current_dir.iterdir()
         if (
             item.is_dir()
             and not item.name.startswith(".")
-            and item.name not in exclude_dirs
-        ):
-            available_dirs.append(item.name)
+            and item.name not in _EXCLUDED_DIRS
+        )
+    ]
 
     # Sort directories and create choices
     available_dirs.sort()
@@ -135,8 +137,8 @@ def display_agent_directory_selection(
     for dir_name in available_dirs:
         directory_choices[choice_num] = dir_name
         # Check if this directory might contain agent code
-        agent_files = list((current_dir / dir_name).glob("*agent*.py"))
-        hint = " (contains agent*.py)" if agent_files else ""
+        agent_files_exist = any((current_dir / dir_name).glob("*agent*.py"))
+        hint = " (contains agent*.py)" if agent_files_exist else ""
         console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
         if (
             default_choice is None
@@ -481,11 +483,6 @@ def enhance(
     final_cli_overrides: dict[str, Any] = {}
     if base_template:
         final_cli_overrides["base_template"] = base_template
-
-    # Use the final agent directory (could be from CLI, interactive selection, or detection)
-    if template_path == pathlib.Path(".") and final_agent_directory != "app":
-        final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})
-        final_cli_overrides["settings"]["agent_directory"] = final_agent_directory
 
     # Call the create command with in-folder mode enabled
     ctx.invoke(

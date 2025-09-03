@@ -18,7 +18,7 @@ from typing import Any
 
 import click
 from rich.console import Console
-from rich.prompt import IntPrompt
+from rich.prompt import IntPrompt, Prompt
 
 if sys.version_info >= (3, 11):
     import tomllib
@@ -35,6 +35,19 @@ from .create import (
 )
 
 console = Console()
+
+# Directories to exclude when scanning for agent directories
+_EXCLUDED_DIRS = {
+    ".git",
+    ".github",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    ".terraform",
+}
 
 
 def display_base_template_selection(current_base: str) -> str:
@@ -79,6 +92,88 @@ def display_base_template_selection(current_base: str) -> str:
         raise ValueError(f"Invalid base template selection: {choice}")
 
 
+def display_agent_directory_selection(
+    current_dir: pathlib.Path, detected_directory: str
+) -> str:
+    """Display available directories and prompt for agent directory selection."""
+    console.print()
+    console.print("📁 [bold]Agent Directory Selection[/bold]")
+    console.print()
+    console.print("Choose where your agent code is located:")
+
+    # Get all directories in the current path (excluding hidden and common non-agent dirs)
+    available_dirs = [
+        item.name
+        for item in current_dir.iterdir()
+        if (
+            item.is_dir()
+            and not item.name.startswith(".")
+            and item.name not in _EXCLUDED_DIRS
+        )
+    ]
+
+    # Sort directories and create choices
+    available_dirs.sort()
+
+    directory_choices = {}
+    choice_num = 1
+    default_choice = None
+
+    # Only include the detected directory if it actually exists
+    if detected_directory in available_dirs:
+        directory_choices[choice_num] = detected_directory
+        current_indicator = (
+            " (detected)" if detected_directory != "app" else " (default)"
+        )
+        console.print(
+            f"  {choice_num}. [bold]{detected_directory}[/]{current_indicator}"
+        )
+        default_choice = choice_num
+        choice_num += 1
+        # Remove from available_dirs to avoid duplication
+        available_dirs.remove(detected_directory)
+
+    # Add other available directories
+    for dir_name in available_dirs:
+        directory_choices[choice_num] = dir_name
+        # Check if this directory might contain agent code
+        agent_files_exist = any((current_dir / dir_name).glob("*agent*.py"))
+        hint = " (contains agent*.py)" if agent_files_exist else ""
+        console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
+        if (
+            default_choice is None
+        ):  # If no detected directory exists, use first available as default
+            default_choice = choice_num
+        choice_num += 1
+
+    # Add option for custom directory
+    custom_choice = choice_num
+    directory_choices[custom_choice] = "__custom__"
+    console.print(f"  {custom_choice}. [bold]Enter custom directory name[/]")
+
+    # If no directories found and no default set, default to custom option
+    if default_choice is None:
+        default_choice = custom_choice
+
+    console.print()
+    choice = IntPrompt.ask(
+        "Select agent directory", default=default_choice, show_default=True
+    )
+
+    if choice in directory_choices:
+        selected = directory_choices[choice]
+        if selected == "__custom__":
+            console.print()
+            custom_dir = Prompt.ask(
+                "Enter custom agent directory name", default=detected_directory
+            )
+            return custom_dir
+        else:
+            return selected
+    else:
+        raise ValueError(f"Invalid agent directory selection: {choice}")
+
+
 @click.command()
 @click.pass_context
 @click.argument(
@@ -94,11 +189,13 @@ def display_base_template_selection(current_base: str) -> str:
 )
 @click.option(
     "--base-template",
+    "-b",
     help="Base template to inherit from (e.g., adk_base, langgraph_base_react, agentic_rag)",
 )
 @click.option(
-    "--agent-directory",
-    help="Custom directory name for agent files (default: 'app' or auto-detected from pyproject.toml)",
+    "--adk",
+    is_flag=True,
+    help="Shortcut for --base-template adk_base",
 )
 @shared_template_options
 @handle_cli_error
@@ -117,6 +214,7 @@ def enhance(
     skip_checks: bool,
     agent_garden: bool,
     base_template: str | None,
+    adk: bool,
     agent_directory: str | None,
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
@@ -139,6 +237,14 @@ def enhance(
 
     # Display welcome banner for enhance command
     display_welcome_banner(enhance_mode=True)
+
+    # Handle --adk shortcut
+    if adk:
+        if base_template:
+            raise click.ClickException(
+                "Cannot use --adk with --base-template. Use one or the other."
+            )
+        base_template = "adk_base"
 
     # Validate base template if provided
     if base_template and not validate_base_template(base_template):
@@ -283,7 +389,21 @@ def enhance(
                         )
                     pass  # Fall back to default
 
-        final_agent_directory = agent_directory or detected_agent_directory
+        # Check if detected/default app folder exists before showing interactive selection
+        app_folder_exists = (current_dir / detected_agent_directory).exists()
+
+        # Interactive agent directory selection if not provided via CLI, no app folder exists, and not auto-approved
+        if not agent_directory and not app_folder_exists and not auto_approve:
+            selected_agent_directory = display_agent_directory_selection(
+                current_dir, detected_agent_directory
+            )
+            final_agent_directory = selected_agent_directory
+            console.print(
+                f"✅ Selected agent directory: [cyan]{selected_agent_directory}[/cyan]"
+            )
+            console.print()
+        else:
+            final_agent_directory = agent_directory or detected_agent_directory
 
         # Show info about agent directory selection
         if agent_directory:
@@ -359,7 +479,9 @@ def enhance(
     final_cli_overrides: dict[str, Any] = {}
     if base_template:
         final_cli_overrides["base_template"] = base_template
-    if agent_directory:
+
+    # For current directory templates, ensure agent_directory is included in cli_overrides
+    if template_path == pathlib.Path(".") and agent_directory:
         final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})
         final_cli_overrides["settings"]["agent_directory"] = agent_directory
 
@@ -379,7 +501,9 @@ def enhance(
         region=region,
         skip_checks=skip_checks,
         in_folder=True,  # Always use in-folder mode for enhance
-        agent_directory=agent_directory,
+        agent_directory=final_agent_directory
+        if template_path == pathlib.Path(".")
+        else agent_directory,
         agent_garden=agent_garden,
         base_template=base_template,
         skip_welcome=True,  # Skip welcome message since enhance shows its own

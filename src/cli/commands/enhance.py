@@ -479,7 +479,7 @@ def enhance(
     final_cli_overrides: dict[str, Any] = {}
     if base_template:
         final_cli_overrides["base_template"] = base_template
-    
+
     # For current directory templates, ensure agent_directory is included in cli_overrides
     if template_path == pathlib.Path(".") and agent_directory:
         final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})

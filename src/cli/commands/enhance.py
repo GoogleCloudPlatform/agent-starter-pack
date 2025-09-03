@@ -244,7 +244,7 @@ def enhance(
 
     # Handle --adk shortcut
     if adk:
-        if base_template and base_template != "adk_base":
+        if base_template:
             raise click.ClickException(
                 "Cannot use --adk with --base-template. Use one or the other."
             )

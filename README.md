@@ -45,7 +45,7 @@ agent-starter-pack create my-awesome-agent
 
 If you have [`uv`](https://github.com/astral-sh/uv) installed, you can create and set up your project with a single command:
 ```bash
-uvx agent-starter-pack create my-fullstack-agent
+uvx agent-starter-pack create my-awesome-agent
 ```
 This command handles creating the project without needing to pre-install the package into a virtual environment.
 </details>

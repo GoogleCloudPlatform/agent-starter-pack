@@ -638,14 +638,7 @@ def create(
             except Exception as e:
                 if debug:
                     logging.warning(f"GCP environment setup failed: {e}")
-                console.print(
-                    f"> Warning: GCP environment setup failed: {e}", style="yellow"
-                )
-                console.print(
-                    "> Please check your authentication settings and permissions. "
-                    "> Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
-                    style="yellow",
-                )
+                console.print(f"> ⚠️  {e}", style="bold yellow")
                 console.print(
                     "> Continuing with template processing...", style="yellow"
                 )

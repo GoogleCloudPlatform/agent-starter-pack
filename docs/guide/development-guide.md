@@ -58,6 +58,10 @@ Your development loop will look like this:
 # Install dependencies and launch the local playground
 make install && make playground
 ```
+
+::: tip Package Management with uv
+Add new dependencies with `uv add <package>` and remove them with `uv remove <package>`.
+:::
 > Note: The specific UI playground launched by `make playground` depends on the agent template you selected during creation.
 
 ## 2. Deploy to the Cloud

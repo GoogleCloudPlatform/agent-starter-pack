@@ -109,6 +109,7 @@ This starter pack covers all aspects of Agent development, from prototyping and 
 - Python 3.10+
 - [Google Cloud SDK](https://cloud.google.com/sdk/docs/install)
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) (for deployment)
+- [Make](https://www.gnu.org/software/make/) (for development tasks)
 
 
 ## 📚 Documentation

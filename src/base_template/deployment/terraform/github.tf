@@ -119,7 +119,7 @@ resource "github_actions_variable" "app_sa_email_prod" {
   depends_on    = [github_repository.repo]
 }
 
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+{% if cookiecutter.deployment_target == 'cloud_run' or cookiecutter.deployment_target == 'gke' %}
 resource "github_actions_variable" "container_name" {
   repository    = var.repository_name
   variable_name = "CONTAINER_NAME"

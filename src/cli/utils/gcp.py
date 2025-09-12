@@ -250,7 +250,9 @@ def verify_credentials() -> dict:
     except Exception as e:
         # Check if the error message indicates authentication issues
         error_str = str(e).lower()
-        if any(keyword in error_str for keyword in ["credential", "auth", "login", "token"]):
+        if any(
+            keyword in error_str for keyword in ["credential", "auth", "login", "token"]
+        ):
             raise Exception(
                 "Looks like you are not authenticated with Google Cloud.\n"
                 "Please run: `gcloud auth login --update-adc`\n"

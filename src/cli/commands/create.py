@@ -639,7 +639,9 @@ def create(
                 if debug:
                     logging.warning(f"GCP environment setup failed: {e}")
                 console.print(f"> ⚠️  {e}", style="bold yellow")
-                console.print("> Continuing with template processing...", style="yellow")
+                console.print(
+                    "> Continuing with template processing...", style="yellow"
+                )
 
         # Process template
         if not template_source_path:

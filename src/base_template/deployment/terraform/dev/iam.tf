@@ -55,7 +55,7 @@ resource "google_project_iam_member" "app_sa_roles" {
   member     = "serviceAccount:${google_service_account.app_sa.email}"
   depends_on = [resource.google_project_service.services]
 }
-{% elif cookiecutter.deployment_target == 'gke' %}
+{% if cookiecutter.deployment_target == 'gke' %}
 resource "google_service_account" "gke_app_sa" {
   account_id   = "${var.project_name}-gke"
   display_name = "${var.project_name} GKE App Service Account"

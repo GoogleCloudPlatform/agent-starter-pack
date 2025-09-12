@@ -102,7 +102,8 @@ jobs:
             --image {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
             --region {% raw %}${{ vars.REGION }}{% endraw %} \
             --project {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+            
+{%- elif cookiecutter.deployment_target == 'gke' %}
       - name: Deploy to Production (GKE)
         run: |
           sleep 100

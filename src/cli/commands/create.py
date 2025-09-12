@@ -636,19 +636,26 @@ def create(
                     agent_garden=agent_garden,
                 )
             except Exception as e:
+                error_str = str(e).lower()
                 if debug:
                     logging.warning(f"GCP environment setup failed: {e}")
-                console.print(
-                    f"> Warning: GCP environment setup failed: {e}", style="yellow"
-                )
-                console.print(
-                    "> Please check your authentication settings and permissions. "
-                    "> Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
-                    style="yellow",
-                )
-                console.print(
-                    "> Continuing with template processing...", style="yellow"
-                )
+                    
+                # Check if it's an authentication error
+                if any(keyword in error_str for keyword in ["not authenticated", "credential", "gcloud auth login"]):
+                    console.print(f"> ⚠️  {e}", style="bold yellow")
+                    console.print("> Continuing with template processing...", style="yellow")
+                else:
+                    console.print(
+                        f"> Warning: GCP environment setup failed: {e}", style="yellow"
+                    )
+                    console.print(
+                        "> Please check your authentication settings and permissions. "
+                        "> Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
+                        style="yellow",
+                    )
+                    console.print(
+                        "> Continuing with template processing...", style="yellow"
+                    )
 
         # Process template
         if not template_source_path:

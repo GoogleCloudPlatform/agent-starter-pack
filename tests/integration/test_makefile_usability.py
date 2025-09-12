@@ -94,7 +94,7 @@ def validate_makefile_usability(
                 and not target.startswith(".")
                 and "%" not in target  # Skip pattern rules
                 and target
-                not in ["all", "clean", "distclean"]  # Skip common implicit targets
+                not in ["all", "clean", "distclean", "local-backend"]  # Skip common implicit targets and long-running servers
             ):
                 makefile_targets.append(target)
 

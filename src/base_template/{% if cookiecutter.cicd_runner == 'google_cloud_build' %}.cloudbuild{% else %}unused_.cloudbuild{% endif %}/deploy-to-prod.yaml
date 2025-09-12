@@ -81,11 +81,22 @@ steps:
           --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_PROD},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_PROD},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_PROD},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_PROD}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
+{%- elif cookiecutter.deployment_target == 'gke' %}
+  - name: "gcr.io/cloud-builders/gke-deploy"
+    args:
+    - run
+    - --filename="file"
+    - --location=${_REGION}
+    - --cluster=${_CLUSTER}
+    - --project=${_PROD_PROJECT_ID}
 {%- endif %}
 
 substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID
   _REGION: us-central1
+{%- if cookiecutter.deployment_target == 'gke' %}
+  _CLUSTER: adk-ap
+{%- endif %}
 
 logsBucket: gs://${PROJECT_ID}-{{ cookiecutter.project_name | replace('_', '-') }}-logs-data/build-logs
 options:

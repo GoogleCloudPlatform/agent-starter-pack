@@ -102,6 +102,10 @@ jobs:
             --image {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
             --region {% raw %}${{ vars.REGION }}{% endraw %} \
             --project {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+      - name: Deploy to Production (GKE)
+        run: |
+          sleep 100
 
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 
@@ -114,4 +118,3 @@ jobs:
             --service-account {% raw %}${{ vars.APP_SA_EMAIL_PROD }}{% endraw %} \
             --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}{%- endif %}{%- endif %}"
 {%- endif %}
-

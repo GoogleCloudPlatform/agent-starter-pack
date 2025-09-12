@@ -16,7 +16,7 @@
 resource "google_container_cluster" "default" {
   for_each = local.deploy_project_ids
 
-  name                = var.project_name
+  name                = "adk-ap"
   location            = var.region
   project             = var.prod_project_id
 

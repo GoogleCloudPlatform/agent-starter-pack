@@ -38,14 +38,17 @@ def agent_app() -> AgentEngineApp:
     return app
 
 {% if "adk" in cookiecutter.tags %}
-def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
+@pytest.mark.asyncio
+async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     """
     Integration test for the agent stream query functionality.
     Tests that the agent returns valid streaming responses.
     """
-    # Create message and events for the stream_query
+    # Create message and events for the async_stream_query
     message = "What's the weather in San Francisco?"
-    events = list(agent_app.stream_query(message=message, user_id="test"))
+    events = []
+    async for event in agent_app.async_stream_query(message=message, user_id="test"):
+        events.append(event)
     assert len(events) > 0, "Expected at least one chunk in response"
 
     # Check for valid content in the response

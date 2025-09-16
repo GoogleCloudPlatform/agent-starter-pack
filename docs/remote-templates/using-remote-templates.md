@@ -7,9 +7,10 @@ Remote templates let you instantly create production-ready AI agents from Git re
 When you use a remote template, the system:
 
 1. **Fetches** the template repository from Git
-2. **Applies intelligent defaults** based on repository structure
-3. **Merges** template files with base agent infrastructure
-4. **Generates** a complete, production-ready agent project
+2. **Checks for version locking** - if the template specifies a starter pack version in `uv.lock`, automatically uses that version for guaranteed compatibility
+3. **Applies intelligent defaults** based on repository structure
+4. **Merges** template files with base agent infrastructure
+5. **Generates** a complete, production-ready agent project
 
 The file merging follows this priority order:
 1. Base template files (foundation)

@@ -37,9 +37,10 @@ uvx agent-starter-pack create test-agent -a https://github.com/you/your-template
 
 Remote templates work by:
 1. **Fetching** template repositories from Git
-2. **Applying** intelligent defaults based on repository structure  
-3. **Merging** template files with base agent infrastructure
-4. **Generating** complete, production-ready agent projects
+2. **Version locking** - automatically uses the exact starter pack version specified by the template for guaranteed compatibility
+3. **Applying** intelligent defaults based on repository structure  
+4. **Merging** template files with base agent infrastructure
+5. **Generating** complete, production-ready agent projects
 
 Any Git repository can become a template - the system handles the complexity automatically.
 

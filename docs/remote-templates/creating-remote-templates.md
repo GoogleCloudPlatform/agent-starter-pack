@@ -231,6 +231,57 @@ dependencies = [
 
 **Best Practice:** Always include a `uv.lock` file for reproducible builds.
 
+### Version Locking for Guaranteed Compatibility
+
+For maximum compatibility and stability, you can lock your remote template to a specific version of the Agent Starter Pack. This ensures that your template will always be processed with the exact version it was designed for, preventing potential breaking changes from affecting your users.
+
+**To enable version locking:**
+
+1. **Add agent-starter-pack as a dev dependency** in your `pyproject.toml`:
+   ```toml
+   [dependency-groups]
+   dev = [
+       "agent-starter-pack==0.14.1",  # Lock to specific version
+       # ... your other dev dependencies
+   ]
+   ```
+
+2. **Generate the lock file:**
+   ```bash
+   uv lock
+   ```
+
+3. **Commit both files:**
+   ```bash
+   git add pyproject.toml uv.lock
+   git commit -m "Lock agent-starter-pack version for compatibility"
+   ```
+
+**How it works:**
+- When users fetch your remote template, the starter pack automatically detects the locked version in `uv.lock`
+- It then executes `uvx agent-starter-pack==VERSION` with the locked version (requires `uv` to be installed)
+- This guarantees your template is processed with the exact version you tested it with
+
+**Requirements:**
+- Users must have `uv` installed to use version-locked templates
+- If `uv` is not available, the command will fail with installation instructions
+
+**When to use version locking:**
+- ✅ Your template uses specific starter pack features that might change
+- ✅ You want to guarantee long-term stability for your users
+- ✅ Your template is critical infrastructure that needs predictable behavior
+- ❌ You always want the latest starter pack features (trade-off: potential breaking changes)
+
+**Example user experience:**
+```bash
+uvx agent-starter-pack create my-project -a github.com/you/your-template
+
+# Output:
+# 🔒 Remote template specifies agent-starter-pack version 0.14.1 in uv.lock
+# 📦 Executing nested command: uvx agent-starter-pack==0.14.1
+# [continues with locked version]
+```
+
 ### Makefile Customization
 
 If your template includes a `Makefile`, it will be intelligently merged:

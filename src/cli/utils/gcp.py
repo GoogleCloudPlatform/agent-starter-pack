@@ -17,7 +17,7 @@ import os
 import subprocess
 import time
 
-# Suppress logging warnings
+# Suppress GRPC logging warnings
 os.environ["GRPC_VERBOSITY"] = "ERROR"
 os.environ["GLOG_minloglevel"] = "2"
 

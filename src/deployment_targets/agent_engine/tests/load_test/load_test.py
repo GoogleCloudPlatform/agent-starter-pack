@@ -36,7 +36,7 @@ engine_id = parts[5]
 
 # Convert remote agent engine ID to streaming URL.
 base_url = f"https://{location}-aiplatform.googleapis.com"
-url_path = f"/v1beta1/projects/{project_id}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
+url_path = f"/v1/projects/{project_id}/locations/{location}/reasoningEngines/{engine_id}:streamQuery"
 
 logger.info("Using remote agent engine ID: %s", remote_agent_engine_id)
 logger.info("Using base URL: %s", base_url)
@@ -56,10 +56,11 @@ class ChatStreamUser(HttpUser):
         headers["Authorization"] = f"Bearer {os.environ['_AUTH_TOKEN']}"
 {% if "adk" in cookiecutter.tags %}
         data = {
+            "class_method": "async_stream_query",
             "input": {
-                "message": "What's the weather in San Francisco?",
                 "user_id": "test",
-            }
+                "message": "What's the weather in San Francisco?",
+            },
         }
 {% else %}
         data = {
@@ -83,7 +84,11 @@ class ChatStreamUser(HttpUser):
             headers=headers,
             json=data,
             catch_response=True,
+{%- if "adk" in cookiecutter.tags %}
+            name="/streamQuery async_stream_query",
+{%- else %}
             name="/stream_messages first message",
+{%- endif %}
             stream=True,
             params={"alt": "sse"},
         ) as response:
@@ -107,7 +112,11 @@ class ChatStreamUser(HttpUser):
                 total_time = end_time - start_time
                 self.environment.events.request.fire(
                     request_type="POST",
+{%- if "adk" in cookiecutter.tags %}
+                    name="/streamQuery end",
+{%- else %}
                     name="/stream_messages end",
+{%- endif %}
                     response_time=total_time * 1000,  # Convert to milliseconds
                     response_length=len(events),
                     response=response,

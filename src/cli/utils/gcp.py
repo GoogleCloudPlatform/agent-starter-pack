@@ -13,8 +13,12 @@
 # limitations under the License.
 
 # ruff: noqa: E722
+import os
 import subprocess
 import time
+
+# Suppress gRPC verbose logging
+os.environ["GRPC_VERBOSITY"] = "NONE"
 
 import google.auth
 from google.api_core.client_options import ClientOptions

@@ -28,7 +28,10 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 from jinja2 import Environment
+from packaging import version as pkg_version
 from rich.console import Console
+
+from src.cli.utils.version import get_current_version
 
 
 @dataclass
@@ -127,15 +130,113 @@ def parse_agent_spec(agent_spec: str) -> RemoteTemplateSpec | None:
     return None
 
 
+def check_and_execute_with_version_lock(
+    template_dir: pathlib.Path,
+    original_agent_spec: str | None = None,
+    locked: bool = False,
+) -> bool:
+    """Check if remote template has agent-starter-pack version lock and execute if found.
+
+    Args:
+        template_dir: Path to the fetched template directory
+        original_agent_spec: The original agent spec (remote URL) to replace with local path
+        locked: Whether this is already a locked execution (prevents recursion)
+
+    Returns:
+        True if version lock was found and executed, False otherwise
+    """
+    # Skip version locking if we're already in a locked execution (prevents recursion)
+    if locked:
+        return False
+    uv_lock_path = template_dir / "uv.lock"
+    version = parse_agent_starter_pack_version_from_lock(uv_lock_path)
+
+    if version:
+        console = Console()
+        console.print(
+            f"🔒 Remote template requires agent-starter-pack version {version}",
+            style="bold blue",
+        )
+        console.print(
+            f"📦 Switching to version {version}...",
+            style="dim",
+        )
+
+        # Reconstruct the original command but with version constraint
+        import sys
+
+        original_args = sys.argv[1:]  # Skip 'agent-starter-pack' or script name
+
+        # Add version lock specific parameters and handle remote URL replacement
+        if original_agent_spec:
+            # Replace remote agent spec with local path
+            modified_args = []
+            for arg in original_args:
+                if arg == original_agent_spec:
+                    # Replace remote URL with local template directory
+                    modified_args.append(f"local@{template_dir}")
+                else:
+                    modified_args.append(arg)
+            original_args = modified_args
+
+        # Add version lock flags only for ASP versions 0.14.1 and above
+        current_version = get_current_version()
+        if pkg_version.parse(current_version) > pkg_version.parse("0.14.1"):
+            original_args.extend(["--skip-welcome", "--locked"])
+
+        try:
+            # Check if uvx is available
+            subprocess.run(["uvx", "--version"], capture_output=True, check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            console.print(
+                f"❌ Remote template requires agent-starter-pack version {version}, but 'uvx' is not installed",
+                style="bold red",
+            )
+            console.print(
+                "💡 Install uv to use version-locked remote templates:",
+                style="bold blue",
+            )
+            console.print("   curl -LsSf https://astral.sh/uv/install.sh | sh")
+            console.print(
+                "   OR visit: https://docs.astral.sh/uv/getting-started/installation/"
+            )
+            sys.exit(1)
+
+        try:
+            # Execute uvx with the locked version
+            cmd = ["uvx", f"agent-starter-pack=={version}", *original_args]
+            logging.debug(f"Executing nested command: {' '.join(cmd)}")
+            subprocess.run(cmd, check=True)
+            return True
+
+        except subprocess.CalledProcessError as e:
+            console.print(
+                f"❌ Failed to execute with locked version {version}: {e}",
+                style="bold red",
+            )
+            console.print(
+                "⚠️  Continuing with current version, but compatibility is not guaranteed",
+                style="yellow",
+            )
+            # Continue with current execution instead of failing completely
+
+    return False
+
+
 def fetch_remote_template(
     spec: RemoteTemplateSpec,
+    original_agent_spec: str | None = None,
+    locked: bool = False,
 ) -> tuple[pathlib.Path, pathlib.Path]:
     """Fetch remote template and return path to template directory.
 
-    Uses Git to clone the remote repository.
+    Uses Git to clone the remote repository. If the template contains a uv.lock
+    with agent-starter-pack version constraint, will execute nested uvx command.
 
     Args:
         spec: Remote template specification
+        original_agent_spec: Original agent spec string (used to prevent recursion)
+        locked: Whether this is already a locked execution (prevents recursion)
 
     Returns:
         A tuple containing:
@@ -187,6 +288,16 @@ def fetch_remote_template(
             raise FileNotFoundError(
                 f"Template path not found in the repository: {spec.template_path}"
             )
+
+        # Check for version lock and execute nested command if found
+        if check_and_execute_with_version_lock(
+            template_dir, original_agent_spec, locked
+        ):
+            # If we executed with locked version, the nested process will handle everything
+            # Clean up and exit successfully
+            shutil.rmtree(temp_path, ignore_errors=True)
+            # Exit with success since the nested command will handle the rest
+            sys.exit(0)
 
         return template_dir, temp_path
     except Exception as e:
@@ -456,6 +567,41 @@ def display_adk_caveat_if_needed(agents: dict[int, dict[str, Any]]) -> None:
         console.print(
             "[dim]   The starter pack attempts to create a working codebase, but you'll need to follow the generated README for complete setup.[/]"
         )
+
+
+def parse_agent_starter_pack_version_from_lock(
+    uv_lock_path: pathlib.Path,
+) -> str | None:
+    """Parse agent-starter-pack version from uv.lock file.
+
+    Args:
+        uv_lock_path: Path to uv.lock file
+
+    Returns:
+        Version string if found, None otherwise
+    """
+    if not uv_lock_path.exists():
+        return None
+
+    try:
+        with open(uv_lock_path, "rb") as f:
+            lock_data = tomllib.load(f)
+
+        # Look for agent-starter-pack in the packages section
+        packages = lock_data.get("package", [])
+        for package in packages:
+            if package.get("name") == "agent-starter-pack":
+                version = package.get("version")
+                if version:
+                    logging.debug(
+                        f"Found agent-starter-pack version {version} in uv.lock"
+                    )
+                    return version
+
+    except Exception as e:
+        logging.warning(f"Error parsing uv.lock file {uv_lock_path}: {e}")
+
+    return None
 
 
 def render_and_merge_makefiles(

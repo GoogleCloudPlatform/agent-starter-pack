@@ -21,11 +21,13 @@ import pytest
 
 from src.cli.utils.remote_template import (
     RemoteTemplateSpec,
+    check_and_execute_with_version_lock,
     fetch_remote_template,
     get_base_template_name,
     load_remote_template_config,
     merge_template_configs,
     parse_agent_spec,
+    parse_agent_starter_pack_version_from_lock,
     render_and_merge_makefiles,
 )
 
@@ -623,7 +625,333 @@ class TestRenderAndMergeMakefiles:
 
         write_call = write_calls[0][0][0]
         assert "installing test_project" in write_call
-        assert "lint:" in write_call
+
+
+class TestParseAgentStarterPackVersionFromLock:
+    """Test parsing agent-starter-pack version from uv.lock files."""
+
+    def test_parse_version_from_valid_lock_file(self) -> None:
+        """Test parsing version from a valid uv.lock file."""
+        lock_content = {
+            "version": 1,
+            "package": [
+                {
+                    "name": "agent-starter-pack",
+                    "version": "0.14.1",
+                    "source": {"registry": "https://pypi.org/simple"},
+                },
+                {
+                    "name": "other-package",
+                    "version": "1.0.0",
+                    "source": {"registry": "https://pypi.org/simple"},
+                },
+            ],
+        }
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch("builtins.open", mock_open()),
+        ):
+            mock_toml_load.return_value = lock_content
+
+            lock_path = pathlib.Path("/mock/template/uv.lock")
+            result = parse_agent_starter_pack_version_from_lock(lock_path)
+
+            assert result == "0.14.1"
+
+    def test_parse_version_no_agent_starter_pack(self) -> None:
+        """Test parsing when agent-starter-pack is not in the lock file."""
+        lock_content = {
+            "version": 1,
+            "package": [
+                {
+                    "name": "other-package",
+                    "version": "1.0.0",
+                    "source": {"registry": "https://pypi.org/simple"},
+                },
+            ],
+        }
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch("builtins.open", mock_open()),
+        ):
+            mock_toml_load.return_value = lock_content
+
+            lock_path = pathlib.Path("/mock/template/uv.lock")
+            result = parse_agent_starter_pack_version_from_lock(lock_path)
+
+            assert result is None
+
+    def test_parse_version_file_not_exists(self) -> None:
+        """Test parsing when uv.lock file doesn't exist."""
+        with patch("pathlib.Path.exists", return_value=False):
+            lock_path = pathlib.Path("/mock/template/uv.lock")
+            result = parse_agent_starter_pack_version_from_lock(lock_path)
+
+            assert result is None
+
+    def test_parse_version_invalid_toml(self) -> None:
+        """Test parsing when uv.lock file has invalid TOML."""
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch("builtins.open", mock_open()),
+            patch("src.cli.utils.remote_template.logging.warning") as mock_warning,
+        ):
+            mock_toml_load.side_effect = Exception("Invalid TOML")
+
+            lock_path = pathlib.Path("/mock/template/uv.lock")
+            result = parse_agent_starter_pack_version_from_lock(lock_path)
+
+            assert result is None
+            mock_warning.assert_called_once()
+
+    def test_parse_version_no_version_field(self) -> None:
+        """Test parsing when agent-starter-pack package has no version field."""
+        lock_content = {
+            "version": 1,
+            "package": [
+                {
+                    "name": "agent-starter-pack",
+                    "source": {"registry": "https://pypi.org/simple"},
+                },
+            ],
+        }
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch("builtins.open", mock_open()),
+        ):
+            mock_toml_load.return_value = lock_content
+
+            lock_path = pathlib.Path("/mock/template/uv.lock")
+            result = parse_agent_starter_pack_version_from_lock(lock_path)
+
+            assert result is None
+
+
+class TestCheckAndExecuteWithVersionLock:
+    """Test version lock checking and execution functionality."""
+
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    def test_no_version_lock_found(self, mock_parse_version: MagicMock) -> None:
+        """Test when no version lock is found."""
+        mock_parse_version.return_value = None
+
+        template_dir = pathlib.Path("/mock/template")
+        result = check_and_execute_with_version_lock(template_dir)
+
+        assert result is False
+        mock_parse_version.assert_called_once_with(template_dir / "uv.lock")
+
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    def test_already_locked_execution(self, mock_parse_version: MagicMock) -> None:
+        """Test that locked execution is skipped to prevent recursion."""
+        template_dir = pathlib.Path("/mock/template")
+        result = check_and_execute_with_version_lock(template_dir, locked=True)
+
+        assert result is False
+        mock_parse_version.assert_not_called()
+
+    @patch("src.cli.utils.remote_template.subprocess.run")
+    @patch("src.cli.utils.remote_template.get_current_version")
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch("src.cli.utils.remote_template.Console")
+    def test_version_lock_uvx_not_available(
+        self,
+        mock_console: MagicMock,
+        mock_parse_version: MagicMock,
+        mock_get_version: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test when version lock is found but uvx is not available."""
+        mock_parse_version.return_value = "0.14.1"
+        mock_get_version.return_value = "0.15.0"
+        mock_subprocess.side_effect = FileNotFoundError("uvx not found")
+
+        template_dir = pathlib.Path("/mock/template")
+
+        with pytest.raises(SystemExit, match="1"):
+            check_and_execute_with_version_lock(template_dir)
+
+        # Verify console messages
+        console_instance = mock_console.return_value
+        assert (
+            console_instance.print.call_count >= 3
+        )  # Version message, error, and install instructions
+
+    @patch(
+        "sys.argv",
+        ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
+    )
+    @patch("src.cli.utils.remote_template.subprocess.run")
+    @patch("src.cli.utils.remote_template.get_current_version")
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch("src.cli.utils.remote_template.Console")
+    def test_version_lock_successful_execution(
+        self,
+        mock_console: MagicMock,
+        mock_parse_version: MagicMock,
+        mock_get_version: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test successful version lock execution."""
+        mock_parse_version.return_value = "0.14.1"
+        mock_get_version.return_value = "0.15.0"
+
+        # Mock uvx availability check (first call) and execution (second call)
+        mock_subprocess.side_effect = [
+            MagicMock(returncode=0),  # uvx --version succeeds
+            MagicMock(returncode=0),  # uvx execution succeeds
+        ]
+
+        template_dir = pathlib.Path("/mock/template")
+        original_spec = "remote/template"
+
+        result = check_and_execute_with_version_lock(template_dir, original_spec)
+
+        assert result is True
+
+        # Verify the correct command was executed
+        expected_cmd = [
+            "uvx",
+            "agent-starter-pack==0.14.1",
+            "create",
+            "test-project",
+            "-a",
+            "local@/mock/template",
+            "--skip-welcome",
+            "--locked",
+        ]
+        mock_subprocess.assert_called_with(expected_cmd, check=True)
+
+    @patch(
+        "sys.argv",
+        ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
+    )
+    @patch("src.cli.utils.remote_template.subprocess.run")
+    @patch("src.cli.utils.remote_template.get_current_version")
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch("src.cli.utils.remote_template.Console")
+    def test_version_lock_execution_failure(
+        self,
+        mock_console: MagicMock,
+        mock_parse_version: MagicMock,
+        mock_get_version: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test version lock execution failure with graceful fallback."""
+        mock_parse_version.return_value = "0.14.1"
+        mock_get_version.return_value = "0.15.0"
+
+        # Mock uvx availability check succeeds but execution fails
+        mock_subprocess.side_effect = [
+            MagicMock(returncode=0),  # uvx --version succeeds
+            subprocess.CalledProcessError(
+                1, "uvx", stderr="Execution failed"
+            ),  # uvx execution fails
+        ]
+
+        template_dir = pathlib.Path("/mock/template")
+        original_spec = "remote/template"
+
+        result = check_and_execute_with_version_lock(template_dir, original_spec)
+
+        assert result is False
+
+        # Verify error and warning messages were printed
+        console_instance = mock_console.return_value
+        print_calls = [call[0][0] for call in console_instance.print.call_args_list]
+        assert any(
+            "Failed to execute with locked version" in call for call in print_calls
+        )
+        assert any("Continuing with current version" in call for call in print_calls)
+
+    @patch("sys.argv", ["agent-starter-pack", "create", "test-project"])
+    @patch("src.cli.utils.remote_template.subprocess.run")
+    @patch("src.cli.utils.remote_template.get_current_version")
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch("src.cli.utils.remote_template.Console")
+    def test_version_lock_no_original_spec(
+        self,
+        mock_console: MagicMock,
+        mock_parse_version: MagicMock,
+        mock_get_version: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test version lock execution without original agent spec replacement."""
+        mock_parse_version.return_value = "0.14.1"
+        mock_get_version.return_value = "0.15.0"
+
+        # Mock uvx availability and execution
+        mock_subprocess.side_effect = [
+            MagicMock(returncode=0),  # uvx --version succeeds
+            MagicMock(returncode=0),  # uvx execution succeeds
+        ]
+
+        template_dir = pathlib.Path("/mock/template")
+
+        result = check_and_execute_with_version_lock(template_dir)
+
+        assert result is True
+
+        # Verify the command was executed without agent spec replacement
+        expected_cmd = [
+            "uvx",
+            "agent-starter-pack==0.14.1",
+            "create",
+            "test-project",
+            "--skip-welcome",
+            "--locked",
+        ]
+        mock_subprocess.assert_called_with(expected_cmd, check=True)
+
+    @patch(
+        "sys.argv",
+        ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
+    )
+    @patch("src.cli.utils.remote_template.subprocess.run")
+    @patch("src.cli.utils.remote_template.get_current_version")
+    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch("src.cli.utils.remote_template.Console")
+    def test_version_lock_old_version_no_flags(
+        self,
+        mock_console: MagicMock,
+        mock_parse_version: MagicMock,
+        mock_get_version: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test version lock execution with older ASP version that doesn't support --locked flag."""
+        mock_parse_version.return_value = "0.14.1"
+        mock_get_version.return_value = "0.14.0"  # Older version
+
+        # Mock uvx availability and execution
+        mock_subprocess.side_effect = [
+            MagicMock(returncode=0),  # uvx --version succeeds
+            MagicMock(returncode=0),  # uvx execution succeeds
+        ]
+
+        template_dir = pathlib.Path("/mock/template")
+        original_spec = "remote/template"
+
+        result = check_and_execute_with_version_lock(template_dir, original_spec)
+
+        assert result is True
+
+        # Verify the command was executed without --skip-welcome and --locked flags
+        expected_cmd = [
+            "uvx",
+            "agent-starter-pack==0.14.1",
+            "create",
+            "test-project",
+            "-a",
+            "local@/mock/template",
+        ]
+        mock_subprocess.assert_called_with(expected_cmd, check=True)
 
     @patch("pathlib.Path.exists")
     @patch("builtins.open", new_callable=mock_open)

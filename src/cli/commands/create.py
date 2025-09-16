@@ -226,6 +226,20 @@ def normalize_project_name(project_name: str) -> str:
     help="Template files directly into the current directory instead of creating a new project directory",
     default=False,
 )
+@click.option(
+    "--skip-welcome",
+    is_flag=True,
+    hidden=True,
+    help="Skip the welcome banner",
+    default=False,
+)
+@click.option(
+    "--locked",
+    is_flag=True,
+    hidden=True,
+    help="Internal flag for version-locked remote templates",
+    default=False,
+)
 @shared_template_options
 @handle_cli_error
 def create(
@@ -247,6 +261,7 @@ def create(
     agent_garden: bool = False,
     base_template: str | None = None,
     skip_welcome: bool = False,
+    locked: bool = False,
     cli_overrides: dict | None = None,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
@@ -337,8 +352,22 @@ def create(
                     ignore=get_standard_ignore_patterns(),
                 )
 
+                # Check for version lock and execute nested command if found
+                from ..utils.remote_template import check_and_execute_with_version_lock
+
+                if check_and_execute_with_version_lock(
+                    template_source_path, agent, locked
+                ):
+                    # If we executed with locked version, cleanup and exit
+                    shutil.rmtree(temp_dir, ignore_errors=True)
+                    return
+
                 selected_agent = f"local_{template_source_path.name}"
-                console.print(f"Using local template: {local_path}")
+                if locked:
+                    # In locked mode, show a nicer message
+                    console.print("✅ Using version-locked template", style="green")
+                else:
+                    console.print(f"Using local template: {local_path}")
                 logging.debug(
                     f"Copied local template to temporary dir: {template_source_path}"
                 )
@@ -354,7 +383,7 @@ def create(
                     else:
                         console.print(f"Fetching remote template: {agent}")
                     template_source_path, temp_dir_path = fetch_remote_template(
-                        remote_spec
+                        remote_spec, agent, locked
                     )
                     temp_dir_to_clean = str(temp_dir_path)
                     selected_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
@@ -416,7 +445,7 @@ def create(
                     else:
                         console.print(f"Fetching remote template: {agent}")
                     template_source_path, temp_dir_path = fetch_remote_template(
-                        remote_spec
+                        remote_spec, agent, locked
                     )
                     temp_dir_to_clean = str(temp_dir_path)
                     final_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template

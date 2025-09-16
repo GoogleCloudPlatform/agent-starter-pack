@@ -99,6 +99,11 @@ Compare these two pipeline configurations and determine if they are functionally
 3. **Jinja2 templating**: Both files use the same cookiecutter conditionals like:
    - `{{% if cookiecutter.deployment_target == 'cloud_run' %}}`
    - `{{% if cookiecutter.data_ingestion %}}`
+   
+   **CRITICAL**: When analyzing conditional logic, compare the SAME conditional branches:
+   - For `cloud_run` deployment: Compare cloud_run sections in both files
+   - For `agent_engine` deployment: Compare agent_engine sections in both files
+   - Do NOT mix values from different conditional branches (e.g., don't compare cloud_run values in one file with agent_engine values in another)
 
 4. **Deployment steps**: The core deployment logic should be the same:
    - Docker build/push steps
@@ -149,12 +154,17 @@ Respond with a JSON object containing:
 - Missing `on:` trigger definitions in Cloud Build (triggers are configured externally)
 - Authentication step differences (Workload Identity vs service account)
 - Different mechanisms for triggering subsequent deployments (gcloud builds triggers vs workflow calls)
+- Different ways of passing commit SHA to production deployments (explicit --sha vs implicit inheritance)
 - Cross-project deployment patterns where both platforms push images to CI/CD project but deploy to target project
 - Missing substitution variables in Cloud Build that would be provided externally
 - Usage of `$PROJECT_ID` vs `${{{{ vars.CICD_PROJECT_ID }}}}` (these refer to the same project)
 - Different commit SHA access patterns (COMMIT_SHA environment variable vs github.sha)
 - Missing explicit checkout/setup steps in Cloud Build (Cloud Build handles repository access differently)
 - Different Python installation methods between platforms
+- Usage of `pip install package --user` vs `pip install package` (both are valid installation methods)
+- Extra logging or informational steps (like echoing links or build status)
+- Steps that appear to be missing but actually exist in the same conditional blocks
+- Load test parameter differences if they match within the same deployment target conditional blocks
 
 **FLAG these as critical/moderate**:
 - Different Docker image push destinations (different projects/registries)

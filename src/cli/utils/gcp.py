@@ -13,8 +13,13 @@
 # limitations under the License.
 
 # ruff: noqa: E722
+import os
 import subprocess
 import time
+
+# Suppress logging warnings
+os.environ["GRPC_VERBOSITY"] = "ERROR"
+os.environ["GLOG_minloglevel"] = "2"
 
 import google.auth
 from google.api_core.client_options import ClientOptions

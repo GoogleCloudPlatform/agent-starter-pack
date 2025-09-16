@@ -17,9 +17,8 @@ import os
 import subprocess
 import time
 
-# Suppress GRPC logging warnings
-os.environ["GRPC_VERBOSITY"] = "ERROR"
-os.environ["GLOG_minloglevel"] = "2"
+# Suppress gRPC verbose logging
+os.environ["GRPC_VERBOSITY"] = "NONE"
 
 import google.auth
 from google.api_core.client_options import ClientOptions

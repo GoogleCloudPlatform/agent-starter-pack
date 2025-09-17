@@ -31,8 +31,6 @@ from jinja2 import Environment
 from packaging import version as pkg_version
 from rich.console import Console
 
-from src.cli.utils.version import get_current_version
-
 
 @dataclass
 class RemoteTemplateSpec:
@@ -180,8 +178,7 @@ def check_and_execute_with_version_lock(
             original_args = modified_args
 
         # Add version lock flags only for ASP versions 0.14.1 and above
-        current_version = get_current_version()
-        if pkg_version.parse(current_version) > pkg_version.parse("0.14.1"):
+        if pkg_version.parse(version) > pkg_version.parse("0.14.1"):
             original_args.extend(["--skip-welcome", "--locked"])
 
         try:

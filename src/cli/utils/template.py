@@ -532,7 +532,7 @@ def process_template(
             agent_sample_publisher = None
             if agent_garden and remote_spec and remote_spec.is_adk_samples:
                 # For ADK samples, template_path is like "python/agents/sample-name"
-                agent_sample_id = remote_spec.template_path.split("/")[-1]
+                agent_sample_id = pathlib.Path(remote_spec.template_path).name
                 # For ADK samples, publisher is always "google"
                 agent_sample_publisher = "google"
 

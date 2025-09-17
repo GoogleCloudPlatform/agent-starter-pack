@@ -758,19 +758,16 @@ class TestCheckAndExecuteWithVersionLock:
         mock_parse_version.assert_not_called()
 
     @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.get_current_version")
     @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
     @patch("src.cli.utils.remote_template.Console")
     def test_version_lock_uvx_not_available(
         self,
         mock_console: MagicMock,
         mock_parse_version: MagicMock,
-        mock_get_version: MagicMock,
         mock_subprocess: MagicMock,
     ) -> None:
         """Test when version lock is found but uvx is not available."""
         mock_parse_version.return_value = "0.14.1"
-        mock_get_version.return_value = "0.15.0"
         mock_subprocess.side_effect = FileNotFoundError("uvx not found")
 
         template_dir = pathlib.Path("/mock/template")
@@ -789,19 +786,16 @@ class TestCheckAndExecuteWithVersionLock:
         ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
     )
     @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.get_current_version")
     @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
     @patch("src.cli.utils.remote_template.Console")
     def test_version_lock_successful_execution(
         self,
         mock_console: MagicMock,
         mock_parse_version: MagicMock,
-        mock_get_version: MagicMock,
         mock_subprocess: MagicMock,
     ) -> None:
         """Test successful version lock execution."""
-        mock_parse_version.return_value = "0.14.1"
-        mock_get_version.return_value = "0.15.0"
+        mock_parse_version.return_value = "0.14.2"
 
         # Mock uvx availability check (first call) and execution (second call)
         mock_subprocess.side_effect = [
@@ -819,7 +813,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the correct command was executed
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.1",
+            "agent-starter-pack==0.14.2",
             "create",
             "test-project",
             "-a",
@@ -834,19 +828,16 @@ class TestCheckAndExecuteWithVersionLock:
         ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
     )
     @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.get_current_version")
     @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
     @patch("src.cli.utils.remote_template.Console")
     def test_version_lock_execution_failure(
         self,
         mock_console: MagicMock,
         mock_parse_version: MagicMock,
-        mock_get_version: MagicMock,
         mock_subprocess: MagicMock,
     ) -> None:
         """Test version lock execution failure with graceful fallback."""
         mock_parse_version.return_value = "0.14.1"
-        mock_get_version.return_value = "0.15.0"
 
         # Mock uvx availability check succeeds but execution fails
         mock_subprocess.side_effect = [
@@ -873,19 +864,16 @@ class TestCheckAndExecuteWithVersionLock:
 
     @patch("sys.argv", ["agent-starter-pack", "create", "test-project"])
     @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.get_current_version")
     @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
     @patch("src.cli.utils.remote_template.Console")
     def test_version_lock_no_original_spec(
         self,
         mock_console: MagicMock,
         mock_parse_version: MagicMock,
-        mock_get_version: MagicMock,
         mock_subprocess: MagicMock,
     ) -> None:
         """Test version lock execution without original agent spec replacement."""
-        mock_parse_version.return_value = "0.14.1"
-        mock_get_version.return_value = "0.15.0"
+        mock_parse_version.return_value = "0.14.2"
 
         # Mock uvx availability and execution
         mock_subprocess.side_effect = [
@@ -902,7 +890,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the command was executed without agent spec replacement
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.1",
+            "agent-starter-pack==0.14.2",
             "create",
             "test-project",
             "--skip-welcome",
@@ -915,19 +903,16 @@ class TestCheckAndExecuteWithVersionLock:
         ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
     )
     @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.get_current_version")
     @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
     @patch("src.cli.utils.remote_template.Console")
     def test_version_lock_old_version_no_flags(
         self,
         mock_console: MagicMock,
         mock_parse_version: MagicMock,
-        mock_get_version: MagicMock,
         mock_subprocess: MagicMock,
     ) -> None:
         """Test version lock execution with older ASP version that doesn't support --locked flag."""
-        mock_parse_version.return_value = "0.14.1"
-        mock_get_version.return_value = "0.14.0"  # Older version
+        mock_parse_version.return_value = "0.14.0"  # Older version
 
         # Mock uvx availability and execution
         mock_subprocess.side_effect = [
@@ -945,7 +930,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the command was executed without --skip-welcome and --locked flags
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.1",
+            "agent-starter-pack==0.14.0",
             "create",
             "test-project",
             "-a",

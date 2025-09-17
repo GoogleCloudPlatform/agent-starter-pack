@@ -4,7 +4,7 @@
 
 A basic agent built using the **[Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/)**. This example demonstrates core ADK concepts like agent creation and tool integration in a minimal setup.
 
-This agent uses the `gemini-2.0-flash` model and is equipped with two simple tools:
+This agent uses the `gemini-2.5-flash` model and is equipped with two simple tools:
 *   `get_weather`: Simulates fetching weather (hardcoded for SF).
 *   `get_current_time`: Simulates fetching the time (hardcoded for SF).
 

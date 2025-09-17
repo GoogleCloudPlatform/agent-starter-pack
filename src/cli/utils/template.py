@@ -449,6 +449,7 @@ def process_template(
     in_folder: bool = False,
     cli_overrides: dict[str, Any] | None = None,
     agent_garden: bool = False,
+    remote_spec: Any | None = None,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -525,6 +526,15 @@ def process_template(
 
         try:
             os.chdir(temp_path)  # Change to temp directory
+
+            # Extract agent sample info for labeling when using agent garden with remote templates
+            agent_sample_id = None
+            agent_sample_publisher = None
+            if agent_garden and remote_spec and remote_spec.is_adk_samples:
+                # For ADK samples, template_path is like "python/agents/sample-name"
+                agent_sample_id = remote_spec.template_path.split("/")[-1]
+                # For ADK samples, publisher is always "google"
+                agent_sample_publisher = "google"
 
             # Create the cookiecutter template structure
             cookiecutter_template = temp_path / "template"
@@ -706,6 +716,8 @@ def process_template(
                 "datastore_type": datastore if datastore else "",
                 "agent_directory": get_agent_directory(template_config, cli_overrides),
                 "agent_garden": agent_garden,
+                "agent_sample_id": agent_sample_id or "",
+                "agent_sample_publisher": agent_sample_publisher or "",
                 "adk_cheatsheet": adk_cheatsheet_content,
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [

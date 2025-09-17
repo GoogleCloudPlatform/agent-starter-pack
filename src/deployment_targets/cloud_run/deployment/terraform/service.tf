@@ -154,6 +154,18 @@ resource "google_cloud_run_v2_service" "app_staging" {
   project             = var.staging_project_id
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
+  labels = {
+{%- if "adk" in cookiecutter.tags %}
+    "created-by"                  = "adk"
+{%- endif %}
+{%- if cookiecutter.agent_garden %}
+    "deployed-with"               = "agent-garden"
+{%- if cookiecutter.agent_sample_id %}
+    "vertex-agent-sample-id"      = "{{cookiecutter.agent_sample_id}}"
+    "vertex-agent-sample-publisher" = "{{cookiecutter.agent_sample_publisher}}"
+{%- endif %}
+{%- endif %}
+  }
 
   template {
     containers {
@@ -260,6 +272,18 @@ resource "google_cloud_run_v2_service" "app_prod" {
   project             = var.prod_project_id
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
+  labels = {
+{%- if "adk" in cookiecutter.tags %}
+    "created-by"                  = "adk"
+{%- endif %}
+{%- if cookiecutter.agent_garden %}
+    "deployed-with"               = "agent-garden"
+{%- if cookiecutter.agent_sample_id %}
+    "vertex-agent-sample-id"      = "{{cookiecutter.agent_sample_id}}"
+    "vertex-agent-sample-publisher" = "{{cookiecutter.agent_sample_publisher}}"
+{%- endif %}
+{%- endif %}
+  }
 
   template {
     containers {

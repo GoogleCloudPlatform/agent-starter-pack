@@ -712,6 +712,7 @@ def create(
                 in_folder=in_folder,
                 cli_overrides=final_cli_overrides,
                 agent_garden=agent_garden,
+                remote_spec=remote_spec,
             )
 
             # Replace region in all files if a different region was specified

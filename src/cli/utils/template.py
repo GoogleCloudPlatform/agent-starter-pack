@@ -35,6 +35,30 @@ from .remote_template import (
 )
 
 
+def validate_agent_directory_name(agent_dir: str) -> None:
+    """Validate that an agent directory name is a valid Python identifier.
+
+    Args:
+        agent_dir: The agent directory name to validate
+
+    Raises:
+        ValueError: If the agent directory name is not a valid Python identifier
+    """
+    if "-" in agent_dir:
+        raise ValueError(
+            f"Agent directory '{agent_dir}' contains hyphens (-) which are not allowed. "
+            "Agent directories must be valid Python identifiers since they're used as module names. "
+            "Please use underscores (_) or lowercase letters instead."
+        )
+
+    if not agent_dir.replace("_", "a").isidentifier():
+        raise ValueError(
+            f"Agent directory '{agent_dir}' is not a valid Python identifier. "
+            "Agent directories must be valid Python identifiers since they're used as module names. "
+            "Please use only lowercase letters, numbers, and underscores, and don't start with a number."
+        )
+
+
 @dataclass
 class TemplateConfig:
     name: str
@@ -478,13 +502,22 @@ def process_template(
         template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
     ) -> str:
         """Get agent directory with CLI override support."""
+        agent_dir = None
         if (
             cli_overrides
             and "settings" in cli_overrides
             and "agent_directory" in cli_overrides["settings"]
         ):
-            return cli_overrides["settings"]["agent_directory"]
-        return template_config.get("settings", {}).get("agent_directory", "app")
+            agent_dir = cli_overrides["settings"]["agent_directory"]
+        else:
+            agent_dir = template_config.get("settings", {}).get(
+                "agent_directory", "app"
+            )
+
+        # Validate agent directory is a valid Python identifier
+        validate_agent_directory_name(agent_dir)
+
+        return agent_dir
 
     # Handle remote vs local templates
     is_remote = remote_template_path is not None

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+import re
 import sys
 from typing import Any
 
@@ -26,7 +27,7 @@ else:
     import tomli as tomllib
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
-from ..utils.template import get_available_agents
+from ..utils.template import get_available_agents, validate_agent_directory_name
 from .create import (
     create,
     get_available_base_templates,
@@ -96,82 +97,110 @@ def display_agent_directory_selection(
     current_dir: pathlib.Path, detected_directory: str
 ) -> str:
     """Display available directories and prompt for agent directory selection."""
-    console.print()
-    console.print("📁 [bold]Agent Directory Selection[/bold]")
-    console.print()
-    console.print("Choose where your agent code is located:")
+    while True:
+        console.print()
+        console.print("📁 [bold]Agent Directory Selection[/bold]")
+        console.print()
+        console.print("Your project needs an agent directory containing:")
+        console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
+        console.print("  • [cyan]root_agent[/cyan] variable defined in agent.py")
+        console.print()
+        console.print("Choose where your agent code is located:")
 
-    # Get all directories in the current path (excluding hidden and common non-agent dirs)
-    available_dirs = [
-        item.name
-        for item in current_dir.iterdir()
-        if (
-            item.is_dir()
-            and not item.name.startswith(".")
-            and item.name not in _EXCLUDED_DIRS
-        )
-    ]
-
-    # Sort directories and create choices
-    available_dirs.sort()
-
-    directory_choices = {}
-    choice_num = 1
-    default_choice = None
-
-    # Only include the detected directory if it actually exists
-    if detected_directory in available_dirs:
-        directory_choices[choice_num] = detected_directory
-        current_indicator = (
-            " (detected)" if detected_directory != "app" else " (default)"
-        )
-        console.print(
-            f"  {choice_num}. [bold]{detected_directory}[/]{current_indicator}"
-        )
-        default_choice = choice_num
-        choice_num += 1
-        # Remove from available_dirs to avoid duplication
-        available_dirs.remove(detected_directory)
-
-    # Add other available directories
-    for dir_name in available_dirs:
-        directory_choices[choice_num] = dir_name
-        # Check if this directory might contain agent code
-        agent_files_exist = any((current_dir / dir_name).glob("*agent*.py"))
-        hint = " (contains agent*.py)" if agent_files_exist else ""
-        console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
-        if (
-            default_choice is None
-        ):  # If no detected directory exists, use first available as default
-            default_choice = choice_num
-        choice_num += 1
-
-    # Add option for custom directory
-    custom_choice = choice_num
-    directory_choices[custom_choice] = "__custom__"
-    console.print(f"  {custom_choice}. [bold]Enter custom directory name[/]")
-
-    # If no directories found and no default set, default to custom option
-    if default_choice is None:
-        default_choice = custom_choice
-
-    console.print()
-    choice = IntPrompt.ask(
-        "Select agent directory", default=default_choice, show_default=True
-    )
-
-    if choice in directory_choices:
-        selected = directory_choices[choice]
-        if selected == "__custom__":
-            console.print()
-            custom_dir = Prompt.ask(
-                "Enter custom agent directory name", default=detected_directory
+        # Get all directories in the current path (excluding hidden and common non-agent dirs)
+        available_dirs = [
+            item.name
+            for item in current_dir.iterdir()
+            if (
+                item.is_dir()
+                and not item.name.startswith(".")
+                and item.name not in _EXCLUDED_DIRS
             )
-            return custom_dir
+        ]
+
+        # Sort directories and create choices
+        available_dirs.sort()
+
+        directory_choices = {}
+        choice_num = 1
+        default_choice = None
+
+        # Only include the detected directory if it actually exists
+        if detected_directory in available_dirs:
+            directory_choices[choice_num] = detected_directory
+            current_indicator = (
+                " (detected)" if detected_directory != "app" else " (default)"
+            )
+            console.print(
+                f"  {choice_num}. [bold]{detected_directory}[/]{current_indicator}"
+            )
+            default_choice = choice_num
+            choice_num += 1
+            # Remove from available_dirs to avoid duplication
+            available_dirs.remove(detected_directory)
+
+        # Add other available directories
+        for dir_name in available_dirs:
+            directory_choices[choice_num] = dir_name
+            # Check if this directory might contain agent code
+            agent_py_exists = (current_dir / dir_name / "agent.py").exists()
+            hint = " (has agent.py)" if agent_py_exists else ""
+            console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
+            if (
+                default_choice is None
+            ):  # If no detected directory exists, use first available as default
+                default_choice = choice_num
+            choice_num += 1
+
+        # Add option for custom directory
+        custom_choice = choice_num
+        directory_choices[custom_choice] = "__custom__"
+        console.print(f"  {custom_choice}. [bold]Enter custom directory name[/]")
+
+        # If no directories found and no default set, default to custom option
+        if default_choice is None:
+            default_choice = custom_choice
+
+        console.print()
+        choice = IntPrompt.ask(
+            "Select agent directory", default=default_choice, show_default=True
+        )
+
+        if choice in directory_choices:
+            selected = directory_choices[choice]
+            if selected == "__custom__":
+                console.print()
+                while True:
+                    custom_dir = Prompt.ask(
+                        "Enter custom agent directory name", default=detected_directory
+                    )
+                    try:
+                        validate_agent_directory_name(custom_dir)
+                        return custom_dir
+                    except ValueError as e:
+                        console.print(f"[bold red]Error:[/] {e}", style="bold red")
+                        console.print("Please try again with a valid directory name.")
+            else:
+                # Validate existing directory selection as well
+                try:
+                    validate_agent_directory_name(selected)
+                    return selected
+                except ValueError as e:
+                    console.print(f"[bold red]Error:[/] {e}", style="bold red")
+                    console.print(
+                        "This directory cannot be used as an agent directory. Please select another option."
+                    )
+                    console.print()
+                    # Continue the loop to re-prompt without recursion
+                    continue
         else:
-            return selected
-    else:
-        raise ValueError(f"Invalid agent directory selection: {choice}")
+            console.print(
+                f"[bold red]Error:[/] Invalid selection: {choice}", style="bold red"
+            )
+            console.print("Please choose a valid option from the list.")
+            console.print()
+            # Continue the loop to re-prompt without recursion
+            continue
 
 
 @click.command()
@@ -389,11 +418,8 @@ def enhance(
                         )
                     pass  # Fall back to default
 
-        # Check if detected/default app folder exists before showing interactive selection
-        app_folder_exists = (current_dir / detected_agent_directory).exists()
-
-        # Interactive agent directory selection if not provided via CLI, no app folder exists, and not auto-approved
-        if not agent_directory and not app_folder_exists and not auto_approve:
+        # Interactive agent directory selection if not provided via CLI and not auto-approved
+        if not agent_directory and not auto_approve:
             selected_agent_directory = display_agent_directory_selection(
                 current_dir, detected_agent_directory
             )
@@ -464,16 +490,82 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for common agent files
+            # Check for agent.py and validate required object
             agent_py = agent_folder / "agent.py"
+
+            # Determine required object outside of if/else blocks to avoid NameError
+            is_adk = base_template and "adk" in base_template.lower()
+            required_object = "root_agent" if is_adk else "agent"
+
             if agent_py.exists():
                 console.print(
-                    f"Detected existing agent structure with [cyan]/{final_agent_directory}/agent.py[/cyan]"
+                    f"✅ Found [cyan]/{final_agent_directory}/agent.py[/cyan]"
                 )
+
+                try:
+                    content = agent_py.read_text(encoding="utf-8")
+
+                    # Look for the required object definition using static analysis
+                    patterns = [
+                        rf"^\s*{required_object}\s*=",  # assignment: root_agent = ...
+                        rf"^\s*def\s+{required_object}",  # function: def root_agent(...)
+                        rf"from\s+.*\s+import\s+.*{required_object}",  # import: from ... import root_agent
+                    ]
+
+                    found = any(
+                        re.search(pattern, content, re.MULTILINE)
+                        for pattern in patterns
+                    )
+
+                    if found:
+                        console.print(
+                            f"✅ Found '{required_object}' definition in {final_agent_directory}/agent.py"
+                        )
+                    else:
+                        console.print(
+                            f"⚠️  [yellow]Missing '{required_object}' variable in {final_agent_directory}/agent.py[/yellow]"
+                        )
+                        console.print(
+                            "   This variable should contain your main agent instance for deployment."
+                        )
+                        console.print(
+                            f"   Example: [cyan]{required_object} = YourAgentClass()[/cyan]"
+                        )
+                        # Show ADK docs link for ADK templates
+                        if is_adk:
+                            console.print(
+                                "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/get-started/quickstart/#agentpy]ADK agent.py guide[/link][/cyan]"
+                            )
+                        console.print()
+                        if not auto_approve:
+                            if not click.confirm(
+                                f"Continue enhancement? (You can add '{required_object}' later)",
+                                default=True,
+                            ):
+                                console.print(
+                                    "✋ [yellow]Enhancement cancelled.[/yellow]"
+                                )
+                                return
+
+                except Exception as e:
+                    console.print(
+                        f"⚠️  [yellow]Warning: Could not read {final_agent_directory}/agent.py: {e}[/yellow]"
+                    )
             else:
                 console.print(
-                    f"ℹ️  [blue]Found /{final_agent_directory} folder[/blue] - ensure your agent code is properly organized within it, including an agent.py file"
+                    f"⚠️  [yellow]Warning: {final_agent_directory}/agent.py not found[/yellow]"
                 )
+                console.print(
+                    f"   Create {final_agent_directory}/agent.py with your agent logic and define: [cyan]{required_object} = your_agent_instance[/cyan]"
+                )
+                console.print()
+                if not auto_approve:
+                    if not click.confirm(
+                        f"Continue enhancement? (An example {final_agent_directory}/agent.py will be created for you)",
+                        default=True,
+                    ):
+                        console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
+                        return
 
     # Prepare CLI overrides to pass to create command
     final_cli_overrides: dict[str, Any] = {}

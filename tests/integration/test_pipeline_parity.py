@@ -99,7 +99,7 @@ Compare these two pipeline configurations and determine if they are functionally
 3. **Jinja2 templating**: Both files use the same cookiecutter conditionals like:
    - `{{% if cookiecutter.deployment_target == 'cloud_run' %}}`
    - `{{% if cookiecutter.data_ingestion %}}`
-   
+
    **CRITICAL**: When analyzing conditional logic, compare the SAME conditional branches:
    - For `cloud_run` deployment: Compare cloud_run sections in both files
    - For `agent_engine` deployment: Compare agent_engine sections in both files

@@ -1,0 +1,116 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+  - name: "python:3.11-slim" 
+    id: install-dependencies
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        pip install uv==0.6.12 --user && uv sync --locked
+    env:
+      - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
+
+  - name: "python:3.11-slim"
+    id: deploy-staging
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
+        uv run app/agent_engine_app.py \
+          --project ${_STAGING_PROJECT_ID} \
+          --location ${_REGION} \
+          --service-account ${_APP_SA_EMAIL_STAGING} \
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}"
+    env:
+      - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
+
+
+  - name: gcr.io/cloud-builders/gcloud
+    id: fetch-auth-token
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        echo $(gcloud auth print-access-token -q) > auth_token.txt
+
+  # Load Testing
+  - name: "python:3.11-slim"
+    id: load_test
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        export _AUTH_TOKEN=$(cat auth_token.txt)
+        pip install locust==2.31.1 --user
+        locust -f tests/load_test/load_test.py \
+        --headless \
+        -t 30s -u 2 -r 0.5 \
+        --csv=tests/load_test/.results/results \
+        --html=tests/load_test/.results/report.html
+    env:
+      - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
+
+  # Export Load Test Results to GCS
+  - name: gcr.io/cloud-builders/gcloud
+    id: export-results-to-gcs
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        export _TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        gsutil -m cp -r tests/load_test/.results gs://${_BUCKET_NAME_LOAD_TEST_RESULTS}/results-$${_TIMESTAMP}
+        echo "_________________________________________________________________________"
+        echo "Load test results copied to gs://${_BUCKET_NAME_LOAD_TEST_RESULTS}/results-$${_TIMESTAMP}"
+        echo "HTTP link: https://console.cloud.google.com/storage/browser/${_BUCKET_NAME_LOAD_TEST_RESULTS}/results-$${_TIMESTAMP}"
+        echo "_________________________________________________________________________"
+
+  # Trigger Prod Deployment
+  - name: gcr.io/cloud-builders/gcloud
+    id: trigger-prod-deployment
+    entrypoint: gcloud
+    args:
+      - "beta"
+      - "builds"
+      - "triggers"
+      - "run"
+      - "deploy-example-agent"
+      - "--region"
+      - "$LOCATION"
+      - "--project"
+      - "$PROJECT_ID"
+      - "--sha"
+      - $COMMIT_SHA
+
+  - name: gcr.io/cloud-builders/gcloud
+    id: echo-view-build-trigger-link
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        echo "_________________________________________________________________________"
+        echo "Production deployment triggered. View progress and / or approve on the Cloud Build Console:"
+        echo "https://console.cloud.google.com/cloud-build/builds;region=$LOCATION"
+        echo "_________________________________________________________________________"
+
+substitutions:
+  _STAGING_PROJECT_ID: YOUR_STAGING_PROJECT_ID
+  _REGION: us-central1
+
+logsBucket: gs://${PROJECT_ID}-example-agent-logs-data/build-logs
+options:
+  substitutionOption: ALLOW_LOOSE
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

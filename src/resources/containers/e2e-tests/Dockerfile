@@ -35,7 +35,8 @@ RUN apt-get update && \
     terraform \
     make \
     nodejs \
-    npm && \
+    npm \
+    g++ && \
     # Clean up apt cache
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

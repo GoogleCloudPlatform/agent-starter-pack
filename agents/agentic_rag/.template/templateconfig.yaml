@@ -19,7 +19,7 @@ settings:
   requires_session: true
   deployment_targets: ["agent_engine", "cloud_run"]
   extra_dependencies: [
-    "google-adk~=1.8.0",
+    "google-adk~=1.14.0",
     "langchain-google-vertexai~=2.0.7",
     "langchain~=0.3.24",
     "langchain-core~=0.3.55",

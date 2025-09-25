@@ -19,6 +19,6 @@ settings:
   deployment_targets: ["cloud_run"]
   extra_dependencies: [
     "backoff~=2.2.1",
-    "google-genai~=1.16.0",
+    "google-genai>=1.16.0",
   ]
 example_question: "What's the weather in San Francisco?"

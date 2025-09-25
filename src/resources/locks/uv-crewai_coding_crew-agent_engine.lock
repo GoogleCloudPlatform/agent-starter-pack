@@ -1213,7 +1213,7 @@ wheels = [
 
 [[package]]
 name = "google-cloud-aiplatform"
-version = "1.113.0"
+version = "1.116.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -1230,9 +1230,9 @@ dependencies = [
     { name = "shapely" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/17/d2/602c63dcf5941dd5ec2185e668159208ae1ed8962bf563cbc51b28c33557/google_cloud_aiplatform-1.113.0.tar.gz", hash = "sha256:d24b6fc353f89f59d4cdb6b6321e21c59a34a1a831b8ab1dd5029ea6b8f19823", size = 9647927, upload-time = "2025-09-12T15:46:52.801Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/73/9d/52623c40fb1f42897b3b1c71892bab69fef2eb6d46b435ca69ec82abeecc/google_cloud_aiplatform-1.116.0.tar.gz", hash = "sha256:3e9363b985f900e13ab0abc6241d28597c521985dc2ab56e1232608bf5a03e7e", size = 9660858, upload-time = "2025-09-24T18:56:01.06Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/97/13/3f243c40a018710e307958691a4b04a9e8bde518481d28190087c98fa47f/google_cloud_aiplatform-1.113.0-py2.py3-none-any.whl", hash = "sha256:7fe360630c38df63e7543ae4fd15ad45bc5382ed14dbf979fda0f89c44dd235f", size = 8030300, upload-time = "2025-09-12T15:46:49.828Z" },
+    { url = "https://files.pythonhosted.org/packages/25/a9/8ccda7bca963801554c52c61012bec37d62f3384f3268a0221b58032a13f/google_cloud_aiplatform-1.116.0-py2.py3-none-any.whl", hash = "sha256:bd04e6b1c3e06969e3ae2fa63e1d718081c4feeed7e4bfcf6376fa4ab6461487", size = 8038242, upload-time = "2025-09-24T18:55:57.777Z" },
 ]
 
 [package.optional-dependencies]
@@ -2595,7 +2595,7 @@ requires-dist = [
     { name = "codespell", marker = "extra == 'lint'", specifier = "~=2.2.0" },
     { name = "crewai", specifier = "~=0.152.0" },
     { name = "extra-streamlit-components", marker = "extra == 'streamlit'", specifier = "~=0.1.71" },
-    { name = "google-cloud-aiplatform", extras = ["evaluation", "agent-engines"], specifier = "~=1.113.0" },
+    { name = "google-cloud-aiplatform", extras = ["evaluation", "agent-engines"], specifier = "~=1.116.0" },
     { name = "google-cloud-logging", specifier = ">=3.12.0" },
     { name = "jupyter", marker = "extra == 'jupyter'", specifier = "~=1.0.0" },
     { name = "langchain", specifier = "~=0.3.14" },

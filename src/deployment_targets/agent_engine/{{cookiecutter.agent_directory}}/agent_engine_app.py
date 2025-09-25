@@ -282,6 +282,10 @@ def deploy_agent_engine_app(
 
     logging.info(f"Agent Engine ID written to {metadata_file}")
 
+{%- if "adk" in cookiecutter.tags %}
+    print("\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb\n")
+{%- endif %}
+
     return remote_agent
 
 

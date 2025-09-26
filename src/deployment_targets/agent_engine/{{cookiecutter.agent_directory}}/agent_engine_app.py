@@ -14,12 +14,11 @@
 
 # mypy: disable-error-code="attr-defined,arg-type"
 {%- if "adk" in cookiecutter.tags %}
-import datetime
-import json
 import logging
 import os
 from typing import Any
 
+import click
 import google.auth
 import vertexai
 from google.adk.artifacts import GcsArtifactService
@@ -30,6 +29,10 @@ from vertexai._genai.types import AgentEngine, AgentEngineConfig
 from vertexai.agent_engines.templates.adk import AdkApp
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.utils.deployment import (
+    print_deployment_success,
+    write_deployment_metadata,
+)
 from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
 from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.utils.typing import Feedback
@@ -68,8 +71,6 @@ class AgentEngineApp(AdkApp):
         return operations
 
 {%- else %}
-import datetime
-import json
 import logging
 import os
 from collections.abc import Iterable, Mapping
@@ -77,6 +78,7 @@ from typing import (
     Any,
 )
 
+import click
 import google.auth
 import vertexai
 from google.cloud import logging as google_cloud_logging
@@ -84,6 +86,10 @@ from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
 from vertexai._genai.types import AgentEngine, AgentEngineConfig
 
+from {{cookiecutter.agent_directory}}.utils.deployment import (
+    print_deployment_success,
+    write_deployment_metadata,
+)
 from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
 from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
@@ -190,17 +196,73 @@ class AgentEngineApp:
 {%- endif %}
 
 
+@click.command()
+@click.option(
+    "--project",
+    default=None,
+    help="GCP project ID (defaults to application default credentials)",
+)
+@click.option(
+    "--location",
+    default="us-central1",
+    help="GCP region (defaults to us-central1)",
+)
+@click.option(
+    "--agent-name",
+    default="{{cookiecutter.project_name}}",
+    help="Name for the agent engine",
+)
+@click.option(
+    "--requirements-file",
+    default=".requirements.txt",
+    help="Path to requirements.txt file",
+)
+@click.option(
+    "--extra-packages",
+    multiple=True,
+    default=["./{{cookiecutter.agent_directory}}"],
+    help="Additional packages to include",
+)
+@click.option(
+    "--set-env-vars",
+    default=None,
+    help="Comma-separated list of environment variables in KEY=VALUE format",
+)
+@click.option(
+    "--service-account",
+    default=None,
+    help="Service account email to use for the agent engine",
+)
 def deploy_agent_engine_app(
-    project: str,
+    project: str | None,
     location: str,
-    agent_name: str | None = None,
-    requirements_file: str = ".requirements.txt",
-    extra_packages: list[str] = ["./{{cookiecutter.agent_directory}}"],
-    env_vars: dict[str, str] = {},
-    service_account: str | None = None,
+    agent_name: str,
+    requirements_file: str,
+    extra_packages: tuple[str, ...],
+    set_env_vars: str | None,
+    service_account: str | None,
 ) -> AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
+    # Parse environment variables if provided
+    env_vars = {}
+    if set_env_vars:
+        for pair in set_env_vars.split(","):
+            key, value = pair.split("=", 1)
+            env_vars[key] = value
+
+    if not project:
+        _, project = google.auth.default()
+
+    print("""
+    ╔═══════════════════════════════════════════════════════════╗
+    ║                                                           ║
+    ║   🤖 DEPLOYING AGENT TO VERTEX AI AGENT ENGINE 🤖         ║
+    ║                                                           ║
+    ╚═══════════════════════════════════════════════════════════╝
+    """)
+
     logging.basicConfig(level=logging.INFO)
+    extra_packages = list(extra_packages)
     staging_bucket_uri = f"gs://{project}-agent-engine"
 {%- if "adk" in cookiecutter.tags %}
     artifacts_bucket_name = f"{project}-{{cookiecutter.project_name}}-logs-data"
@@ -236,6 +298,15 @@ def deploy_agent_engine_app(
     env_vars["NUM_WORKERS"] = "1"
 
     # Common configuration for both create and update operations
+    labels = {}
+{%- if cookiecutter.agent_garden %}
+    labels["deployed-with"] = "agent-garden"
+{%- if cookiecutter.agent_sample_id and cookiecutter.agent_sample_publisher %}
+    labels["vertex-agent-sample-id"] = "{{cookiecutter.agent_sample_id}}"
+    labels["vertex-agent-sample-publisher"] = "{{cookiecutter.agent_sample_publisher}}"
+{%- endif %}
+{%- endif %}
+
     config = AgentEngineConfig(
         display_name=agent_name,
         description="{{cookiecutter.agent_description}}",
@@ -244,6 +315,7 @@ def deploy_agent_engine_app(
         service_account=service_account,
         requirements=requirements,
         staging_bucket=staging_bucket_uri,
+        labels=labels,
     )
 
     agent_config = {
@@ -262,100 +334,20 @@ def deploy_agent_engine_app(
 
     if matching_agents:
         # Update the existing agent with new configuration
-        logging.info(f"Updating existing agent: {agent_name}")
+        logging.info(f"\n📝 Updating existing agent: {agent_name}")
         remote_agent = client.agent_engines.update(
             name=matching_agents[0].api_resource.name, **agent_config
         )
     else:
         # Create a new agent if none exists
-        logging.info(f"Creating new agent: {agent_name}")
+        logging.info(f"\n🚀 Creating new agent: {agent_name}")
         remote_agent = client.agent_engines.create(**agent_config)
 
-    metadata = {
-        "remote_agent_engine_id": remote_agent.api_resource.name,
-        "deployment_timestamp": datetime.datetime.now().isoformat(),
-    }
-    metadata_file = "deployment_metadata.json"
-
-    with open(metadata_file, "w") as f:
-        json.dump(metadata, f, indent=2)
-
-    logging.info(f"Agent Engine ID written to {metadata_file}")
-
-{%- if "adk" in cookiecutter.tags %}
-    print(
-        "\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb\n"
-    )
-{%- endif %}
+    write_deployment_metadata(remote_agent)
+    print_deployment_success(remote_agent, location, project)
 
     return remote_agent
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser(description="Deploy agent engine app to Vertex AI")
-    parser.add_argument(
-        "--project",
-        default=None,
-        help="GCP project ID (defaults to application default credentials)",
-    )
-    parser.add_argument(
-        "--location",
-        default="us-central1",
-        help="GCP region (defaults to us-central1)",
-    )
-    parser.add_argument(
-        "--agent-name",
-        default="{{cookiecutter.project_name}}",
-        help="Name for the agent engine",
-    )
-    parser.add_argument(
-        "--requirements-file",
-        default=".requirements.txt",
-        help="Path to requirements.txt file",
-    )
-    parser.add_argument(
-        "--extra-packages",
-        nargs="+",
-        default=["./{{cookiecutter.agent_directory}}"],
-        help="Additional packages to include",
-    )
-    parser.add_argument(
-        "--set-env-vars",
-        help="Comma-separated list of environment variables in KEY=VALUE format",
-    )
-    parser.add_argument(
-        "--service-account",
-        default=None,
-        help="Service account email to use for the agent engine",
-    )
-    args = parser.parse_args()
-
-    # Parse environment variables if provided
-    env_vars = {}
-    if args.set_env_vars:
-        for pair in args.set_env_vars.split(","):
-            key, value = pair.split("=", 1)
-            env_vars[key] = value
-
-    if not args.project:
-        _, args.project = google.auth.default()
-
-    print("""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║                                                           ║
-    ║   🤖 DEPLOYING AGENT TO VERTEX AI AGENT ENGINE 🤖         ║
-    ║                                                           ║
-    ╚═══════════════════════════════════════════════════════════╝
-    """)
-
-    deploy_agent_engine_app(
-        project=args.project,
-        location=args.location,
-        agent_name=args.agent_name,
-        requirements_file=args.requirements_file,
-        extra_packages=args.extra_packages,
-        env_vars=env_vars,
-        service_account=args.service_account,
-    )
+    deploy_agent_engine_app()

@@ -630,12 +630,13 @@ def create(
         # CI/CD runner selection
         final_cicd_runner = cicd_runner
         if not final_cicd_runner:
-            if auto_approve:
+            if auto_approve or agent_garden:
                 final_cicd_runner = "google_cloud_build"
-                console.print(
-                    "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
-                    style="yellow",
-                )
+                if not agent_garden:
+                    console.print(
+                        "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
+                        style="yellow",
+                    )
             else:
                 final_cicd_runner = prompt_cicd_runner_selection()
         if debug:
@@ -646,7 +647,13 @@ def create(
             not auto_approve
             and ctx.get_parameter_source("region") != ParameterSource.COMMANDLINE
         ):
-            region = prompt_region_confirmation(region)
+            # Show Agent Engine supported regions link if agent_garden flag is set
+            if agent_garden:
+                console.print(
+                    "\n📍 [blue]Agent Engine Supported Regions:[/blue]\n"
+                    "   [cyan]https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview#supported-regions[/cyan]"
+                )
+            region = prompt_region_confirmation(region, agent_garden=agent_garden)
         if debug:
             logging.debug(f"Selected region: {region}")
 
@@ -777,7 +784,9 @@ def create(
         raise
 
 
-def prompt_region_confirmation(default_region: str = "us-central1") -> str:
+def prompt_region_confirmation(
+    default_region: str = "us-central1", agent_garden: bool = False
+) -> str:
     """Prompt user to confirm or change the default region."""
     new_region = Prompt.ask(
         "\nEnter desired GCP region (Gemini uses global endpoint by default)",
@@ -965,7 +974,8 @@ def setup_gcp_environment(
         logging.debug("Verifying GCP credentials...")
     creds_info = verify_credentials()
     # Handle credential verification and project selection
-    if not auto_approve:
+    # Skip interactive prompts if auto_approve or agent_garden is set
+    if not auto_approve and not agent_garden:
         creds_info = _handle_credential_verification(creds_info)
         # If user chose to skip verification, don't test Vertex AI connection
         if creds_info.get("skip_vertex_test", False):
@@ -976,7 +986,7 @@ def setup_gcp_environment(
                 creds_info["project"], region, agent_garden=agent_garden
             )
     else:
-        # Even with auto_approve, we should still set the GCP project
+        # Even with auto_approve or agent_garden, we should still set the GCP project
         set_gcp_project(creds_info["project"], set_quota_project=True)
         # Test Vertex AI connection
         _test_vertex_ai_connection(

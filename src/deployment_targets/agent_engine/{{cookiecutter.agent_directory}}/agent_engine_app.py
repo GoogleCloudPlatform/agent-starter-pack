@@ -236,6 +236,15 @@ def deploy_agent_engine_app(
     env_vars["NUM_WORKERS"] = "1"
 
     # Common configuration for both create and update operations
+    labels = {}
+{%- if cookiecutter.agent_garden %}
+    labels["deployed-with"] = "agent-garden"
+{%- if cookiecutter.agent_sample_id %}
+    labels["vertex-agent-sample-id"] = "{{cookiecutter.agent_sample_id}}"
+    labels["vertex-agent-sample-publisher"] = "{{cookiecutter.agent_sample_publisher}}"
+{%- endif %}
+{%- endif %}
+
     config = AgentEngineConfig(
         display_name=agent_name,
         description="{{cookiecutter.agent_description}}",
@@ -244,6 +253,7 @@ def deploy_agent_engine_app(
         service_account=service_account,
         requirements=requirements,
         staging_bucket=staging_bucket_uri,
+        labels=labels,
     )
 
     agent_config = {

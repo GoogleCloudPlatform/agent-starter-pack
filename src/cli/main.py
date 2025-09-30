@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import importlib.metadata
+import sys
 
 import click
 from rich.console import Console
@@ -48,8 +49,9 @@ def print_version(ctx: click.Context, param: click.Parameter, value: bool) -> No
     help="Show the version and exit.",
 )
 def cli() -> None:
-    # Check for updates at startup
-    display_update_message()
+    # Check for updates at startup (skip if --agent-garden or -ag is used)
+    if "--agent-garden" not in sys.argv and "-ag" not in sys.argv:
+        display_update_message()
 
 
 # Register commands

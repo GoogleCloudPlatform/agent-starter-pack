@@ -15,6 +15,7 @@
 import datetime
 import json
 import logging
+from typing import Any
 
 
 def parse_env_vars(env_vars_string: str | None) -> dict[str, str]:
@@ -38,7 +39,7 @@ def parse_env_vars(env_vars_string: str | None) -> dict[str, str]:
 
 
 def write_deployment_metadata(
-    remote_agent,
+    remote_agent: Any,
     metadata_file: str = "deployment_metadata.json",
 ) -> None:
     """Write deployment metadata to file.
@@ -59,7 +60,7 @@ def write_deployment_metadata(
 
 
 def print_deployment_success(
-    remote_agent,
+    remote_agent: Any,
     location: str,
     project: str,
 ) -> None:
@@ -71,8 +72,6 @@ def print_deployment_success(
         project: GCP project ID
     """
     # Extract agent engine ID for console URL
-    # Note: This relies on the resource name format: projects/{project}/locations/{location}/agentEngines/{agent_engine_id}
-    # If the API's resource name format changes, this parsing logic may need to be updated
     agent_engine_id = remote_agent.api_resource.name.split("/")[-1]
     console_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
 

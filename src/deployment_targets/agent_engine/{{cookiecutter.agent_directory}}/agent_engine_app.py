@@ -260,7 +260,7 @@ def deploy_agent_engine_app(
     """)
 
     logging.basicConfig(level=logging.INFO)
-    extra_packages = list(extra_packages)
+    extra_packages_list = list(extra_packages)
     staging_bucket_uri = f"gs://{project}-agent-engine"
 {%- if "adk" in cookiecutter.tags %}
     artifacts_bucket_name = f"{project}-{{cookiecutter.project_name}}-logs-data"
@@ -296,7 +296,7 @@ def deploy_agent_engine_app(
     env_vars["NUM_WORKERS"] = "1"
 
     # Common configuration for both create and update operations
-    labels = {}
+    labels: dict[str, str] = {}
 {%- if cookiecutter.agent_garden %}
     labels["deployed-with"] = "agent-garden"
 {%- if cookiecutter.agent_sample_id and cookiecutter.agent_sample_publisher %}
@@ -308,7 +308,7 @@ def deploy_agent_engine_app(
     config = AgentEngineConfig(
         display_name=agent_name,
         description="{{cookiecutter.agent_description}}",
-        extra_packages=extra_packages,
+        extra_packages=extra_packages_list,
         env_vars=env_vars,
         service_account=service_account,
         requirements=requirements,

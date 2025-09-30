@@ -239,7 +239,7 @@ def deploy_agent_engine_app(
     labels = {}
 {%- if cookiecutter.agent_garden %}
     labels["deployed-with"] = "agent-garden"
-{%- if cookiecutter.agent_sample_id %}
+{%- if cookiecutter.agent_sample_id and cookiecutter.agent_sample_publisher %}
     labels["vertex-agent-sample-id"] = "{{cookiecutter.agent_sample_id}}"
     labels["vertex-agent-sample-publisher"] = "{{cookiecutter.agent_sample_publisher}}"
 {%- endif %}

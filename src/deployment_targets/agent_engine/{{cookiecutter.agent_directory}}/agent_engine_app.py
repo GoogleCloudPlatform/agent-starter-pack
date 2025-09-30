@@ -30,6 +30,7 @@ from vertexai.agent_engines.templates.adk import AdkApp
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.utils.deployment import (
+    parse_env_vars,
     print_deployment_success,
     write_deployment_metadata,
 )
@@ -87,6 +88,7 @@ from traceloop.sdk import Instruments, Traceloop
 from vertexai._genai.types import AgentEngine, AgentEngineConfig
 
 from {{cookiecutter.agent_directory}}.utils.deployment import (
+    parse_env_vars,
     print_deployment_success,
     write_deployment_metadata,
 )
@@ -244,11 +246,7 @@ def deploy_agent_engine_app(
 ) -> AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
     # Parse environment variables if provided
-    env_vars = {}
-    if set_env_vars:
-        for pair in set_env_vars.split(","):
-            key, value = pair.split("=", 1)
-            env_vars[key] = value
+    env_vars = parse_env_vars(set_env_vars)
 
     if not project:
         _, project = google.auth.default()

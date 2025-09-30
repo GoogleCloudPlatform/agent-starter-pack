@@ -17,6 +17,26 @@ import json
 import logging
 
 
+def parse_env_vars(env_vars_string: str | None) -> dict[str, str]:
+    """Parse environment variables from a comma-separated KEY=VALUE string.
+
+    Args:
+        env_vars_string: Comma-separated list of environment variables in KEY=VALUE format
+
+    Returns:
+        Dictionary of environment variables with keys and values stripped of whitespace
+    """
+    env_vars = {}
+    if env_vars_string:
+        for pair in env_vars_string.split(","):
+            if "=" in pair:
+                key, value = pair.split("=", 1)
+                env_vars[key.strip()] = value.strip()
+            else:
+                logging.warning(f"Skipping malformed environment variable pair: {pair}")
+    return env_vars
+
+
 def write_deployment_metadata(
     remote_agent,
     metadata_file: str = "deployment_metadata.json",
@@ -51,6 +71,8 @@ def print_deployment_success(
         project: GCP project ID
     """
     # Extract agent engine ID for console URL
+    # Note: This relies on the resource name format: projects/{project}/locations/{location}/agentEngines/{agent_engine_id}
+    # If the API's resource name format changes, this parsing logic may need to be updated
     agent_engine_id = remote_agent.api_resource.name.split("/")[-1]
     console_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
 
@@ -60,8 +82,5 @@ def print_deployment_success(
         f"\n📊 View in console: {console_url}\n"
     )
 {%- else %}
-    print(
-        f"\n✅ Deployment successful!"
-        f"\n📊 View in console: {console_url}\n"
-    )
+    print(f"\n✅ Deployment successful!\n📊 View in console: {console_url}\n")
 {%- endif %}

@@ -18,7 +18,7 @@ data "google_project" "project" {
 }
 
 
-{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
 
 # VPC Network for AlloyDB
 resource "google_compute_network" "default" {
@@ -134,7 +134,7 @@ resource "google_cloud_run_v2_service" "app" {
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
   labels = {
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
     "created-by"                  = "adk"
 {%- endif %}
 {%- if cookiecutter.agent_garden %}
@@ -186,7 +186,7 @@ resource "google_cloud_run_v2_service" "app" {
 {%- endif %}
 {%- endif %}
 
-{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
 
       env {
         name  = "DB_HOST"
@@ -215,7 +215,7 @@ resource "google_cloud_run_v2_service" "app" {
 
     session_affinity = true
 
-{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
     # VPC access for AlloyDB connectivity
     vpc_access {
       network_interfaces {

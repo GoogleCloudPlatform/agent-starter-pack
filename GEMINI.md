@@ -139,7 +139,7 @@ Changes often require coordinated updates:
 
 ### Conditional Logic Patterns
 ```jinja
-{%- if cookiecutter.agent_name == "live_api" %}
+{%- if cookiecutter.agent_name == "adk_live" %}
 # Agent-specific logic
 {%- elif cookiecutter.deployment_target == "cloud_run" %}
 # Deployment-specific logic  
@@ -148,7 +148,7 @@ Changes often require coordinated updates:
 
 ### Testing Strategy
 Test changes across multiple dimensions:
-- Agent types (live_api, adk_base, etc.)
+- Agent types (adk_live, adk_base, etc.)
 - Deployment targets (cloud_run, agent_engine)
 - Feature combinations (data_ingestion, frontend_type)
 - Example command for testing the starter pack creation - from the root of the repo run: `uv run agent-starter-pack create myagent-$(date +%s) --output-dir target`
@@ -156,7 +156,7 @@ Test changes across multiple dimensions:
 ### Common Pitfalls
 - **Hardcoded URLs**: Use relative paths for frontend connections
 - **Missing Conditionals**: Wrap agent-specific code in proper `{% if %}` blocks
-- **Dependency Conflicts**: Some agents lack certain extras (e.g., live_api + lint)
+- **Dependency Conflicts**: Some agents lack certain extras (e.g., adk_live + lint)
 
 ## File Modification Checklist
 

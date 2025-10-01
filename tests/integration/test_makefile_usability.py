@@ -33,7 +33,7 @@ def validate_makefile_usability(
     timestamp = datetime.now().strftime("%m%d%H%M%S")
     project_name = f"{agent[:8]}-{deployment_target[:5]}-{timestamp}".replace("_", "-")
     project_path = pathlib.Path(TARGET_DIR) / project_name
-    region = "us-central1" if agent == "live_api" else "europe-west4"
+    region = "us-central1" if agent == "adk_live" else "europe-west4"
 
     try:
         # Create target directory if it doesn't exist
@@ -181,8 +181,8 @@ def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
             "agent_engine",
             ["--include-data-ingestion", "--datastore", "vertex_ai_search"],
         ),
-        # live_api - cloud_run only
-        ("live_api", "cloud_run", None),
+        # adk_live - cloud_run only
+        ("adk_live", "cloud_run", None),
         # langgraph_base_react - both deployment targets
         ("langgraph_base_react", "agent_engine", None),
         ("langgraph_base_react", "cloud_run", ["--session-type", "in_memory"]),

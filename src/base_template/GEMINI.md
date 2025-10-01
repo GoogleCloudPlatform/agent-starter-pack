@@ -1,5 +1,5 @@
 Coding Agent guidance:
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
 {{ cookiecutter.adk_cheatsheet }}
 {%- endif %}
 {{ cookiecutter.llm_txt }}

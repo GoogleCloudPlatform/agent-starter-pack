@@ -1,66 +1,152 @@
+# ==============================================================================
+# Installation & Setup
+# ==============================================================================
+
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.6.12/install.sh | sh; source $HOME/.local/bin/env; }
-{%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %} 
+{%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %}
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}
 {%- else %}
-	uv sync --dev{% if cookiecutter.agent_name != 'live_api' and "adk" not in cookiecutter.tags %} --extra streamlit{%- endif %}{% if cookiecutter.agent_name == 'live_api' %} && (cd frontend && npm install){%- endif %}
+	uv sync --dev{% if not cookiecutter.is_adk and not cookiecutter.is_adk_live %} --extra streamlit{%- endif %}{% if cookiecutter.is_adk_live %} && (cd frontend && npm install){%- endif %}
 {%- endif %}
 
-{%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
-{%- for cmd_name, cmd_value in cookiecutter.settings.get("commands", {}).get("extra", {}).items() %}
+# ==============================================================================
+# Playground Targets
+# ==============================================================================
 
-# {{ cmd_value.get("description") }}
-{{ cmd_name }}:
-{%- if cmd_value is mapping %}
-{%- if cmd_value.command is mapping and cookiecutter.deployment_target in cmd_value.command %}
-	{{ cmd_value.command[cookiecutter.deployment_target] }}
-{%- else %}
-	{{ cmd_value.command if cmd_value.command is string else "" }}
-{%- endif %}
-{%- else %}
-	{{ cmd_value }}
-{%- endif %}
-{%- endfor %}{%- endif %}
-
-{%- if cookiecutter.agent_name == 'live_api' %}
-# Build the frontend for production
-build-frontend:
-	(cd frontend && npm run build)
-
-{%- endif %}
 # Launch local dev playground
-playground:{%- if cookiecutter.agent_name == 'live_api' %} build-frontend{%- endif %}
+playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("playground") %}
+{%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("playground") is mapping %}
+	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("playground").get(cookiecutter.deployment_target, "")}}
+{%- else %}
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("playground")}}
+{%- endif %}
 {%- else %}
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
-{%- if cookiecutter.agent_name == 'live_api' %}
+{%- if cookiecutter.is_adk_live %}
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 {%- endif %}
 	@echo "| 💡 Try asking: {{cookiecutter.example_question}}|"
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
 	@echo "|                                                                             |"
 	@echo "| 🔍 IMPORTANT: Select the '{{cookiecutter.agent_directory}}' folder to interact with your agent.          |"
 {%- endif %}
 	@echo "==============================================================================="
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk_live %}
+{%- if cookiecutter.deployment_target == 'agent_engine' %}
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local
+{%- else %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+{%- endif %}
+{%- elif cookiecutter.is_adk %}
 	uv run adk web . --port 8501 --reload_agents
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-{%- if cookiecutter.agent_name == 'live_api' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
-{%- else %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload &
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload &
 {%- endif %}
-{%- endif %}
-{%- if cookiecutter.agent_name != 'live_api' %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 {%- endif %}
 {%- endif %}
+{%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
+
+# ==============================================================================
+# Agent-Specific Commands
+# ==============================================================================
+{%- for cmd_name, cmd_value in cookiecutter.settings.get("commands", {}).get("extra", {}).items() %}
+{%- if cmd_value is mapping %}
+{%- if cmd_value.command is mapping %}
+{%- if cookiecutter.deployment_target in cmd_value.command %}
+
+# {{ cmd_value.get("description") }}
+{{ cmd_name }}:
+	{{ cmd_value.command[cookiecutter.deployment_target] }}
 {%- endif %}
+{%- else %}
+
+# {{ cmd_value.get("description") }}
+{{ cmd_name }}:
+	{{ cmd_value.command if cmd_value.command is string else "" }}
+{%- endif %}
+{%- else %}
+
+# {{ cmd_value.get("description", "") }}
+{{ cmd_name }}:
+	{{ cmd_value }}
+{%- endif %}
+{%- endfor %}
+{%- endif %}
+{%- if cookiecutter.is_adk_live %}
+
+# ==============================================================================
+# ADK Live Commands
+# ==============================================================================
+
+# Build the frontend for production
+build-frontend:
+	(cd frontend && npm run build)
+
+# Build the frontend only if needed (conditional build)
+build-frontend-if-needed:
+	@if [ ! -d "frontend/build" ] || [ ! -f "frontend/build/index.html" ]; then \
+		echo "Frontend build directory not found or incomplete. Building..."; \
+		$(MAKE) build-frontend; \
+	elif [ "frontend/package.json" -nt "frontend/build/index.html" ] || \
+		 find frontend/src -newer frontend/build/index.html 2>/dev/null | head -1 | grep -q .; then \
+		echo "Frontend source files are newer than build. Rebuilding..."; \
+		$(MAKE) build-frontend; \
+	else \
+		echo "Frontend build is up to date. Skipping build..."; \
+	fi
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+{%- endif %}
+{%- if cookiecutter.deployment_target == 'agent_engine' %}
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000
+
+# Connect to remote deployed agent
+playground-remote: build-frontend-if-needed
+	@echo "==============================================================================="
+	@echo "| 🚀 Connecting to REMOTE agent...                                           |"
+	@echo "|                                                                             |"
+	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
+	@echo "| ☁️  Connected to deployed agent engine                                      |"
+	@echo "==============================================================================="
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote
+{%- endif %}
+
+# Start the frontend UI separately for development (requires backend running separately)
+ui:
+	(cd frontend && PORT=8501 npm start)
+
+# Launch dev playground with both frontend and backend hot-reload
+playground-dev:
+	@echo "==============================================================================="
+	@echo "| 🚀 Starting your agent playground in DEV MODE...                           |"
+	@echo "|                                                                             |"
+	@echo "| 🌐 Frontend: http://localhost:8501                                         |"
+	@echo "| 🌐 Backend:  http://localhost:8000                                         |"
+	@echo "| 💡 Try asking: {{cookiecutter.example_question}}|"
+	@echo "| 🔄 Both frontend and backend will auto-reload on changes                    |"
+	@echo "==============================================================================="
+	@echo "Starting backend server..."
+	$(MAKE) local-backend &
+	@echo "Starting frontend dev server..."
+	$(MAKE) ui
+{%- endif %}
+
+# ==============================================================================
+# Backend Deployment Targets
+# ==============================================================================
 
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -76,7 +162,7 @@ backend:
 		--region "us-central1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
-		--labels "{% if "adk" in cookiecutter.tags %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
+		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
 		--set-env-vars \
 		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \
@@ -86,42 +172,21 @@ backend:
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
 {%- endif %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
-{%- endif %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-{%- if cookiecutter.agent_name == 'live_api' %}
 
-# Start the frontend UI separately for development (requires backend running separately)
-ui:
-	(cd frontend && PORT=8501 npm start)
-
-# Launch dev playground with both frontend and backend hot-reload
-playground-dev:
-	@echo "==============================================================================="
-	@echo "| 🚀 Starting your agent playground in DEV MODE...                           |"
-	@echo "|                                                                             |"
-	@echo "| 🌐 Frontend: http://localhost:8501                                         |"
-	@echo "| 🌐 Backend:  http://localhost:8000                                         |"
-	@echo "| 💡 Try asking: What's the weather in San Francisco?                         |"
-	@echo "| 🔄 Both frontend and backend will auto-reload on changes                    |"
-	@echo "==============================================================================="
-	@echo "Starting backend server..."
-	$(MAKE) local-backend &
-	@echo "Starting frontend dev server..."
-	$(MAKE) ui
-{%- endif %}
-{%- endif %}
+# ==============================================================================
+# Infrastructure Setup
+# ==============================================================================
 
 # Set up development environment resources using Terraform
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-
 {%- if cookiecutter.data_ingestion %}
+
+# ==============================================================================
+# Data Ingestion (RAG capabilities)
+# ==============================================================================
 
 # Run the data ingestion pipeline for RAG capabilities
 data-ingestion:
@@ -141,6 +206,10 @@ data-ingestion:
 		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \
 		--pipeline-name="data-ingestion-pipeline")
 {%- endif %}
+
+# ==============================================================================
+# Testing & Code Quality
+# ==============================================================================
 
 # Run unit and integration tests
 test:

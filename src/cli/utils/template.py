@@ -112,7 +112,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
     # Define priority agents that should appear first
     PRIORITY_AGENTS = [
         "adk_base",
-        "adk_gemini_fullstack",
+        "adk_live",
         "agentic_rag",
         "langgraph_base_react",
     ]
@@ -740,6 +740,8 @@ def process_template(
                 ),
                 "settings": settings,
                 "tags": tags,
+                "is_adk": "adk" in tags,
+                "is_adk_live": "adk_live" in tags,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "session_type": session_type or "",
@@ -756,7 +758,12 @@ def process_template(
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files
-                    "frontend/*",  # Don't render frontend directory
+                    "*.tsx",  # Don't render TypeScript React files
+                    "*.ts",  # Don't render TypeScript files
+                    "*.jsx",  # Don't render JavaScript React files
+                    "*.js",  # Don't render JavaScript files
+                    "*.css",  # Don't render CSS files
+                    "frontend/**/*",  # Don't render frontend directory recursively
                     "notebooks/*",  # Don't render notebooks directory
                     ".git/*",  # Don't render git directory
                     "__pycache__/*",  # Don't render cache
@@ -1109,12 +1116,12 @@ def should_exclude_path(
     path: pathlib.Path, agent_name: str, agent_directory: str = "app"
 ) -> bool:
     """Determine if a path should be excluded based on the agent type."""
-    if agent_name == "live_api":
-        # Exclude the unit test utils folder and agent utils folder for live_api
+    if agent_name == "adk_live":
+        # Exclude the unit test utils folder and agent utils folder for adk_live
         if "tests/unit/test_utils" in str(path) or f"{agent_directory}/utils" in str(
             path
         ):
-            logging.debug(f"Excluding path for live_api: {path}")
+            logging.debug(f"Excluding path for adk_live: {path}")
             return True
     return False
 

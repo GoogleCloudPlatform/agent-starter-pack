@@ -91,8 +91,12 @@ locals {
       value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
     },
     {
-      name  = "live_api-cloud_run"
-      value = "live_api,cloud_run"
+      name  = "adk_live-agent_engine"
+      value = "adk_live,agent_engine"
+    },
+    {
+      name  = "adk_live-cloud_run"
+      value = "adk_live,cloud_run"
     },
     {
       name  = "adk_base-cloud_run-alloydb"
@@ -133,6 +137,10 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search,--cicd-runner,github_actions"
     },
     {
+      name  = "adk_live-agent_engine-github"
+      value = "adk_live,agent_engine,--cicd-runner,github_actions"
+    },
+    {
       name  = "adk_base-agent_engine"
       value = "adk_base,agent_engine,-dir,tag"
     },
@@ -153,8 +161,12 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
     },
     {
-      name  = "live_api-cloud_run"
-      value = "live_api,cloud_run"
+      name  = "adk_live-agent_engine"
+      value = "adk_live,agent_engine"
+    },
+    {
+      name  = "adk_live-cloud_run"
+      value = "adk_live,cloud_run"
     },
     {
       name  = "adk_base-cloud_run-alloydb"
@@ -180,8 +192,8 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       "agents/agentic_rag/**",
       "src/data_ingestion/**",
       "pyproject.toml",
-    ] : substr(combo.name, 0, 8) == "live_api" ? [
-      "agents/live_api/**",
+    ] : substr(combo.name, 0, 8) == "adk_live" ? [
+      "agents/adk_live/**",
       "pyproject.toml",
     ] : [
       # Only include files for the specific agent being tested

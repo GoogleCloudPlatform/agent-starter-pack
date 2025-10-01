@@ -34,7 +34,7 @@ def _run_agent_test(
     timestamp = datetime.now().strftime("%m%d%H%M%S")
     project_name = f"{agent[:8]}-{deployment_target[:5]}-{timestamp}".replace("_", "-")
     project_path = pathlib.Path(TARGET_DIR) / project_name
-    region = "us-central1" if agent == "live_api" else "europe-west4"
+    region = "us-central1" if agent == "adk_live" else "europe-west4"
     try:
         # Create target directory if it doesn't exist
         os.makedirs(TARGET_DIR, exist_ok=True)
@@ -66,10 +66,19 @@ def _run_agent_test(
             "Templating project",
         )
 
+        # Determine agent directory from extra_params
+        agent_directory = "app"  # default
+        if extra_params:
+            # Check for -dir or --agent-directory parameter
+            for i, param in enumerate(extra_params):
+                if param in ["-dir", "--agent-directory"] and i + 1 < len(extra_params):
+                    agent_directory = extra_params[i + 1]
+                    break
+
         # Verify essential files
         essential_files = [
             "pyproject.toml",
-            "app/agent.py",
+            f"{agent_directory}/agent.py",
         ]
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"

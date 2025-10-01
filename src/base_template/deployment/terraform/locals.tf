@@ -33,7 +33,7 @@ locals {
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",
-{%- if "adk" in cookiecutter.tags and cookiecutter.session_type == "alloydb" %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
     "compute.googleapis.com",
     "servicenetworking.googleapis.com",
     "alloydb.googleapis.com",

@@ -128,7 +128,7 @@ def get_test_matrix() -> list[CICDTestConfig]:
         #     extra_params="",
         # ),
         # CICDTestConfig(
-        #     agent="live_api",
+        #     agent="adk_live",
         #     deployment_target="cloud_run",
         #     extra_params="",
         # ),
@@ -1094,7 +1094,7 @@ class TestE2EDeployment:
             pytest.skip("Skipping test: Previous test failed in the session")
 
         # Set region based on agent type
-        region = "us-central1" if config.agent == "live_api" else DEFAULT_REGION
+        region = "us-central1" if config.agent == "adk_live" else DEFAULT_REGION
         github_pat = os.environ.get("GITHUB_PAT")
         github_app_installation_id = os.environ.get("GITHUB_APP_INSTALLATION_ID")
 

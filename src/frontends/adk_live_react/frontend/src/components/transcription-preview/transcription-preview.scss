@@ -1,0 +1,150 @@
+/**
+ * Copyright 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+.transcription-preview {
+  width: 0;
+  height: 100%;
+  background: var(--Neutral-00);
+  border-left: 1px solid var(--Neutral-20);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+  transition: width 0.2s ease-in-out;
+  flex-shrink: 0;
+
+  &.open {
+    width: 300px;
+  }
+
+  .transcription-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out 0.1s;
+
+    &:first-child {
+      border-bottom: 1px solid var(--Neutral-20);
+    }
+
+    .transcription-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--Neutral-05);
+      border-bottom: 1px solid var(--Neutral-20);
+      flex-shrink: 0;
+
+      .material-symbols-outlined {
+        font-size: 20px;
+        color: var(--Neutral-70);
+      }
+
+      h3 {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--Neutral-90);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .transcription-content {
+      flex: 1;
+      padding: 12px 16px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      word-wrap: break-word;
+
+      p {
+        margin: 0 0 12px 0;
+        color: var(--Neutral-90);
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: var(--font-family);
+
+        &.placeholder {
+          color: var(--Neutral-50);
+          font-style: italic;
+        }
+
+        &.previous {
+          color: var(--Neutral-60);
+          opacity: 0.7;
+        }
+
+        &.current {
+          color: var(--Neutral-90);
+          font-weight: 500;
+        }
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+
+  &.open .transcription-section {
+    opacity: 1;
+  }
+
+  .input-section {
+    .transcription-header {
+      .material-symbols-outlined {
+        color: var(--Green-500);
+      }
+
+      h3 {
+        color: var(--Green-500);
+      }
+    }
+
+    .transcription-content {
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 200, 100, 0.02),
+        transparent
+      );
+    }
+  }
+
+  .output-section {
+    .transcription-header {
+      .material-symbols-outlined {
+        color: var(--Blue-500);
+      }
+
+      h3 {
+        color: var(--Blue-500);
+      }
+    }
+
+    .transcription-content {
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 100, 255, 0.02),
+        transparent
+      );
+    }
+  }
+}

@@ -109,6 +109,8 @@ class LocalChatMessageHistory(BaseChatMessageHistory):
                 for msg in messages
                 if msg["type"] in ("ai", "human") and isinstance(msg["content"], str)
             ]
+            # Convert messages to the format expected by chain_title.invoke
+            messages = {"messages": messages}
 
             response = chain_title.invoke(messages)
             title = (

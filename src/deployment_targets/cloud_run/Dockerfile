@@ -16,7 +16,7 @@ FROM python:3.11-slim
 
 RUN pip install --no-cache-dir uv==0.6.12
 
-{%- if cookiecutter.agent_name == 'live_api' %}
+{%- if cookiecutter.is_adk_live %}
 # Install Node.js for frontend build
 RUN apt-get update && apt-get install -y \
     curl \
@@ -32,7 +32,7 @@ COPY ./pyproject.toml ./README.md ./uv.lock* ./
 
 COPY ./{{cookiecutter.agent_directory}} ./{{cookiecutter.agent_directory}}
 
-{%- if cookiecutter.agent_name == 'live_api' %}
+{%- if cookiecutter.is_adk_live %}
 # Copy and build frontend
 COPY ./frontend ./frontend
 RUN cd frontend && npm ci && npm run build

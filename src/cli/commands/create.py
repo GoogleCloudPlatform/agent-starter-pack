@@ -935,10 +935,8 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
                 capture_output=True,
                 text=True,
             )
-        except subprocess.CalledProcessError as e:
-            console.print("> Error setting application default quota project:")
-            console.print(e.stderr)
-            raise
+        except subprocess.CalledProcessError:
+            logging.debug(f"Setting quota project failed: {e.stderr}")
 
     console.print(f"> Successfully configured project: {project_id}")
 

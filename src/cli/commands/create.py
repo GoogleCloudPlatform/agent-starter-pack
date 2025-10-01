@@ -936,8 +936,7 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
                 text=True,
             )
         except subprocess.CalledProcessError:
-            # Silently ignore quota project errors - not critical for operation
-            pass
+            logging.debug(f"Setting quota project failed: {e.stderr}")
 
     console.print(f"> Successfully configured project: {project_id}")
 

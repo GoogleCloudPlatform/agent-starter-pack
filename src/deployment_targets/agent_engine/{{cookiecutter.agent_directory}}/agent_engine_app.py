@@ -263,7 +263,7 @@ def deploy_agent_engine_app(
     extra_packages_list = list(extra_packages)
     staging_bucket_uri = f"gs://{project}-agent-engine"
 {%- if "adk" in cookiecutter.tags %}
-    artifacts_bucket_name = f"{project}-{{cookiecutter.project_name}}-logs-data"
+    artifacts_bucket_name = f"{project}-{{cookiecutter.project_name}}-logs"
     create_bucket_if_not_exists(
         bucket_name=artifacts_bucket_name, project=project, location=location
     )

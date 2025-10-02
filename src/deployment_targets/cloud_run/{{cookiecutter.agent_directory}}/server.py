@@ -236,7 +236,7 @@ allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 )
 
-bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs-data"
+bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs"
 create_bucket_if_not_exists(
     bucket_name=bucket_name, project=project_id, location="us-central1"
 )

@@ -28,7 +28,7 @@ resource "google_storage_bucket" "bucket_load_test_results" {
 
 resource "google_storage_bucket" "logs_data_bucket" {
   for_each                    = toset(local.all_project_ids)
-  name                        = "${each.value}-${var.project_name}-logs-data"
+  name                        = "${each.value}-${var.project_name}-logs"
   location                    = var.region
   project                     = each.value
   uniform_bucket_level_access = true

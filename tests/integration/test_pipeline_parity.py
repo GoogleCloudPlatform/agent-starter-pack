@@ -238,7 +238,6 @@ Respond with a JSON object containing:
                     config=types.GenerateContentConfig(
                         temperature=0,
                         max_output_tokens=65000,
-                        thinking_config=types.ThinkingConfig(thinking_budget=1000),
                         response_mime_type="application/json",
                         response_schema=comparison_schema,
                     ),

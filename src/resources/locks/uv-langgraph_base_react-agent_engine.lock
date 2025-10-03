@@ -2043,7 +2043,7 @@ wheels = [
 
 [[package]]
 name = "langchain-core"
-version = "0.3.77"
+version = "0.3.78"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jsonpatch" },
@@ -2054,9 +2054,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/40/cc/786184e5f6a921a2aa4d2ac51d3adf0cd037289f3becff39644bee9654ee/langchain_core-0.3.77.tar.gz", hash = "sha256:1d6f2ad6bb98dd806c6c66a822fa93808d821e9f0348b28af0814b3a149830e7", size = 580255, upload-time = "2025-10-01T14:34:37.368Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/04/0035bd1df8d0fb534afceabe3ba0a87c5af8c5020177650e9aa79aca3495/langchain_core-0.3.78.tar.gz", hash = "sha256:a174a2061f8659b916fd2b1c7d174b3ddd07be7ca45a07aaec442696df5101b6", size = 580473, upload-time = "2025-10-03T16:52:37.025Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/64/18/e7462ae0ce57caa9f6d5d975dca861e9a751e5ca253d60a809e0d833eac3/langchain_core-0.3.77-py3-none-any.whl", hash = "sha256:9966dfe3d8365847c5fb85f97dd20e3e21b1904ae87cfd9d362b7196fb516637", size = 449525, upload-time = "2025-10-01T14:34:35.672Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/a7/ff35c108c4863c1bb99724a4253ff2324aea5789d689dd59424c07df1199/langchain_core-0.3.78-py3-none-any.whl", hash = "sha256:dafc4f7e9fd008f680bf0ffe5904dbaa45992abdb92627b68eccb7b4089cbbf0", size = 449610, upload-time = "2025-10-03T16:52:35.428Z" },
 ]
 
 [[package]]

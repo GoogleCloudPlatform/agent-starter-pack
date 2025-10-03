@@ -67,14 +67,14 @@ jobs:
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
       - name: Install uv and dependencies
         run: |
-          pip install uv==0.6.12
+          pip install uv==0.8.13
           uv sync --locked
 {%- endif %}
 
 {%- if cookiecutter.data_ingestion %}
       - name: Deploy data ingestion pipeline (Production)
         run: |
-          cd data_ingestion && pip install uv==0.6.12 && cd data_ingestion_pipeline && \
+          cd data_ingestion && pip install uv==0.8.13 && cd data_ingestion_pipeline && \
           uv sync --locked && uv run python submit_pipeline.py
         env:
           PIPELINE_ROOT: {% raw %}${{ vars.PIPELINE_GCS_ROOT_PROD }}{% endraw %}

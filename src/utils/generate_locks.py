@@ -22,7 +22,7 @@ import subprocess
 import tempfile
 
 import click
-from jinja2 import Template
+from jinja2 import StrictUndefined, Template
 from lock_utils import get_agent_configs, get_lock_filename
 
 
@@ -55,15 +55,19 @@ def generate_pyproject(
         extra_dependencies: List of additional dependencies from .templateconfig.yaml
     """
     with open(template_path, encoding="utf-8") as f:
-        template = Template(f.read(), trim_blocks=True, lstrip_blocks=True)
+        template = Template(f.read(), trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
 
     # Convert list to proper format for template
+    tags = list(config.get("tags", []))
     context = {
         "cookiecutter": {
             "project_name": "locked-template",
             "deployment_target": deployment_target,
-            "extra_dependencies": list(config.get("extra_dependencies",[])),
-            "tags": list(config.get("tags",[])),
+            "extra_dependencies": list(config.get("extra_dependencies", [])),
+            "tags": tags,
+            "is_adk": "adk" in tags,
+            "is_adk_live": "adk_live" in tags,
+            "agent_directory": config.get("agent_directory", "app"),
         }
     }
 

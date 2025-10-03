@@ -14,7 +14,7 @@
 
 FROM python:3.11-slim
 
-RUN pip install --no-cache-dir uv==0.6.12
+RUN pip install --no-cache-dir uv==0.8.13
 
 {%- if cookiecutter.is_adk_live %}
 # Install Node.js for frontend build

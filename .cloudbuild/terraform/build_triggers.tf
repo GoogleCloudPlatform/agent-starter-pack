@@ -103,7 +103,7 @@ locals {
       value = "adk_base,cloud_run,--session-type,alloydb"
     },
     {
-      name  = "adk_base-cloud_run-agent_engine"
+      name  = "adk_b-cr-agent_engine"
       value = "adk_base,cloud_run,--session-type,agent_engine"
     },
   ]

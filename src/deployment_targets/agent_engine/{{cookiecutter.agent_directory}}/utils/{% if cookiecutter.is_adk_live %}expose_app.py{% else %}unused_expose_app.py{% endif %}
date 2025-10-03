@@ -149,7 +149,10 @@ class WebSocketToQueueAdapter:
         try:
             if self.agent_engine is not None:
                 # Local agent engine mode
-                # Send setupComplete immediately for local mode
+                # Give the agent engine a moment to initialize before sending setupComplete
+                await asyncio.sleep(1)
+
+                # Send setupComplete after initialization delay
                 setup_complete_response: dict = {"setupComplete": {}}
                 await self.websocket.send_json(setup_complete_response)
 
@@ -367,7 +370,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--local-agent",
         type=str,
-        help="Python path to local agent callable (e.g., '{{cookiecutter.agent_directory}}.agent.root_agent'). Defaults to root_agent",
+        help="Python path to local agent callable (e.g., 'app.agent.root_agent'). Defaults to root_agent",
     )
     parser.add_argument(
         "--port",

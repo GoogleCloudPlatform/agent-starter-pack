@@ -42,7 +42,7 @@ def get_weather(query: str) -> str:
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-live-2.5-flash-preview-native-audio",  # for example: model="gemini-2.0-flash-live-001" or model="gemini-2.0-flash-live-preview-04-09"
+    model="gemini-live-2.5-flash-preview-native-audio-09-2025",
     instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
     tools=[get_weather],
 )

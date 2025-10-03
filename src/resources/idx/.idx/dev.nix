@@ -17,9 +17,6 @@
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
-      "ms-toolsai.jupyter"
-      "ms-python.python"
-      "krish-r.vscode-toggle-terminal"
     ];
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
@@ -27,16 +24,33 @@
         create-venv = ''
         # Load environment variables from .env file if it exists
         source .env
-        echo "Logging into gcloud..."
-        echo "Please authenticate with Google Cloud by following the prompts."
-        gcloud auth login --update-adc --brief --quiet
 
-        echo "Setting gcloud project..."
-        gcloud config set project $GOOGLE_CLOUD_PROJECT
+        # Beautiful prints for gcloud setup
+        echo ""
+        echo "╔════════════════════════════════════════════════════════════╗"
+        echo "║                  🔐 GCLOUD SETUP REQUIRED                  ║"
+        echo "╚════════════════════════════════════════════════════════════╝"
+        echo ""
+        echo "📝 Before proceeding, please ensure:"
+        echo "   1️⃣  You are logged in to gcloud"
+        echo "   2️⃣  You have selected the correct project"
+        echo ""
+
+        auth_status=$(gcloud auth list --quiet 2>&1)
+
+        echo ""
+        echo "⚙️  We will now set the project you want to use..."
+        gcloud config get project
+
+        echo ""
+        echo "💡 Need to setup? Run these commands:"
+        echo "   → gcloud auth login"
+        echo "   → gcloud config set project YOUR_PROJECT_ID"
+        echo ""
 
         echo "Running agent starter pack creation..."
-        uvx agent-starter-pack create $AGENT_NAME
-        code ~/$WS_NAME/$AGENT_NAME/README.md
+        uvx agent-starter-pack create $WS_NAME
+        code ~/$WS_NAME/$WS_NAME/README.md
         exec bash
         '';
         # Open editors for the following files by default, if they exist:

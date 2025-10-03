@@ -171,6 +171,7 @@ Respond with a JSON object containing:
 - Different execution environments for load testing in adk_live agent on cloud_run deployment (Cloud Build custom Docker image vs GitHub Actions runner-based setup)
 - Different dependency installation patterns in agent_engine + adk_live load tests (GitHub Actions explicitly installing uv/dependencies before load test vs Cloud Build relying on environment persistence from previous steps)
 - Different authentication handling for integration test steps (Cloud Build's service account providing inherent permissions vs GitHub Actions using separate authentication steps)
+- Missing explicit authentication/GCP auth steps in Cloud Build for integration tests (Cloud Build runs with a service account that implicitly has necessary permissions, while GitHub Actions requires explicit auth steps)
 
 **FLAG these as critical/moderate**:
 - Different Docker image push destinations (different projects/registries)

@@ -135,23 +135,86 @@ jobs:
 
       - name: Run load test
         run: |
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target == 'cloud_run' and cookiecutter.agent_name == 'adk_live' %}
+          # Install dependencies for load test
+          pip install locust==2.31.1 websockets
+
+          # Install Cloud Run proxy component
+          gcloud components install cloud-run-proxy --quiet
+
+          # Start Cloud Run proxy in background
+          gcloud run services proxy {{cookiecutter.project_name}} \
+          --port=8080 \
+          --region {% raw %}${{ vars.REGION }}{% endraw %} \
+          --project {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %} \
+          --quiet &
+          PROXY_PID=$!
+
+          # Wait for proxy to be ready
+          echo "Waiting for proxy to start..."
+          sleep 10
+
+          # Run load test and capture exit code
+          locust -f tests/load_test/load_test.py \
+          --headless \
+          -H http://127.0.0.1:8080 \
+          -t 30s -u 2 -r 2 \
+          --csv=tests/load_test/.results/results \
+          --html=tests/load_test/.results/report.html
+          LOCUST_EXIT_CODE=$?
+
+          # Clean up proxy
+          kill $PROXY_PID || true
+
+          # Exit with load test result to fail build if tests failed
+          if [ $LOCUST_EXIT_CODE -ne 0 ]; then
+            echo "Load test failed with exit code $LOCUST_EXIT_CODE"
+            exit $LOCUST_EXIT_CODE
+          fi
+{%- elif cookiecutter.deployment_target == 'cloud_run' %}
           export _ID_TOKEN="{% raw %}${{ steps.fetch-token.outputs._id_token }}{% endraw %}"
           export _STAGING_URL="{% raw %}${{ steps.fetch-url.outputs._staging_url }}{% endraw %}"
-{%- elif cookiecutter.deployment_target == 'agent_engine' %}
-          export _AUTH_TOKEN="{% raw %}${{ steps.fetch-token.outputs._auth_token }}{% endraw %}"
-{%- endif %}
           pip install locust==2.31.1
           locust -f tests/load_test/load_test.py \
           --headless \
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
           -H ${_STAGING_URL} \
           -t 30s -u 10 -r 0.5 \
-{%- elif cookiecutter.deployment_target == 'agent_engine' %}
-          -t 30s -u 2 -r 0.5 \
-{%- endif %}
           --csv=tests/load_test/.results/results \
           --html=tests/load_test/.results/report.html
+{%- elif cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live %}
+          # Start expose app in remote mode (uses deployment_metadata.json by default)
+          uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote &
+          EXPOSE_PID=$!
+
+          # Wait for expose app to be ready
+          sleep 10
+
+          # Run load test against local expose app
+          uv run --with locust==2.31.1 --with websockets locust -f tests/load_test/load_test.py \
+          -H http://127.0.0.1:8000 \
+          --headless \
+          -t 30s -u 2 -r 1 \
+          --csv=tests/load_test/.results/results \
+          --html=tests/load_test/.results/report.html
+          LOCUST_EXIT_CODE=$?
+
+          # Stop expose app
+          kill $EXPOSE_PID
+
+          # Exit with error if locust test failed
+          if [ $LOCUST_EXIT_CODE -ne 0 ]; then
+            echo "Load test failed with exit code $LOCUST_EXIT_CODE"
+            exit $LOCUST_EXIT_CODE
+          fi
+{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+          export _AUTH_TOKEN="{% raw %}${{ steps.fetch-token.outputs._auth_token }}{% endraw %}"
+          pip install locust==2.31.1
+          locust -f tests/load_test/load_test.py \
+          --headless \
+          -t 30s -u 2 -r 0.5 \
+          --csv=tests/load_test/.results/results \
+          --html=tests/load_test/.results/report.html
+{%- endif %}
 
       - name: Export Load Test Results to GCS
         run: |

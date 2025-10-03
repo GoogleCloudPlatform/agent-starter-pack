@@ -11,7 +11,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
 | `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
-| `live_api` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
+| `adk_live` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
 
 ## Choosing the Right Template
 
@@ -62,7 +62,7 @@ This template combines [CrewAI](https://www.crewai.com/)'s multi-agent collabora
 *   Sequential processing for tasks from requirements to implementation and QA.
 *   Ideal for complex tasks requiring delegation and simulating team collaboration.
 
-### Live API (`live_api`)
+### Live API (`adk_live`)
 
 Powered by Google Gemini, this template showcases a real-time, multimodal conversational RAG agent using the [Vertex AI Live API](https://cloud.google.com/vertex-ai/generative-ai/docs/live-api). Features include:
 

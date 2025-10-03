@@ -86,7 +86,7 @@ class CloudTraceLoggingSpanExporter(CloudTraceSpanExporter):
                 print(span_dict)
 
             # Log the span data to Google Cloud Logging
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
             self.logger.log_struct(
                 span_dict,
                 labels={

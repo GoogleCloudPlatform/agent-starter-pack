@@ -138,7 +138,7 @@ Templates for the `create` command (via `-a` or `--agent`):
 | `agentic_rag`          | RAG agent for document retrieval & Q&A       |
 | `langgraph_base_react` | Base ReAct agent (LangGraph)                 |
 | `crewai_coding_crew`   | Multi-agent collaborative coding assistance  |
-| `live_api`             | Real-time multimodal RAG agent               |
+| `adk_live`             | Real-time multimodal RAG agent               |
 
 ---
 

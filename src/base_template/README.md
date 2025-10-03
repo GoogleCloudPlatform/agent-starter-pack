@@ -58,11 +58,11 @@ make install && make playground
 {%- endfor %}
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-| `make playground`    | Launch local development environment with backend and frontend{%- if "adk" in cookiecutter.tags %} - leveraging `adk web` command. {%- endif %}|
+| `make playground`    | Launch local development environment with backend and frontend{%- if cookiecutter.is_adk %} - leveraging `adk web` command. {%- endif %}|
 | `make backend`       | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy) |
 | `make local-backend` | Launch local development server |
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-{%- if cookiecutter.agent_name == 'live_api' %}
+{%- if cookiecutter.is_adk_live %}
 | `make ui`       | Launch Agent Playground front-end only |
 {%- endif %}
 {%- endif %}
@@ -80,7 +80,7 @@ make install && make playground
 
 For full command options and usage, refer to the [Makefile](Makefile).
 
-{% if cookiecutter.agent_name == 'live_api' %}
+{% if cookiecutter.is_adk_live %}
 ## Usage
 
 This template follows a "bring your own agent" approach - you focus on your business logic in `{{cookiecutter.agent_directory}}/agent.py`, and the template handles the surrounding components (UI, infrastructure, deployment, monitoring).
@@ -158,7 +158,7 @@ You can test deployment towards a Dev Environment using the following command:
 gcloud config set project <your-dev-project-id>
 make backend
 ```
-{% if cookiecutter.agent_name == 'live_api' %}
+{% if cookiecutter.is_adk_live %}
 **Note:** For secure access to your deployed backend, consider using Identity-Aware Proxy (IAP) by running `make backend IAP=true`.
 {%- endif %}
 
@@ -169,9 +169,9 @@ See [deployment/README.md](deployment/README.md) for instructions.
 
 The repository includes a Terraform configuration for the setup of a production Google Cloud project. Refer to [deployment/README.md](deployment/README.md) for detailed instructions on how to deploy the infrastructure and application.
 
-{% if cookiecutter.agent_name != 'live_api' %}
+{% if not cookiecutter.is_adk_live %}
 ## Monitoring and Observability
-> You can use [this Looker Studio dashboard]({%- if "adk" in cookiecutter.tags %}https://lookerstudio.google.com/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC{%- else %}https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC{%- endif %}
+> You can use [this Looker Studio dashboard]({%- if cookiecutter.is_adk %}https://lookerstudio.google.com/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC{%- else %}https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC{%- endif %}
 ) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.
 
 The application uses OpenTelemetry for comprehensive observability with all events being sent to Google Cloud Trace and Logging for monitoring and to BigQuery for long term storage. 

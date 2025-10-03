@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # mypy: disable-error-code="attr-defined,arg-type"
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
 import logging
 import os
 from typing import Any
@@ -25,8 +25,12 @@ from google.adk.artifacts import GcsArtifactService
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
-from vertexai._genai.types import AgentEngine, AgentEngineConfig
+from vertexai._genai.types import AgentEngine, AgentEngineConfig{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
+{%- if cookiecutter.is_adk_live %}
+from vertexai.preview.reasoning_engines import AdkApp
+{%- else %}
 from vertexai.agent_engines.templates.adk import AdkApp
+{%- endif %}
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.utils.deployment import (
@@ -282,7 +286,7 @@ def deploy_agent_engine_app(
     # Read requirements
     with open(requirements_file) as f:
         requirements = f.read().strip().split("\n")
-{% if "adk" in cookiecutter.tags %}
+{% if cookiecutter.is_adk %}
     agent_engine = AgentEngineApp(
         agent=root_agent,
         artifact_service_builder=lambda: GcsArtifactService(
@@ -314,6 +318,10 @@ def deploy_agent_engine_app(
         requirements=requirements,
         staging_bucket=staging_bucket_uri,
         labels=labels,
+{%- if cookiecutter.is_adk_live %}
+        agent_server_mode=AgentServerMode.EXPERIMENTAL,  # Enable bidi streaming
+        resource_limits={"cpu": "4", "memory": "8Gi"},
+{%- endif %}
     )
 
     agent_config = {

@@ -1,0 +1,11 @@
+{
+  "adk_base_agent_engine_no_data": "7c7472bd8b5609abe35057c1f2613500ed92ec07c155a954c376da4b22358cb4",
+  "adk_base_cloud_run_no_data": "cee02e6634de339e386f9e37b471ec71a7fd956224c669e8dc8fa110c18f6062",
+  "adk_live_agent_engine": "3185978b37e84970f7b8bdb7c724a2bea1f5c6310030c74e89198fde2f210fb9",
+  "adk_live_cloud_run": "d5e70557945f706e218d7bb8677b42816e6d8e158cac08ab0eea4757f0768b00",
+  "agent_with_agent_garden": "0a0cb9df9076044a1285e78f67ef2a17ee194fb8f3ffdced84b400996d6256cf",
+  "agent_with_custom_commands": "fa56c8f62d976ce0017c47c7452ec9d4c112e6019010bf9ba765d5f75012a7f5",
+  "agentic_rag_cloud_run_vector_search": "539956d40239a4c650f703744117d4ada61aeee9061064887e46fc764da2b4c7",
+  "agentic_rag_cloud_run_vertex_search": "ddf1e092f71e1563169aba6d818025ed714c3ac91bf8dd4b8499ffd2dbeecf5a",
+  "langgraph_cloud_run_no_data": "4544f9b43cafcc72668f89428b646e4b8e830c12178bfcf13c2a9b561a8f66f6"
+}

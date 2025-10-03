@@ -35,7 +35,7 @@ make backend IAP=true
 This single command typically handles building the container, pushing it to a registry, deploying it to Cloud Run, and configuring IAP.
 
 #### B. Scenario 2: Custom Frontend
-If you have a separate, custom frontend (e.g., a React app for a `gemini_fullstack` agent or `live_api`) and want to deploy it with the backend for testing, the process requires a custom container configuration.
+If you have a separate, custom frontend (e.g., a React app for a `gemini_fullstack` agent or `adk_live`) and want to deploy it with the backend for testing, the process requires a custom container configuration.
 
 **Strategy**: For development, modify the `Dockerfile` to build and run both the frontend's development server and the backend's API server within a single container.
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 import uuid
 from typing import (
@@ -57,7 +57,7 @@ from pydantic import (
 {%- endif %}
 
 
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 
@@ -103,7 +103,7 @@ class Feedback(BaseModel):
 
     score: int | float
     text: str | None = ""
-{%- if "adk" in cookiecutter.tags %}
+{%- if cookiecutter.is_adk %}
     invocation_id: str
 {%- else %}
     run_id: str
@@ -111,7 +111,7 @@ class Feedback(BaseModel):
     log_type: Literal["feedback"] = "feedback"
     service_name: Literal["{{cookiecutter.project_name}}"] = "{{cookiecutter.project_name}}"
     user_id: str = ""
-{% if "adk" not in cookiecutter.tags %}
+{% if not cookiecutter.is_adk %}
 
 def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:
     """Ensures a valid RunnableConfig by setting defaults for missing fields."""

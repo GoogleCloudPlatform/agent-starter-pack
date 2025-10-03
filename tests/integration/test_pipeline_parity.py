@@ -155,6 +155,7 @@ Respond with a JSON object containing:
 - Authentication step differences (Workload Identity vs service account)
 - Different mechanisms for triggering subsequent deployments (gcloud builds triggers vs workflow calls)
 - Different ways of passing commit SHA to production deployments (explicit --sha vs implicit inheritance)
+- Cloud Build explicitly passing COMMIT_SHA to production triggers while GitHub Actions relies on implicit github.sha access in called workflows
 - Cross-project deployment patterns where both platforms push images to CI/CD project but deploy to target project
 - Missing substitution variables in Cloud Build that would be provided externally
 - Usage of `$PROJECT_ID` vs `${{{{ vars.CICD_PROJECT_ID }}}}` (these refer to the same project)
@@ -165,6 +166,12 @@ Respond with a JSON object containing:
 - Extra logging or informational steps (like echoing links or build status)
 - Steps that appear to be missing but actually exist in the same conditional blocks
 - Load test parameter differences if they match within the same deployment target conditional blocks
+- Different load test execution environments (Cloud Build using custom Docker images vs GitHub Actions installing dependencies on ubuntu-latest runner)
+- Different dependency installation methods for load testing (Cloud Build using custom Docker image with `pip install locust` and `apt-get install google-cloud-cli-cloud-run-proxy` vs GitHub Actions using `pip install locust websockets` and `gcloud components install cloud-run-proxy`)
+- Different execution environments for load testing in adk_live agent on cloud_run deployment (Cloud Build custom Docker image vs GitHub Actions runner-based setup)
+- Different dependency installation patterns in agent_engine + adk_live load tests (GitHub Actions explicitly installing uv/dependencies before load test vs Cloud Build relying on environment persistence from previous steps)
+- Different authentication handling for integration test steps (Cloud Build's service account providing inherent permissions vs GitHub Actions using separate authentication steps)
+- Missing explicit authentication/GCP auth steps in Cloud Build for integration tests (Cloud Build runs with a service account that implicitly has necessary permissions, while GitHub Actions requires explicit auth steps)
 
 **FLAG these as critical/moderate**:
 - Different Docker image push destinations (different projects/registries)
@@ -226,12 +233,12 @@ Respond with a JSON object containing:
                 }
 
                 response = self.client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-2.5-pro",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         temperature=0,
                         max_output_tokens=65000,
-                        thinking_config=types.ThinkingConfig(thinking_budget=4000),
+                        thinking_config=types.ThinkingConfig(thinking_budget=1000),
                         response_mime_type="application/json",
                         response_schema=comparison_schema,
                     ),

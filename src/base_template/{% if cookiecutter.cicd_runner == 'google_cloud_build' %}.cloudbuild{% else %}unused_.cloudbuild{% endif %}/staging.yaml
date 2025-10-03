@@ -20,7 +20,7 @@ steps:
     args:
       - -c
       - |
-        cd data_ingestion && pip install uv==0.6.12 --user && cd data_ingestion_pipeline && \
+        cd data_ingestion && pip install uv==0.8.13 --user && cd data_ingestion_pipeline && \
         uv sync --locked && uv run python submit_pipeline.py
     env:
       - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT_STAGING}"
@@ -97,7 +97,7 @@ steps:
     args:
       - "-c"
       - |
-        pip install uv==0.6.12 --user && uv sync --locked
+        pip install uv==0.8.13 --user && uv sync --locked
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 

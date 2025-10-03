@@ -55,7 +55,7 @@ jobs:
 
       - name: Install uv and dependencies
         run: |
-          pip install uv==0.6.12
+          pip install uv==0.8.13
           uv sync --locked
 
       - name: Run unit tests

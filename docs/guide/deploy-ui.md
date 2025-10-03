@@ -56,7 +56,7 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir uv==0.6.12
+RUN pip install --no-cache-dir uv==0.8.13
 
 WORKDIR /code
 

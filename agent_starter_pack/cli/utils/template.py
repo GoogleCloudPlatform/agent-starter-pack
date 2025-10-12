@@ -191,7 +191,7 @@ def get_deployment_targets(
         config = remote_config
     else:
         template_path = (
-            pathlib.Path(__file__).parent.parent.parent.parent
+            pathlib.Path(__file__).parent.parent.parent
             / "agents"
             / agent_name
             / ".template"
@@ -309,7 +309,7 @@ def prompt_datastore_selection(
 
     # Otherwise, proceed with normal flow
     template_path = (
-        pathlib.Path(__file__).parent.parent.parent.parent
+        pathlib.Path(__file__).parent.parent.parent
         / "agents"
         / agent_name
         / ".template"
@@ -418,7 +418,7 @@ def prompt_cicd_runner_selection() -> str:
 
 def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
     """Get the absolute path to the agent template directory."""
-    current_dir = pathlib.Path(__file__).parent.parent.parent.parent
+    current_dir = pathlib.Path(__file__).parent.parent.parent
     template_path = current_dir / "agents" / agent_name / ".template"
     if debug:
         logging.debug(f"Looking for template in: {template_path}")
@@ -526,7 +526,7 @@ def process_template(
         # For remote templates, determine the base template
         base_template_name = get_base_template_name(remote_config or {})
         agent_path = (
-            pathlib.Path(__file__).parent.parent.parent.parent
+            pathlib.Path(__file__).parent.parent.parent
             / "agents"
             / base_template_name
         )
@@ -1076,8 +1076,7 @@ def process_template(
             elif deployment_target:
                 # For local templates, use the existing logic
                 lock_path = (
-                    pathlib.Path(__file__).parent.parent.parent.parent
-                    / "src"
+                    pathlib.Path(__file__).parent.parent.parent
                     / "resources"
                     / "locks"
                     / f"uv-{agent_name}-{deployment_target}.lock"

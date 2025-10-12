@@ -8,7 +8,7 @@ test-e2e:
 	set -a && . tests/cicd/.env && set +a && uv run pytest tests/cicd/test_e2e_deployment.py -v
 
 generate-lock:
-	uv run agent_starter_pack/cli/utils/generate_locks.py
+	uv run python -m agent_starter_pack.utils.generate_locks
 
 lint:
 	uv sync --dev --extra lint

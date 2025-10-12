@@ -30,7 +30,7 @@ Templates are processed in a specific order. A failure at any stage will break t
 
 -   `agent-starter-pack/base_template/`: This is the **core template**. Most changes that should apply to all generated projects should start here.
 -   `agent-starter-pack/deployment_targets/`: Contains files that **override or are added to** the `base_template` for a specific deployment target (e.g., `cloud_run`, `gke`, `agent_engine`). If a file exists in both `base_template` and a deployment target, the latter is typically used.
--   `agents/`: Contains pre-packaged, self-contained agent examples. Each has its own `.template/templateconfig.yaml` to define its specific variables and dependencies.
+-   `agent-starter-pack/agents/`: Contains pre-packaged, self-contained agent examples. Each has its own `.template/templateconfig.yaml` to define its specific variables and dependencies.
 -   `agent-starter-pack/cli/commands`: Contains the logic for the CLI commands, such as `create` and `setup-cicd`.
 
 ### CLI Commands

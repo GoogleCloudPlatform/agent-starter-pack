@@ -43,7 +43,7 @@ def validate_makefile_usability(
         cmd = [
             "python",
             "-m",
-            "src.cli.main",
+            "agent_starter_pack.cli.main",
             "create",
             project_name,
             "--agent",

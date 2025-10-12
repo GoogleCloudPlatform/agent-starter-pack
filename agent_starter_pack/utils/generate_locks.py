@@ -23,7 +23,8 @@ import tempfile
 
 import click
 from jinja2 import StrictUndefined, Template
-from lock_utils import get_agent_configs, get_lock_filename
+
+from .lock_utils import get_agent_configs, get_lock_filename
 
 
 def ensure_lock_dir() -> pathlib.Path:
@@ -32,7 +33,7 @@ def ensure_lock_dir() -> pathlib.Path:
     Returns:
         Path to the locks directory
     """
-    lock_dir = pathlib.Path("src/resources/locks")
+    lock_dir = pathlib.Path("agent_starter_pack/resources/locks")
 
     # Remove if exists
     if lock_dir.exists():
@@ -108,7 +109,7 @@ def generate_lock_file(pyproject_content: str, output_path: pathlib.Path) -> Non
 @click.option(
     "--template",
     type=click.Path(exists=True, path_type=pathlib.Path),
-    default="src/base_template/pyproject.toml",
+    default="agent_starter_pack/base_template/pyproject.toml",
     help="Path to template pyproject.toml",
 )
 def main(template: pathlib.Path) -> None:

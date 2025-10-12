@@ -19,7 +19,9 @@ class MakefileRenderer:
     """Helper class to render Makefile templates with Jinja2."""
 
     def __init__(self) -> None:
-        template_dir = Path(__file__).parent.parent.parent / "src" / "base_template"
+        template_dir = (
+            Path(__file__).parent.parent.parent / "agent_starter_pack" / "base_template"
+        )
         self.env = Environment(
             loader=FileSystemLoader(str(template_dir)),
             undefined=StrictUndefined,

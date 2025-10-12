@@ -1,6 +1,6 @@
 # Makefile Template Test Suite
 
-Regression tests for `src/base_template/Makefile` template refactoring. Ensures changes don't alter generated output across agent types, deployment targets, and feature combinations.
+Regression tests for `agent-starter-pack/base_template/Makefile` template refactoring. Ensures changes don't alter generated output across agent types, deployment targets, and feature combinations.
 
 ## Coverage
 
@@ -21,7 +21,7 @@ uv run pytest tests/unit/test_makefile_template.py -v -k "test_adk_live"  # Spec
 ## Refactoring Workflow
 
 1. Run tests before changes (verify baseline)
-2. Make incremental changes to `src/base_template/Makefile`
+2. Make incremental changes to `agent-starter-pack/base_template/Makefile`
 3. Run tests frequently to catch issues
 4. Verify all tests pass after refactoring
 

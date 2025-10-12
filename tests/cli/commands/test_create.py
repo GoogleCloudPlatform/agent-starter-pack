@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from click.testing import CliRunner
 
-from src.cli.commands.create import (
+from agent_starter_pack.cli.commands.create import (
     create,
     display_agent_selection,
     normalize_project_name,
@@ -52,47 +52,51 @@ def mock_resolve() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_console() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.console") as mock:
+    with patch("agent_starter_pack.cli.commands.create.console") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_verify_credentials() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.verify_credentials") as mock:
+    with patch("agent_starter_pack.cli.commands.create.verify_credentials") as mock:
         mock.return_value = {"account": "test@example.com", "project": "test-project"}
         yield mock
 
 
 @pytest.fixture
 def mock_process_template() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.process_template") as mock:
+    with patch("agent_starter_pack.cli.commands.create.process_template") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_get_template_path() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.get_template_path") as mock:
+    with patch("agent_starter_pack.cli.commands.create.get_template_path") as mock:
         mock.return_value = Path("/mock/template/path")
         yield mock
 
 
 @pytest.fixture
 def mock_prompt_deployment_target() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.prompt_deployment_target") as mock:
+    with patch(
+        "agent_starter_pack.cli.commands.create.prompt_deployment_target"
+    ) as mock:
         mock.return_value = "cloud_run"
         yield mock
 
 
 @pytest.fixture
 def mock_verify_vertex_connection() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.verify_vertex_connection") as mock:
+    with patch(
+        "agent_starter_pack.cli.commands.create.verify_vertex_connection"
+    ) as mock:
         mock.return_value = None  # Success
         yield mock
 
 
 @pytest.fixture
 def mock_subprocess() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.subprocess.run") as mock:
+    with patch("agent_starter_pack.cli.commands.create.subprocess.run") as mock:
         mock.return_value = MagicMock(returncode=0)
         yield mock
 
@@ -100,7 +104,7 @@ def mock_subprocess() -> Generator[MagicMock, None, None]:
 @pytest.fixture
 def mock_get_deployment_targets() -> Generator[MagicMock, None, None]:
     """Mock get_deployment_targets to return a list of targets."""
-    with patch("src.cli.commands.create.get_deployment_targets") as mock:
+    with patch("agent_starter_pack.cli.commands.create.get_deployment_targets") as mock:
         mock.return_value = ["cloud_run", "agent_engine"]
         yield mock
 
@@ -108,7 +112,7 @@ def mock_get_deployment_targets() -> Generator[MagicMock, None, None]:
 @pytest.fixture
 def mock_load_template_config() -> Generator[MagicMock, None, None]:
     """Mocks the template config loading to prevent file system access."""
-    with patch("src.cli.commands.create.load_template_config") as mock:
+    with patch("agent_starter_pack.cli.commands.create.load_template_config") as mock:
         mock.return_value = {
             "name": "langgraph_base_react",
             "description": "LangGraph Base React Agent",
@@ -125,7 +129,7 @@ def mock_load_template_config() -> Generator[MagicMock, None, None]:
 
 @pytest.fixture
 def mock_get_available_agents() -> Generator[MagicMock, None, None]:
-    with patch("src.cli.commands.create.get_available_agents") as mock:
+    with patch("agent_starter_pack.cli.commands.create.get_available_agents") as mock:
         mock.return_value = {
             1: {
                 "name": "langgraph_base_react",

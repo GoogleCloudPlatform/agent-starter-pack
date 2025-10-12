@@ -72,7 +72,7 @@ See [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pac
 | `agentic_rag` | A RAG agent for document retrieval and Q&A. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).       |
 | `langgraph_base_react`      | An agent implementing a base ReAct agent using LangGraph |
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |
-| `adk_live`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat with vector DB-backed responses                       |
+| `adk_live`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat     |
 
 **More agents are on the way!** We are continuously expanding our [agent library](https://googlecloudplatform.github.io/agent-starter-pack/agents/overview). Have a specific agent type in mind? [Raise an issue as a feature request!](https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/new?labels=enhancement)
 

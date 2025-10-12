@@ -23,33 +23,33 @@ locals {
   ]
 
   common_included_files = [
-    "agents/**",
-    "src/cli/**",
+    "agent_starter_pack/agents/**",
+    "agent_starter_pack/cli/**",
     "tests/**",
-    "src/data_ingestion/**",
-    "src/frontends/streamlit/**",
+    "agent_starter_pack/data_ingestion/**",
+    "agent_starter_pack/frontends/streamlit/**",
     "pyproject.toml",
     "uv.lock",
     ".cloudbuild/**",
   ]
 
   lint_templated_agents_included_files = [
-    "src/cli/**",
-    "src/base_template/**",
-    "src/data_ingestion/**",
-    "src/deployment_targets/**",
+    "agent_starter_pack/cli/**",
+    "agent_starter_pack/base_template/**",
+    "agent_starter_pack/data_ingestion/**",
+    "agent_starter_pack/deployment_targets/**",
     "tests/integration/test_template_linting.py",
     "tests/integration/test_templated_patterns.py",
-    "src/resources/locks/**",
+    "agent_starter_pack/resources/locks/**",
     "pyproject.toml",
     "uv.lock",
     ".cloudbuild/**",
   ]
 
   makefile_usability_included_files = [
-    "src/cli/**",
-    "src/base_template/**",
-    "src/deployment_targets/**",
+    "agent_starter_pack/cli/**",
+    "agent_starter_pack/base_template/**",
+    "agent_starter_pack/deployment_targets/**",
     "tests/integration/test_makefile_usability.py",
     "pyproject.toml",
     "uv.lock",
@@ -111,14 +111,14 @@ locals {
 agent_testing_included_files = { for combo in local.agent_testing_combinations :
     combo.name => [
       # Only include files for the specific agent being tested
-      "agents/${split(",", combo.value)[0]}/**",
+      "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
       # Common files that affect all agents
-      "src/cli/**",
-      "src/base_template/**",
-      "src/deployment_targets/**",
+      "agent_starter_pack/cli/**",
+      "agent_starter_pack/base_template/**",
+      "agent_starter_pack/deployment_targets/**",
       "tests/integration/test_template_linting.py",
       "tests/integration/test_templated_patterns.py",
-      "src/resources/locks/**",
+      "agent_starter_pack/resources/locks/**",
       "pyproject.toml",
       "uv.lock",
     ]
@@ -186,25 +186,25 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
 
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
     combo.name => combo.name == "adk_base-cloud_run-alloydb" ? [
-      "src/deployment_targets/cloud_run/**",
+      "agent_starter_pack/deployment_targets/cloud_run/**",
       "pyproject.toml",
     ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
-      "agents/agentic_rag/**",
-      "src/data_ingestion/**",
+      "agent_starter_pack/agents/agentic_rag/**",
+      "agent_starter_pack/data_ingestion/**",
       "pyproject.toml",
     ] : substr(combo.name, 0, 8) == "adk_live" ? [
-      "agents/adk_live/**",
+      "agent_starter_pack/agents/adk_live/**",
       "pyproject.toml",
     ] : [
       # Only include files for the specific agent being tested
-      "agents/${split(",", combo.value)[0]}/**",
+      "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
       # Common files that affect all agents
-      "src/cli/**",
-      "src/base_template/**",
-      "src/data_ingestion/**",
-      "src/deployment_targets/**",
+      "agent_starter_pack/cli/**",
+      "agent_starter_pack/base_template/**",
+      "agent_starter_pack/data_ingestion/**",
+      "agent_starter_pack/deployment_targets/**",
       "tests/cicd/test_e2e_deployment.py",
-      "src/resources/locks/**",
+      "agent_starter_pack/resources/locks/**",
       "pyproject.toml",
       "uv.lock",
       ".cloudbuild"
@@ -426,10 +426,10 @@ resource "google_cloudbuild_trigger" "pr_test_pipeline_parity" {
   filename       = ".cloudbuild/ci/test_pipeline_parity.yaml"
   included_files = [
     "tests/integration/test_pipeline_parity.py",
-    "src/cli/**",
+    "agent_starter_pack/cli/**",
     ".cloudbuild/**",
-    "src/base_template/**/.github/**",
-    "src/base_template/**/.cloudbuild/**",
+    "agent_starter_pack/base_template/**/.github/**",
+    "agent_starter_pack/base_template/**/.cloudbuild/**",
     "pyproject.toml",
     "uv.lock",
   ]

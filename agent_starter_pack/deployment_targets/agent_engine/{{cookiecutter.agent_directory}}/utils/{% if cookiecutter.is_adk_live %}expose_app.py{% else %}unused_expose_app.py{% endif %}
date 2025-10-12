@@ -53,6 +53,16 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Initialize default configuration
+app.state.config = {
+    "use_remote_agent": False,
+    "remote_agent_engine_id": None,
+    "project_id": None,
+    "location": "us-central1",
+    "local_agent_path": "..agent.root_agent",
+    "agent_engine_class_path": "..agent_engine_app.AgentEngineApp",
+}
+
 
 class WebSocketToQueueAdapter:
     """Adapter to convert WebSocket messages to an asyncio Queue for the agent engine."""

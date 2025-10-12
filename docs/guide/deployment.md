@@ -65,7 +65,7 @@ For a complete guide on the command and its options, see the [**`setup-cicd` CLI
 
 ## Required Variables
 
-The deployment uses Terraform variables that need to be configured for your environment. These are defined in `src/base_template/deployment/terraform/variables.tf`:
+The deployment uses Terraform variables that need to be configured for your environment. These are defined in `agent-starter-pack/base_template/deployment/terraform/variables.tf`:
 
 ### Core Configuration
 - **`project_name`**: Base name for resource naming (default: auto-generated from cookiecutter)

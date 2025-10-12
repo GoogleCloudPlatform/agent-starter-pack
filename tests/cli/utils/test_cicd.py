@@ -17,7 +17,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from cli.utils.cicd import ProjectConfig, print_cicd_summary, run_command
 
 
@@ -31,7 +30,7 @@ def mock_console() -> MagicMock:
 @pytest.fixture
 def mock_run_command() -> MagicMock:
     """Mock run_command function"""
-    with patch("src.cli.utils.cicd.run_command") as mock:
+    with patch("agent_starter_pack.cli.utils.cicd.run_command") as mock:
         yield mock
 
 

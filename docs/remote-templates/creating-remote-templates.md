@@ -9,7 +9,7 @@ When creating a remote template, you need to consider:
 ### Dependencies (`pyproject.toml`)
 **Required for custom dependencies:** If your agent has custom Python dependencies, you **must** include a `pyproject.toml` file at the template root with those dependencies listed.
 
-For guidance on the structure and content of your `pyproject.toml`, you can reference the [base template pyproject.toml](https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/src/base_template/pyproject.toml) as an example of the expected format and common dependencies.
+For guidance on the structure and content of your `pyproject.toml`, you can reference the [base template pyproject.toml](https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/agent-starter-pack/base_template/pyproject.toml) as an example of the expected format and common dependencies.
 
 ### Configuration (`[tool.agent-starter-pack]`)
 **Optional but recommended:** Add this section to your `pyproject.toml` for:

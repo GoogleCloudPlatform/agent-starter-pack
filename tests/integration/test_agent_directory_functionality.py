@@ -93,7 +93,7 @@ root_agent = Agent(
                 cmd = [
                     "python",
                     "-m",
-                    "src.cli.main",
+                    "agent_starter_pack.cli.main",
                     "create",
                     project_name,
                     "--agent",
@@ -212,7 +212,7 @@ packages = ["assistant"]
                 cmd = [
                     "python",
                     "-m",
-                    "src.cli.main",
+                    "agent_starter_pack.cli.main",
                     "enhance",
                     ".",
                     "--agent-directory",
@@ -303,7 +303,7 @@ agent_directory = "bot"
                 cmd = [
                     "python",
                     "-m",
-                    "src.cli.main",
+                    "agent_starter_pack.cli.main",
                     "enhance",
                     ".",
                     "--auto-approve",
@@ -400,7 +400,7 @@ deployment_targets = ["{deployment_target}"]
                 cmd = [
                     "python",
                     "-m",
-                    "src.cli.main",
+                    "agent_starter_pack.cli.main",
                     "create",
                     project_name,
                     "--agent",

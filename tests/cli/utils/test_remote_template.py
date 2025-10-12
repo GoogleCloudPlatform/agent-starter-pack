@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
 
-from src.cli.utils.remote_template import (
+from agent_starter_pack.cli.utils.remote_template import (
     RemoteTemplateSpec,
     check_and_execute_with_version_lock,
     fetch_remote_template,
@@ -198,7 +198,9 @@ requires_data_ingestion = false
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data=config_content)),
-            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.tomllib.load"
+            ) as mock_toml_load,
         ):
             mock_toml_load.return_value = {
                 "tool": {
@@ -231,7 +233,7 @@ requires_data_ingestion = false
                 "has_explicit_config": False,
             }
 
-    @patch("src.cli.utils.remote_template.logging")
+    @patch("agent_starter_pack.cli.utils.remote_template.logging")
     def test_load_remote_template_config_yaml_error(
         self, mock_logging: MagicMock
     ) -> None:
@@ -279,7 +281,9 @@ requires_data_ingestion = true
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data=config_content)),
-            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.tomllib.load"
+            ) as mock_toml_load,
         ):
             mock_toml_load.return_value = {
                 "tool": {
@@ -369,8 +373,8 @@ class TestMergeTemplateConfigs:
 class TestRemoteTemplateIntegration:
     """Integration tests for remote template functionality"""
 
-    @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.tempfile.mkdtemp")
+    @patch("agent_starter_pack.cli.utils.remote_template.subprocess.run")
+    @patch("agent_starter_pack.cli.utils.remote_template.tempfile.mkdtemp")
     def test_end_to_end_adk_samples(
         self, mock_mkdtemp: MagicMock, mock_subprocess: MagicMock
     ) -> None:
@@ -650,7 +654,9 @@ class TestParseAgentStarterPackVersionFromLock:
 
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.tomllib.load"
+            ) as mock_toml_load,
             patch("builtins.open", mock_open()),
         ):
             mock_toml_load.return_value = lock_content
@@ -675,7 +681,9 @@ class TestParseAgentStarterPackVersionFromLock:
 
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.tomllib.load"
+            ) as mock_toml_load,
             patch("builtins.open", mock_open()),
         ):
             mock_toml_load.return_value = lock_content
@@ -697,9 +705,13 @@ class TestParseAgentStarterPackVersionFromLock:
         """Test parsing when uv.lock file has invalid TOML."""
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.tomllib.load"
+            ) as mock_toml_load,
             patch("builtins.open", mock_open()),
-            patch("src.cli.utils.remote_template.logging.warning") as mock_warning,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.logging.warning"
+            ) as mock_warning,
         ):
             mock_toml_load.side_effect = Exception("Invalid TOML")
 
@@ -723,7 +735,9 @@ class TestParseAgentStarterPackVersionFromLock:
 
         with (
             patch("pathlib.Path.exists", return_value=True),
-            patch("src.cli.utils.remote_template.tomllib.load") as mock_toml_load,
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.tomllib.load"
+            ) as mock_toml_load,
             patch("builtins.open", mock_open()),
         ):
             mock_toml_load.return_value = lock_content
@@ -737,7 +751,9 @@ class TestParseAgentStarterPackVersionFromLock:
 class TestCheckAndExecuteWithVersionLock:
     """Test version lock checking and execution functionality."""
 
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
     def test_no_version_lock_found(self, mock_parse_version: MagicMock) -> None:
         """Test when no version lock is found."""
         mock_parse_version.return_value = None
@@ -748,7 +764,9 @@ class TestCheckAndExecuteWithVersionLock:
         assert result is False
         mock_parse_version.assert_called_once_with(template_dir / "uv.lock")
 
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
     def test_already_locked_execution(self, mock_parse_version: MagicMock) -> None:
         """Test that locked execution is skipped to prevent recursion."""
         template_dir = pathlib.Path("/mock/template")
@@ -757,9 +775,11 @@ class TestCheckAndExecuteWithVersionLock:
         assert result is False
         mock_parse_version.assert_not_called()
 
-    @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
-    @patch("src.cli.utils.remote_template.Console")
+    @patch("agent_starter_pack.cli.utils.remote_template.subprocess.run")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
+    @patch("agent_starter_pack.cli.utils.remote_template.Console")
     def test_version_lock_uvx_not_available(
         self,
         mock_console: MagicMock,
@@ -785,9 +805,11 @@ class TestCheckAndExecuteWithVersionLock:
         "sys.argv",
         ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
     )
-    @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
-    @patch("src.cli.utils.remote_template.Console")
+    @patch("agent_starter_pack.cli.utils.remote_template.subprocess.run")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
+    @patch("agent_starter_pack.cli.utils.remote_template.Console")
     def test_version_lock_successful_execution(
         self,
         mock_console: MagicMock,
@@ -827,9 +849,11 @@ class TestCheckAndExecuteWithVersionLock:
         "sys.argv",
         ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
     )
-    @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
-    @patch("src.cli.utils.remote_template.Console")
+    @patch("agent_starter_pack.cli.utils.remote_template.subprocess.run")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
+    @patch("agent_starter_pack.cli.utils.remote_template.Console")
     def test_version_lock_execution_failure(
         self,
         mock_console: MagicMock,
@@ -863,9 +887,11 @@ class TestCheckAndExecuteWithVersionLock:
         assert any("Continuing with current version" in call for call in print_calls)
 
     @patch("sys.argv", ["agent-starter-pack", "create", "test-project"])
-    @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
-    @patch("src.cli.utils.remote_template.Console")
+    @patch("agent_starter_pack.cli.utils.remote_template.subprocess.run")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
+    @patch("agent_starter_pack.cli.utils.remote_template.Console")
     def test_version_lock_no_original_spec(
         self,
         mock_console: MagicMock,
@@ -902,9 +928,11 @@ class TestCheckAndExecuteWithVersionLock:
         "sys.argv",
         ["agent-starter-pack", "create", "test-project", "-a", "remote/template"],
     )
-    @patch("src.cli.utils.remote_template.subprocess.run")
-    @patch("src.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock")
-    @patch("src.cli.utils.remote_template.Console")
+    @patch("agent_starter_pack.cli.utils.remote_template.subprocess.run")
+    @patch(
+        "agent_starter_pack.cli.utils.remote_template.parse_agent_starter_pack_version_from_lock"
+    )
+    @patch("agent_starter_pack.cli.utils.remote_template.Console")
     def test_version_lock_old_version_no_flags(
         self,
         mock_console: MagicMock,

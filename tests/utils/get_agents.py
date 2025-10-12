@@ -2,7 +2,10 @@ import os
 
 from rich.console import Console
 
-from src.cli.utils.template import get_available_agents, get_deployment_targets
+from agent_starter_pack.cli.utils.template import (
+    get_available_agents,
+    get_deployment_targets,
+)
 
 console = Console()
 

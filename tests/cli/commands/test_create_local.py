@@ -17,8 +17,8 @@ from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 
-from src.cli.commands.create import create
-from src.cli.utils.remote_template import parse_agent_spec
+from agent_starter_pack.cli.commands.create import create
+from agent_starter_pack.cli.utils.remote_template import parse_agent_spec
 
 
 def create_fake_template(
@@ -37,9 +37,9 @@ requires_session = false
     return template_dir
 
 
-@patch("src.cli.commands.create.setup_gcp_environment")
-@patch("src.cli.commands.create.process_template")
-@patch("src.cli.commands.create.replace_region_in_files")
+@patch("agent_starter_pack.cli.commands.create.setup_gcp_environment")
+@patch("agent_starter_pack.cli.commands.create.process_template")
+@patch("agent_starter_pack.cli.commands.create.replace_region_in_files")
 def test_create_with_local_path(
     mock_replace_region: Mock,
     mock_process_template: Mock,
@@ -82,9 +82,9 @@ def test_create_with_local_path(
     assert actual_remote_path.name == "my-local-template"
 
 
-@patch("src.cli.commands.create.setup_gcp_environment")
-@patch("src.cli.commands.create.process_template")
-@patch("src.cli.commands.create.replace_region_in_files")
+@patch("agent_starter_pack.cli.commands.create.setup_gcp_environment")
+@patch("agent_starter_pack.cli.commands.create.process_template")
+@patch("agent_starter_pack.cli.commands.create.replace_region_in_files")
 def test_create_with_in_folder_flag(
     mock_replace_region: Mock,
     mock_process_template: Mock,
@@ -130,9 +130,9 @@ def test_create_with_in_folder_flag(
     assert call_kwargs["output_dir"] == work_dir
 
 
-@patch("src.cli.commands.create.setup_gcp_environment")
-@patch("src.cli.commands.create.process_template")
-@patch("src.cli.commands.create.replace_region_in_files")
+@patch("agent_starter_pack.cli.commands.create.setup_gcp_environment")
+@patch("agent_starter_pack.cli.commands.create.process_template")
+@patch("agent_starter_pack.cli.commands.create.replace_region_in_files")
 def test_create_with_in_folder_is_permissive(
     mock_replace_region: Mock,
     mock_process_template: Mock,

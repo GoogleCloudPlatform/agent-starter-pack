@@ -80,7 +80,7 @@ class TemplateHandler(FileSystemEventHandler):
                 "uv",
                 "run",
                 "-m",
-                "src.cli.main",
+                "agent_starter_pack.cli.main",
                 "create",
                 str(self.project_name),
                 "--agent",

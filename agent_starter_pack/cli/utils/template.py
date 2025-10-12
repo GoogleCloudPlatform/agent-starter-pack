@@ -26,7 +26,7 @@ from cookiecutter.main import cookiecutter
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
-from src.cli.utils.version import get_current_version
+from agent_starter_pack.cli.utils.version import get_current_version
 
 from .datastores import DATASTORES
 from .remote_template import (
@@ -119,7 +119,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
 
     agents_list = []
     priority_agents_dict = dict.fromkeys(PRIORITY_AGENTS)  # Track priority agents
-    agents_dir = pathlib.Path(__file__).parent.parent.parent.parent / "agents"
+    agents_dir = pathlib.Path(__file__).parent.parent.parent / "agents"
 
     for agent_dir in agents_dir.iterdir():
         if agent_dir.is_dir() and not agent_dir.name.startswith("__"):

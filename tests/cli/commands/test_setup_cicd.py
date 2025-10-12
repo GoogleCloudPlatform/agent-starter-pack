@@ -21,7 +21,6 @@ from typing import Any
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-from agent_starter_pack.cli.utils.cicd import ProjectConfig
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.setup_cicd import (
@@ -32,6 +31,7 @@ from agent_starter_pack.cli.commands.setup_cicd import (
     setup_git_repository,
     update_build_triggers,
 )
+from agent_starter_pack.cli.utils.cicd import ProjectConfig
 
 
 @pytest.fixture

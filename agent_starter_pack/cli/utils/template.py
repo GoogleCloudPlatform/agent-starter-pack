@@ -526,9 +526,7 @@ def process_template(
         # For remote templates, determine the base template
         base_template_name = get_base_template_name(remote_config or {})
         agent_path = (
-            pathlib.Path(__file__).parent.parent.parent
-            / "agents"
-            / base_template_name
+            pathlib.Path(__file__).parent.parent.parent / "agents" / base_template_name
         )
         logging.debug(f"Remote template using base: {base_template_name}")
     else:

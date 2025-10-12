@@ -30,7 +30,6 @@ from google.cloud import logging as google_cloud_logging
 from pydantic import BaseModel
 from websockets.exceptions import ConnectionClosedError
 
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -166,6 +165,9 @@ class WebSocketToQueueAdapter:
             else:
                 # Remote agent engine mode
                 # Don't send setupComplete until remote connection is established
+                assert self.remote_config is not None, (
+                    "remote_config must be set for remote mode"
+                )
                 await self.run_remote_agent_engine(
                     project_id=self.remote_config["project_id"],
                     location=self.remote_config["location"],
@@ -232,7 +234,25 @@ class WebSocketToQueueAdapter:
             )
 
 
-def get_connect_and_run_callable(websocket: WebSocket, config: dict[str, Any]) -> Callable:
+def _dynamic_import(path: str) -> Any:
+    """Dynamically import an object from a given path.
+
+    Args:
+        path: Python import path (e.g., '..agent.root_agent')
+
+    Returns:
+        The imported object
+    """
+    import importlib
+
+    module_path, object_name = path.rsplit(".", 1)
+    module = importlib.import_module(module_path, package=__package__)
+    return getattr(module, object_name)
+
+
+def get_connect_and_run_callable(
+    websocket: WebSocket, config: dict[str, Any]
+) -> Callable:
     """Create a callable that handles agent engine connection with retry logic.
 
     Args:
@@ -269,25 +289,13 @@ def get_connect_and_run_callable(websocket: WebSocket, config: dict[str, Any]) -
             )
         else:
             # Local agent engine mode
-            # Dynamically import agent callable
-            import importlib
-
-            module_path, callable_name = config["local_agent_path"].rsplit(".", 1)
-            module = importlib.import_module(module_path, package=__package__)
-            agent_callable = getattr(module, callable_name)
-
+            # Dynamically import agent and engine class
+            agent_callable = _dynamic_import(config["local_agent_path"])
             logging.info(
                 f"Starting local agent engine with callable: {agent_callable.__name__ if hasattr(agent_callable, '__name__') else agent_callable}"
             )
 
-            # Dynamically import AgentEngineApp
-            engine_module_path, engine_class_name = config[
-                "agent_engine_class_path"
-            ].rsplit(".", 1)
-            engine_module = importlib.import_module(
-                engine_module_path, package=__package__
-            )
-            AgentEngineApp = getattr(engine_module, engine_class_name)
+            AgentEngineApp = _dynamic_import(config["agent_engine_class_path"])
             agent_engine = AgentEngineApp(agent=agent_callable)
             adapter = WebSocketToQueueAdapter(websocket, agent_engine)
 

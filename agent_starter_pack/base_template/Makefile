@@ -38,7 +38,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	@echo "==============================================================================="
 {%- if cookiecutter.is_adk_live %}
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --local-agent app.agent.root_agent
 {%- else %}
 	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
 {%- endif %}
@@ -111,7 +111,7 @@ local-backend:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent app.agent.root_agent
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed

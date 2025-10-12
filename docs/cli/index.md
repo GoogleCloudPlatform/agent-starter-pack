@@ -7,6 +7,6 @@ The Agent Starter Pack provides a command-line interface (CLI) to create and set
 - [`create`](create.md) - Create a new generative AI application project
 - [`setup-cicd`](setup_cicd.md) - Set up CI/CD pipeline for your project
 - [`enhance`](enhance.md) - Add agent-starter-pack capabilities to existing projects without creating a new directory
-- [`list`](list.md) - List available agents and templates.
+- [`list`](list.md) - List available agents and templates
 
 For detailed usage instructions, click on the command links above.

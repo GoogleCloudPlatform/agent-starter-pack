@@ -17,7 +17,7 @@ import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import backoff
 import google.auth
@@ -30,8 +30,6 @@ from google.cloud import logging as google_cloud_logging
 from pydantic import BaseModel
 from websockets.exceptions import ConnectionClosedError
 
-from ..agent import root_agent
-from ..agent_engine_app import AgentEngineApp
 
 app = FastAPI()
 app.add_middleware(
@@ -56,28 +54,26 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-# Global configuration for agent engine mode
-USE_REMOTE_AGENT = False
-REMOTE_AGENT_ENGINE_ID = None
-PROJECT_ID = None
-LOCATION = "us-central1"
-LOCAL_AGENT_CALLABLE = None
-
 
 class WebSocketToQueueAdapter:
     """Adapter to convert WebSocket messages to an asyncio Queue for the agent engine."""
 
     def __init__(
-        self, websocket: WebSocket, agent_engine: AgentEngineApp | None = None
+        self,
+        websocket: WebSocket,
+        agent_engine: Any = None,
+        remote_config: dict[str, Any] | None = None,
     ):
         """Initialize the adapter.
 
         Args:
             websocket: The client websocket connection
-            agent_engine: The agent engine instance (None if using remote)
+            agent_engine: The agent engine instance with bidi_stream_query method (None if using remote)
+            remote_config: Remote agent engine configuration (project_id, location, remote_agent_engine_id)
         """
         self.websocket = websocket
         self.agent_engine = agent_engine
+        self.remote_config = remote_config
         self.input_queue: asyncio.Queue[dict] = asyncio.Queue()
         self.first_message = True
 
@@ -170,20 +166,26 @@ class WebSocketToQueueAdapter:
             else:
                 # Remote agent engine mode
                 # Don't send setupComplete until remote connection is established
-                await self.run_remote_agent_engine()
+                await self.run_remote_agent_engine(
+                    project_id=self.remote_config["project_id"],
+                    location=self.remote_config["location"],
+                    remote_agent_engine_id=self.remote_config["remote_agent_engine_id"],
+                )
         except Exception as e:
             logging.error(f"Error in agent engine: {e}")
             await self.websocket.send_json({"error": str(e)})
 
-    async def run_remote_agent_engine(self) -> None:
+    async def run_remote_agent_engine(
+        self, project_id: str, location: str, remote_agent_engine_id: str
+    ) -> None:
         """Run the remote agent engine connection."""
         client = vertexai.Client(
-            project=PROJECT_ID,
-            location=LOCATION,
+            project=project_id,
+            location=location,
         )
 
         async with client.aio.live.agent_engines.connect(
-            agent_engine=REMOTE_AGENT_ENGINE_ID,
+            agent_engine=remote_agent_engine_id,
             config={"class_method": "bidi_stream_query"},
         ) as session:
             # Send setupComplete only after remote connection is established
@@ -230,11 +232,12 @@ class WebSocketToQueueAdapter:
             )
 
 
-def get_connect_and_run_callable(websocket: WebSocket) -> Callable:
+def get_connect_and_run_callable(websocket: WebSocket, config: dict[str, Any]) -> Callable:
     """Create a callable that handles agent engine connection with retry logic.
 
     Args:
         websocket: The client websocket connection
+        config: Configuration dict with agent engine settings
 
     Returns:
         Callable: An async function that establishes and manages the agent engine connection
@@ -251,18 +254,40 @@ def get_connect_and_run_callable(websocket: WebSocket) -> Callable:
         backoff.expo, ConnectionClosedError, max_tries=10, on_backoff=on_backoff
     )
     async def connect_and_run() -> None:
-        if USE_REMOTE_AGENT:
+        if config["use_remote_agent"]:
             # Remote agent engine mode
-            logging.info(f"Connecting to remote agent engine: {REMOTE_AGENT_ENGINE_ID}")
-            adapter = WebSocketToQueueAdapter(websocket, agent_engine=None)
+            logging.info(
+                f"Connecting to remote agent engine: {config['remote_agent_engine_id']}"
+            )
+            remote_config = {
+                "project_id": config["project_id"],
+                "location": config["location"],
+                "remote_agent_engine_id": config["remote_agent_engine_id"],
+            }
+            adapter = WebSocketToQueueAdapter(
+                websocket, agent_engine=None, remote_config=remote_config
+            )
         else:
             # Local agent engine mode
-            agent_callable = (
-                LOCAL_AGENT_CALLABLE if LOCAL_AGENT_CALLABLE is not None else root_agent
-            )
+            # Dynamically import agent callable
+            import importlib
+
+            module_path, callable_name = config["local_agent_path"].rsplit(".", 1)
+            module = importlib.import_module(module_path, package=__package__)
+            agent_callable = getattr(module, callable_name)
+
             logging.info(
                 f"Starting local agent engine with callable: {agent_callable.__name__ if hasattr(agent_callable, '__name__') else agent_callable}"
             )
+
+            # Dynamically import AgentEngineApp
+            engine_module_path, engine_class_name = config[
+                "agent_engine_class_path"
+            ].rsplit(".", 1)
+            engine_module = importlib.import_module(
+                engine_module_path, package=__package__
+            )
+            AgentEngineApp = getattr(engine_module, engine_class_name)
             agent_engine = AgentEngineApp(agent=agent_callable)
             adapter = WebSocketToQueueAdapter(websocket, agent_engine)
 
@@ -279,7 +304,7 @@ def get_connect_and_run_callable(websocket: WebSocket) -> Callable:
 async def websocket_endpoint(websocket: WebSocket) -> None:
     """Handle new websocket connections."""
     await websocket.accept()
-    connect_and_run = get_connect_and_run_callable(websocket)
+    connect_and_run = get_connect_and_run_callable(websocket, app.state.config)
     await connect_and_run()
 
 
@@ -370,7 +395,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--local-agent",
         type=str,
-        help="Python path to local agent callable (e.g., 'app.agent.root_agent'). Defaults to root_agent",
+        default="..agent.root_agent",
+        help="Python path to local agent callable (e.g., 'app.agent.root_agent')",
+    )
+    parser.add_argument(
+        "--agent-engine-class",
+        type=str,
+        default="..agent_engine_app.AgentEngineApp",
+        help="Python path to agent engine class",
     )
     parser.add_argument(
         "--port",
@@ -387,8 +419,18 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # Initialize configuration
+    config: dict[str, Any] = {
+        "use_remote_agent": False,
+        "remote_agent_engine_id": None,
+        "project_id": None,
+        "location": "us-central1",
+        "local_agent_path": args.local_agent,
+        "agent_engine_class_path": args.agent_engine_class,
+    }
+
     if args.mode == "remote":
-        USE_REMOTE_AGENT = True
+        config["use_remote_agent"] = True
 
         # Try to load from deployment_metadata.json if remote-id not provided
         if not args.remote_id:
@@ -398,8 +440,10 @@ if __name__ == "__main__":
             if deployment_metadata_path.exists():
                 with open(deployment_metadata_path) as f:
                     metadata = json.load(f)
-                    REMOTE_AGENT_ENGINE_ID = metadata.get("remote_agent_engine_id")
-                    if not REMOTE_AGENT_ENGINE_ID:
+                    config["remote_agent_engine_id"] = metadata.get(
+                        "remote_agent_engine_id"
+                    )
+                    if not config["remote_agent_engine_id"]:
                         parser.error(
                             "No remote_agent_engine_id found in deployment_metadata.json"
                         )
@@ -409,7 +453,7 @@ if __name__ == "__main__":
                     "--remote-id is required when deployment_metadata.json is not found"
                 )
         else:
-            REMOTE_AGENT_ENGINE_ID = args.remote_id
+            config["remote_agent_engine_id"] = args.remote_id
 
         # Extract project ID from remote agent engine ID if not provided
         if not args.project_id:
@@ -418,12 +462,12 @@ if __name__ == "__main__":
 
             match = re.match(
                 r"projects/([^/]+)/locations/([^/]+)/reasoningEngines/",
-                REMOTE_AGENT_ENGINE_ID,
+                config["remote_agent_engine_id"],
             )
             if match:
-                PROJECT_ID = match.group(1)
+                config["project_id"] = match.group(1)
                 extracted_location = match.group(2)
-                LOCATION = (
+                config["location"] = (
                     args.location
                     if args.location != "us-central1"
                     else extracted_location
@@ -432,30 +476,27 @@ if __name__ == "__main__":
             else:
                 # Fall back to google.auth.default()
                 try:
-                    _, PROJECT_ID = google.auth.default()
-                    LOCATION = args.location
-                    print(f"Using default project ID from google.auth: {PROJECT_ID}")
+                    _, config["project_id"] = google.auth.default()
+                    config["location"] = args.location
+                    print(
+                        f"Using default project ID from google.auth: {config['project_id']}"
+                    )
                 except Exception as e:
                     parser.error(f"Could not determine project ID: {e}")
         else:
-            PROJECT_ID = args.project_id
-            LOCATION = args.location
+            config["project_id"] = args.project_id
+            config["location"] = args.location
 
         print("Starting server in REMOTE mode:")
-        print(f"  Remote Agent Engine ID: {REMOTE_AGENT_ENGINE_ID}")
-        print(f"  Project ID: {PROJECT_ID}")
-        print(f"  Location: {LOCATION}")
+        print(f"  Remote Agent Engine ID: {config['remote_agent_engine_id']}")
+        print(f"  Project ID: {config['project_id']}")
+        print(f"  Location: {config['location']}")
     else:
         print("Starting server in LOCAL mode")
-        if args.local_agent:
-            # Dynamically import the agent callable
-            import importlib
+        print(f"  Using agent: {config['local_agent_path']}")
+        print(f"  Using agent engine class: {config['agent_engine_class_path']}")
 
-            module_path, callable_name = args.local_agent.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            LOCAL_AGENT_CALLABLE = getattr(module, callable_name)
-            print(f"  Using custom agent: {args.local_agent}")
-        else:
-            print("  Using default agent: root_agent")
+    # Store configuration in app state
+    app.state.config = config
 
     uvicorn.run(app, host=args.host, port=args.port)

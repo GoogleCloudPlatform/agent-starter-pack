@@ -21,7 +21,7 @@ from typing import Any
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
-from cli.utils.cicd import ProjectConfig
+from agent_starter_pack.cli.utils.cicd import ProjectConfig
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.setup_cicd import (

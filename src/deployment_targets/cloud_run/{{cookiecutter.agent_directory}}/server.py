@@ -24,15 +24,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google.adk.agents.live_request_queue import LiveRequest, LiveRequestQueue
+from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
+import google.auth
+from google.genai import types
 from vertexai.agent_engines import _utils
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider, export
 from websockets.exceptions import ConnectionClosedError
 
 from .agent import root_agent
+from .utils.tracing import CloudTraceLoggingSpanExporter
 from .utils.typing import Feedback
 
 app = FastAPI()
@@ -57,6 +63,14 @@ if frontend_build_dir.exists():
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+_, project_id = google.auth.default()
+provider = TracerProvider()
+processor = export.BatchSpanProcessor(
+    CloudTraceLoggingSpanExporter(project_id=project_id)
+)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
 
 
 # Initialize ADK services
@@ -161,6 +175,21 @@ class AgentSession:
             # Create LiveRequestQueue
             live_request_queue = LiveRequestQueue()
 
+            # Create RunConfig - additional parameters include Proactivity and Affective Dialog
+            run_config = RunConfig(
+                streaming_mode=StreamingMode.BIDI,
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name="{{cookiecutter.agent_voice}}"
+                        )
+                    ),
+                    language_code="{{cookiecutter.agent_language}}",
+                ),
+                input_audio_transcription=types.AudioTranscriptionConfig(),
+                output_audio_transcription=types.AudioTranscriptionConfig()
+            )
+
             # Add first live request if present
             if first_live_request and isinstance(first_live_request, dict):
                 live_request_queue.send(LiveRequest.model_validate(first_live_request))
@@ -178,6 +207,7 @@ class AgentSession:
                     user_id=self.user_id,
                     session_id=self.session_id,
                     live_request_queue=live_request_queue,
+                    run_config=run_config
                 )
                 async for event in events_async:
                     event_dict = _utils.dump_event_for_json(event)

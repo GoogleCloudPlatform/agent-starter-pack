@@ -458,6 +458,18 @@ def copy_data_ingestion_files(
         )
 
 
+def prompt_adk_live_parameters() -> dict[str, str]:
+    """Prompt user for ADK Live specific parameters."""
+    console = Console()
+    console.print("\n> Configuring ADK Live parameters:")
+    agent_voice = Prompt.ask(
+        "[bold]Enter the agent voice. Browse options in [link=https://aistudio.google.com/live]AI Studio[/link][/]",
+        default="Zephyr",
+    )
+    agent_language = Prompt.ask("Enter the agent language code", default="en-US")
+    return {"agent_voice": agent_voice, "agent_language": agent_language}
+
+
 def process_template(
     agent_name: str,
     template_dir: pathlib.Path,
@@ -474,6 +486,7 @@ def process_template(
     cli_overrides: dict[str, Any] | None = None,
     agent_garden: bool = False,
     remote_spec: Any | None = None,
+    adk_live_config: dict[str, Any] | None = None,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -754,6 +767,10 @@ def process_template(
                 "agent_sample_id": agent_sample_id or "",
                 "agent_sample_publisher": agent_sample_publisher or "",
                 "adk_cheatsheet": adk_cheatsheet_content,
+                "agent_voice": (adk_live_config or {}).get("agent_voice", "Zephyr"),
+                "agent_language": (adk_live_config or {}).get(
+                    "agent_language", "en-US"
+                ),
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks

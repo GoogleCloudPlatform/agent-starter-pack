@@ -26,7 +26,9 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.cloud import logging as google_cloud_logging
+from google.genai import types
 from pydantic import BaseModel
 from websockets.exceptions import ConnectionClosedError
 
@@ -116,6 +118,26 @@ class WebSocketToQueueAdapter:
                                 "Received setup message (not forwarding to agent)"
                             )
                             continue
+
+                        if self.first_message:
+                            self.first_message = False
+
+                            # Create RunConfig - additional parameters include Proactivity and Affective Dialog
+                            run_config = RunConfig(
+                                streaming_mode=StreamingMode.BIDI,
+                                speech_config=types.SpeechConfig(
+                                    voice_config=types.VoiceConfig(
+                                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                            voice_name="{{cookiecutter.agent_voice}}"
+                                        )
+                                    ),
+                                    language_code="{{cookiecutter.agent_language}}",
+                                ),
+                                input_audio_transcription=types.AudioTranscriptionConfig(),
+                                output_audio_transcription=types.AudioTranscriptionConfig(),
+                            )
+
+                            data["run_config"] = run_config.model_dump(mode="json")
 
                         # Frontend handles message format for both modes
                         await self.input_queue.put(data)

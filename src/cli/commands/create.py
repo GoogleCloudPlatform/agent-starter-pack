@@ -42,6 +42,7 @@ from ..utils.template import (
     get_template_path,
     load_template_config,
     process_template,
+    prompt_adk_live_parameters,
     prompt_cicd_runner_selection,
     prompt_datastore_selection,
     prompt_deployment_target,
@@ -586,6 +587,21 @@ def create(
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 
+        # Prompt for adk_live parameters
+        adk_live_config = {}
+        if "adk_live" in final_agent:
+            if auto_approve:
+                adk_live_config["agent_voice"] = "Zephyr"
+                adk_live_config["agent_language"] = "en-US"
+                console.print(
+                    "Info: Using default ADK Live parameters in auto-approve mode.",
+                    style="yellow",
+                )
+            else:
+                adk_live_config = prompt_adk_live_parameters()
+        if debug:
+            logging.debug(f"ADK Live config: {adk_live_config}")
+
         # Session type validation and selection (only for agents that require session management)
         final_session_type = session_type
 
@@ -720,6 +736,7 @@ def create(
                 cli_overrides=final_cli_overrides,
                 agent_garden=agent_garden,
                 remote_spec=remote_spec,
+                adk_live_config=adk_live_config,
             )
 
             # Replace region in all files if a different region was specified

@@ -17,6 +17,6 @@ settings:
   requires_data_ingestion: false
   frontend_type: "adk_live_react"
   deployment_targets: ["agent_engine", "cloud_run"]
-  extra_dependencies: ["google-adk>=1.15.0,<2.0.0", "click>=8.0.0,<9.0.0", "uvicorn>=0.18.0,<1.0.0", "fastapi>=0.75.0,<1.0.0", "backoff>=2.0.0,<3.0.0"]
+  extra_dependencies: ["google-adk>=1.16.0,<2.0.0", "click>=8.0.0,<9.0.0", "uvicorn>=0.18.0,<1.0.0", "fastapi>=0.75.0,<1.0.0", "backoff>=2.0.0,<3.0.0"]
   tags: ["adk", "adk_live"]
 example_question: "What's the weather in San Francisco?"

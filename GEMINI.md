@@ -7,8 +7,8 @@ This document provides essential guidance, architectural insights, and best prac
 1.  **Preserve and Isolate:** Your primary objective is surgical precision. Modify *only* the code segments directly related to the user's request. Preserve all surrounding code, comments, and formatting. Do not rewrite entire files or functions to make a small change.
 2.  **Follow Conventions:** This project relies heavily on established patterns. Before writing new code, analyze the surrounding files to understand and replicate existing conventions for naming, templating logic, and directory structure.
 3.  **Search Comprehensively:** A single change often requires updates in multiple places. When modifying configuration, variables, or infrastructure, you **must** search across the entire repository, including:
-    *   `src/base_template/` (the core template)
-    *   `src/deployment_targets/` (environment-specific overrides)
+    *   `agent-starter-pack/base_template/` (the core template)
+    *   `agent-starter-pack/deployment_targets/` (environment-specific overrides)
     *   `.github/` and `.cloudbuild/` (CI/CD workflows)
     *   `docs/` (user-facing documentation)
 
@@ -28,10 +28,10 @@ Templates are processed in a specific order. A failure at any stage will break t
 
 ### Key Directory Structures
 
--   `src/base_template/`: This is the **core template**. Most changes that should apply to all generated projects should start here.
--   `src/deployment_targets/`: Contains files that **override or are added to** the `base_template` for a specific deployment target (e.g., `cloud_run`, `gke`, `agent_engine`). If a file exists in both `base_template` and a deployment target, the latter is typically used.
--   `agents/`: Contains pre-packaged, self-contained agent examples. Each has its own `.template/templateconfig.yaml` to define its specific variables and dependencies.
--   `src/cli/commands`: Contains the logic for the CLI commands, such as `create` and `setup-cicd`.
+-   `agent-starter-pack/base_template/`: This is the **core template**. Most changes that should apply to all generated projects should start here.
+-   `agent-starter-pack/deployment_targets/`: Contains files that **override or are added to** the `base_template` for a specific deployment target (e.g., `cloud_run`, `gke`, `agent_engine`). If a file exists in both `base_template` and a deployment target, the latter is typically used.
+-   `agent-starter-pack/agents/`: Contains pre-packaged, self-contained agent examples. Each has its own `.template/templateconfig.yaml` to define its specific variables and dependencies.
+-   `agent-starter-pack/cli/commands`: Contains the logic for the CLI commands, such as `create` and `setup-cicd`.
 
 ### CLI Commands
 
@@ -40,7 +40,7 @@ Templates are processed in a specific order. A failure at any stage will break t
 
 ### Template Processing
 
--   `template.py`: Located in `src/cli/utils`, this script contains the core logic for processing the templates. It copies the base template, overlays the deployment target files, and then applies the agent-specific files.
+-   `template.py`: Located in `agent-starter-pack/cli/utils`, this script contains the core logic for processing the templates. It copies the base template, overlays the deployment target files, and then applies the agent-specific files.
 
 ## Critical Jinja Templating Rules
 
@@ -118,10 +118,10 @@ When adding a new variable or secret, ensure it is configured correctly for both
 
 ### 4-Layer Architecture
 Template processing follows this hierarchy (later layers override earlier ones):
-1. **Base Template** (`src/base_template/`) - Applied to ALL projects
-2. **Deployment Targets** (`src/deployment_targets/`) - Environment overrides  
-3. **Frontend Types** (`src/frontends/`) - UI-specific files
-4. **Agent Templates** (`agents/*/`) - Individual agent logic
+1. **Base Template** (`agent-starter-pack/base_template/`) - Applied to ALL projects
+2. **Deployment Targets** (`agent-starter-pack/deployment_targets/`) - Environment overrides  
+3. **Frontend Types** (`agent-starter-pack/frontends/`) - UI-specific files
+4. **Agent Templates** (`agent-starter-pack/agents/*/`) - Individual agent logic
 
 **Rule**: Always place changes in the correct layer. Check if deployment targets need corresponding updates.
 

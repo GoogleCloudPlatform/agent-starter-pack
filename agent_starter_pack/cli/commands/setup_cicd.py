@@ -24,7 +24,7 @@ import backoff
 import click
 from rich.console import Console
 
-from src.cli.utils.cicd import (
+from agent_starter_pack.cli.utils.cicd import (
     ProjectConfig,
     create_github_connection,
     handle_github_authentication,

@@ -29,7 +29,7 @@ class AgentConfig(NamedTuple):
 
 
 def get_agent_configs(
-    agents_dir: pathlib.Path = pathlib.Path("agents"),
+    agents_dir: pathlib.Path = pathlib.Path("agent_starter_pack/agents"),
 ) -> dict[str, AgentConfig]:
     """Get all agents and their supported deployment targets.
 
@@ -76,4 +76,4 @@ def get_lock_filename(agent_name: str, deployment_target: str) -> str:
 def get_lock_path(agent_name: str, deployment_target: str) -> Path:
     """Get the path to the appropriate lock file."""
     lock_filename = get_lock_filename(agent_name, deployment_target)
-    return Path("src/resources/locks") / lock_filename
+    return Path("agent_starter_pack/resources/locks") / lock_filename

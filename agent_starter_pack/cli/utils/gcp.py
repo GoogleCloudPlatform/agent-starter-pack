@@ -34,7 +34,7 @@ from google.cloud.aiplatform_v1beta1.types.prediction_service import (
 from rich.console import Console
 from rich.prompt import Confirm
 
-from src.cli.utils.version import PACKAGE_NAME, get_current_version
+from agent_starter_pack.cli.utils.version import PACKAGE_NAME, get_current_version
 
 console = Console()
 

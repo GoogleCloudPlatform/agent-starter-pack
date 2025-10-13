@@ -42,7 +42,7 @@ def test_remote_templating() -> None:
         cmd = [
             "python",
             "-m",
-            "src.cli.main",
+            "agent_starter_pack.cli.main",
             "create",
             project_name,
             "-a",

@@ -273,7 +273,9 @@ Respond with a JSON object containing:
 @pytest.fixture
 def comparator() -> GeminiPipelineComparator:
     """Create a GeminiPipelineComparator instance."""
-    base_path = Path(__file__).parent.parent.parent / "src" / "base_template"
+    base_path = (
+        Path(__file__).parent.parent.parent / "agent_starter_pack" / "base_template"
+    )
     return GeminiPipelineComparator(base_path)
 
 

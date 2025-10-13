@@ -1132,7 +1132,7 @@ class TestE2EDeployment:
             cmd = [
                 "python",
                 "-m",
-                "src.cli.main",
+                "agent_starter_pack.cli.main",
                 "create",
                 project_name,
                 "--agent",
@@ -1196,7 +1196,7 @@ class TestE2EDeployment:
                 setup_cmd = [
                     "python",
                     "-m",
-                    "src.cli.main",
+                    "agent_starter_pack.cli.main",
                     "setup-cicd",
                     "--staging-project",
                     staging_project,

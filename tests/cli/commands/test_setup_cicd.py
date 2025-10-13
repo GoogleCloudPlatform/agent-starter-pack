@@ -23,8 +23,7 @@ from unittest.mock import MagicMock, mock_open, patch
 import pytest
 from click.testing import CliRunner
 
-from cli.utils.cicd import ProjectConfig
-from src.cli.commands.setup_cicd import (
+from agent_starter_pack.cli.commands.setup_cicd import (
     display_intro_message,
     display_production_note,
     prompt_for_repository_details,
@@ -32,6 +31,7 @@ from src.cli.commands.setup_cicd import (
     setup_git_repository,
     update_build_triggers,
 )
+from agent_starter_pack.cli.utils.cicd import ProjectConfig
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ def mock_cwd() -> MagicMock:
 @pytest.fixture
 def mock_verify_credentials() -> MagicMock:
     """Mock credentials verification"""
-    with patch("src.cli.commands.setup_cicd.verify_credentials") as mock:
+    with patch("agent_starter_pack.cli.commands.setup_cicd.verify_credentials") as mock:
         mock.return_value = {"account": "test@example.com", "project": "test-project"}
         yield mock
 
@@ -110,14 +110,14 @@ def mock_tempfile(tmp_path: Path) -> MagicMock:
 @pytest.fixture
 def mock_console() -> MagicMock:
     """Mock console output"""
-    with patch("src.cli.commands.setup_cicd.console") as mock:
+    with patch("agent_starter_pack.cli.commands.setup_cicd.console") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_run_command() -> MagicMock:
     """Mock command execution"""
-    with patch("src.cli.commands.setup_cicd.run_command") as mock:
+    with patch("agent_starter_pack.cli.commands.setup_cicd.run_command") as mock:
         # Mock GitHub username query
         mock.return_value = MagicMock(stdout="test-user", returncode=0)
         yield mock
@@ -126,14 +126,18 @@ def mock_run_command() -> MagicMock:
 @pytest.fixture
 def mock_setup_terraform_backend() -> MagicMock:
     """Mock Terraform backend setup"""
-    with patch("src.cli.commands.setup_cicd.setup_terraform_backend") as mock:
+    with patch(
+        "agent_starter_pack.cli.commands.setup_cicd.setup_terraform_backend"
+    ) as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_create_github_connection() -> MagicMock:
     """Mock GitHub connection creation"""
-    with patch("src.cli.commands.setup_cicd.create_github_connection") as mock:
+    with patch(
+        "agent_starter_pack.cli.commands.setup_cicd.create_github_connection"
+    ) as mock:
         yield mock
 
 
@@ -350,9 +354,10 @@ class TestSetupCICD:
             patch("pathlib.Path.exists", return_value=True),
             patch("shutil.copy2"),
             patch("builtins.open", mock_open()),
-            patch("src.cli.utils.cicd.ensure_apis_enabled"),
+            patch("agent_starter_pack.cli.utils.cicd.ensure_apis_enabled"),
             patch(
-                "src.cli.utils.cicd.run_command", side_effect=run_command_side_effect
+                "agent_starter_pack.cli.utils.cicd.run_command",
+                side_effect=run_command_side_effect,
             ),
             patch(
                 "click.prompt",
@@ -365,7 +370,7 @@ class TestSetupCICD:
             patch("click.confirm", return_value=True),
             patch("pathlib.Path.glob") as mock_glob,
             patch(
-                "src.cli.utils.gcp.verify_credentials",
+                "agent_starter_pack.cli.utils.gcp.verify_credentials",
                 return_value={"account": "test@example.com", "project": "test-project"},
             ),
         ):
@@ -425,7 +430,7 @@ class TestSetupCICD:
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch(
-                "src.cli.utils.cicd.run_command",
+                "agent_starter_pack.cli.utils.cicd.run_command",
                 side_effect=subprocess.CalledProcessError(1, "gcloud"),
             ),
         ):
@@ -484,9 +489,10 @@ class TestSetupCICD:
         # Mock required dependencies
         with (
             patch("pathlib.Path.exists", return_value=True) as mock_exists,
-            patch("src.cli.utils.cicd.ensure_apis_enabled"),
+            patch("agent_starter_pack.cli.utils.cicd.ensure_apis_enabled"),
             patch(
-                "src.cli.utils.cicd.run_command", side_effect=run_command_side_effect
+                "agent_starter_pack.cli.utils.cicd.run_command",
+                side_effect=run_command_side_effect,
             ),
             patch("builtins.open", mock_open()),
             patch("shutil.copy2"),
@@ -527,8 +533,8 @@ def mock_path_exists() -> MagicMock:
 class TestPromptForRepositoryDetails:
     """Test cases for prompt_for_repository_details function"""
 
-    @patch("src.cli.commands.setup_cicd.click.prompt")
-    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.click.prompt")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.run_command")
     @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
     def test_prompt_with_all_params_and_create_flag(
         self, mock_run_command: MagicMock, mock_prompt: MagicMock
@@ -549,8 +555,8 @@ class TestPromptForRepositoryDetails:
         assert owner == "my-owner"
         assert create is True
 
-    @patch("src.cli.commands.setup_cicd.click.prompt")
-    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.click.prompt")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.run_command")
     @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
     def test_prompt_with_all_params_and_use_existing_flag(
         self, mock_run_command: MagicMock, mock_prompt: MagicMock
@@ -571,9 +577,9 @@ class TestPromptForRepositoryDetails:
         assert owner == "my-owner"
         assert create is False
 
-    @patch("src.cli.commands.setup_cicd.console")
-    @patch("src.cli.commands.setup_cicd.click.prompt")
-    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.console")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.click.prompt")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.run_command")
     @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
     def test_prompt_with_params_no_flags(
         self,
@@ -599,8 +605,8 @@ class TestPromptForRepositoryDetails:
         assert owner == "my-owner"
         assert create is True  # Selected option 1
 
-    @patch("src.cli.commands.setup_cicd.click.prompt")
-    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.click.prompt")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.run_command")
     @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
     def test_prompt_missing_owner(
         self, mock_run_command: MagicMock, mock_prompt: MagicMock
@@ -625,8 +631,8 @@ class TestPromptForRepositoryDetails:
         assert owner == "provided-owner"
         assert create is True
 
-    @patch("src.cli.commands.setup_cicd.click.prompt")
-    @patch("src.cli.commands.setup_cicd.run_command")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.click.prompt")
+    @patch("agent_starter_pack.cli.commands.setup_cicd.run_command")
     @patch("builtins.open", mock_open(read_data='name = "test-project"\n'))
     def test_prompt_missing_name(
         self, mock_run_command: MagicMock, mock_prompt: MagicMock

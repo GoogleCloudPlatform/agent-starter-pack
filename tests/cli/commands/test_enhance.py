@@ -19,14 +19,17 @@ import click
 import pytest
 from click.testing import CliRunner
 
-from src.cli.commands.enhance import display_base_template_selection, enhance
+from agent_starter_pack.cli.commands.enhance import (
+    display_base_template_selection,
+    enhance,
+)
 
 
 class TestDisplayBaseTemplateSelection:
     """Test the base template selection function."""
 
-    @patch("src.cli.commands.enhance.get_available_agents")
-    @patch("src.cli.commands.enhance.IntPrompt.ask")
+    @patch("agent_starter_pack.cli.commands.enhance.get_available_agents")
+    @patch("agent_starter_pack.cli.commands.enhance.IntPrompt.ask")
     def test_base_template_selection_with_current_default(
         self, mock_prompt: MagicMock, mock_get_agents: MagicMock
     ) -> None:
@@ -49,8 +52,8 @@ class TestDisplayBaseTemplateSelection:
         call_args = mock_prompt.call_args
         assert call_args[1]["default"] == 1
 
-    @patch("src.cli.commands.enhance.get_available_agents")
-    @patch("src.cli.commands.enhance.IntPrompt.ask")
+    @patch("agent_starter_pack.cli.commands.enhance.get_available_agents")
+    @patch("agent_starter_pack.cli.commands.enhance.IntPrompt.ask")
     def test_base_template_selection_different_choice(
         self, mock_prompt: MagicMock, mock_get_agents: MagicMock
     ) -> None:
@@ -69,7 +72,7 @@ class TestDisplayBaseTemplateSelection:
 
         assert result == "langgraph_base_react"
 
-    @patch("src.cli.commands.enhance.get_available_agents")
+    @patch("agent_starter_pack.cli.commands.enhance.get_available_agents")
     def test_base_template_selection_no_agents(
         self, mock_get_agents: MagicMock
     ) -> None:
@@ -83,9 +86,9 @@ class TestDisplayBaseTemplateSelection:
 class TestEnhanceCommand:
     """Test the enhance command functionality."""
 
-    @patch("src.cli.utils.remote_template.get_base_template_name")
-    @patch("src.cli.utils.remote_template.load_remote_template_config")
-    @patch("src.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.utils.remote_template.get_base_template_name")
+    @patch("agent_starter_pack.cli.utils.remote_template.load_remote_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
     def test_enhance_with_interactive_base_template_selection(
         self,
         mock_display_selection: MagicMock,
@@ -107,7 +110,7 @@ class TestEnhanceCommand:
             pathlib.Path("app/agent.py").touch()
 
             # Mock the create command to avoid actually running it
-            with patch("src.cli.commands.enhance.create"):
+            with patch("agent_starter_pack.cli.commands.enhance.create"):
                 # Run enhance without --auto-approve and without --base-template
                 runner.invoke(
                     enhance,
@@ -130,7 +133,7 @@ class TestEnhanceCommand:
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").touch()
 
-            with patch("src.cli.commands.enhance.create") as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
                     [".", "--base-template", "langgraph_base_react", "--auto-approve"],
@@ -150,7 +153,7 @@ class TestEnhanceCommand:
             pathlib.Path("chatbot").mkdir()
             pathlib.Path("chatbot/agent.py").touch()
 
-            with patch("src.cli.commands.enhance.create") as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
                     [".", "--agent-directory", "chatbot", "--auto-approve"],
@@ -163,7 +166,7 @@ class TestEnhanceCommand:
                 assert cli_overrides is not None
                 assert cli_overrides["settings"]["agent_directory"] == "chatbot"
 
-    @patch("src.cli.commands.enhance.tomllib.load")
+    @patch("agent_starter_pack.cli.commands.enhance.tomllib.load")
     def test_enhance_auto_detects_agent_directory_from_pyproject(
         self, mock_tomllib_load: MagicMock
     ) -> None:
@@ -187,7 +190,7 @@ class TestEnhanceCommand:
             pathlib.Path("my_agent/agent.py").touch()
             pathlib.Path("pyproject.toml").touch()
 
-            with patch("src.cli.commands.enhance.create") as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
                     [".", "--auto-approve"],
@@ -218,7 +221,7 @@ packages = ["detected_agent", "frontend"]
                 pyproject_content, encoding="utf-8"
             )
 
-            with patch("src.cli.commands.enhance.create") as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
                     [".", "--agent-directory", "cli_agent", "--auto-approve"],
@@ -238,7 +241,7 @@ packages = ["detected_agent", "frontend"]
         with runner.isolated_filesystem():
             # Don't create any agent directory
 
-            with patch("src.cli.commands.enhance.create") as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
                     enhance,
                     [".", "--agent-directory", "missing_agent", "--auto-approve"],
@@ -258,7 +261,7 @@ packages = ["detected_agent", "frontend"]
             pathlib.Path("my_chatbot").mkdir()
             pathlib.Path("my_chatbot/agent.py").touch()
 
-            with patch("src.cli.commands.enhance.create") as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
                     [

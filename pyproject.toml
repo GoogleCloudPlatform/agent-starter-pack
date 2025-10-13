@@ -62,7 +62,7 @@ lint = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "src/frontends/streamlit", "src", "agents/agentic_rag"]
+pythonpath = [".", "agent_starter_pack/frontends/streamlit", "agent_starter_pack", "agent_starter_pack/agents/agentic_rag"]
 testpaths = ["tests"]
 addopts = "-s -v --ignore=tests/integration"
 log_cli = true
@@ -73,8 +73,8 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 [tool.ruff]
 line-length = 88
 target-version = "py311"
-include = ["src/cli/**/*.py", "tests/**/*.py", "src/frontends/streamlit/**/*.py"]
-exclude = ["./agents/**/*.py", "./tests/cicd/scripts/**/*.py"]
+include = ["agent_starter_pack/cli/**/*.py", "tests/**/*.py", "agent_starter_pack/frontends/streamlit/**/*.py"]
+exclude = ["./agent_starter_pack/agents/**/*.py", "./tests/cicd/scripts/**/*.py"]
 
 [tool.ruff.lint]
 preview = true
@@ -110,7 +110,7 @@ ignore_missing_imports = true
 explicit_package_bases = true
 disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
 exclude = '''(?x)(
-    ^agents/.*$  # exclude all files under agents
+    ^agent_starter_pack/agents/.*$  # exclude all files under agents
     ^tests/cicd/scripts/.*$  # exclude cicd scripts
 )'''
 
@@ -123,10 +123,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-agent-starter-pack = "src.cli.main:cli"
+agent-starter-pack = "agent_starter_pack.cli.main:cli"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src", "agents", "llm.txt"]
+packages = ["agent_starter_pack", "llm.txt"]
 
 [tool.uv.workspace]
 members = ["temp"]

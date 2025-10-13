@@ -15,13 +15,13 @@
 from click.testing import CliRunner
 from pytest_mock import MockerFixture
 
-from src.cli.commands.list import list_agents
+from agent_starter_pack.cli.commands.list import list_agents
 
 
 def test_list_agents_local(mocker: MockerFixture) -> None:
     """Test the list command with local agents."""
     mock_get_agents = mocker.patch(
-        "src.cli.commands.list.get_available_agents",
+        "agent_starter_pack.cli.commands.list.get_available_agents",
         return_value={
             "agent1": {"name": "Agent One", "description": "Description one"},
             "agent2": {"name": "Agent Two", "description": "Description two"},

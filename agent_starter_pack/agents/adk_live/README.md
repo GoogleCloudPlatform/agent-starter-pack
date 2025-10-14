@@ -2,7 +2,7 @@
 
 Real-time conversational agent built with Google ADK and Gemini's live audio model. Supports audio, video, and text interactions with native tool calling.
 
-![adk_live_diagram](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/adk_live_diagram.png)
+![live_api_diagram](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/live_api_diagram.png)
 
 **Key components:**
 

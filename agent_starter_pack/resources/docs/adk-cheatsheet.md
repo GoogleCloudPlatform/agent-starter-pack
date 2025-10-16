@@ -1464,8 +1464,8 @@ if __name__ == "__main__":
 
 For detailed specifications of all classes, methods, and commands, refer to the official reference documentation.
 
-*   [Python API Reference](./api-reference/python/index.html)
-*   [Java API Reference](./api-reference/java/index.html)
-*   [CLI Reference](./api-reference/cli/index.html)
-*   [REST API Reference](./api-reference/rest/index.md)
-*   [Agent Config YAML Reference](./api-reference/agentconfig/index.html)
+*   [Python API Reference](https://github.com/google/adk-docs/tree/main/docs/api-reference/python)
+*   [Java API Reference](https://github.com/google/adk-docs/tree/main/docs/api-reference/java)
+*   [CLI Reference](https://github.com/google/adk-docs/tree/main/docs/api-reference/cli)
+*   [REST API Reference](https://github.com/google/adk-docs/tree/main/docs/api-reference/rest)
+*   [Agent Config YAML Reference](https://github.com/google/adk-docs/tree/main/docs/api-reference/agentconfig)

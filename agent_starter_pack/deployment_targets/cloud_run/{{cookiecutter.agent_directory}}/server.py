@@ -24,14 +24,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google.adk.agents.live_request_queue import LiveRequest, LiveRequestQueue
-from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
 import google.auth
-from google.genai import types
 from vertexai.agent_engines import _utils
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export

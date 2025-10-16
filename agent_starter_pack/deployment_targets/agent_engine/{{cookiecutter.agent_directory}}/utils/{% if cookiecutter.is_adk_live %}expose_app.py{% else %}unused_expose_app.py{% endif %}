@@ -26,9 +26,7 @@ from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.cloud import logging as google_cloud_logging
-from google.genai import types
 from pydantic import BaseModel
 from websockets.exceptions import ConnectionClosedError
 

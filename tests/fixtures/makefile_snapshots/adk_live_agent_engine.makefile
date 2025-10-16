@@ -19,7 +19,7 @@ playground: build-frontend-if-needed
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 	@echo "| 💡 Try asking: Tell me about your capabilities|"
 	@echo "==============================================================================="
-	uv run python -m test_adk_live.utils.expose_app --mode local
+	uv run python -m test_adk_live.utils.expose_app --mode local --local-agent test_adk_live.agent.root_agent
 
 # ==============================================================================
 # ADK Live Commands
@@ -44,7 +44,7 @@ build-frontend-if-needed:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000
+	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed

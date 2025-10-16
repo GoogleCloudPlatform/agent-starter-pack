@@ -21,7 +21,6 @@ from .template import (
     get_template_path,
     load_template_config,
     process_template,
-    prompt_adk_live_parameters,
     prompt_datastore_selection,
     prompt_deployment_target,
 )
@@ -37,7 +36,6 @@ __all__ = [
     "handle_cli_error",
     "load_template_config",
     "process_template",
-    "prompt_adk_live_parameters",
     "prompt_datastore_selection",
     "prompt_deployment_target",
     "verify_credentials",

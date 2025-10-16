@@ -124,26 +124,6 @@ class WebSocketToQueueAdapter:
                             )
                             continue
 
-                        if self.first_message:
-                            self.first_message = False
-
-                            # Create RunConfig - additional parameters include Proactivity and Affective Dialog
-                            run_config = RunConfig(
-                                streaming_mode=StreamingMode.BIDI,
-                                speech_config=types.SpeechConfig(
-                                    voice_config=types.VoiceConfig(
-                                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                            voice_name="{{cookiecutter.agent_voice}}"
-                                        )
-                                    ),
-                                    language_code="{{cookiecutter.agent_language}}",
-                                ),
-                                input_audio_transcription=types.AudioTranscriptionConfig(),
-                                output_audio_transcription=types.AudioTranscriptionConfig(),
-                            )
-
-                            data["run_config"] = run_config.model_dump(mode="json")
-
                         # Frontend handles message format for both modes
                         await self.input_queue.put(data)
                     else:

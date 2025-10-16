@@ -175,21 +175,6 @@ class AgentSession:
             # Create LiveRequestQueue
             live_request_queue = LiveRequestQueue()
 
-            # Create RunConfig - additional parameters include Proactivity and Affective Dialog
-            run_config = RunConfig(
-                streaming_mode=StreamingMode.BIDI,
-                speech_config=types.SpeechConfig(
-                    voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                            voice_name="{{cookiecutter.agent_voice}}"
-                        )
-                    ),
-                    language_code="{{cookiecutter.agent_language}}",
-                ),
-                input_audio_transcription=types.AudioTranscriptionConfig(),
-                output_audio_transcription=types.AudioTranscriptionConfig()
-            )
-
             # Add first live request if present
             if first_live_request and isinstance(first_live_request, dict):
                 live_request_queue.send(LiveRequest.model_validate(first_live_request))
@@ -207,7 +192,6 @@ class AgentSession:
                     user_id=self.user_id,
                     session_id=self.session_id,
                     live_request_queue=live_request_queue,
-                    run_config=run_config
                 )
                 async for event in events_async:
                     event_dict = _utils.dump_event_for_json(event)

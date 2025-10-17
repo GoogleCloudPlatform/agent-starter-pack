@@ -50,11 +50,7 @@ def print_version(ctx: click.Context, param: click.Parameter, value: bool) -> No
 )
 def cli() -> None:
     # Check for updates at startup (skip if --agent-garden, -ag, or --locked is used)
-    if (
-        "--agent-garden" not in sys.argv
-        and "-ag" not in sys.argv
-        and "--locked" not in sys.argv
-    ):
+    if not any(flag in sys.argv for flag in ("--agent-garden", "-ag", "--locked")):
         display_update_message()
 
 

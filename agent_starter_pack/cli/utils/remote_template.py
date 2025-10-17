@@ -172,14 +172,10 @@ def check_and_execute_with_version_lock(
 
             if agent_flag_exists:
                 # Replace remote agent spec with local path
-                modified_args = []
-                for arg in original_args:
-                    if arg == original_agent_spec:
-                        # Replace remote URL with local template directory
-                        modified_args.append(f"local@{template_dir}")
-                    else:
-                        modified_args.append(arg)
-                original_args = modified_args
+                original_args = [
+                    f"local@{template_dir}" if arg == original_agent_spec else arg
+                    for arg in original_args
+                ]
             else:
                 # Agent was selected interactively, add --agent flag
                 original_args.extend(["--agent", f"local@{template_dir}"])

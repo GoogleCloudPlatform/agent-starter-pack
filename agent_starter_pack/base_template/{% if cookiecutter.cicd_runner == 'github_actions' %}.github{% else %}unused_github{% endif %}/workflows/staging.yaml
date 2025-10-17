@@ -122,7 +122,7 @@ jobs:
           uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
             --project {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %} \
             --location {% raw %}${{ vars.REGION }}{% endraw %} \
-            --artifacts-bucket-name {% raw %}${{ vars.LOGS_BUCKET_NAME }}{% endraw %} \
+            --artifacts-bucket-name {% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %} \
             --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
 
       - name: Fetch Auth Token

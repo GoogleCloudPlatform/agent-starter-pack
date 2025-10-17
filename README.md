@@ -17,7 +17,7 @@
 
 A Python package that provides **production-ready templates** for GenAI agents on Google Cloud.
 
-Focus on your agent logic—the starter pack will template everything else: infrastructure, CI/CD, observability, and security.
+Focus on your agent logic—the starter pack provides everything else: infrastructure, CI/CD, observability, and security.
 
 | ⚡️ Launch | 🧪 Experiment  | ✅ Deploy | 🛠️ Customize |
 |---|---|---|---|

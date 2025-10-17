@@ -76,14 +76,19 @@ def print_deployment_success(
     console_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
 
 {%- if cookiecutter.is_adk %}
-    print(
 {%- if cookiecutter.is_adk_live %}
-        f"\n✅ Deployment successful! Run your agent with: `make playground-remote`"
+    print("\n✅ Deployment successful! Run your agent with: `make playground-remote`")
 {%- else %}
-        f"\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb"
-{%- endif %}
-        f"\n📊 View in console: {console_url}\n"
+    print(
+        "\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb"
     )
+{%- endif %}
+    service_account = remote_agent.api_resource.spec.service_account
+    print(f"Service Account: {service_account}")
+    print(f"\n📊 View in console: {console_url}\n")
 {%- else %}
-    print(f"\n✅ Deployment successful!\n📊 View in console: {console_url}\n")
+    print("\n✅ Deployment successful!")
+    service_account = remote_agent.api_resource.spec.service_account
+    print(f"Service Account: {service_account}")
+    print(f"\n📊 View in console: {console_url}\n")
 {%- endif %}

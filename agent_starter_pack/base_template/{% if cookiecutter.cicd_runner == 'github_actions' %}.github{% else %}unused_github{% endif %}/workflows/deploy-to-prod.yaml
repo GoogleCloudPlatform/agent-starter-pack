@@ -111,7 +111,7 @@ jobs:
           uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
             --project {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %} \
             --location {% raw %}${{ vars.REGION }}{% endraw %} \
-            --service-account {% raw %}${{ vars.APP_SA_EMAIL_PROD }}{% endraw %} \
+            --artifacts-bucket-name {% raw %}${{ vars.LOGS_BUCKET_NAME_PROD }}{% endraw %} \
             --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}{%- endif %}{%- endif %}"
 {%- endif %}
 

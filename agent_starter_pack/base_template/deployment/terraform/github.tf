@@ -119,6 +119,20 @@ resource "github_actions_variable" "app_sa_email_prod" {
   depends_on    = [github_repository.repo]
 }
 
+resource "github_actions_variable" "logs_bucket_name_staging" {
+  repository    = var.repository_name
+  variable_name = "LOGS_BUCKET_NAME_STAGING"
+  value         = google_storage_bucket.logs_data_bucket[var.staging_project_id].url
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "logs_bucket_name_prod" {
+  repository    = var.repository_name
+  variable_name = "LOGS_BUCKET_NAME_PROD"
+  value         = google_storage_bucket.logs_data_bucket[var.prod_project_id].url
+  depends_on    = [github_repository.repo]
+}
+
 {% if cookiecutter.deployment_target == 'cloud_run' %}
 resource "github_actions_variable" "container_name" {
   repository    = var.repository_name

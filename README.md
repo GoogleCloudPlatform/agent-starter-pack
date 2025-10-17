@@ -16,19 +16,28 @@
 </a> [![Launch in Cloud Shell](https://img.shields.io/badge/Launch-in_Cloud_Shell-white)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Feliasecchig%2Fasp-open-in-cloud-shell&cloudshell_print=open-in-cs) ![Stars](https://img.shields.io/github/stars/GoogleCloudPlatform/agent-starter-pack?color=yellow)
 
 
-The `agent-starter-pack` is a Python package that provides a collection of production-ready Generative AI Agent templates built for Google Cloud. <br>
-It accelerates development by providing a holistic, production-ready solution, addressing common challenges (Deployment & Operations, Evaluation, Customization, Observability) in building and deploying GenAI agents.
+## Focus on Your Agent, We Handle Production
+
+A **Python package** that provides **production-ready templates** for GenAI agents on Google Cloud. You write the agent logic—we template everything else: infrastructure, CI/CD, observability, and security.
 
 | ⚡️ Launch | 🧪 Experiment  | ✅ Deploy | 🛠️ Customize |
 |---|---|---|---|
 | [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability), and [CI/CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. 🆕 Now integrating with [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 
 ---
- 
+
 ## ⚡ Get Started in 1 Minute
 
-Ready to build your AI agent? Simply run this command:
+**From zero to production-ready agent in 60 seconds using [`uv`](https://github.com/astral-sh/uv):**
 
+```bash
+uvx agent-starter-pack create my-awesome-agent
+```
+
+<details>
+<summary> ✨ Alternative: Using pip</summary>
+
+If you don't have [`uv`](https://github.com/astral-sh/uv) installed, you can use pip:
 ```bash
 # Create and activate a Python virtual environment
 python -m venv .venv && source .venv/bin/activate
@@ -39,15 +48,6 @@ pip install --upgrade agent-starter-pack
 # Create a new agent project
 agent-starter-pack create my-awesome-agent
 ```
-
-<details>
-<summary> ✨ Alternative: Using uv</summary>
-
-If you have [`uv`](https://github.com/astral-sh/uv) installed, you can create and set up your project with a single command:
-```bash
-uvx agent-starter-pack create my-awesome-agent
-```
-This command handles creating the project without needing to pre-install the package into a virtual environment.
 </details>
 
 **That's it!** You now have a fully functional agent project—complete with backend, frontend, and deployment infrastructure—ready for you to explore and customize.

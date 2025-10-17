@@ -14,7 +14,7 @@
 
 steps:
 {%- if cookiecutter.data_ingestion %}
-  - name: "python:3.11-slim"
+  - name: "python:3.12-slim"
     id: deploy-data-ingestion-pipeline-prod
     entrypoint: bash
     args:
@@ -57,7 +57,7 @@ steps:
       - $_PROD_PROJECT_ID
 
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-  - name: "python:3.11-slim" 
+  - name: "python:3.12-slim"
     id: install-dependencies
     entrypoint: /bin/bash
     args:
@@ -67,7 +67,7 @@ steps:
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
-  - name: "python:3.11-slim"
+  - name: "python:3.12-slim"
     id: trigger-deployment
     entrypoint: /bin/bash
     args:
@@ -77,7 +77,7 @@ steps:
         uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
-          --service-account ${_APP_SA_EMAIL_PROD} \
+          --artifacts-bucket-name ${_LOGS_BUCKET_NAME} \
           --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_PROD},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_PROD},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_PROD},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_PROD}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'

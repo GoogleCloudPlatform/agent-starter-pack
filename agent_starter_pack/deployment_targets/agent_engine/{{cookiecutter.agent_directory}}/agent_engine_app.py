@@ -239,6 +239,16 @@ class AgentEngineApp:
     default=None,
     help="Service account email to use for the agent engine",
 )
+@click.option(
+    "--staging-bucket-uri",
+    default=None,
+    help="GCS bucket URI for staging files (defaults to gs://{project}-agent-engine)",
+)
+@click.option(
+    "--artifacts-bucket-name",
+    default=None,
+    help="GCS bucket name for artifacts (defaults to gs://{project}-agent-engine)",
+)
 def deploy_agent_engine_app(
     project: str | None,
     location: str,
@@ -247,13 +257,31 @@ def deploy_agent_engine_app(
     extra_packages: tuple[str, ...],
     set_env_vars: str | None,
     service_account: str | None,
+    staging_bucket_uri: str | None,
+    artifacts_bucket_name: str | None,
 ) -> AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
+
+    logging.basicConfig(level=logging.INFO)
+
     # Parse environment variables if provided
     env_vars = parse_env_vars(set_env_vars)
 
     if not project:
         _, project = google.auth.default()
+    if not staging_bucket_uri:
+        staging_bucket_uri = f"gs://{project}-agent-engine"
+    if not artifacts_bucket_name:
+        artifacts_bucket_name = f"gs://{project}-agent-engine"
+
+{%- if "adk" in cookiecutter.tags %}
+    create_bucket_if_not_exists(
+        bucket_name=artifacts_bucket_name, project=project, location=location
+    )
+{%- endif %}
+    create_bucket_if_not_exists(
+        bucket_name=staging_bucket_uri, project=project, location=location
+    )
 
     print("""
     ╔═══════════════════════════════════════════════════════════╗
@@ -263,18 +291,7 @@ def deploy_agent_engine_app(
     ╚═══════════════════════════════════════════════════════════╝
     """)
 
-    logging.basicConfig(level=logging.INFO)
     extra_packages_list = list(extra_packages)
-    staging_bucket_uri = f"gs://{project}-agent-engine"
-{%- if "adk" in cookiecutter.tags %}
-    artifacts_bucket_name = f"{project}-{{cookiecutter.project_name}}-logs"
-    create_bucket_if_not_exists(
-        bucket_name=artifacts_bucket_name, project=project, location=location
-    )
-{%- endif %}
-    create_bucket_if_not_exists(
-        bucket_name=staging_bucket_uri, project=project, location=location
-    )
 
     # Initialize vertexai client
     client = vertexai.Client(
@@ -318,6 +335,7 @@ def deploy_agent_engine_app(
         requirements=requirements,
         staging_bucket=staging_bucket_uri,
         labels=labels,
+        gcs_dir_name=agent_name,
 {%- if cookiecutter.is_adk_live %}
         agent_server_mode=AgentServerMode.EXPERIMENTAL,  # Enable bidi streaming
         resource_limits={"cpu": "4", "memory": "8Gi"},

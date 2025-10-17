@@ -29,9 +29,12 @@ resource "google_vertex_ai_reasoning_engine" "app_staging" {
     service_account = google_service_account.app_sa["staging"].email
 
     package_spec {
-      python_version        = "3.11"
-      pickle_object_gcs_uri = "gs://placeholder-bucket/placeholder.pkl"
-      requirements_gcs_uri  = "gs://placeholder-bucket/requirements.txt"
+      # IMPORTANT: This Python version must match the version used in CI/CD pipelines
+      # for pickling compatibility. Mismatched versions will cause deserialization errors.
+      python_version        = "3.12"
+      pickle_object_gcs_uri = "gs://agent-starter-pack/dummy/agent_engine.pkl"
+      dependency_files_gcs_uri = "gs://agent-starter-pack/dummy/dependencies.tar.gz"
+      requirements_gcs_uri  = "gs://agent-starter-pack/dummy/requirements.txt"
     }
   }
 
@@ -57,9 +60,12 @@ resource "google_vertex_ai_reasoning_engine" "app_prod" {
     service_account = google_service_account.app_sa["prod"].email
 
     package_spec {
-      python_version        = "3.11"
-      pickle_object_gcs_uri = "gs://placeholder-bucket/placeholder.pkl"
-      requirements_gcs_uri  = "gs://placeholder-bucket/requirements.txt"
+      # IMPORTANT: This Python version must match the version used in CI/CD pipelines
+      # for pickling compatibility. Mismatched versions will cause deserialization errors.
+      python_version        = "3.12"
+      pickle_object_gcs_uri = "gs://agent-starter-pack/dummy/agent_engine.pkl"
+      dependency_files_gcs_uri = "gs://agent-starter-pack/dummy/dependencies.tar.gz"
+      requirements_gcs_uri  = "gs://agent-starter-pack/dummy/requirements.txt"
     }
   }
 

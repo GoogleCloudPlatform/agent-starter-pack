@@ -14,7 +14,7 @@
 
 steps:
   # Install uv package manager and sync dependencies
-  - name: "python:3.11-slim"
+  - name: "python:3.12-slim"
     id: install-dependencies
     entrypoint: /bin/bash
     args:
@@ -25,7 +25,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
   # Run unit tests using pytest
-  - name: "python:3.11-slim"
+  - name: "python:3.12-slim"
     id: unit-tests
     entrypoint: /bin/bash
     args:
@@ -36,7 +36,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
   # Run integration tests
-  - name: "python:3.11-slim"
+  - name: "python:3.12-slim"
     id: integration-tests
     entrypoint: /bin/bash
     args:

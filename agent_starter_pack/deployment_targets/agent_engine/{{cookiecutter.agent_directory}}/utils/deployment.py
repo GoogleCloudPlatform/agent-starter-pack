@@ -77,7 +77,7 @@ def print_deployment_success(
 
 {%- if cookiecutter.is_adk %}
 {%- if cookiecutter.is_adk_live %}
-    print(f"\n✅ Deployment successful! Run your agent with: `make playground-remote`")
+    print("\n✅ Deployment successful! Run your agent with: `make playground-remote`")
 {%- else %}
     print(
         "\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb"
@@ -87,7 +87,7 @@ def print_deployment_success(
     print(f"Service Account: {service_account}")
     print(f"\n📊 View in console: {console_url}\n")
 {%- else %}
-    print(f"\n✅ Deployment successful!")
+    print("\n✅ Deployment successful!")
     service_account = remote_agent.api_resource.spec.service_account
     print(f"Service Account: {service_account}")
     print(f"\n📊 View in console: {console_url}\n")

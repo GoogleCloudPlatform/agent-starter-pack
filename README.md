@@ -15,10 +15,9 @@
   </picture>
 </a> [![Launch in Cloud Shell](https://img.shields.io/badge/Launch-in_Cloud_Shell-white)](https://shell.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Feliasecchig%2Fasp-open-in-cloud-shell&cloudshell_print=open-in-cs) ![Stars](https://img.shields.io/github/stars/GoogleCloudPlatform/agent-starter-pack?color=yellow)
 
+A Python package that provides production-ready templates for GenAI agents on Google Cloud.
 
-## Focus on Your Agent, We Handle Production
-
-A **Python package** that provides **production-ready templates** for GenAI agents on Google Cloud. You write the agent logic—we template everything else: infrastructure, CI/CD, observability, and security.
+Focus on your agent logic—we template everything else: infrastructure, CI/CD, observability, and security.
 
 | ⚡️ Launch | 🧪 Experiment  | ✅ Deploy | 🛠️ Customize |
 |---|---|---|---|

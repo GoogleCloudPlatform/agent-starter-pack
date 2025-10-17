@@ -100,7 +100,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_FOLDERS = ["cloud_run", "agent_engine"]
-DEFAULT_FRONTEND = "streamlit"
+DEFAULT_FRONTEND = "None"
 
 
 def get_available_agents(deployment_target: str | None = None) -> dict:
@@ -1182,13 +1182,10 @@ def copy_files(
 
 def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> None:
     """Copy files from the specified frontend folder directly to project root."""
-    # Skip copying if frontend_type is "None"
-    if frontend_type == "None":
-        logging.debug("Frontend type is 'None', skipping frontend files")
+    # Skip copying if frontend_type is "None" or empty
+    if not frontend_type or frontend_type == "None":
+        logging.debug("Frontend type is 'None' or empty, skipping frontend files")
         return
-
-    # Use default frontend if none specified
-    frontend_type = frontend_type or DEFAULT_FRONTEND
 
     # Get the frontends directory path
     frontends_path = (
@@ -1201,9 +1198,12 @@ def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> N
         copy_files(frontends_path, project_template, overwrite=True)
     else:
         logging.warning(f"Frontend type directory not found: {frontends_path}")
-        if frontend_type != DEFAULT_FRONTEND:
+        # Don't fall back to default if it's "None" - just skip
+        if DEFAULT_FRONTEND != "None":
             logging.info(f"Falling back to default frontend: {DEFAULT_FRONTEND}")
             copy_frontend_files(DEFAULT_FRONTEND, project_template)
+        else:
+            logging.debug("No default frontend configured, skipping frontend files")
 
 
 def copy_deployment_files(

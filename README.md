@@ -27,7 +27,7 @@ Focus on your agent logic—the starter pack provides everything else: infrastru
 
 ## ⚡ Get Started in 1 Minute
 
-**From zero to production-ready agent in 60 seconds using [`uv`](https://github.com/astral-sh/uv):**
+**From zero to production-ready agent in 60 seconds using [`uv`](https://docs.astral.sh/uv/getting-started/installation/):**
 
 ```bash
 uvx agent-starter-pack create my-awesome-agent

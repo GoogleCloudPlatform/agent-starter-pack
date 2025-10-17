@@ -19,6 +19,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import backoff
+import google.auth
 from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -29,10 +30,13 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai.agent_engines import _utils
 from websockets.exceptions import ConnectionClosedError
 
 from .agent import root_agent
+from .utils.tracing import CloudTraceLoggingSpanExporter
 from .utils.typing import Feedback
 
 app = FastAPI()
@@ -57,6 +61,14 @@ if frontend_build_dir.exists():
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+_, project_id = google.auth.default()
+provider = TracerProvider()
+processor = export.BatchSpanProcessor(
+    CloudTraceLoggingSpanExporter(project_id=project_id)
+)
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
 
 
 # Initialize ADK services

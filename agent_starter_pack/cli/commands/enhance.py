@@ -94,16 +94,22 @@ def display_base_template_selection(current_base: str) -> str:
 
 
 def display_agent_directory_selection(
-    current_dir: pathlib.Path, detected_directory: str
+    current_dir: pathlib.Path, detected_directory: str, base_template: str | None = None
 ) -> str:
     """Display available directories and prompt for agent directory selection."""
+    # Determine the required object name based on base template
+    is_adk = base_template and "adk" in base_template.lower()
+    required_object = "root_agent" if is_adk else "agent"
+
     while True:
         console.print()
         console.print("📁 [bold]Agent Directory Selection[/bold]")
         console.print()
         console.print("Your project needs an agent directory containing:")
         console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
-        console.print("  • [cyan]root_agent[/cyan] variable defined in agent.py")
+        console.print(
+            f"  • [cyan]{required_object}[/cyan] variable defined in agent.py"
+        )
         console.print()
         console.print("Choose where your agent code is located:")
 
@@ -323,7 +329,10 @@ def enhance(
         console.print()
 
     # Determine agent specification based on template_path
-    if template_path == pathlib.Path("."):
+    # If base_template is specified, use it as the agent spec
+    if base_template:
+        agent_spec = base_template
+    elif template_path == pathlib.Path("."):
         # Current directory - use local@ syntax
         agent_spec = "local@."
     elif template_path.is_dir():
@@ -421,7 +430,7 @@ def enhance(
         # Interactive agent directory selection if not provided via CLI and not auto-approved
         if not agent_directory and not auto_approve:
             selected_agent_directory = display_agent_directory_selection(
-                current_dir, detected_agent_directory
+                current_dir, detected_agent_directory, base_template
             )
             final_agent_directory = selected_agent_directory
             console.print(

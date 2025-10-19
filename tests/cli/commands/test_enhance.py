@@ -283,3 +283,203 @@ packages = ["detected_agent", "frontend"]
                 assert cli_overrides is not None
                 assert cli_overrides["base_template"] == "langgraph_base_react"
                 assert cli_overrides["settings"]["agent_directory"] == "my_chatbot"
+
+
+class TestEnhanceAgentEngineAppGeneration:
+    """Test that enhance properly generates agent_engine_app.py with correct imports."""
+
+    @pytest.mark.parametrize(
+        "base_template,expected_import",
+        [
+            ("adk_base", "root_agent"),
+            ("adk_live", "root_agent"),
+            ("langgraph_base_react", "agent"),
+            ("agentic_rag", "root_agent"),  # agentic_rag is ADK-based
+        ],
+    )
+    def test_agent_engine_app_has_correct_import(
+        self, base_template: str, expected_import: str, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent_engine_app.py imports the correct variable based on base template."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with agent.py
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            # Create appropriate agent.py content based on template type
+            if "adk" in base_template or base_template == "agentic_rag":
+                agent_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+"""
+            else:
+                agent_content = """from langchain_core.runnables import RunnablePassthrough
+
+agent = RunnablePassthrough()
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance with the specified base template
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    base_template,
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent_engine_app.py was created
+            agent_engine_app = agent_dir / "agent_engine_app.py"
+            assert agent_engine_app.exists(), (
+                f"agent_engine_app.py not created in {agent_dir}"
+            )
+
+            # Read the content and verify the correct import
+            content = agent_engine_app.read_text()
+            expected_import_line = f"from app.agent import {expected_import}"
+            assert expected_import_line in content, (
+                f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
+            )
+
+    def test_agent_engine_app_created_in_custom_agent_directory(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent_engine_app.py is created in custom agent directory."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create custom agent directory
+            agent_dir = pathlib.Path("my_custom_agent")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+            agent_file.write_text(
+                """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+"""
+            )
+
+            # Run enhance with custom agent directory
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--agent-directory",
+                    "my_custom_agent",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent_engine_app.py was created in custom directory
+            agent_engine_app = agent_dir / "agent_engine_app.py"
+            assert agent_engine_app.exists(), (
+                f"agent_engine_app.py not created in {agent_dir}"
+            )
+
+            # Verify the import uses the custom directory name
+            content = agent_engine_app.read_text()
+            expected_import_line = "from my_custom_agent.agent import root_agent"
+            assert expected_import_line in content, (
+                f"Expected '{expected_import_line}' in agent_engine_app.py"
+            )
+
+
+class TestEnhanceAgentDirectoryPrompt:
+    """Test that enhance shows the correct required variable in prompts."""
+
+    @patch("agent_starter_pack.cli.commands.enhance.display_agent_directory_selection")
+    @patch("agent_starter_pack.cli.utils.remote_template.get_base_template_name")
+    @patch("agent_starter_pack.cli.utils.remote_template.load_remote_template_config")
+    def test_prompt_shows_root_agent_for_adk_templates(
+        self,
+        mock_load_config: MagicMock,
+        mock_get_base_name: MagicMock,
+        mock_display_selection: MagicMock,
+    ) -> None:
+        """Test that agent directory prompt shows 'root_agent' for ADK templates."""
+        runner = CliRunner()
+
+        # Mock the template config to return an ADK base template
+        mock_get_base_name.return_value = "adk_base"
+        mock_load_config.return_value = {"base_template": "adk_base"}
+        mock_display_selection.return_value = "app"
+
+        with runner.isolated_filesystem():
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            with patch("agent_starter_pack.cli.commands.enhance.create"):
+                runner.invoke(
+                    enhance,
+                    [".", "--base-template", "adk_base"],
+                    input="n\n",  # Cancel enhancement
+                )
+
+                # Verify display_agent_directory_selection was called with base_template
+                if mock_display_selection.called:
+                    call_args = mock_display_selection.call_args
+                    # The base_template should be passed to the function
+                    assert call_args[0][2] == "adk_base"  # Third positional arg
+
+    @patch("agent_starter_pack.cli.commands.enhance.display_agent_directory_selection")
+    @patch("agent_starter_pack.cli.utils.remote_template.get_base_template_name")
+    @patch("agent_starter_pack.cli.utils.remote_template.load_remote_template_config")
+    def test_prompt_shows_agent_for_non_adk_templates(
+        self,
+        mock_load_config: MagicMock,
+        mock_get_base_name: MagicMock,
+        mock_display_selection: MagicMock,
+    ) -> None:
+        """Test that agent directory prompt shows 'agent' for non-ADK templates."""
+        runner = CliRunner()
+
+        # Mock the template config to return a non-ADK base template
+        mock_get_base_name.return_value = "langgraph_base_react"
+        mock_load_config.return_value = {"base_template": "langgraph_base_react"}
+        mock_display_selection.return_value = "app"
+
+        with runner.isolated_filesystem():
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("agent = None")
+
+            with patch("agent_starter_pack.cli.commands.enhance.create"):
+                runner.invoke(
+                    enhance,
+                    [".", "--base-template", "langgraph_base_react"],
+                    input="n\n",  # Cancel enhancement
+                )
+
+                # Verify display_agent_directory_selection was called with base_template
+                if mock_display_selection.called:
+                    call_args = mock_display_selection.call_args
+                    # The base_template should be passed to the function
+                    assert call_args[0][2] == "langgraph_base_react"

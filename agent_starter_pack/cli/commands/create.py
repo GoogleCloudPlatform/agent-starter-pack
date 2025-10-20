@@ -506,7 +506,7 @@ def create(
             template_path = template_source_path / ".template"
         else:
             template_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent
+                pathlib.Path(__file__).parent.parent.parent
                 / "agents"
                 / final_agent
                 / ".template"

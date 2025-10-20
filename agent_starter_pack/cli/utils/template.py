@@ -579,8 +579,8 @@ def process_template(
             )
             # Get agent directory from config early for use in file copying
             # Load config early to get agent_directory
-            if is_remote:
-                early_config = remote_config or {}
+            if remote_config:
+                early_config = remote_config
             else:
                 template_path = pathlib.Path(template_dir)
                 early_config = load_template_config(template_path)
@@ -628,8 +628,8 @@ def process_template(
                 )
 
             # Load and validate template config first
-            if is_remote:
-                config = remote_config or {}
+            if remote_config:
+                config = remote_config
             else:
                 template_path = pathlib.Path(template_dir)
                 config = load_template_config(template_path)

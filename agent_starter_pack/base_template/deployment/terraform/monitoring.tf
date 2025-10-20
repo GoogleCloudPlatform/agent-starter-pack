@@ -669,6 +669,8 @@ resource "google_monitoring_alert_policy" "high_error_rate_cloud_run" {
     condition_threshold {
       filter = "resource.type=\"cloud_run_revision\" AND metric.type=\"run.googleapis.com/request_count\" AND metric.label.response_code_class=\"5xx\" AND resource.label.service_name=\"${var.project_name}\""
 
+      # Note: Using ALIGN_SUM to count total errors in the 300s window.
+      # Do not use ALIGN_RATE here as it would convert to errors/second.
       aggregations {
         alignment_period   = "300s"
         per_series_aligner = "ALIGN_SUM"

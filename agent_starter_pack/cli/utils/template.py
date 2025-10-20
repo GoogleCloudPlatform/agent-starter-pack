@@ -620,20 +620,11 @@ def process_template(
                 )
                 copy_data_ingestion_files(project_template, datastore)
 
-            # 4. Process frontend files
-            # Load template config
-            template_config = load_template_config(pathlib.Path(template_dir))
-            frontend_type = template_config.get("settings", {}).get(
-                "frontend_type", DEFAULT_FRONTEND
-            )
-            copy_frontend_files(frontend_type, project_template)
-            logging.debug(f"4. Processed frontend files for type: {frontend_type}")
-
-            # 6. Skip remote template files during cookiecutter processing
+            # 4. Skip remote template files during cookiecutter processing
             # Remote files will be copied after cookiecutter to avoid Jinja conflicts
             if is_remote and remote_template_path:
                 logging.debug(
-                    "6. Skipping remote template files during cookiecutter processing - will copy after templating"
+                    "4. Skipping remote template files during cookiecutter processing - will copy after templating"
                 )
 
             # Load and validate template config first
@@ -659,7 +650,14 @@ def process_template(
             # Use the already loaded config
             template_config = config
 
-            # 5. Copy agent-specific files to override base template (using final config)
+            # Process frontend files (after config is properly loaded with CLI overrides)
+            frontend_type = template_config.get("settings", {}).get(
+                "frontend_type", DEFAULT_FRONTEND
+            )
+            copy_frontend_files(frontend_type, project_template)
+            logging.debug(f"5. Processed frontend files for type: {frontend_type}")
+
+            # 6. Copy agent-specific files to override base template (using final config)
             if agent_path.exists():
                 agent_directory = get_agent_directory(template_config, cli_overrides)
 
@@ -673,7 +671,7 @@ def process_template(
                 target_agent_folder = project_template / agent_directory
                 if source_agent_folder.exists():
                     logging.debug(
-                        f"5. Copying agent folder {template_agent_directory} -> {agent_directory} with override"
+                        f"6. Copying agent folder {template_agent_directory} -> {agent_directory} with override"
                     )
                     copy_files(
                         source_agent_folder,
@@ -689,7 +687,7 @@ def process_template(
                     agent_folder = agent_path / folder
                     project_folder = project_template / folder
                     if agent_folder.exists():
-                        logging.debug(f"5. Copying {folder} folder with override")
+                        logging.debug(f"6. Copying {folder} folder with override")
                         copy_files(
                             agent_folder,
                             project_folder,

@@ -344,7 +344,13 @@ agent = RunnablePassthrough()
                 f"Enhance failed with output:\n{result.output}"
             )
 
-            # Verify agent_engine_app.py was created
+            # Verify agent.py content was NOT modified (customer file preservation)
+            preserved_agent_content = agent_file.read_text()
+            assert preserved_agent_content == agent_content, (
+                f"agent.py was modified! Expected:\n{agent_content}\n\nGot:\n{preserved_agent_content}"
+            )
+
+            # Verify agent_engine_app.py was created (deployment target specific)
             agent_engine_app = agent_dir / "agent_engine_app.py"
             assert agent_engine_app.exists(), (
                 f"agent_engine_app.py not created in {agent_dir}"
@@ -368,15 +374,14 @@ agent = RunnablePassthrough()
             agent_dir = pathlib.Path("my_custom_agent")
             agent_dir.mkdir()
             agent_file = agent_dir / "agent.py"
-            agent_file.write_text(
-                """from google.adk.agents import Agent
+            agent_content = """from google.adk.agents import Agent
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
 """
-            )
+            agent_file.write_text(agent_content)
 
             # Run enhance with custom agent directory
             result = runner.invoke(
@@ -397,6 +402,12 @@ root_agent = Agent(
             # Check that enhance succeeded
             assert result.exit_code == 0, (
                 f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py content was NOT modified (customer file preservation)
+            preserved_agent_content = agent_file.read_text()
+            assert preserved_agent_content == agent_content, (
+                f"agent.py in custom directory was modified! Expected:\n{agent_content}\n\nGot:\n{preserved_agent_content}"
             )
 
             # Verify agent_engine_app.py was created in custom directory

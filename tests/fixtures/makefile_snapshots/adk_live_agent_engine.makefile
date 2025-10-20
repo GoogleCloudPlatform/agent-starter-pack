@@ -22,6 +22,14 @@ playground: build-frontend-if-needed
 	uv run python -m test_adk_live.utils.expose_app --mode local --local-agent test_adk_live.agent.root_agent
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
+
+# ==============================================================================
 # ADK Live Commands
 # ==============================================================================
 
@@ -41,10 +49,6 @@ build-frontend-if-needed:
 	else \
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed

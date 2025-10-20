@@ -23,6 +23,14 @@ playground:
 	uv run adk web . --port 8501 --reload_agents
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_garden.server:app --host localhost --port 8000 --reload
+
+# ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 

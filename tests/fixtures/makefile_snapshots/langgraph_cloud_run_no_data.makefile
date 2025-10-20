@@ -22,6 +22,14 @@ playground:
 	uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_langgraph.server:app --host localhost --port 8000 --reload
+
+# ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 

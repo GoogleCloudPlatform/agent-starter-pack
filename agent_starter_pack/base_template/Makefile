@@ -84,18 +84,14 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 # ==============================================================================
 # Local Development Commands
 # ==============================================================================
-{%- endif %}
+
+# Launch local development server with hot-reload
+local-backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-
-# Launch local development server with hot-reload
-local-backend:
 	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
-{%- endif %}
-{%- if cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live %}
-
-# Launch local development server with hot-reload
-local-backend:
+{%- else %}
 	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+{%- endif %}
 {%- endif %}
 {%- if cookiecutter.is_adk_live %}
 

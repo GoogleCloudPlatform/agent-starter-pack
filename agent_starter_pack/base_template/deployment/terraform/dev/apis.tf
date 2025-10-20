@@ -24,6 +24,7 @@ locals {
     "bigquery.googleapis.com",
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
+    "monitoring.googleapis.com",
     "cloudtrace.googleapis.com",
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
     "compute.googleapis.com",

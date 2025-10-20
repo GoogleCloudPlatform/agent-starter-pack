@@ -494,3 +494,192 @@ class TestEnhanceAgentDirectoryPrompt:
                     call_args = mock_display_selection.call_args
                     # The base_template should be passed to the function
                     assert call_args[0][2] == "langgraph_base_react"
+
+
+class TestEnhanceFilePopulation:
+    """Test that enhance properly populates files based on configuration."""
+
+    def test_adk_live_populates_frontend_files(self, tmp_path: pathlib.Path) -> None:
+        """Test that adk_live agent populates frontend files (regression test for bug)."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with adk_live agent.py
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            agent_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance with adk_live base template
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_live",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify frontend files were populated for adk_live
+            # adk_live uses adk_live_react frontend
+            frontend_dir = pathlib.Path("frontend")
+            assert frontend_dir.exists(), "Frontend directory was not created"
+
+            # Check for key frontend files
+            key_frontend_files = [
+                frontend_dir / "src" / "App.tsx",
+                frontend_dir / "src" / "index.tsx",
+                frontend_dir / "package.json",
+            ]
+
+            for frontend_file in key_frontend_files:
+                assert frontend_file.exists(), (
+                    f"Expected frontend file {frontend_file} was not created for adk_live"
+                )
+
+            # Verify agent.py was NOT modified (customer file preservation)
+            preserved_agent_content = agent_file.read_text()
+            assert preserved_agent_content == agent_content, (
+                "agent.py was modified during enhance!"
+            )
+
+    def test_cloud_run_deployment_populates_files(self, tmp_path: pathlib.Path) -> None:
+        """Test that Cloud Run deployment target populates deployment-specific files."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            agent_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance with cloud_run deployment target
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify Cloud Run specific files were populated
+            cloud_run_files = [
+                agent_dir / "server.py",  # Cloud Run server
+                pathlib.Path("Dockerfile"),  # Cloud Run Dockerfile
+                pathlib.Path("deployment") / "terraform" / "service.tf",
+            ]
+
+            for cloud_run_file in cloud_run_files:
+                assert cloud_run_file.exists(), (
+                    f"Expected Cloud Run file {cloud_run_file} was not created"
+                )
+
+            # Verify agent.py was NOT modified
+            preserved_agent_content = agent_file.read_text()
+            assert preserved_agent_content == agent_content, (
+                "agent.py was modified during enhance!"
+            )
+
+    def test_data_ingestion_populates_files(self, tmp_path: pathlib.Path) -> None:
+        """Test that --include-data-ingestion actually populates data pipeline files."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            agent_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance with data ingestion enabled
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--include-data-ingestion",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify data ingestion files were populated
+            data_ingestion_files = [
+                pathlib.Path("data_ingestion")
+                / "data_ingestion_pipeline"
+                / "pipeline.py",
+                pathlib.Path("data_ingestion")
+                / "data_ingestion_pipeline"
+                / "submit_pipeline.py",
+                pathlib.Path("data_ingestion")
+                / "data_ingestion_pipeline"
+                / "components"
+                / "ingest_data.py",
+                pathlib.Path("data_ingestion")
+                / "data_ingestion_pipeline"
+                / "components"
+                / "process_data.py",
+            ]
+
+            for data_file in data_ingestion_files:
+                assert data_file.exists(), (
+                    f"Expected data ingestion file {data_file} was not created"
+                )
+
+            # Verify agent.py was NOT modified
+            preserved_agent_content = agent_file.read_text()
+            assert preserved_agent_content == agent_content, (
+                "agent.py was modified during enhance!"
+            )

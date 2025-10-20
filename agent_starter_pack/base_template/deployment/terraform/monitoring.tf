@@ -166,15 +166,15 @@ resource "google_logging_metric" "agent_retriever_document_count" {
   depends_on = [resource.google_project_service.services]
 }
 
-# Alert when retriever latency P99 exceeds 10 seconds
+# Alert when retriever latency P99 exceeds threshold
 resource "google_monitoring_alert_policy" "agent_retriever_latency_high" {
   project      = var.prod_project_id
-  display_name = "${var.project_name} - High Retriever Latency (P99 > 10s)"
+  display_name = "${var.project_name} - High Retriever Latency (P99 > ${var.retriever_latency_p99_threshold_ms}ms)"
 
   combiner = "OR"
 
   conditions {
-    display_name = "Retriever latency P99 > 10 seconds (5 minute window)"
+    display_name = "Retriever latency P99 > ${var.retriever_latency_p99_threshold_ms}ms (5 minute window)"
 
     condition_monitoring_query_language {
       query = <<-EOT
@@ -182,7 +182,7 @@ fetch global
 | metric 'logging.googleapis.com/user/${local.monitoring_metric_prefix}_agent_retriever_latency_ms'
 | align delta(5m)
 | group_by [], [value_percentile: percentile(value, 99)]
-| condition value_percentile > cast_units(10000, "ms")
+| condition value_percentile > cast_units(${var.retriever_latency_p99_threshold_ms}, "ms")
 EOT
       duration = "0s"
       trigger {
@@ -198,7 +198,7 @@ EOT
   }
 
   documentation {
-    content   = "Retriever latency P99 for ${var.project_name} exceeded 10 seconds. Check retriever spans in Cloud Trace for slow queries or large document retrievals."
+    content   = "Retriever latency P99 for ${var.project_name} exceeded ${var.retriever_latency_p99_threshold_ms}ms. Check retriever spans in Cloud Trace for slow queries or large document retrievals."
     mime_type = "text/markdown"
   }
 
@@ -671,7 +671,7 @@ resource "google_monitoring_alert_policy" "high_error_rate_cloud_run" {
 
       aggregations {
         alignment_period   = "300s"
-        per_series_aligner = "ALIGN_RATE"
+        per_series_aligner = "ALIGN_SUM"
       }
 
       comparison      = "COMPARISON_GT"
@@ -687,7 +687,7 @@ resource "google_monitoring_alert_policy" "high_error_rate_cloud_run" {
   }
 
   documentation {
-    content   = "5xx error rate for ${var.project_name} (Cloud Run) exceeded ${var.error_rate_alert_threshold} errors/sec. Check Cloud Run logs for error details."
+    content   = "5xx error count for ${var.project_name} (Cloud Run) exceeded ${var.error_rate_alert_threshold} errors in the past five minutes. Check Cloud Run logs for error details."
     mime_type = "text/markdown"
   }
 
@@ -702,7 +702,7 @@ resource "google_monitoring_alert_policy" "agent_errors" {
   combiner = "OR"
 
   conditions {
-    display_name = "Agent error count > 0.5/sec"
+    display_name = "Agent error count > ${var.agent_error_rate_threshold_per_sec}/sec"
 
     condition_threshold {
       filter = "resource.type=\"global\" AND metric.type=\"logging.googleapis.com/user/${local.monitoring_metric_prefix}_agent_error_categorized\""
@@ -713,7 +713,7 @@ resource "google_monitoring_alert_policy" "agent_errors" {
       }
 
       comparison      = "COMPARISON_GT"
-      threshold_value = 0.5
+      threshold_value = var.agent_error_rate_threshold_per_sec
       duration        = "0s"
     }
   }

@@ -239,3 +239,15 @@ variable "error_rate_alert_threshold" {
   description = "Error count threshold per 5-minute window for alerting."
   default     = 10
 }
+
+variable "retriever_latency_p99_threshold_ms" {
+  type        = number
+  description = "P99 retriever latency threshold in milliseconds for alerting. P99 means 99% of retrieval operations complete faster than this threshold."
+  default     = 10000
+}
+
+variable "agent_error_rate_threshold_per_sec" {
+  type        = number
+  description = "Agent error rate threshold in errors per second for alerting (Cloud Run agents)."
+  default     = 0.5
+}

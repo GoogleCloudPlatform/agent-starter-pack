@@ -470,7 +470,9 @@ def create(
         # Load template configuration based on whether it's remote or local
         if template_source_path:
             # Prepare CLI overrides for remote template config
-            cli_overrides = {}
+            # Initialize cli_overrides if not provided (e.g., from enhance command)
+            if cli_overrides is None:
+                cli_overrides = {}
             if base_template:
                 cli_overrides["base_template"] = base_template
 
@@ -491,7 +493,7 @@ def create(
                 logging.debug(f"Using base template: {base_template_name}")
 
             base_template_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent
+                pathlib.Path(__file__).parent.parent.parent
                 / "agents"
                 / base_template_name
                 / ".template"
@@ -504,7 +506,7 @@ def create(
             template_path = template_source_path / ".template"
         else:
             template_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent
+                pathlib.Path(__file__).parent.parent.parent
                 / "agents"
                 / final_agent
                 / ".template"

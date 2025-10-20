@@ -329,10 +329,7 @@ def enhance(
         console.print()
 
     # Determine agent specification based on template_path
-    # If base_template is specified, use it as the agent spec
-    if base_template:
-        agent_spec = base_template
-    elif template_path == pathlib.Path("."):
+    if template_path == pathlib.Path("."):
         # Current directory - use local@ syntax
         agent_spec = "local@."
     elif template_path.is_dir():
@@ -367,6 +364,8 @@ def enhance(
             selected_base_template = display_base_template_selection(
                 original_base_template_name
             )
+            # Always set base_template to the selected value (even if unchanged)
+            base_template = selected_base_template
             if selected_base_template != original_base_template_name:
                 # Update CLI overrides with the selected base template
                 cli_overrides["base_template"] = selected_base_template
@@ -374,7 +373,6 @@ def enhance(
                 if agent_directory:
                     cli_overrides["settings"] = cli_overrides.get("settings", {})
                     cli_overrides["settings"]["agent_directory"] = agent_directory
-                base_template = selected_base_template
                 console.print(
                     f"✅ Selected base template: [cyan]{selected_base_template}[/cyan]"
                 )
@@ -582,9 +580,10 @@ def enhance(
         final_cli_overrides["base_template"] = base_template
 
     # For current directory templates, ensure agent_directory is included in cli_overrides
-    if template_path == pathlib.Path(".") and agent_directory:
+    # final_agent_directory is set from interactive selection or CLI/detection
+    if template_path == pathlib.Path(".") and final_agent_directory:
         final_cli_overrides["settings"] = final_cli_overrides.get("settings", {})
-        final_cli_overrides["settings"]["agent_directory"] = agent_directory
+        final_cli_overrides["settings"]["agent_directory"] = final_agent_directory
 
     # Call the create command with in-folder mode enabled
     ctx.invoke(

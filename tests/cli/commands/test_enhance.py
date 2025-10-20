@@ -416,44 +416,48 @@ root_agent = Agent(
 class TestEnhanceServerPyGeneration:
     """Test that enhance properly generates server.py for Cloud Run with correct imports."""
 
-    @pytest.mark.parametrize(
-        "base_template,expected_import",
-        [
-            ("adk_base", "root_agent"),
-            ("adk_live", "root_agent"),
-            ("langgraph_base_react", "agent"),
-            ("agentic_rag", "root_agent"),  # agentic_rag is ADK-based
-        ],
-    )
-    def test_server_py_has_correct_import(
-        self, base_template: str, expected_import: str, tmp_path: pathlib.Path
-    ) -> None:
-        """Test that server.py imports the correct variable based on base template."""
-        runner = CliRunner()
-
-        with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create agent directory with agent.py
-            agent_dir = pathlib.Path("app")
-            agent_dir.mkdir()
-            agent_file = agent_dir / "agent.py"
-
-            # Create appropriate agent.py content based on template type
-            if "adk" in base_template or base_template == "agentic_rag":
-                agent_content = """from google.adk.agents import Agent
+    def _create_agent_file(self, agent_dir: pathlib.Path, agent_variable: str) -> None:
+        """Helper to create a dummy agent.py file."""
+        agent_file = agent_dir / "agent.py"
+        if agent_variable == "root_agent":
+            agent_content = """from google.adk.agents import Agent
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
 """
-            else:
-                agent_content = """from langchain_core.runnables import RunnablePassthrough
+        else:
+            agent_content = """from langchain_core.runnables import RunnablePassthrough
 
 agent = RunnablePassthrough()
 """
-            agent_file.write_text(agent_content)
+        agent_file.write_text(agent_content)
 
-            # Run enhance with cloud_run deployment target
+    @pytest.mark.parametrize(
+        "base_template,agent_variable,expected_strings",
+        [
+            ("adk_base", "root_agent", ["get_fast_api_app", "from app.utils"]),
+            ("adk_live", "root_agent", ["from .agent import root_agent"]),
+            ("langgraph_base_react", "agent", ["from app.agent import agent"]),
+            ("agentic_rag", "root_agent", ["get_fast_api_app", "from app.utils"]),
+        ],
+    )
+    def test_server_py_has_correct_import(
+        self,
+        base_template: str,
+        agent_variable: str,
+        expected_strings: list[str],
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that server.py imports the correct variable based on base template."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            self._create_agent_file(agent_dir, agent_variable)
+
             result = runner.invoke(
                 enhance,
                 [
@@ -467,73 +471,61 @@ agent = RunnablePassthrough()
                 ],
             )
 
-            # Check that enhance succeeded
             assert result.exit_code == 0, (
                 f"Enhance failed with output:\n{result.output}"
             )
 
-            # Verify server.py was created
             server_file = agent_dir / "server.py"
             assert server_file.exists(), f"server.py not created in {agent_dir}"
 
-            # Read the content and verify the correct import
             content = server_file.read_text()
-
-            # Different templates have different server.py structures:
-            # - adk_live: Uses direct import "from .agent import root_agent"
-            # - adk_base/agentic_rag: Uses get_fast_api_app (no direct agent import)
-            # - langgraph_base_react: Uses direct import "from app.agent import agent"
-
-            if base_template == "adk_live":
-                # adk_live uses WebSocket and direct import
-                expected_import_line = "from .agent import root_agent"
-                assert expected_import_line in content, (
-                    f"Expected '{expected_import_line}' in server.py but got:\n{content}"
-                )
-            elif "adk" in base_template or base_template == "agentic_rag":
-                # ADK (non-live) uses get_fast_api_app which auto-discovers agents
-                assert "get_fast_api_app" in content, (
-                    f"Expected 'get_fast_api_app' in server.py for {base_template}"
-                )
-                # Verify it references the correct directory for utils
-                assert "from app.utils" in content, (
-                    "Expected utils import from app directory in server.py"
-                )
-            else:
-                # Non-ADK templates (like langgraph_base_react) use direct import
-                expected_import_line = f"from app.agent import {expected_import}"
-                assert expected_import_line in content, (
-                    f"Expected '{expected_import_line}' in server.py but got:\n{content}"
+            for expected_string in expected_strings:
+                assert expected_string in content, (
+                    f"Expected '{expected_string}' in server.py for {base_template} but got:\n{content}"
                 )
 
+    @pytest.mark.parametrize(
+        "base_template,agent_variable,expected_strings",
+        [
+            (
+                "adk_base",
+                "root_agent",
+                ["from my_custom_agent.utils", "get_fast_api_app"],
+            ),
+            ("adk_live", "root_agent", ["from .agent import root_agent"]),
+            (
+                "langgraph_base_react",
+                "agent",
+                ["from my_custom_agent.agent import agent"],
+            ),
+            (
+                "agentic_rag",
+                "root_agent",
+                ["from my_custom_agent.utils", "get_fast_api_app"],
+            ),
+        ],
+    )
     def test_server_py_created_in_custom_agent_directory(
-        self, tmp_path: pathlib.Path
+        self,
+        base_template: str,
+        agent_variable: str,
+        expected_strings: list[str],
+        tmp_path: pathlib.Path,
     ) -> None:
         """Test that server.py is created in custom agent directory."""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
-            # Create custom agent directory
             agent_dir = pathlib.Path("my_custom_agent")
             agent_dir.mkdir()
-            agent_file = agent_dir / "agent.py"
-            agent_file.write_text(
-                """from google.adk.agents import Agent
+            self._create_agent_file(agent_dir, agent_variable)
 
-root_agent = Agent(
-    name="test_agent",
-    model="gemini-2.0-flash-001",
-)
-"""
-            )
-
-            # Run enhance with custom agent directory and cloud_run
             result = runner.invoke(
                 enhance,
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    base_template,
                     "--agent-directory",
                     "my_custom_agent",
                     "--deployment-target",
@@ -543,25 +535,18 @@ root_agent = Agent(
                 ],
             )
 
-            # Check that enhance succeeded
             assert result.exit_code == 0, (
                 f"Enhance failed with output:\n{result.output}"
             )
 
-            # Verify server.py was created in custom directory
             server_file = agent_dir / "server.py"
             assert server_file.exists(), f"server.py not created in {agent_dir}"
 
-            # Verify the import uses the custom directory name
             content = server_file.read_text()
-            # For ADK (non-live), verify utils import uses custom directory
-            assert "from my_custom_agent.utils" in content, (
-                f"Expected 'from my_custom_agent.utils' in server.py but got:\n{content}"
-            )
-            # Verify get_fast_api_app is used (ADK pattern)
-            assert "get_fast_api_app" in content, (
-                "Expected 'get_fast_api_app' in server.py for adk_base"
-            )
+            for expected_string in expected_strings:
+                assert expected_string in content, (
+                    f"Expected '{expected_string}' in server.py for {base_template} but got:\n{content}"
+                )
 
 
 class TestEnhanceAgentDirectoryPrompt:

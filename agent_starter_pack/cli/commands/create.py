@@ -555,6 +555,25 @@ def create(
                     )
                     logging.debug(f"Selected datastore type: {datastore}")
 
+        # Alert notification email prompt
+        alert_email = ""
+        if not auto_approve:
+            console.print("\n[bold cyan]Monitoring & Alerting Setup[/bold cyan]")
+            console.print(
+                "Configure email notifications for production alerts (optional)."
+            )
+            alert_email = Prompt.ask(
+                "Email for alert notifications",
+                default="",
+                show_default=False,
+            )
+            if alert_email:
+                console.print(f"[green]✓[/green] Alerts will be sent to: {alert_email}")
+            else:
+                console.print(
+                    "[yellow]⚠[/yellow] Email notifications disabled. Alerts will only appear in Cloud Console."
+                )
+
         # Deployment target selection
         # For remote templates, we need to use the base template name for deployment target selection
         deployment_agent_name = final_agent
@@ -720,6 +739,7 @@ def create(
                 cli_overrides=final_cli_overrides,
                 agent_garden=agent_garden,
                 remote_spec=remote_spec,
+                alert_email=alert_email,
             )
 
             # Replace region in all files if a different region was specified

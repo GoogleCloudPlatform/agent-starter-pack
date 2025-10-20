@@ -474,6 +474,7 @@ def process_template(
     cli_overrides: dict[str, Any] | None = None,
     agent_garden: bool = False,
     remote_spec: Any | None = None,
+    alert_email: str = "",
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -747,6 +748,7 @@ def process_template(
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
+                "alert_notification_email": alert_email,
                 "agent_directory": get_agent_directory(template_config, cli_overrides),
                 "agent_garden": agent_garden,
                 "agent_sample_id": agent_sample_id or "",

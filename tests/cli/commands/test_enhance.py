@@ -413,6 +413,142 @@ root_agent = Agent(
             )
 
 
+class TestEnhanceServerPyGeneration:
+    """Test that enhance properly generates server.py for Cloud Run with correct imports."""
+
+    def _create_agent_file(self, agent_dir: pathlib.Path, agent_variable: str) -> None:
+        """Helper to create a dummy agent.py file."""
+        agent_file = agent_dir / "agent.py"
+        if agent_variable == "root_agent":
+            agent_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+"""
+        else:
+            agent_content = """from langchain_core.runnables import RunnablePassthrough
+
+agent = RunnablePassthrough()
+"""
+        agent_file.write_text(agent_content)
+
+    @pytest.mark.parametrize(
+        "base_template,agent_variable,expected_strings",
+        [
+            ("adk_base", "root_agent", ["get_fast_api_app", "from app.utils"]),
+            ("adk_live", "root_agent", ["from .agent import root_agent"]),
+            ("langgraph_base_react", "agent", ["from app.agent import agent"]),
+            ("agentic_rag", "root_agent", ["get_fast_api_app", "from app.utils"]),
+        ],
+    )
+    def test_server_py_has_correct_import(
+        self,
+        base_template: str,
+        agent_variable: str,
+        expected_strings: list[str],
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that server.py imports the correct variable based on base template."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            self._create_agent_file(agent_dir, agent_variable)
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    base_template,
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            server_file = agent_dir / "server.py"
+            assert server_file.exists(), f"server.py not created in {agent_dir}"
+
+            content = server_file.read_text()
+            for expected_string in expected_strings:
+                assert expected_string in content, (
+                    f"Expected '{expected_string}' in server.py for {base_template} but got:\n{content}"
+                )
+
+    @pytest.mark.parametrize(
+        "base_template,agent_variable,expected_strings",
+        [
+            (
+                "adk_base",
+                "root_agent",
+                ["from my_custom_agent.utils", "get_fast_api_app"],
+            ),
+            ("adk_live", "root_agent", ["from .agent import root_agent"]),
+            (
+                "langgraph_base_react",
+                "agent",
+                ["from my_custom_agent.agent import agent"],
+            ),
+            (
+                "agentic_rag",
+                "root_agent",
+                ["from my_custom_agent.utils", "get_fast_api_app"],
+            ),
+        ],
+    )
+    def test_server_py_created_in_custom_agent_directory(
+        self,
+        base_template: str,
+        agent_variable: str,
+        expected_strings: list[str],
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that server.py is created in custom agent directory."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            agent_dir = pathlib.Path("my_custom_agent")
+            agent_dir.mkdir()
+            self._create_agent_file(agent_dir, agent_variable)
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    base_template,
+                    "--agent-directory",
+                    "my_custom_agent",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            server_file = agent_dir / "server.py"
+            assert server_file.exists(), f"server.py not created in {agent_dir}"
+
+            content = server_file.read_text()
+            for expected_string in expected_strings:
+                assert expected_string in content, (
+                    f"Expected '{expected_string}' in server.py for {base_template} but got:\n{content}"
+                )
+
+
 class TestEnhanceAgentDirectoryPrompt:
     """Test that enhance shows the correct required variable in prompts."""
 

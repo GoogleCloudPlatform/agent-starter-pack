@@ -268,7 +268,6 @@ resource "google_monitoring_alert_policy" "high_error_rate" {
   conditions {
     display_name = "Error count > ${var.error_rate_alert_threshold} in 5min"
 
-
     condition_threshold {
       filter = <<-EOT
         resource.type = "global"

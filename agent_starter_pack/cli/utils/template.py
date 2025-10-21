@@ -467,6 +467,7 @@ def process_template(
     include_data_ingestion: bool = False,
     datastore: str | None = None,
     session_type: str | None = None,
+    alert_notification_email: str = "",
     output_dir: pathlib.Path | None = None,
     remote_template_path: pathlib.Path | None = None,
     remote_config: dict[str, Any] | None = None,
@@ -486,6 +487,7 @@ def process_template(
         include_data_ingestion: Whether to include data pipeline components
         datastore: Optional datastore type for data ingestion
         session_type: Optional session type for cloud_run deployment
+        alert_notification_email: Optional alert notification email address
         output_dir: Optional output directory path, defaults to current directory
         remote_template_path: Optional path to remote template for overlay
         remote_config: Optional remote template configuration
@@ -741,6 +743,7 @@ def process_template(
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "session_type": session_type or "",
+                "alert_notification_email": alert_notification_email,
                 "frontend_type": frontend_type,
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
@@ -793,6 +796,7 @@ def process_template(
                 extra_context={
                     "project_name": project_name,
                     "agent_name": agent_name,
+                    "alert_notification_email": alert_notification_email,
                 },
             )
             logging.debug("Template processing completed successfully")
@@ -939,6 +943,7 @@ def process_template(
                                             extra_context={
                                                 "project_name": project_name,
                                                 "agent_name": agent_name,
+                                                "alert_notification_email": alert_notification_email,
                                             },
                                         )
 

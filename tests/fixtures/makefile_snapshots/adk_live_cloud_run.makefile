@@ -22,6 +22,14 @@ playground: build-frontend-if-needed
 	uv run uvicorn test_adk_live.server:app --host localhost --port 8000 --reload
 
 # ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_adk_live.server:app --host localhost --port 8000 --reload
+
+# ==============================================================================
 # ADK Live Commands
 # ==============================================================================
 
@@ -41,10 +49,6 @@ build-frontend-if-needed:
 	else \
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn test_adk_live.server:app --host localhost --port 8000 --reload
 
 # Start the frontend UI separately for development (requires backend running separately)
 ui:

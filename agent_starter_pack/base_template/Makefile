@@ -79,6 +79,20 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- endif %}
 {%- endfor %}
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' or (cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live) %}
+
+# ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+{%- else %}
+	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+{%- endif %}
+{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 # ==============================================================================
@@ -101,17 +115,7 @@ build-frontend-if-needed:
 	else \
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
-{%- endif %}
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed

@@ -14,6 +14,10 @@
 
 # mypy: disable-error-code="attr-defined,arg-type"
 {%- if cookiecutter.is_adk %}
+{%- if cookiecutter.is_adk_a2a %}
+import asyncio
+import copy
+{%- endif %}
 import logging
 import os
 from typing import Any
@@ -21,18 +25,35 @@ from typing import Any
 import click
 import google.auth
 import vertexai
+{%- if cookiecutter.is_adk_a2a %}
+from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
+from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
+from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
+from google.adk.apps.app import App
+{%- endif %}
 from google.adk.artifacts import GcsArtifactService
+{%- if cookiecutter.is_adk_a2a %}
+from google.adk.runners import Runner
+from google.adk.sessions import VertexAiSessionService
+{%- endif %}
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai._genai.types import AgentEngine, AgentEngineConfig{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 from vertexai.preview.reasoning_engines import AdkApp
+{%- elif cookiecutter.is_adk_a2a %}
+from vertexai.preview.reasoning_engines import A2aAgent
 {%- else %}
 from vertexai.agent_engines.templates.adk import AdkApp
 {%- endif %}
+{%- if cookiecutter.is_adk_a2a %}
+
+from {{cookiecutter.agent_directory}}.agent import app
+{%- else %}
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
+{%- endif %}
 from {{cookiecutter.agent_directory}}.utils.deployment import (
     parse_env_vars,
     print_deployment_success,
@@ -41,9 +62,53 @@ from {{cookiecutter.agent_directory}}.utils.deployment import (
 from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
 from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.utils.typing import Feedback
+{%- if cookiecutter.is_adk_a2a %}
+
+
+class AgentEngineApp(A2aAgent):
+    @staticmethod
+    async def create(
+        artifact_service_builder: Any = None,
+        session_service_builder: Any = None,
+    ) -> Any:
+        """Create an AgentEngineApp instance."""
+
+        def create_runner() -> Runner:
+            """Create a Runner for the AgentEngineApp."""
+            return Runner(
+                app=app,
+                session_service=session_service_builder()
+                if session_service_builder
+                else None,
+                artifact_service=artifact_service_builder()
+                if artifact_service_builder
+                else None,
+            )
+
+        return AgentEngineApp(
+            agent_executor_builder=lambda: A2aAgentExecutor(runner=create_runner()),
+            agent_card=await AgentEngineApp.build_agent_card(app=app),
+        )
+
+    @staticmethod
+    async def build_agent_card(app: App) -> AgentCard:
+        """Builds the Agent Card dynamically from the app."""
+        agent_card_builder = AgentCardBuilder(
+            agent=app.root_agent,
+            # Agent Engine does not support streaming yet
+            capabilities=AgentCapabilities(streaming=False),
+            rpc_url="http://localhost:9999/",
+            agent_version=os.getenv("AGENT_VERSION", "0.1.0"),
+        )
+        agent_card = await agent_card_builder.build()
+        agent_card.preferred_transport = TransportProtocol.http_json  # Http Only.
+        agent_card.supports_authenticated_extended_card = True
+        return agent_card
+{% else %}
 
 
 class AgentEngineApp(AdkApp):
+{%- endif %}
     def set_up(self) -> None:
         """Set up logging and tracing for the agent engine app."""
         import logging
@@ -74,6 +139,16 @@ class AgentEngineApp(AdkApp):
         operations = super().register_operations()
         operations[""] = operations.get("", []) + ["register_feedback"]
         return operations
+{%- if cookiecutter.is_adk_a2a %}
+
+    def clone(self) -> "AgentEngineApp":
+        """Returns a clone of the Agent Engine application."""
+        template_attributes = self._tmpl_attrs
+        return self.__class__(
+            agent_card=copy.deepcopy(self.agent_card),
+            agent_executor_builder=self._tmpl_attrs.get("agent_executor_builder"),
+        )
+{%- endif %}
 
 {%- else %}
 import logging
@@ -303,16 +378,25 @@ def deploy_agent_engine_app(
     # Read requirements
     with open(requirements_file) as f:
         requirements = f.read().strip().split("\n")
-{% if cookiecutter.is_adk %}
+{%- if cookiecutter.is_adk_a2a %}
+    agent_engine = asyncio.run(
+        AgentEngineApp.create(
+            artifact_service_builder=lambda: GcsArtifactService(
+                bucket_name=artifacts_bucket_name
+            ),
+            session_service_builder=lambda: VertexAiSessionService(),
+        )
+    )
+{%- elif cookiecutter.is_adk %}
     agent_engine = AgentEngineApp(
         agent=root_agent,
         artifact_service_builder=lambda: GcsArtifactService(
             bucket_name=artifacts_bucket_name
         ),
     )
-{% else %}
+{%- else %}
     agent_engine = AgentEngineApp(project_id=project)
-{% endif %}
+{%- endif %}
     # Set worker parallelism to 1
     env_vars["NUM_WORKERS"] = "1"
 

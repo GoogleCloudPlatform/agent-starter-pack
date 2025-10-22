@@ -80,6 +80,10 @@ def print_deployment_success(
 {%- if cookiecutter.is_adk %}
 {%- if cookiecutter.is_adk_live %}
     print("\n✅ Deployment successful! Run your agent with: `make playground-remote`")
+{%- elif cookiecutter.is_adk_a2a %}
+    print(
+        "\n✅ Deployment successful! Test your agent: notebooks/adk_a2a_app_testing.ipynb"
+    )
 {%- else %}
     print(
         "\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb"

@@ -112,6 +112,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
     # Define priority agents that should appear first
     PRIORITY_AGENTS = [
         "adk_base",
+        "adk_a2a_base",
         "adk_live",
         "agentic_rag",
         "langgraph_base_react",
@@ -738,6 +739,7 @@ def process_template(
                 "tags": tags,
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
+                "is_adk_a2a": "a2a" in tags,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "session_type": session_type or "",

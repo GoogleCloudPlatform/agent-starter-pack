@@ -68,6 +68,7 @@ See [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pac
 | Agent Name                  | Description                                                                                                                       |
 |-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
 | `adk_base`      | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) |
+| `adk_a2a_base`  | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support for distributed agent communication and interoperability |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).       |
 | `langgraph_base_react`      | An agent implementing a base ReAct agent using LangGraph |
 | `crewai_coding_crew`       | A multi-agent system implemented with CrewAI created to support coding activities       |

@@ -43,6 +43,10 @@ RUN uv sync --frozen
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=${COMMIT_SHA}
 
+# Extract version from pyproject.toml and set as environment variable
+RUN echo "export AGENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'\"' -f2)" >> ~/.bashrc
+ENV AGENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2 || echo "unknown")
+
 EXPOSE 8080
 
 CMD ["uv", "run", "uvicorn", "{{cookiecutter.agent_directory}}.server:app", "--host", "0.0.0.0", "--port", "8080"]

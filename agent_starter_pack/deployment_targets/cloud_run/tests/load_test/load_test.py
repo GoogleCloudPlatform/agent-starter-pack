@@ -140,7 +140,19 @@ class RemoteAgentUser(WebSocketUser):
 
 import os
 import time
-{%- if cookiecutter.is_adk %}
+{%- if cookiecutter.is_adk_a2a %}
+import uuid
+
+from a2a.types import (
+    Message,
+    MessageSendParams,
+    Part,
+    Role,
+    SendStreamingMessageRequest,
+    TextPart,
+)
+from locust import HttpUser, between, task
+{%- elif cookiecutter.is_adk %}
 import uuid
 
 import requests
@@ -149,11 +161,17 @@ from locust import HttpUser, between, task
 
 from locust import HttpUser, between, task
 {%- endif %}
-{% if cookiecutter.is_adk %}
+{%- if cookiecutter.is_adk_a2a %}
+
+ENDPOINT = "/a2a/{{cookiecutter.agent_directory}}"
+{%- elif cookiecutter.is_adk %}
+
 ENDPOINT = "/run_sse"
-{% else %}
+{%- else %}
+
 ENDPOINT = "/stream_messages"
-{% endif %}
+{%- endif %}
+
 
 class ChatStreamUser(HttpUser):
     """Simulates a user interacting with the chat stream API."""
@@ -162,6 +180,34 @@ class ChatStreamUser(HttpUser):
 
     @task
     def chat_stream(self) -> None:
+{%- if cookiecutter.is_adk_a2a %}
+        """Simulates a chat stream interaction using A2A protocol."""
+        headers = {"Content-Type": "application/json"}
+        if os.environ.get("_ID_TOKEN"):
+            headers["Authorization"] = f"Bearer {os.environ['_ID_TOKEN']}"
+
+        message = Message(
+            message_id=f"msg-user-{uuid.uuid4()}",
+            role=Role.user,
+            parts=[Part(root=TextPart(text="Hello! What's the weather in New York?"))],
+        )
+
+        request = SendStreamingMessageRequest(
+            id=f"req-{uuid.uuid4()}",
+            params=MessageSendParams(message=message),
+        )
+
+        start_time = time.time()
+
+        with self.client.post(
+            ENDPOINT,
+            name=f"{ENDPOINT} message",
+            headers=headers,
+            json=request.model_dump(mode="json", exclude_none=True),
+            catch_response=True,
+            stream=True,
+        ) as response:
+{%- else %}
         """Simulates a chat stream interaction."""
         headers = {"Content-Type": "application/json"}
         if os.environ.get("_ID_TOKEN"):
@@ -218,6 +264,7 @@ class ChatStreamUser(HttpUser):
             stream=True,
             params={"alt": "sse"},
         ) as response:
+{%- endif %}
             if response.status_code == 200:
                 events = []
                 for line in response.iter_lines():

@@ -83,6 +83,14 @@ def _run_agent_test(
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
+        # Verify frontend folder for agents with streamlit frontend
+        if agent in ["langgraph_base_react", "crewai_coding_crew"]:
+            frontend_dir = project_path / "frontend"
+            assert frontend_dir.exists(), f"Frontend folder missing for {agent}"
+            assert (frontend_dir / "streamlit_app.py").exists(), (
+                f"streamlit_app.py missing for {agent}"
+            )
+
         # Install dependencies
         run_command(
             [

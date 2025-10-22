@@ -24,4 +24,5 @@ settings:
     "langgraph~=0.6.2",
     "crewai~=0.152.0"
   ]
+  frontend_type: "streamlit"
 example_question: "How can I implement a function to sort a list in Python?"

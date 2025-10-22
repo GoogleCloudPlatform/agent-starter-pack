@@ -25,4 +25,5 @@ settings:
     "langchain-community~=0.3.17",
     "langchain-openai~=0.3.5",
   ]
+  frontend_type: "streamlit"
 example_question: "What's the weather in San Francisco?"

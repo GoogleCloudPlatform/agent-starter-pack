@@ -6,7 +6,7 @@
     {
       "id": "adk_agent_name",
       "name": "Agent Name",
-      "description": "The name of the adk agent being created, stored in adk-samples/python.",
+      "description": "The name of the agent template from the google/adk-samples repository (e.g., 'data-science').",
       "type": "string",
       "required": true
     }

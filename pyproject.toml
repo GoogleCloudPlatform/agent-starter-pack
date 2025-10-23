@@ -127,6 +127,11 @@ agent-starter-pack = "agent_starter_pack.cli.main:cli"
 
 [tool.hatch.build.targets.wheel]
 packages = ["agent_starter_pack", "llm.txt"]
+exclude = [
+    "agent_starter_pack/resources/idx",
+    "agent_starter_pack/resources/idx_ag",
+    "agent_starter_pack/resources/containers",
+]
 
 [tool.uv.workspace]
 members = ["temp"]

@@ -319,10 +319,10 @@ def deploy_agent_engine_app(
     # Common configuration for both create and update operations
     labels: dict[str, str] = {}
 {%- if cookiecutter.agent_garden %}
-    labels["deployed-with"] = "agent-garden"
 {%- if cookiecutter.agent_sample_id and cookiecutter.agent_sample_publisher %}
     labels["vertex-agent-sample-id"] = "{{cookiecutter.agent_sample_id}}"
     labels["vertex-agent-sample-publisher"] = "{{cookiecutter.agent_sample_publisher}}"
+    labels["deployed-with"] = "agent-garden"
 {%- endif %}
 {%- endif %}
 

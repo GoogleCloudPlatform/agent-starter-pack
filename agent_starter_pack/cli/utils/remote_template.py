@@ -204,7 +204,7 @@ def check_and_execute_with_version_lock(
 
         try:
             # Execute uvx with the locked version
-            cmd = ["uvx", f"agent-starter-pack=={version}", *original_args]
+            cmd = ["uvx", f"agent-starter-pack@{version}", *original_args]
             logging.debug(f"Executing nested command: {' '.join(cmd)}")
             subprocess.run(cmd, check=True)
             return True

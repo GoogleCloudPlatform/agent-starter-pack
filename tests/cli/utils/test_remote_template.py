@@ -835,7 +835,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the correct command was executed
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.2",
+            "agent-starter-pack@0.14.2",
             "create",
             "test-project",
             "-a",
@@ -916,7 +916,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the command was executed without agent spec replacement
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.2",
+            "agent-starter-pack@0.14.2",
             "create",
             "test-project",
             "--skip-welcome",
@@ -958,7 +958,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the command was executed without --skip-welcome and --locked flags
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.0",
+            "agent-starter-pack@0.14.0",
             "create",
             "test-project",
             "-a",

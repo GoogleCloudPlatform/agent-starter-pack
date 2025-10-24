@@ -78,7 +78,7 @@ def get_access_token() -> str:
             "Please ensure you are authenticated with 'gcloud auth application-default login'",
             file=sys.stderr,
         )
-        sys.exit(1)
+        raise RuntimeError("Failed to get access token") from e
 
 
 def get_agent_engine_metadata(agent_engine_id: str) -> tuple[str | None, str | None]:
@@ -164,10 +164,11 @@ def register_agent(
     if not project_id:
         # Extract from agent_engine_id: projects/{project}/locations/{location}/reasoningEngines/{id}
         agent_parts = agent_engine_id.split("/")
-        if len(agent_parts) >= 2:
+        if len(agent_parts) > 1 and agent_parts[0] == "projects":
             project_id = agent_parts[1]
         else:
-            project_id = project_number  # Fallback to project number
+            # Fallback to the project number from the Gemini Enterprise App ID.
+            project_id = project_number
 
     # Get access token
     access_token = get_access_token()

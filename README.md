@@ -21,7 +21,7 @@ Focus on your agent logic—the starter pack provides everything else: infrastru
 
 | ⚡️ Launch | 🧪 Experiment  | ✅ Deploy | 🛠️ Customize |
 |---|---|---|---|
-| [Pre-built agent templates](./agents/) (ReAct, RAG, multi-agent, Live API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability), and [CI/CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. 🆕 Now integrating with [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
+| [Pre-built agent templates](./agent_starter_pack/agents/) (ReAct, RAG, multi-agent, Live API). | [Vertex AI evaluation](https://cloud.google.com/vertex-ai/generative-ai/docs/models/evaluation-overview) and an interactive playground. | Production-ready infra with [monitoring, observability](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability), and [CI/CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) on [Cloud Run](https://cloud.google.com/run) or [Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine/overview). | Extend and customize templates according to your needs. 🆕 Now integrating with [Gemini CLI](https://github.com/google-gemini/gemini-cli) |
 
 ---
 

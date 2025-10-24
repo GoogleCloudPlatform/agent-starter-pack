@@ -59,3 +59,12 @@ resource "google_project_iam_member" "cicd_runner_e2e_project_roles" {
   role    = each.value.role
   member  = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
 }
+
+# Grant owner permissions to the service account for all cleanup projects
+resource "google_project_iam_member" "cicd_runner_cleanup_project_roles" {
+  for_each = toset(var.cleanup_project_ids)
+
+  project = each.key
+  role    = "roles/owner"
+  member  = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
+}

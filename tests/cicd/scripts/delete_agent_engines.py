@@ -143,7 +143,7 @@ def delete_agent_engines_in_project(
     project_id: str, region: str = DEFAULT_REGION
 ) -> tuple[int, int]:
     """
-    Delete all Agent Engine services in a specific project.
+    Delete Agent Engine services starting with 'test-' or 'myagent' in a specific project.
 
     Args:
         project_id: The GCP project ID
@@ -160,13 +160,19 @@ def delete_agent_engines_in_project(
 
         # List all Agent Engine services in the project
         logger.info(f"📋 Listing all Agent Engine services in {project_id}...")
-        engines = list(agent_engines.AgentEngine.list())
+        all_engines = list(agent_engines.AgentEngine.list())
+
+        # Filter engines that start with 'test-' or 'myagent'
+        engines = [
+            engine for engine in all_engines
+            if (engine.display_name and (engine.display_name.startswith("test-") or engine.display_name.startswith("myagent")))
+        ]
 
         if not engines:
-            logger.info(f"✅ No Agent Engine services found in {project_id}")
+            logger.info(f"✅ No Agent Engine services starting with 'test-' or 'myagent' found in {project_id}")
             return 0, 0
 
-        logger.info(f"🎯 Found {len(engines)} Agent Engine service(s) in {project_id}")
+        logger.info(f"🎯 Found {len(engines)} Agent Engine service(s) starting with 'test-' or 'myagent' in {project_id}")
 
         # Delete each engine with improved error handling
         deleted_count = 0

@@ -19,6 +19,7 @@ dependencies = [
     { name = "cookiecutter" },
     { name = "google-cloud-aiplatform" },
     { name = "pyyaml" },
+    { name = "requests" },
     { name = "rich" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
@@ -76,6 +77,7 @@ requires-dist = [
     { name = "jupyter", marker = "extra == 'jupyter'" },
     { name = "mypy", marker = "extra == 'lint'" },
     { name = "pyyaml", specifier = ">=6.0.1" },
+    { name = "requests", specifier = ">=2.31.0" },
     { name = "rich", specifier = ">=13.7.0" },
     { name = "ruff", marker = "extra == 'lint'" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1.0" },

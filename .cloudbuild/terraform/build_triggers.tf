@@ -436,3 +436,34 @@ resource "google_cloudbuild_trigger" "pr_test_pipeline_parity" {
   ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
+
+# i. Create E2E Gemini Enterprise Registration Test trigger for main branch commits (runs on merge to main)
+# TODO: Uncomment when ready to run remotely
+# resource "google_cloudbuild_trigger" "main_e2e_gemini_enterprise_test" {
+#   name            = "e2e-gemini-enterprise-registration"
+#   project         = var.cicd_runner_project_id
+#   location        = var.region
+#   description     = "E2E test for Gemini Enterprise registration on main branch (runs when PR merges to main)"
+#   service_account = resource.google_service_account.cicd_runner_sa.id
+#
+#   repository_event_config {
+#     repository = local.repository_path
+#     push {
+#       branch = "main"
+#     }
+#   }
+#
+#   filename       = ".cloudbuild/cd/test_gemini_enterprise.yaml"
+#   included_files = [
+#     "pyproject.toml",  # Triggers on releases
+#     "agent_starter_pack/cli/utils/register_gemini_enterprise.py",  # Registration code changes
+#     "tests/cicd/test_gemini_enterprise_registration.py",  # Test changes
+#     ".cloudbuild/cd/test_gemini_enterprise.yaml",  # Pipeline changes
+#   ]
+#   ignored_files      = local.common_ignored_files
+#   include_build_logs = "INCLUDE_BUILD_LOGS_UNSPECIFIED"
+#
+#   substitutions = {
+#     _E2E_DEV_PROJECT = var.e2e_test_project_mapping.dev
+#   }
+# }

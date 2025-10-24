@@ -719,10 +719,16 @@ def delete_alloydb_and_network_resources_in_project(
 
         # List all clusters in the project
         logger.info(f"📋 Listing all AlloyDB clusters in {project_id}...")
-        clusters = list(alloydb_client.list_clusters(parent=parent))
+        all_clusters = list(alloydb_client.list_clusters(parent=parent))
+
+        # Filter clusters that start with 'test-' or 'myagent'
+        clusters = [
+            cluster for cluster in all_clusters
+            if cluster.name.split('/')[-1].startswith("test-") or cluster.name.split('/')[-1].startswith("myagent")
+        ]
 
         if not clusters:
-            logger.info(f"✅ No AlloyDB clusters found in {project_id}")
+            logger.info(f"✅ No AlloyDB clusters starting with 'test-' or 'myagent' found in {project_id}")
             # Still need to clean up network resources even if no AlloyDB clusters
             
             # First delete Cloud Run services as they may hold serverless address reservations
@@ -745,7 +751,7 @@ def delete_alloydb_and_network_resources_in_project(
             deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
             return 0, 0, 0, 0, deleted_peerings, total_peerings, deleted_subnets, total_subnets, deleted_networks, total_networks
 
-        logger.info(f"🎯 Found {len(clusters)} AlloyDB cluster(s) in {project_id}")
+        logger.info(f"🎯 Found {len(clusters)} AlloyDB cluster(s) starting with 'test-' or 'myagent' in {project_id}")
 
         total_instances = 0
         deleted_instances = 0

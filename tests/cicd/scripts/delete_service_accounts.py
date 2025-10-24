@@ -33,32 +33,40 @@ logger = logging.getLogger(__name__)
 
 
 # Project IDs to clean up - loaded from environment variables
-def get_project_prefix_mapping() -> dict[str, str]:
+def get_project_prefix_mapping() -> dict[str, list[str]]:
     """
     Get project IDs and their corresponding prefixes from environment variables.
 
     Returns:
-        Dictionary mapping project_id -> prefix
+        Dictionary mapping project_id -> list of prefixes
     """
     project_prefix_map = {}
 
-    # Get E2E project IDs (use 'test-' prefix)
-    e2e_projects = os.getenv("E2E_PROJECT_IDS")
-    if e2e_projects:
-        for pid in e2e_projects.split(","):
+    # Try to get from comma-separated env var first (for 'test-' and 'myagent' prefixes)
+    env_projects = os.getenv("PROJECT_IDS")
+    if env_projects:
+        for pid in env_projects.split(","):
             if pid.strip():
-                project_prefix_map[pid.strip()] = "test-"
+                project_prefix_map[pid.strip()] = ["test-", "myagent"]
+    else:
+        # Get E2E project IDs (use 'test-' and 'myagent' prefixes)
+        e2e_projects = os.getenv("E2E_PROJECT_IDS")
+        if e2e_projects:
+            for pid in e2e_projects.split(","):
+                if pid.strip():
+                    project_prefix_map[pid.strip()] = ["test-", "myagent"]
 
-    # Get CICD project ID (use 'test-' prefix)
-    cicd_project = os.getenv("CICD_PROJECT_ID")
-    if cicd_project:
-        project_prefix_map[cicd_project.strip()] = "test-"
+        # Get CICD project ID (use 'test-' and 'myagent' prefixes)
+        cicd_project = os.getenv("CICD_PROJECT_ID")
+        if cicd_project:
+            project_prefix_map[cicd_project.strip()] = ["test-", "myagent"]
 
     if not project_prefix_map:
         raise ValueError(
             "No project IDs found. Please set:\n"
-            "- E2E_PROJECT_IDS: Comma-separated E2E project IDs (for 'test-' prefix)\n"
-            "- CICD_PROJECT_ID: CICD project ID (for 'test-' prefix)"
+            "- PROJECT_IDS: Comma-separated project IDs (for 'test-' and 'myagent' prefixes)\n"
+            "- E2E_PROJECT_IDS: Comma-separated E2E project IDs (for 'test-' and 'myagent' prefixes)\n"
+            "- CICD_PROJECT_ID: CICD project ID (for 'test-' and 'myagent' prefixes)"
         )
 
     return project_prefix_map
@@ -142,18 +150,18 @@ def delete_single_service_account(
             return False
 
 
-def delete_service_accounts_in_project(project_id: str, sa_prefix: str) -> tuple[int, int]:
+def delete_service_accounts_in_project(project_id: str, sa_prefixes: list[str]) -> tuple[int, int]:
     """
-    Delete all service accounts starting with a specified prefix in a specific project.
+    Delete all service accounts starting with specified prefixes in a specific project.
 
     Args:
         project_id: The GCP project ID
-        sa_prefix: Prefix to filter service accounts
+        sa_prefixes: List of prefixes to filter service accounts
 
     Returns:
         Tuple of (successful_deletions, total_service_accounts_found)
     """
-    logger.info(f"🔍 Checking for service accounts with prefix '{sa_prefix}' in project {project_id}...")
+    logger.info(f"🔍 Checking for service accounts with prefixes {sa_prefixes} in project {project_id}...")
 
     try:
         # List all service accounts in the project using gcloud
@@ -173,17 +181,17 @@ def delete_service_accounts_in_project(project_id: str, sa_prefix: str) -> tuple
 
         service_accounts = json.loads(result.stdout)
 
-        # Filter service accounts that start with the prefix
+        # Filter service accounts that start with any of the prefixes
         filtered_accounts = [
             sa for sa in service_accounts
-            if sa.get("email", "").startswith(sa_prefix)
+            if any(sa.get("email", "").startswith(prefix) for prefix in sa_prefixes)
         ]
 
         if not filtered_accounts:
-            logger.info(f"✅ No service accounts starting with '{sa_prefix}' found in {project_id}")
+            logger.info(f"✅ No service accounts starting with {sa_prefixes} found in {project_id}")
             return 0, 0
 
-        logger.info(f"🎯 Found {len(filtered_accounts)} service account(s) starting with '{sa_prefix}' in {project_id}")
+        logger.info(f"🎯 Found {len(filtered_accounts)} service account(s) starting with {sa_prefixes} in {project_id}")
 
         # Delete each service account with improved error handling
         deleted_count = 0
@@ -215,8 +223,8 @@ def main():
     try:
         project_prefix_map = get_project_prefix_mapping()
         logger.info(f"🎯 Target projects:")
-        for project_id, prefix in project_prefix_map.items():
-            logger.info(f"   - {project_id} (prefix: '{prefix}')")
+        for project_id, prefixes in project_prefix_map.items():
+            logger.info(f"   - {project_id} (prefixes: {prefixes})")
     except ValueError as e:
         logger.error(f"❌ Configuration error: {e}")
         sys.exit(1)
@@ -225,9 +233,9 @@ def main():
     total_found = 0
     failed_projects = []
 
-    for project_id, sa_prefix in project_prefix_map.items():
+    for project_id, sa_prefixes in project_prefix_map.items():
         try:
-            deleted_count, found_count = delete_service_accounts_in_project(project_id, sa_prefix)
+            deleted_count, found_count = delete_service_accounts_in_project(project_id, sa_prefixes)
             total_deleted += deleted_count
             total_found += found_count
         except Exception as e:

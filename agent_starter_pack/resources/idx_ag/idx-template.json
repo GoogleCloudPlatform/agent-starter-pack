@@ -15,7 +15,7 @@
       "name": "Region",
       "description": "The Google Cloud region where the agent will be deployed.",
       "type": "string",
-      "required": false,
+      "required": true,
       "default": "us-central1"
     }
   ]

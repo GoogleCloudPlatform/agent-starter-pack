@@ -105,7 +105,8 @@ def get_agent_engine_metadata(agent_engine_id: str) -> tuple[str | None, str | N
         description = getattr(agent_engine.api_resource, "description", None)
 
         return display_name, description
-    except Exception:
+    except Exception as e:
+        print(f"Warning: Could not fetch metadata from Agent Engine: {e}", file=sys.stderr)
         return None, None
 
 

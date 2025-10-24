@@ -18,3 +18,16 @@ vector_search_min_replica_count = 1
 vector_search_max_replica_count = 1
 {%- endif %}
 {%- endif %}
+
+# ------------------------------------------------------------------------------
+# Monitoring and Alerting Configuration
+# ------------------------------------------------------------------------------
+
+# Email address for alert notifications (leave empty for console-only alerts)
+alert_notification_email = "{{ cookiecutter.alert_notification_email }}"
+
+# Alert thresholds (uncomment to override defaults)
+# latency_alert_threshold_ms = 3000           # P95 latency threshold in milliseconds
+# error_rate_alert_threshold = 10             # Error count per 5-minute window
+# retriever_latency_p99_threshold_ms = 10000  # P99 retriever latency in milliseconds
+# agent_error_rate_threshold_per_sec = 0.5    # Agent error rate threshold (errors/sec)

@@ -16,7 +16,7 @@
 resource "google_cloudbuild_trigger" "scheduled_cleanup" {
   name            = "scheduled-cleanup"
   project         = var.cicd_runner_project_id
-  location        = var.region
+  location        = var.region  # Must match repository connection region
   description     = "Daily cleanup of test resources (Agent Engines, AlloyDB, Vector Search, Service Accounts)"
   service_account = google_service_account.cicd_runner_sa.id
 
@@ -49,9 +49,9 @@ resource "google_cloud_scheduler_job" "daily_cleanup" {
       service_account_email = google_service_account.cicd_runner_sa.email
     }
 
-    body = base64encode(jsonencode({
-      branchName = "main"
-    }))
+    # For manual triggers with source_to_build, no request body is needed
+    # The trigger configuration already specifies the source
+    body = base64encode(jsonencode({}))
   }
 
   retry_config {

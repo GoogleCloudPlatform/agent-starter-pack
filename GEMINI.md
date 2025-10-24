@@ -158,6 +158,14 @@ Test changes across multiple dimensions:
 - **Missing Conditionals**: Wrap agent-specific code in proper `{% if %}` blocks
 - **Dependency Conflicts**: Some agents lack certain extras (e.g., adk_live + lint)
 
+## Pull Request Guidelines
+
+When creating pull requests:
+
+-   **Concise Descriptions:** Keep PR titles and descriptions brief and focused on the technical change.
+-   **Professional Tone:** Write descriptions that focus on what changed and why, avoiding meta-commentary about authorship or development process.
+-   **Focus on the Fix:** Describe the problem and solution clearly without unnecessary context.
+
 ## File Modification Checklist
 
 -   [ ] **Jinja Syntax:** All `{% if %}` and `{% for %}` blocks correctly closed?

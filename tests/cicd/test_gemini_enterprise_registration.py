@@ -34,6 +34,7 @@ import json
 import logging
 import os
 import subprocess
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path
 
@@ -110,7 +111,7 @@ class TestGeminiEnterpriseRegistration:
     """Test class for Gemini Enterprise registration workflow"""
 
     @pytest.fixture
-    def registered_agent(self):
+    def registered_agent(self) -> Generator[tuple[str, str | None, Path], None, None]:
         """
         Fixture that creates, deploys, and registers an agent with Gemini Enterprise.
 
@@ -233,7 +234,11 @@ class TestGeminiEnterpriseRegistration:
                     access_token = credentials.token
 
                     # Extract project ID from agent_engine_id for billing header
-                    project_id = agent_engine_id.split("/")[1]
+                    if agent_engine_id:
+                        project_id = agent_engine_id.split("/")[1]
+                    else:
+                        # Fallback: extract from agent_resource_name
+                        project_id = agent_resource_name.split("/")[1]
 
                     # Delete the registration using Discovery Engine API
                     url = f"https://discoveryengine.googleapis.com/v1alpha/{agent_resource_name}"
@@ -246,7 +251,9 @@ class TestGeminiEnterpriseRegistration:
                     response = requests.delete(url, headers=headers, timeout=30)
                     response.raise_for_status()
 
-                    logger.info("✅ Gemini Enterprise registration deleted successfully")
+                    logger.info(
+                        "✅ Gemini Enterprise registration deleted successfully"
+                    )
                 except Exception as e:
                     logger.error(
                         f"Failed to delete Gemini Enterprise registration: {e}"
@@ -280,7 +287,9 @@ class TestGeminiEnterpriseRegistration:
             logger.info("✅ Cleanup Completed")
             logger.info("=" * 80)
 
-    def test_full_registration_workflow(self, registered_agent) -> None:
+    def test_full_registration_workflow(
+        self, registered_agent: tuple[str, str | None, Path]
+    ) -> None:
         """
         Test the full workflow of agent registration with Gemini Enterprise.
 
@@ -302,10 +311,12 @@ class TestGeminiEnterpriseRegistration:
 
         # Verify Gemini Enterprise registration succeeded
         assert agent_resource_name, "Agent resource name should not be empty"
-        assert (
-            "projects/" in agent_resource_name
-        ), "Agent resource name should be a resource path"
-        logger.info(f"✅ Verified Gemini Enterprise registration: {agent_resource_name}")
+        assert "projects/" in agent_resource_name, (
+            "Agent resource name should be a resource path"
+        )
+        logger.info(
+            f"✅ Verified Gemini Enterprise registration: {agent_resource_name}"
+        )
 
         # Verify project directory exists
         assert project_path.exists(), "Project directory should exist"

@@ -106,7 +106,9 @@ def get_agent_engine_metadata(agent_engine_id: str) -> tuple[str | None, str | N
 
         return display_name, description
     except Exception as e:
-        print(f"Warning: Could not fetch metadata from Agent Engine: {e}", file=sys.stderr)
+        print(
+            f"Warning: Could not fetch metadata from Agent Engine: {e}", file=sys.stderr
+        )
         return None, None
 
 
@@ -120,6 +122,10 @@ def register_agent(
     authorization_id: str | None = None,
 ) -> dict:
     """Register an agent engine to Gemini Enterprise.
+
+    This function attempts to create a new agent registration. If the agent is already
+    registered (same reasoning engine), it will automatically update the existing
+    registration instead.
 
     Args:
         agent_engine_id: Agent engine resource name (e.g., projects/.../reasoningEngines/...)
@@ -213,6 +219,7 @@ def register_agent(
     print(f"  API Endpoint: {url}")
 
     try:
+        # Try to create a new registration first
         response = requests.post(url, headers=headers, json=payload, timeout=30)
         response.raise_for_status()
 
@@ -222,6 +229,71 @@ def register_agent(
         return result
 
     except requests.exceptions.HTTPError as http_err:
+        # Check if the error is because the agent already exists
+        if response.status_code in (400, 409):
+            try:
+                error_data = response.json()
+                error_message = error_data.get("error", {}).get("message", "")
+
+                # Check if error indicates the agent already exists
+                if (
+                    "already exists" in error_message.lower()
+                    or "duplicate" in error_message.lower()
+                ):
+                    print(
+                        "\n⚠️  Agent already registered. Updating existing registration..."
+                    )
+
+                    # For update, we need to use the specific agent resource name
+                    # The agent name should be in the error or we can construct it
+                    # Format: {url}/{agent_id} but we need to find existing agent first
+
+                    # List existing agents to find the one for this reasoning engine
+                    list_response = requests.get(url, headers=headers, timeout=30)
+                    list_response.raise_for_status()
+                    agents_list = list_response.json().get("agents", [])
+
+                    # Find the agent that matches our reasoning engine
+                    existing_agent = None
+                    for agent in agents_list:
+                        re_name = (
+                            agent.get("adk_agent_definition", {})
+                            .get("provisioned_reasoning_engine", {})
+                            .get("reasoningEngine", "")
+                        )
+                        if re_name == agent_engine_id:
+                            existing_agent = agent
+                            break
+
+                    if existing_agent:
+                        agent_name = existing_agent.get("name")
+                        update_url = f"https://discoveryengine.googleapis.com/v1alpha/{agent_name}"
+
+                        print(f"  Updating agent: {agent_name}")
+
+                        # PATCH request to update
+                        update_response = requests.patch(
+                            update_url, headers=headers, json=payload, timeout=30
+                        )
+                        update_response.raise_for_status()
+
+                        result = update_response.json()
+                        print(
+                            "\n✅ Successfully updated agent registration in Gemini Enterprise!"
+                        )
+                        print(f"   Agent Name: {result.get('name', 'N/A')}")
+                        return result
+                    else:
+                        print(
+                            "\n❌ Could not find existing agent to update",
+                            file=sys.stderr,
+                        )
+                        raise
+            except (ValueError, KeyError):
+                # Failed to parse error response, raise original error
+                pass
+
+        # If not an "already exists" error, or update failed, raise the original error
         print(f"\n❌ HTTP error occurred: {http_err}", file=sys.stderr)
         print(f"   Response: {response.text}", file=sys.stderr)
         raise

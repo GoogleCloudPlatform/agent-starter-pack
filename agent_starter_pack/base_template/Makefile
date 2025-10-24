@@ -127,6 +127,8 @@ playground-remote: build-frontend-if-needed
 	@echo "==============================================================================="
 	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote
 {%- endif %}
+{%- endif %}
+{%- if cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine' %}
 
 # Start the frontend UI separately for development (requires backend running separately)
 ui:
@@ -226,3 +228,20 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+{%- if cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine' %}
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: make register-gemini-enterprise GEMINI_ENTERPRISE_APP_ID=projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id} [AGENT_ENGINE_ID=<id>]  # Defaults to deployment_metadata.json
+register-gemini-enterprise:
+	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise \
+		$(if $(GEMINI_ENTERPRISE_APP_ID),--gemini-enterprise-app-id="$(GEMINI_ENTERPRISE_APP_ID)",) \
+		$(if $(AGENT_ENGINE_ID),--agent-engine-id="$(AGENT_ENGINE_ID)",) \
+		$(if $(GEMINI_DISPLAY_NAME),--display-name="$(GEMINI_DISPLAY_NAME)",) \
+		$(if $(GEMINI_DESCRIPTION),--description="$(GEMINI_DESCRIPTION)",) \
+		$(if $(GEMINI_TOOL_DESCRIPTION),--tool-description="$(GEMINI_TOOL_DESCRIPTION)",) \
+		$(if $(GEMINI_AUTHORIZATION_ID),--authorization-id="$(GEMINI_AUTHORIZATION_ID)",)
+{%- endif %}

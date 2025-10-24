@@ -59,16 +59,21 @@ make install && make playground
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 | `make playground`    | Launch local development environment with backend and frontend{%- if cookiecutter.is_adk %} - leveraging `adk web` command. {%- endif %}|
-| `make backend`       | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy) |
-| `make local-backend` | Launch local development server |
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-{%- if cookiecutter.is_adk_live %}
-| `make ui`       | Launch Agent Playground front-end only |
-{%- endif %}
-{%- endif %}
+| `make backend`       | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy, `PORT=8080` to specify container port) |
+| `make local-backend` | Launch local development server with hot-reload |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 | `make playground`    | Launch Streamlit interface for testing agent locally and remotely |
 | `make backend`       | Deploy agent to Agent Engine |
+{%- if cookiecutter.is_adk_live %}
+| `make local-backend` | Launch local development server with hot-reload |
+| `make ui`            | Start the frontend UI separately for development (requires backend running separately) |
+| `make playground-dev` | Launch dev playground with both frontend and backend hot-reload |
+| `make playground-remote` | Connect to remote deployed agent with local frontend |
+| `make build-frontend` | Build the frontend for production |
+{%- endif %}
+{%- if cookiecutter.is_adk %}
+| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise (see Makefile for parameters) |
+{%- endif %}
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
@@ -76,7 +81,6 @@ make install && make playground
 {%- if cookiecutter.data_ingestion %}
 | `make data-ingestion`| Run data ingestion pipeline in the Dev environment                                           |
 {%- endif %}
-| `uv run jupyter lab` | Launch Jupyter notebook                                                                     |
 
 For full command options and usage, refer to the [Makefile](Makefile).
 

@@ -128,7 +128,7 @@ playground-remote: build-frontend-if-needed
 	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote
 {%- endif %}
 {%- endif %}
-{%- if cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine' %}
+{%- if cookiecutter.is_adk_live and cookiecutter.deployment_target == 'agent_engine' %}
 
 # Start the frontend UI separately for development (requires backend running separately)
 ui:

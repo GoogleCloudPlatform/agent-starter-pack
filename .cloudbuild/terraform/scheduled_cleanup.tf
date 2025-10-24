@@ -21,11 +21,10 @@ resource "google_cloudbuild_trigger" "scheduled_cleanup" {
   service_account = google_service_account.cicd_runner_sa.id
 
   # Manual trigger - will be invoked by Cloud Scheduler
-  repository_event_config {
+  source_to_build {
     repository = local.repository_path
-    push {
-      branch = "main"
-    }
+    ref        = "refs/heads/main"
+    repo_type  = "GITHUB"
   }
 
   filename           = ".cloudbuild/scheduled-cleanup.yaml"

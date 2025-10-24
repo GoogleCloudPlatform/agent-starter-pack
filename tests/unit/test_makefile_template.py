@@ -254,18 +254,20 @@ class TestMakefileGeneration:
         output = makefile_renderer.render(config)
 
         assert "build-frontend:" in output
-        assert "ui:" in output
-        assert "playground-dev:" in output
+        assert "build-frontend-if-needed:" in output
 
     def test_adk_live_agent_engine_has_remote_playground(
         self, makefile_renderer: MakefileRenderer
     ) -> None:
-        """Test that ADK Live + Agent Engine has playground-remote target."""
+        """Test that ADK Live + Agent Engine has playground-remote target and dev targets."""
         config = TEST_CONFIGURATIONS["adk_live_agent_engine"]
         output = makefile_renderer.render(config)
 
         assert "playground-remote:" in output
         assert "Connecting to REMOTE agent" in output
+        # Agent Engine also has dev mode targets
+        assert "ui:" in output
+        assert "playground-dev:" in output
 
     def test_data_ingestion_target_present(
         self, makefile_renderer: MakefileRenderer

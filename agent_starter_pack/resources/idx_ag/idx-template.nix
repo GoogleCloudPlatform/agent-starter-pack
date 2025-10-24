@@ -2,7 +2,7 @@
 # No user-configurable parameters
 # Accept additional arguments to this template corresponding to template
 # parameter IDs
-{ pkgs, adk_agent_name ? "", google_cloud_project_id ? "", ... }: {
+{ pkgs, adk_agent_name ? "", region ? "", ... }: {
   # Shell script that produces the final environment
   bootstrap = ''
     # Copy the folder containing the `idx-template` files to the final
@@ -16,6 +16,7 @@
     # Create .env file with the parameter values
     cat > "$out/.env" << EOF
     AGENT_NAME=${adk_agent_name}
+    REGION=${region}
     WS_NAME=$WS_NAME
     EOF
 

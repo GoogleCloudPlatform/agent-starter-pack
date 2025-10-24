@@ -50,8 +50,8 @@
 
         echo "Running agent starter pack creation..."
         echo adk@$AGENT_NAME
-        uvx agent-starter-pack create $WS_NAME -ag -a adk@$AGENT_NAME -d agent_engine
-        code ~/$WS_NAME/$WS_NAME/README.md
+        uvx agent-starter-pack create $AGENT_NAME -ag -a adk@$AGENT_NAME -d agent_engine --region $REGION --auto-approve
+        code ~/$WS_NAME/$AGENT_NAME/README.md
         exec bash
         '';
         # Open editors for the following files by default, if they exist:

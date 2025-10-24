@@ -9,6 +9,14 @@
       "description": "The name of the agent template from the google/adk-samples repository (e.g., 'data-science').",
       "type": "string",
       "required": true
+    },
+    {
+      "id": "region",
+      "name": "Region",
+      "description": "The Google Cloud region where the agent will be deployed.",
+      "type": "string",
+      "required": false,
+      "default": "us-central1"
     }
   ]
 }

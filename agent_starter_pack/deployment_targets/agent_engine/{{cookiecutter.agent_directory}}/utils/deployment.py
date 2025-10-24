@@ -92,6 +92,8 @@ def print_deployment_success(
     if service_account:
         print(f"Service Account: {service_account}")
     else:
-        default_sa = f"service-{project_number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
+        default_sa = (
+            f"service-{project_number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
+        )
         print(f"Service Account: {default_sa}")
     print(f"\n📊 View in console: {console_url}\n")

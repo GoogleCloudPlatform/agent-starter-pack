@@ -50,7 +50,7 @@ deploy:
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
-# Alias for 'make deploy'
+# Alias for 'make deploy' for backward compatibility
 backend: deploy
 
 

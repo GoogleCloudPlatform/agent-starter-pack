@@ -179,7 +179,7 @@ deploy:
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
 {%- endif %}
 
-# Alias for 'make deploy'
+# Alias for 'make deploy' for backward compatibility
 backend: deploy
 
 

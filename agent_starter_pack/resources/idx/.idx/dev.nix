@@ -25,7 +25,9 @@
         # Load environment variables from .env file if it exists
         source .env
 
-        # Beautiful prints for gcloud setup
+        # Warm up agent-starter-pack in background while user sets up gcloud
+        (uvx agent-starter-pack --help > /dev/null 2>&1 &)
+
         echo ""
         echo "╔════════════════════════════════════════════════════════════╗"
         echo "║                  🔐 GCLOUD SETUP REQUIRED                  ║"

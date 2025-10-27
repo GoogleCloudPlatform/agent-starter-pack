@@ -403,7 +403,7 @@ resource "google_cloudbuild_trigger" "pr_test_makefile" {
 
   filename           = ".cloudbuild/ci/test_makefile.yaml"
   included_files     = local.makefile_usability_included_files
-  ignored_files      = local.common_ignored_files
+  ignored_files      = ["**/*.md"]  # Don't ignore Makefiles for this trigger
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
 

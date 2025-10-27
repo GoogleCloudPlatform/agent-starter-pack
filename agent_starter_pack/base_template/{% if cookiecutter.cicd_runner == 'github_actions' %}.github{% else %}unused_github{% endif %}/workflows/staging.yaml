@@ -81,11 +81,18 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev --quiet
-          
+
+      - name: Extract version from pyproject.toml
+        id: extract-version
+        run: |
+          VERSION=$(awk -F'"' '/^version = / {print $2}' pyproject.toml || echo '0.0.0')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
       - name: Build and Push Docker Image
         run: |
           docker build -t {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
-            --build-arg COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %} .
+            --build-arg COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %} \
+            --build-arg AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %} .
           docker push {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}
 
       - name: Deploy to Staging (Cloud Run)
@@ -116,6 +123,13 @@ jobs:
           pip install uv==0.8.13
           uv sync --locked
 
+      - name: Extract version from pyproject.toml
+        id: extract-version
+        run: |
+          VERSION=$(awk -F'"' '/^version = / {print $2}' pyproject.toml || echo '0.0.0')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Extracted version: ${VERSION}"
+
       - name: Deploy to Staging (Agent Engine)
         run: |
           uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
@@ -123,7 +137,7 @@ jobs:
             --project {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %} \
             --location {% raw %}${{ vars.REGION }}{% endraw %} \
             --artifacts-bucket-name {% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %} \
-            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
+            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
 
       - name: Fetch Auth Token
         id: fetch-token

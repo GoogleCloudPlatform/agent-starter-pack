@@ -43,9 +43,8 @@ RUN uv sync --frozen
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=${COMMIT_SHA}
 
-# Extract version from pyproject.toml and set as environment variable
-RUN echo "export AGENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'\"' -f2)" >> ~/.bashrc
-ENV AGENT_VERSION=$(grep '^version = ' pyproject.toml | cut -d'"' -f2 || echo "unknown")
+ARG AGENT_VERSION=0.0.0
+ENV AGENT_VERSION=${AGENT_VERSION}
 
 EXPOSE 8080
 

@@ -34,7 +34,7 @@ from google.adk.apps.app import App
 from google.adk.artifacts import GcsArtifactService
 {%- if cookiecutter.is_adk_a2a %}
 from google.adk.runners import Runner
-from google.adk.sessions import VertexAiSessionService
+from google.adk.sessions import InMemorySessionService
 {%- endif %}
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
@@ -384,7 +384,7 @@ def deploy_agent_engine_app(
             artifact_service_builder=lambda: GcsArtifactService(
                 bucket_name=artifacts_bucket_name
             ),
-            session_service_builder=lambda: VertexAiSessionService(),
+            session_service_builder=lambda: InMemorySessionService(),
         )
     )
 {%- elif cookiecutter.is_adk %}

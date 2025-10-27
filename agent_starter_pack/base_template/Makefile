@@ -169,6 +169,7 @@ deploy:
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
+		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--set-env-vars \
 		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \

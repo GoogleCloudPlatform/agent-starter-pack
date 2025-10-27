@@ -30,7 +30,7 @@ Many agent frameworks (like ADK) include a built-in web UI or "playground" ([`ad
 **i. Deploy the Service:**
 Navigate to your project's root directory and run the pre-configured `make` command:
 ```bash
-make backend IAP=true
+make deploy IAP=true
 ```
 This single command typically handles building the container, pushing it to a registry, deploying it to Cloud Run, and configuring IAP.
 
@@ -81,7 +81,7 @@ CMD ["sh", "-c", "ALLOW_ORIGINS='*' uv run uvicorn app.server:app --host 0.0.0.0
 **ii. 🚀 Deploy the Combined Service:**
 When deploying, you must instruct Cloud Run to direct traffic to the **frontend's port**. Pass the `PORT` variable to your `make` command. If your frontend runs on port `5173`, as in the example:
 ```bash
-make backend IAP=true PORT=5173
+make deploy IAP=true PORT=5173
 ```
 This ensures the public, IAP-protected URL serves your user interface.
 

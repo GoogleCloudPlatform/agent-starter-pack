@@ -204,7 +204,7 @@ Before setting up full CI/CD, you can deploy to a personal cloud dev environment
 
 1.  **Set Project:** `gcloud config set project YOUR_DEV_PROJECT_ID`
 2.  **Provision Resources:** `make setup-dev-env` (uses Terraform).
-3.  **Deploy Backend:** `make backend` (builds and deploys the agent).
+3.  **Deploy Backend:** `make deploy` (builds and deploys the agent).
 
 ### 3. Automated Production-Ready Deployment with CI/CD
 For reliable deployments, the `setup-cicd` command streamlines the entire process. It creates a GitHub repo, connects it to your chosen CI/CD runner (Google Cloud Build or GitHub Actions), provisions staging/prod infrastructure, and configures deployment triggers.
@@ -226,7 +226,7 @@ uvx agent-starter-pack setup-cicd
 
 ### Deploying with a User Interface (UI)
 *   **Unified Deployment (for Dev/Test):** The backend and frontend can be packaged and served from a single Cloud Run service, secured with Identity-Aware Proxy (IAP).
-*   **Deploying with UI:** `make backend IAP=true`
+*   **Deploying with UI:** `make deploy IAP=true`
 *   **Access Control:** After deploying with IAP, grant users the `IAP-secured Web App User` role in IAM to give them access.
 
 ### Session Management

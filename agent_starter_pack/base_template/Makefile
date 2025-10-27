@@ -156,9 +156,9 @@ playground-dev:
 
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-# Usage: make backend [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 {%- endif %}
-backend:
+deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	gcloud beta run deploy {{cookiecutter.project_name}} \
@@ -178,6 +178,9 @@ backend:
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
 {%- endif %}
+
+# Alias for 'make deploy'
+backend: deploy
 
 
 # ==============================================================================

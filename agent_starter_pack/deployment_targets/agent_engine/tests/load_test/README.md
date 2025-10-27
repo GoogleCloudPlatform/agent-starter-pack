@@ -57,7 +57,7 @@ Follow these steps to execute load tests:
 **1. Deploy the Backend Remotely:**
    ```bash
    gcloud config set project <your-dev-project-id>
-   make backend
+   make deploy
    ```
 
 **2. Create a Virtual Environment for Locust:**

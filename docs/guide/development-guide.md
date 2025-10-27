@@ -98,7 +98,7 @@ make setup-dev-env
 
 Build and deploy your agent's backend to the dev environment.
 ```bash
-make backend
+make deploy
 ```
 
 ### Stage 2: Set Up the Path to Production with CI/CD

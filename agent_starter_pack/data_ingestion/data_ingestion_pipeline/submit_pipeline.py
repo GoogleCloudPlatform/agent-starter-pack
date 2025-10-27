@@ -146,8 +146,9 @@ def parse_args() -> argparse.Namespace:
         f"Pipeline attempt {details['tries']} failed, retrying in {details['wait']:.1f}s..."
     ),
 )
-def submit_and_wait_pipeline(job: aiplatform.PipelineJob, service_account: str) -> None:
+def submit_and_wait_pipeline(pipeline_job_params: dict, service_account: str) -> None:
     """Submit pipeline job and wait for completion with retry logic."""
+    job = aiplatform.PipelineJob(**pipeline_job_params)
     job.submit(service_account=service_account)
     job.wait()
 
@@ -198,16 +199,14 @@ if __name__ == "__main__":
     )
 {%- endif %}
 
-    # Create pipeline job instance
-    job = aiplatform.PipelineJob(**pipeline_job_params)
-
     if not args.schedule_only:
         logging.info("Running pipeline and waiting for completion...")
-        submit_and_wait_pipeline(job, args.service_account)
+        submit_and_wait_pipeline(pipeline_job_params, args.service_account)
         logging.info("Pipeline completed!")
 
     if args.cron_schedule and args.schedule_only:
-        # No need to create new job instance since we already have one with the same params
+        # Create pipeline job instance for scheduling
+        job = aiplatform.PipelineJob(**pipeline_job_params)
         pipeline_job_schedule = aiplatform.PipelineJobSchedule(
             pipeline_job=job,
             display_name=f"{args.pipeline_name} Weekly Ingestion Job",

@@ -84,10 +84,13 @@ playground-dev:
 # ==============================================================================
 
 # Deploy the agent remotely
-backend:
+deploy:
 	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run test_adk_live/agent_engine_app.py
+
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
 
 
 # ==============================================================================

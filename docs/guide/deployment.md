@@ -45,7 +45,7 @@ If you want to deploy a standalone development environment without setting up th
 3. **Deploy the Application:**
    Once the infrastructure is ready, deploy your agent to the dev environment.
    ```bash
-   make backend
+   make deploy
    ```
    
 ## Automated Deployment with `setup-cicd`

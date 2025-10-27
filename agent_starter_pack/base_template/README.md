@@ -59,11 +59,11 @@ make install && make playground
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 | `make playground`    | Launch local development environment with backend and frontend{%- if cookiecutter.is_adk %} - leveraging `adk web` command. {%- endif %}|
-| `make backend`       | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy, `PORT=8080` to specify container port) |
+| `make deploy`        | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy, `PORT=8080` to specify container port) |
 | `make local-backend` | Launch local development server with hot-reload |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 | `make playground`    | Launch Streamlit interface for testing agent locally and remotely |
-| `make backend`       | Deploy agent to Agent Engine |
+| `make deploy`        | Deploy agent to Agent Engine |
 {%- if cookiecutter.is_adk_live %}
 | `make local-backend` | Launch local development server with hot-reload |
 | `make ui`            | Start the frontend UI separately for development (requires backend running separately) |
@@ -160,10 +160,10 @@ You can test deployment towards a Dev Environment using the following command:
 
 ```bash
 gcloud config set project <your-dev-project-id>
-make backend
+make deploy
 ```
 {% if cookiecutter.is_adk_live %}
-**Note:** For secure access to your deployed backend, consider using Identity-Aware Proxy (IAP) by running `make backend IAP=true`.
+**Note:** For secure access to your deployed backend, consider using Identity-Aware Proxy (IAP) by running `make deploy IAP=true`.
 {%- endif %}
 
 The repository includes a Terraform configuration for the setup of the Dev Google Cloud project.

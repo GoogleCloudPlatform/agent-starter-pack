@@ -46,11 +46,11 @@ variable "cleanup_project_ids" {
   description = "List of all project IDs that need cleanup (for scheduled cleanup job)"
   type        = list(string)
   default = [
-    "agent-starter-pack-e2e-dev",
-    "agent-starter-pack-e2e-st",
-    "agent-starter-pack-e2e-pr",
-    "asp-starter-dev",
-    "asp-starter-prod",
-    "asp-starter-staging"
+    "asp-e2e-dev",
+    "asp-e2e-stg",
+    "asp-e2e-prd",
+    "asp-test-dev",
+    "asp-test-prd",
+    "asp-test-stg"
   ]
 }

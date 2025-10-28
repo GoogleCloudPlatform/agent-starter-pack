@@ -305,43 +305,46 @@ def register_agent(
 @click.command()
 @click.option(
     "--agent-engine-id",
+    envvar="AGENT_ENGINE_ID",
     help="Agent Engine resource name (e.g., projects/.../reasoningEngines/...). "
-    "Can also be set via AGENT_ENGINE_ID env var. "
-    "If not provided, reads from deployment_metadata.json",
+    "If not provided, reads from deployment_metadata.json.",
 )
 @click.option(
     "--metadata-file",
     default="deployment_metadata.json",
-    help="Path to deployment metadata file (default: deployment_metadata.json)",
+    help="Path to deployment metadata file (default: deployment_metadata.json).",
 )
 @click.option(
     "--gemini-enterprise-app-id",
     help="Gemini Enterprise app full resource name "
     "(e.g., projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}). "
-    "Can also be set via ID or GEMINI_ENTERPRISE_APP_ID env var",
+    "Can also be set via ID or GEMINI_ENTERPRISE_APP_ID env var.",
 )
 @click.option(
     "--display-name",
-    help="Display name for the agent. Can also be set via GEMINI_DISPLAY_NAME env var",
+    envvar="GEMINI_DISPLAY_NAME",
+    help="Display name for the agent.",
 )
 @click.option(
     "--description",
-    help="Description of the agent. Can also be set via GEMINI_DESCRIPTION env var",
+    envvar="GEMINI_DESCRIPTION",
+    help="Description of the agent.",
 )
 @click.option(
     "--tool-description",
-    help="Description of what the tool does. Can also be set via GEMINI_TOOL_DESCRIPTION env var",
+    envvar="GEMINI_TOOL_DESCRIPTION",
+    help="Description of what the tool does.",
 )
 @click.option(
     "--project-id",
-    help="GCP project ID (extracted from agent-engine-id if not provided). "
-    "Can also be set via GOOGLE_CLOUD_PROJECT env var",
+    envvar="GOOGLE_CLOUD_PROJECT",
+    help="GCP project ID (extracted from agent-engine-id if not provided).",
 )
 @click.option(
     "--authorization-id",
+    envvar="GEMINI_AUTHORIZATION_ID",
     help="OAuth authorization resource name "
-    "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}). "
-    "Can also be set via GEMINI_AUTHORIZATION_ID env var",
+    "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}).",
 )
 def main(
     agent_engine_id: str | None,
@@ -355,11 +358,8 @@ def main(
 ) -> None:
     """Register an Agent Engine to Gemini Enterprise."""
     # Get agent engine ID
-    resolved_agent_engine_id_param = agent_engine_id or os.getenv("AGENT_ENGINE_ID")
     try:
-        resolved_agent_engine_id = get_agent_engine_id(
-            resolved_agent_engine_id_param, metadata_file
-        )
+        resolved_agent_engine_id = get_agent_engine_id(agent_engine_id, metadata_file)
     except ValueError as e:
         raise click.ClickException(str(e)) from e
 
@@ -368,6 +368,7 @@ def main(
         resolved_agent_engine_id
     )
 
+    # Handle gemini_enterprise_app_id with fallback to ID env var
     resolved_gemini_enterprise_app_id = (
         gemini_enterprise_app_id
         or os.getenv("ID")
@@ -378,20 +379,9 @@ def main(
             "Error: --gemini-enterprise-app-id or ID/GEMINI_ENTERPRISE_APP_ID env var required"
         )
 
-    resolved_display_name = (
-        display_name
-        or os.getenv("GEMINI_DISPLAY_NAME")
-        or auto_display_name
-        or "My Agent"
-    )
-    resolved_description = (
-        description or os.getenv("GEMINI_DESCRIPTION") or auto_description or "AI Agent"
-    )
-    resolved_tool_description = (
-        tool_description or os.getenv("GEMINI_TOOL_DESCRIPTION") or resolved_description
-    )
-    resolved_project_id = project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
-    resolved_authorization_id = authorization_id or os.getenv("GEMINI_AUTHORIZATION_ID")
+    resolved_display_name = display_name or auto_display_name or "My Agent"
+    resolved_description = description or auto_description or "AI Agent"
+    resolved_tool_description = tool_description or resolved_description
 
     try:
         register_agent(
@@ -400,8 +390,8 @@ def main(
             display_name=resolved_display_name,
             description=resolved_description,
             tool_description=resolved_tool_description,
-            project_id=resolved_project_id,
-            authorization_id=resolved_authorization_id,
+            project_id=project_id,
+            authorization_id=authorization_id,
         )
     except Exception as e:
         raise click.ClickException(f"Error during registration: {e}") from e

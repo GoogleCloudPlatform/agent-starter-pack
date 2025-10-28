@@ -239,7 +239,7 @@ lint:
 
 # Register the deployed agent to Gemini Enterprise
 # Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
-# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
 register-gemini-enterprise:
 	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise
 {%- endif %}

@@ -8,6 +8,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | Agent Name | Description | Use Case |
 |------------|-------------|----------|
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
+| `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
 | `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
@@ -32,6 +33,14 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Getting started with agent development on Google Cloud.
 *   Building general-purpose conversational agents.
 *   Learning the ADK framework and ReAct pattern.
+
+### ADK A2A Base (`adk_a2a_base`)
+
+This template integrates Google's [Agent Development Kit (ADK)](https://github.com/google/adk-python) with the [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/), enabling distributed agent communication and interoperability across different frameworks and languages. It demonstrates core ADK concepts while providing standardized interfaces for building distributed agent systems. Ideal for:
+
+*   Exploring the A2A protocol and agent interoperability patterns.
+*   Building distributed, multi-agent systems that communicate across frameworks.
+*   Implementing microservices-based agent architectures.
 
 ### Agentic RAG (`agentic_rag`)
 

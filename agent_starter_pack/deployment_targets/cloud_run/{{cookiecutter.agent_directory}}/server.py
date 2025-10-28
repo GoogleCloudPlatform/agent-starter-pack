@@ -291,10 +291,28 @@ async def serve_frontend_spa(full_path: str) -> FileResponse:
     )
 {% elif cookiecutter.is_adk %}
 import os
+{%- if cookiecutter.is_adk_a2a %}
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+{%- endif %}
 
 import google.auth
+{%- if cookiecutter.is_adk_a2a %}
+from a2a.server.apps import A2AFastAPIApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import AgentCapabilities, AgentCard
+{%- endif %}
 from fastapi import FastAPI
+{%- if cookiecutter.is_adk_a2a %}
+from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
+from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
+from google.adk.artifacts.gcs_artifact_service import GcsArtifactService
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+{%- else %}
 from google.adk.cli.fast_api import get_fast_api_app
+{%- endif %}
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
@@ -302,6 +320,9 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai import agent_engines
 {%- endif %}
 
+{% if cookiecutter.is_adk_a2a -%}
+from {{cookiecutter.agent_directory}}.agent import app as adk_app
+{% endif -%}
 from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
 from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.utils.typing import Feedback
@@ -309,9 +330,11 @@ from {{cookiecutter.agent_directory}}.utils.typing import Feedback
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
+{%- if not cookiecutter.is_adk_a2a %}
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 )
+{%- endif %}
 
 bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs"
 create_bucket_if_not_exists(
@@ -322,6 +345,48 @@ provider = TracerProvider()
 processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
+
+{%- if cookiecutter.is_adk_a2a %}
+
+runner = Runner(
+    app=adk_app,
+    artifact_service=GcsArtifactService(bucket_name=bucket_name),
+    session_service=InMemorySessionService(),
+)
+
+request_handler = DefaultRequestHandler(
+    agent_executor=A2aAgentExecutor(runner=runner), task_store=InMemoryTaskStore()
+)
+
+
+async def build_dynamic_agent_card() -> AgentCard:
+    """Builds the Agent Card dynamically from the root_agent."""
+    agent_card_builder = AgentCardBuilder(
+        agent=adk_app.root_agent,
+        capabilities=AgentCapabilities(streaming=True),
+        rpc_url=os.getenv("RPC_URL", f"http://0.0.0.0:8000/a2a/{adk_app.name}"),
+        agent_version=os.getenv("AGENT_VERSION", "0.1.0"),
+    )
+    agent_card = await agent_card_builder.build()
+    return agent_card
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
+    agent_card = await build_dynamic_agent_card()
+    a2a_app = A2AFastAPIApplication(
+        agent_card=agent_card, http_handler=request_handler
+    ).build()
+    app_instance.mount(f"/a2a/{adk_app.name}", a2a_app)
+    yield
+
+
+app = FastAPI(
+    title="{{cookiecutter.project_name}}",
+    description="API for interacting with the Agent {{cookiecutter.project_name}}",
+    lifespan=lifespan,
+)
+{%- else %}
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -366,6 +431,7 @@ app: FastAPI = get_fast_api_app(
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
+{%- endif %}
 {% else %}
 import logging
 import os

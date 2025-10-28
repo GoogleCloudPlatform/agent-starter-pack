@@ -106,6 +106,14 @@ locals {
       name  = "adk_b-cr-agent_engine"
       value = "adk_base,cloud_run,--session-type,agent_engine"
     },
+    {
+      name  = "adk_a2a_base-agent_engine"
+      value = "adk_a2a_base,agent_engine"
+    },
+    {
+      name  = "adk_a2a_base-cloud_run"
+      value = "adk_a2a_base,cloud_run"
+    },
   ]
 
 agent_testing_included_files = { for combo in local.agent_testing_combinations :
@@ -171,6 +179,14 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
     {
       name  = "adk_base-cloud_run-alloydb"
       value = "adk_base,cloud_run,--session-type,alloydb"
+    },
+    {
+      name  = "adk_a2a_base-agent_engine"
+      value = "adk_a2a_base,agent_engine"
+    },
+    {
+      name  = "adk_a2a_base-cloud_run"
+      value = "adk_a2a_base,cloud_run"
     },
   ]
   # Create a safe trigger name by replacing underscores with hyphens and dots with hyphens

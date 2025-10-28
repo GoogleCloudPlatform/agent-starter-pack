@@ -39,6 +39,18 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.is_adk_a2a %}
+  # Extract version from pyproject.toml
+  - name: "gcr.io/cloud-builders/gcloud-slim"
+    id: extract-version
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        VERSION=$(awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')
+        echo "$${VERSION}" > /workspace/agent_version.txt
+
+{%- endif %}
   # Build and Push
   - name: "gcr.io/cloud-builders/docker"
     args:
@@ -48,6 +60,10 @@ steps:
         "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
         "--build-arg",
         "COMMIT_SHA=$COMMIT_SHA",
+{%- if cookiecutter.is_adk_a2a %}
+        "--build-arg",
+        "AGENT_VERSION=$(cat /workspace/agent_version.txt || echo '0.0.0')",
+{%- endif %}
         ".",
       ]
   - name: "gcr.io/cloud-builders/docker"
@@ -91,6 +107,18 @@ steps:
       - |
         echo $(gcloud auth print-identity-token -q) > id_token.txt
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
+{%- if cookiecutter.is_adk_a2a %}
+  # Extract version from pyproject.toml
+  - name: "gcr.io/cloud-builders/gcloud-slim"
+    id: extract-version
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        VERSION=$(awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')
+        echo "$${VERSION}" > /workspace/agent_version.txt
+
+{%- endif %}
   - name: "python:3.12-slim"
     id: install-dependencies
     entrypoint: /bin/bash
@@ -107,12 +135,15 @@ steps:
     args:
       - "-c"
       - |
+{%- if cookiecutter.is_adk_a2a %}
+        AGENT_VERSION=$(cat /workspace/agent_version.txt || echo '0.0.0')
+{%- endif %}
         uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
         uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
           --project ${_STAGING_PROJECT_ID} \
           --location ${_REGION} \
           --artifacts-bucket-name ${_LOGS_BUCKET_NAME_STAGING} \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 

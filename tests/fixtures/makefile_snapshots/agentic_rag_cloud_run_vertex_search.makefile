@@ -45,6 +45,7 @@ deploy:
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "" \
+		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--set-env-vars \
 		"COMMIT_SHA=$(shell git rev-parse HEAD),DATA_STORE_ID=test-rag-datastore,DATA_STORE_REGION=us" \
 		$(if $(IAP),--iap) \

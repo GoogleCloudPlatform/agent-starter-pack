@@ -15,12 +15,12 @@
 
 """Utility to register an Agent Engine to Gemini Enterprise."""
 
-import argparse
 import json
 import os
 import sys
 from pathlib import Path
 
+import click
 import requests
 import vertexai
 from google.auth import default
@@ -53,7 +53,7 @@ def get_agent_engine_id(
             "Please provide --agent-engine-id or deploy your agent first."
         )
 
-    with open(metadata_path) as f:
+    with open(metadata_path, encoding="utf-8") as f:
         metadata = json.load(f)
         return metadata["remote_agent_engine_id"]
 
@@ -302,104 +302,99 @@ def register_agent(
         raise
 
 
-def main() -> None:
-    """Main entry point for CLI."""
-    parser = argparse.ArgumentParser(
-        description="Register an Agent Engine to Gemini Enterprise"
-    )
-    parser.add_argument(
-        "--agent-engine-id",
-        help="Agent Engine resource name (e.g., projects/.../reasoningEngines/...). "
-        "If not provided, reads from deployment_metadata.json",
-    )
-    parser.add_argument(
-        "--metadata-file",
-        default="deployment_metadata.json",
-        help="Path to deployment metadata file (default: deployment_metadata.json)",
-    )
-    parser.add_argument(
-        "--gemini-enterprise-app-id",
-        help="Gemini Enterprise app full resource name "
-        "(e.g., projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}). "
-        "Can also be set via GEMINI_ENTERPRISE_APP_ID env var",
-    )
-    parser.add_argument(
-        "--display-name",
-        help="Display name for the agent. Can also be set via GEMINI_DISPLAY_NAME env var",
-    )
-    parser.add_argument(
-        "--description",
-        help="Description of the agent. Can also be set via GEMINI_DESCRIPTION env var",
-    )
-    parser.add_argument(
-        "--tool-description",
-        help="Description of what the tool does. Can also be set via GEMINI_TOOL_DESCRIPTION env var",
-    )
-    parser.add_argument(
-        "--project-id",
-        help="GCP project ID (extracted from agent-engine-id if not provided). "
-        "Can also be set via GOOGLE_CLOUD_PROJECT env var",
-    )
-    parser.add_argument(
-        "--authorization-id",
-        help="OAuth authorization resource name "
-        "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}). "
-        "Can also be set via GEMINI_AUTHORIZATION_ID env var",
-    )
-
-    args = parser.parse_args()
-
+@click.command()
+@click.option(
+    "--agent-engine-id",
+    envvar="AGENT_ENGINE_ID",
+    help="Agent Engine resource name (e.g., projects/.../reasoningEngines/...). "
+    "If not provided, reads from deployment_metadata.json.",
+)
+@click.option(
+    "--metadata-file",
+    default="deployment_metadata.json",
+    help="Path to deployment metadata file (default: deployment_metadata.json).",
+)
+@click.option(
+    "--gemini-enterprise-app-id",
+    help="Gemini Enterprise app full resource name "
+    "(e.g., projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}). "
+    "Can also be set via ID or GEMINI_ENTERPRISE_APP_ID env var.",
+)
+@click.option(
+    "--display-name",
+    envvar="GEMINI_DISPLAY_NAME",
+    help="Display name for the agent.",
+)
+@click.option(
+    "--description",
+    envvar="GEMINI_DESCRIPTION",
+    help="Description of the agent.",
+)
+@click.option(
+    "--tool-description",
+    envvar="GEMINI_TOOL_DESCRIPTION",
+    help="Description of what the tool does.",
+)
+@click.option(
+    "--project-id",
+    envvar="GOOGLE_CLOUD_PROJECT",
+    help="GCP project ID (extracted from agent-engine-id if not provided).",
+)
+@click.option(
+    "--authorization-id",
+    envvar="GEMINI_AUTHORIZATION_ID",
+    help="OAuth authorization resource name "
+    "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}).",
+)
+def main(
+    agent_engine_id: str | None,
+    metadata_file: str,
+    gemini_enterprise_app_id: str | None,
+    display_name: str | None,
+    description: str | None,
+    tool_description: str | None,
+    project_id: str | None,
+    authorization_id: str | None,
+) -> None:
+    """Register an Agent Engine to Gemini Enterprise."""
     # Get agent engine ID
     try:
-        agent_engine_id = get_agent_engine_id(args.agent_engine_id, args.metadata_file)
+        resolved_agent_engine_id = get_agent_engine_id(agent_engine_id, metadata_file)
     except ValueError as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise click.ClickException(str(e)) from e
 
     # Auto-detect display_name and description from Agent Engine
-    auto_display_name, auto_description = get_agent_engine_metadata(agent_engine_id)
-
-    gemini_enterprise_app_id = args.gemini_enterprise_app_id or os.getenv(
-        "GEMINI_ENTERPRISE_APP_ID"
+    auto_display_name, auto_description = get_agent_engine_metadata(
+        resolved_agent_engine_id
     )
-    if not gemini_enterprise_app_id:
-        print(
-            "Error: --gemini-enterprise-app-id or GEMINI_ENTERPRISE_APP_ID env var required",
-            file=sys.stderr,
+
+    # Handle gemini_enterprise_app_id with fallback to ID env var
+    resolved_gemini_enterprise_app_id = (
+        gemini_enterprise_app_id
+        or os.getenv("ID")
+        or os.getenv("GEMINI_ENTERPRISE_APP_ID")
+    )
+    if not resolved_gemini_enterprise_app_id:
+        raise click.ClickException(
+            "Error: --gemini-enterprise-app-id or ID/GEMINI_ENTERPRISE_APP_ID env var required"
         )
-        sys.exit(1)
 
-    display_name = (
-        args.display_name
-        or os.getenv("GEMINI_DISPLAY_NAME")
-        or auto_display_name
-        or "My Agent"
-    )
-    description = (
-        args.description
-        or os.getenv("GEMINI_DESCRIPTION")
-        or auto_description
-        or "AI Agent"
-    )
-    tool_description = (
-        args.tool_description or os.getenv("GEMINI_TOOL_DESCRIPTION") or description
-    )
-    project_id = args.project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
-    authorization_id = args.authorization_id or os.getenv("GEMINI_AUTHORIZATION_ID")
+    resolved_display_name = display_name or auto_display_name or "My Agent"
+    resolved_description = description or auto_description or "AI Agent"
+    resolved_tool_description = tool_description or resolved_description
 
     try:
         register_agent(
-            agent_engine_id=agent_engine_id,
-            gemini_enterprise_app_id=gemini_enterprise_app_id,
-            display_name=display_name,
-            description=description,
-            tool_description=tool_description,
+            agent_engine_id=resolved_agent_engine_id,
+            gemini_enterprise_app_id=resolved_gemini_enterprise_app_id,
+            display_name=resolved_display_name,
+            description=resolved_description,
+            tool_description=resolved_tool_description,
             project_id=project_id,
             authorization_id=authorization_id,
         )
     except Exception as e:
-        print(f"Error during registration: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise click.ClickException(f"Error during registration: {e}") from e
 
 
 if __name__ == "__main__":

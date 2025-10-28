@@ -23,7 +23,7 @@ This test validates the full workflow of:
 5. Cleaning up (deleting Gemini Enterprise registration and Agent Engine)
 
 Environment variables required:
-- GEMINI_ENTERPRISE_APP_ID: The Gemini Enterprise app resource name
+- ID: The Gemini Enterprise app resource name (or GEMINI_ENTERPRISE_APP_ID for backward compatibility)
 
 Prerequisites:
 - Authenticated with gcloud (gcloud auth application-default login)
@@ -121,10 +121,12 @@ class TestGeminiEnterpriseRegistration:
         Cleanup is guaranteed to run even if the test fails.
         """
         # Get required environment variables
-        gemini_app_id = os.environ.get("GEMINI_ENTERPRISE_APP_ID")
+        gemini_app_id = os.environ.get("ID") or os.environ.get(
+            "GEMINI_ENTERPRISE_APP_ID"
+        )
         if not gemini_app_id:
             pytest.skip(
-                "GEMINI_ENTERPRISE_APP_ID environment variable is required for this test"
+                "ID or GEMINI_ENTERPRISE_APP_ID environment variable is required for this test"
             )
 
         logger.info("\n" + "=" * 80)
@@ -178,7 +180,7 @@ class TestGeminiEnterpriseRegistration:
             # Step 3: Deploy to Agent Engine (uses gcloud default project)
             logger.info("\n🚀 Step 3: Deploying to Agent Engine")
             run_command(
-                ["make", "backend"],
+                ["make", "deploy"],
                 cwd=str(project_path),
             )
 
@@ -196,9 +198,9 @@ class TestGeminiEnterpriseRegistration:
             # Step 4: Register with Gemini Enterprise
             logger.info("\n🔗 Step 4: Registering with Gemini Enterprise")
             register_result = run_command(
-                ["make", "register-gemini-enterprise"],
+                ["uv", "run", "agent-starter-pack-register-gemini-enterprise"],
                 cwd=str(project_path),
-                env={"GEMINI_ENTERPRISE_APP_ID": gemini_app_id},
+                env={"ID": gemini_app_id},
                 capture_output=True,
             )
 

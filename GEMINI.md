@@ -166,6 +166,91 @@ Test changes across multiple dimensions:
 -   [ ] **CI/CD Parity:** Changes applied to both GitHub Actions and Cloud Build?
 -   [ ] **Multi-Agent Testing:** Tested with different agent types and configurations?
 
+## Pull Request Best Practices
+
+When creating pull requests for this repository, follow these guidelines for clear, professional commits and PR descriptions.
+
+### Commit Message Format
+```
+<type>: <concise summary in imperative mood>
+
+<detailed explanation of the change>
+- Why the change was needed
+- What was the root cause
+- How the fix addresses it
+```
+
+**Types**: `fix`, `feat`, `refactor`, `docs`, `test`, `chore`
+
+### PR Structure Example
+
+**Title:** Brief, descriptive summary (50-60 chars)
+```
+Fix Cloud Build service account permission for GitHub PAT secret access
+```
+
+**Description:**
+```markdown
+## Summary
+- Key change 1 (what was added/modified)
+- Key change 2
+- Key change 3
+
+## Problem
+Clear description of the issue, including:
+- Error messages or symptoms
+- Why it was failing
+- Context about when/where it occurs
+
+## Solution
+Explanation of how the changes fix the problem:
+- What resources/files were modified
+- Why this approach was chosen
+- Any dependencies or sequencing requirements
+```
+
+### Example (based on actual PR)
+
+**Commit:**
+```
+Fix Cloud Build service account permission for GitHub PAT secret access
+
+Add IAM binding to grant Cloud Build service account the secretAccessor
+role for the GitHub PAT secret. This resolves permission errors when
+Terraform creates Cloud Build v2 connections in E2E tests.
+
+The CLI setup already grants this permission via gcloud, but the
+Terraform configuration was missing this binding, causing failures when
+Terraform runs independently.
+```
+
+**PR Description:**
+```markdown
+## Summary
+- Grant Cloud Build service account `secretmanager.secretAccessor` role
+- Add proper dependency to Cloud Build v2 connection resource
+
+## Problem
+E2E tests failed when Terraform attempted to create Cloud Build v2 connections:
+```
+Error: could not access secret with service account:
+generic::permission_denied
+```
+
+The CLI setup grants this permission via gcloud, but Terraform
+configuration lacked the IAM binding.
+
+## Solution
+Added `google_secret_manager_secret_iam_member` resource to grant the
+Cloud Build service account permission to access the GitHub PAT secret
+before creating the connection.
+```
+
+### Key Principles
+- **Concise but complete**: Provide enough context for reviewers
+- **Problem-first**: Explain the "why" before the "what"
+- **Professional tone**: Avoid mentions of AI tools or assistants
+
 ### Key Tooling
 
 -   **`uv` for Python:** Primary tool for dependency management and CLI execution

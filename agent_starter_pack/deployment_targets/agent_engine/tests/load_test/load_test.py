@@ -188,7 +188,7 @@ class SendMessageUser(HttpUser):
             "message": {
                 "messageId": "msg-id",
                 "content": [{"text": "Hello! What's the weather in New York?"}],
-                "role": "1",
+                "role": "ROLE_USER",
             }
         }
 

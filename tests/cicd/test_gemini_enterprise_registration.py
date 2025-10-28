@@ -121,7 +121,9 @@ class TestGeminiEnterpriseRegistration:
         Cleanup is guaranteed to run even if the test fails.
         """
         # Get required environment variables
-        gemini_app_id = os.environ.get("ID") or os.environ.get("GEMINI_ENTERPRISE_APP_ID")
+        gemini_app_id = os.environ.get("ID") or os.environ.get(
+            "GEMINI_ENTERPRISE_APP_ID"
+        )
         if not gemini_app_id:
             pytest.skip(
                 "ID or GEMINI_ENTERPRISE_APP_ID environment variable is required for this test"

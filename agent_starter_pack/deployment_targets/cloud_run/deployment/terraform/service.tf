@@ -148,7 +148,7 @@ resource "google_alloydb_user" "db_user" {
 
 {%- endif %}
 
-resource "google_cloud_run_v2_service" "app_staging" {  
+resource "google_cloud_run_v2_service" "app_staging" {
   name                = var.project_name
   location            = var.region
   project             = var.staging_project_id
@@ -172,6 +172,13 @@ resource "google_cloud_run_v2_service" "app_staging" {
       # Placeholder, will be replaced by the CI/CD pipeline
       image = "us-docker.pkg.dev/cloudrun/container/hello"
 
+{%- if cookiecutter.is_adk_a2a %}
+      env {
+        name  = "APP_URL"
+        value = "https://${var.project_name}-${data.google_project.project["staging"].number}.${var.region}.run.app"
+      }
+
+{%- endif %}
       resources {
         limits = {
           cpu    = "4"
@@ -266,7 +273,7 @@ resource "google_cloud_run_v2_service" "app_staging" {
   depends_on = [google_project_service.deploy_project_services]
 }
 
-resource "google_cloud_run_v2_service" "app_prod" {  
+resource "google_cloud_run_v2_service" "app_prod" {
   name                = var.project_name
   location            = var.region
   project             = var.prod_project_id
@@ -290,6 +297,13 @@ resource "google_cloud_run_v2_service" "app_prod" {
       # Placeholder, will be replaced by the CI/CD pipeline
       image = "us-docker.pkg.dev/cloudrun/container/hello"
 
+{%- if cookiecutter.is_adk_a2a %}
+      env {
+        name  = "APP_URL"
+        value = "https://${var.project_name}-${data.google_project.project["prod"].number}.${var.region}.run.app"
+      }
+
+{%- endif %}
       resources {
         limits = {
           cpu    = "4"

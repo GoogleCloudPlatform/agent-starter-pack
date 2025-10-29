@@ -180,7 +180,7 @@ deploy:
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
 	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
+	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run -m {{cookiecutter.agent_directory}}.agent_engine_app
 {%- endif %}
 
 # Alias for 'make deploy' for backward compatibility

@@ -89,7 +89,7 @@ steps:
         AGENT_VERSION=$(cat /workspace/agent_version.txt || echo '0.0.0')
 {%- endif %}
         uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > .requirements.txt
-        uv run {{cookiecutter.agent_directory}}/agent_engine_app.py \
+        uv run -m {{cookiecutter.agent_directory}}.agent_engine_app \
           --project ${_PROD_PROJECT_ID} \
           --location ${_REGION} \
           --artifacts-bucket-name ${_LOGS_BUCKET_NAME_PROD} \

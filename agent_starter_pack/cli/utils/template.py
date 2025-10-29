@@ -562,11 +562,46 @@ def process_template(
             # Extract agent sample info for labeling when using agent garden with remote templates
             agent_sample_id = None
             agent_sample_publisher = None
+
+            # Handle remote specs with ADK samples metadata
             if agent_garden and remote_spec and remote_spec.is_adk_samples:
                 # For ADK samples, template_path is like "python/agents/sample-name"
                 agent_sample_id = pathlib.Path(remote_spec.template_path).name
                 # For ADK samples, publisher is always "google"
                 agent_sample_publisher = "google"
+                logging.debug(
+                    f"Detected ADK sample from remote_spec: {agent_sample_id}"
+                )
+            # Fallback: Detect ADK samples from pyproject.toml (for version-locked templates)
+            elif agent_garden and remote_template_path:
+                pyproject_path = remote_template_path / "pyproject.toml"
+                if pyproject_path.exists():
+                    try:
+                        import sys
+
+                        if sys.version_info >= (3, 11):
+                            import tomllib
+                        else:
+                            import tomli as tomllib
+
+                        with open(pyproject_path, "rb") as f:
+                            pyproject_data = tomllib.load(f)
+
+                        # Extract project name from pyproject.toml
+                        project_name_from_toml = pyproject_data.get("project", {}).get(
+                            "name"
+                        )
+
+                        if project_name_from_toml:
+                            agent_sample_id = project_name_from_toml
+                            agent_sample_publisher = (
+                                "google"  # ADK samples are from Google
+                            )
+                            logging.debug(
+                                f"Detected ADK sample from pyproject.toml: {agent_sample_id}"
+                            )
+                    except Exception as e:
+                        logging.debug(f"Failed to read pyproject.toml: {e}")
 
             # Create the cookiecutter template structure
             cookiecutter_template = temp_path / "template"

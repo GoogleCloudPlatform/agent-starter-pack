@@ -18,7 +18,7 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: What can you help me with?|"
 	@echo "|                                                                             |"
-	@echo "| 🔍 IMPORTANT: Select the 'test_adk_base' folder to interact with your agent.          |"
+	@echo "| 🔍 IMPORTANT: Select the 'test_a2a' folder to interact with your agent.          |"
 	@echo "==============================================================================="
 	uv run adk web . --port 8501 --reload_agents
 
@@ -31,7 +31,7 @@ deploy:
 	# Export dependencies to requirements file using uv export.
 	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
 	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt) && \
-	uv run -m test_adk_base.agent_engine_app
+	uv run -m test_a2a.agent_engine_app
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy

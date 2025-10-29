@@ -17,6 +17,7 @@ import logging
 import os
 import pathlib
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass
 from typing import Any
@@ -459,6 +460,72 @@ def copy_data_ingestion_files(
         )
 
 
+def _extract_agent_garden_labels(
+    agent_garden: bool,
+    remote_spec: Any | None,
+    remote_template_path: pathlib.Path | None,
+) -> tuple[str | None, str | None]:
+    """Extract agent sample ID and publisher for Agent Garden labeling.
+
+    This function supports two mechanisms for extracting label information:
+    1. From remote_spec metadata (for ADK samples)
+    2. Fallback to pyproject.toml parsing (for version-locked templates)
+
+    Args:
+        agent_garden: Whether this deployment is from Agent Garden
+        remote_spec: Remote template spec with ADK samples metadata
+        remote_template_path: Path to remote template directory
+
+    Returns:
+        Tuple of (agent_sample_id, agent_sample_publisher) or (None, None) if no labels found
+    """
+    if not agent_garden:
+        return None, None
+
+    agent_sample_id = None
+    agent_sample_publisher = None
+
+    # Handle remote specs with ADK samples metadata
+    if (
+        remote_spec
+        and hasattr(remote_spec, "is_adk_samples")
+        and remote_spec.is_adk_samples
+    ):
+        # For ADK samples, template_path is like "python/agents/sample-name"
+        agent_sample_id = pathlib.Path(remote_spec.template_path).name
+        # For ADK samples, publisher is always "google"
+        agent_sample_publisher = "google"
+        logging.debug(f"Detected ADK sample from remote_spec: {agent_sample_id}")
+        return agent_sample_id, agent_sample_publisher
+
+    # Fallback: Detect ADK samples from pyproject.toml (for version-locked templates)
+    if remote_template_path:
+        pyproject_path = remote_template_path / "pyproject.toml"
+        if pyproject_path.exists():
+            try:
+                if sys.version_info >= (3, 11):
+                    import tomllib
+                else:
+                    import tomli as tomllib
+
+                with open(pyproject_path, "rb") as f:
+                    pyproject_data = tomllib.load(f)
+
+                # Extract project name from pyproject.toml
+                project_name_from_toml = pyproject_data.get("project", {}).get("name")
+
+                if project_name_from_toml:
+                    agent_sample_id = project_name_from_toml
+                    agent_sample_publisher = "google"  # ADK samples are from Google
+                    logging.debug(
+                        f"Detected ADK sample from pyproject.toml: {agent_sample_id}"
+                    )
+            except Exception as e:
+                logging.debug(f"Failed to read pyproject.toml: {e}")
+
+    return agent_sample_id, agent_sample_publisher
+
+
 def process_template(
     agent_name: str,
     template_dir: pathlib.Path,
@@ -560,48 +627,9 @@ def process_template(
             os.chdir(temp_path)  # Change to temp directory
 
             # Extract agent sample info for labeling when using agent garden with remote templates
-            agent_sample_id = None
-            agent_sample_publisher = None
-
-            # Handle remote specs with ADK samples metadata
-            if agent_garden and remote_spec and remote_spec.is_adk_samples:
-                # For ADK samples, template_path is like "python/agents/sample-name"
-                agent_sample_id = pathlib.Path(remote_spec.template_path).name
-                # For ADK samples, publisher is always "google"
-                agent_sample_publisher = "google"
-                logging.debug(
-                    f"Detected ADK sample from remote_spec: {agent_sample_id}"
-                )
-            # Fallback: Detect ADK samples from pyproject.toml (for version-locked templates)
-            elif agent_garden and remote_template_path:
-                pyproject_path = remote_template_path / "pyproject.toml"
-                if pyproject_path.exists():
-                    try:
-                        import sys
-
-                        if sys.version_info >= (3, 11):
-                            import tomllib
-                        else:
-                            import tomli as tomllib
-
-                        with open(pyproject_path, "rb") as f:
-                            pyproject_data = tomllib.load(f)
-
-                        # Extract project name from pyproject.toml
-                        project_name_from_toml = pyproject_data.get("project", {}).get(
-                            "name"
-                        )
-
-                        if project_name_from_toml:
-                            agent_sample_id = project_name_from_toml
-                            agent_sample_publisher = (
-                                "google"  # ADK samples are from Google
-                            )
-                            logging.debug(
-                                f"Detected ADK sample from pyproject.toml: {agent_sample_id}"
-                            )
-                    except Exception as e:
-                        logging.debug(f"Failed to read pyproject.toml: {e}")
+            agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+                agent_garden, remote_spec, remote_template_path
+            )
 
             # Create the cookiecutter template structure
             cookiecutter_template = temp_path / "template"

@@ -30,6 +30,7 @@ from agent_starter_pack.cli.utils.remote_template import (
     parse_agent_starter_pack_version_from_lock,
     render_and_merge_makefiles,
 )
+from agent_starter_pack.cli.utils.template import _extract_agent_garden_labels
 
 
 class TestRemoteTemplateSpec:
@@ -1054,10 +1055,6 @@ class TestAgentGardenLabelExtraction:
 
     def test_extract_from_remote_spec_adk_samples(self) -> None:
         """Test extracting labels from remote_spec when is_adk_samples=True."""
-        from agent_starter_pack.cli.utils.remote_template import RemoteTemplateSpec
-
-        # Simulate the logic in template.py
-        agent_garden = True
         remote_spec = RemoteTemplateSpec(
             repo_url="https://github.com/google/adk-samples",
             template_path="python/agents/RAG",
@@ -1065,20 +1062,19 @@ class TestAgentGardenLabelExtraction:
             is_adk_samples=True,
         )
 
-        # Extract labels (mimicking template.py logic)
-        agent_sample_id = None
-        agent_sample_publisher = None
-
-        if agent_garden and remote_spec and remote_spec.is_adk_samples:
-            agent_sample_id = pathlib.Path(remote_spec.template_path).name
-            agent_sample_publisher = "google"
+        agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+            agent_garden=True,
+            remote_spec=remote_spec,
+            remote_template_path=None,
+        )
 
         assert agent_sample_id == "RAG"
         assert agent_sample_publisher == "google"
 
     def test_extract_from_pyproject_toml(self) -> None:
         """Test extracting labels from pyproject.toml fallback."""
-        # Simulate the logic in template.py
+        import sys
+
         remote_template_path = pathlib.Path("/test/template")
 
         pyproject_content = b"""
@@ -1087,42 +1083,33 @@ name = "rag"
 version = "0.1.0"
 """
 
-        agent_sample_id = None
-        agent_sample_publisher = None
-
         # Mock the toml data that would be loaded
         mock_toml_data = {"project": {"name": "rag", "version": "0.1.0"}}
+
+        # Determine which toml library to mock based on Python version
+        if sys.version_info >= (3, 11):
+            toml_module = "tomllib"
+        else:
+            toml_module = "tomli"
 
         with (
             patch("pathlib.Path.exists", return_value=True),
             patch("builtins.open", mock_open(read_data=pyproject_content)),
+            patch(f"{toml_module}.load") as mock_toml_load,
         ):
-            # Manually parse the pyproject content for this test
+            mock_toml_load.return_value = mock_toml_data
 
-            pyproject_path = remote_template_path / "pyproject.toml"
-            if pyproject_path.exists():
-                try:
-                    # Simulate what would happen with real tomllib.load
-                    pyproject_data = mock_toml_data
-
-                    project_name_from_toml = pyproject_data.get("project", {}).get(
-                        "name"
-                    )
-
-                    if project_name_from_toml:
-                        agent_sample_id = project_name_from_toml
-                        agent_sample_publisher = "google"
-                except Exception:
-                    pass
+            agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+                agent_garden=True,
+                remote_spec=None,
+                remote_template_path=remote_template_path,
+            )
 
         assert agent_sample_id == "rag"
         assert agent_sample_publisher == "google"
 
     def test_no_labels_when_agent_garden_false(self) -> None:
         """Test that labels are not set when agent_garden=False."""
-        from agent_starter_pack.cli.utils.remote_template import RemoteTemplateSpec
-
-        agent_garden = False
         remote_spec = RemoteTemplateSpec(
             repo_url="https://github.com/google/adk-samples",
             template_path="python/agents/RAG",
@@ -1130,12 +1117,11 @@ version = "0.1.0"
             is_adk_samples=True,
         )
 
-        agent_sample_id = None
-        agent_sample_publisher = None
-
-        if agent_garden and remote_spec and remote_spec.is_adk_samples:
-            agent_sample_id = pathlib.Path(remote_spec.template_path).name
-            agent_sample_publisher = "google"
+        agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+            agent_garden=False,
+            remote_spec=remote_spec,
+            remote_template_path=None,
+        )
 
         # Labels should remain None when agent_garden=False
         assert agent_sample_id is None
@@ -1145,15 +1131,12 @@ version = "0.1.0"
         """Test that labels remain empty when pyproject.toml doesn't exist."""
         remote_template_path = pathlib.Path("/test/template")
 
-        agent_sample_id = None
-        agent_sample_publisher = None
-
         with patch("pathlib.Path.exists", return_value=False):
-            pyproject_path = remote_template_path / "pyproject.toml"
-            if pyproject_path.exists():
-                # This shouldn't execute
-                agent_sample_id = "should_not_be_set"
-                agent_sample_publisher = "should_not_be_set"
+            agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+                agent_garden=True,
+                remote_spec=None,
+                remote_template_path=remote_template_path,
+            )
 
         assert agent_sample_id is None
         assert agent_sample_publisher is None

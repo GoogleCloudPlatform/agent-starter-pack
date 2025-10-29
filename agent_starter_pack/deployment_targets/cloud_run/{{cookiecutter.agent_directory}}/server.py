@@ -364,7 +364,7 @@ async def build_dynamic_agent_card() -> AgentCard:
     agent_card_builder = AgentCardBuilder(
         agent=adk_app.root_agent,
         capabilities=AgentCapabilities(streaming=True),
-        rpc_url=os.getenv("RPC_URL", f"http://0.0.0.0:8000/a2a/{adk_app.name}"),
+        rpc_url=f"{os.getenv('APP_URL', 'http://0.0.0.0:8000')}/a2a/{adk_app.name}/",
         agent_version=os.getenv("AGENT_VERSION", "0.1.0"),
     )
     agent_card = await agent_card_builder.build()

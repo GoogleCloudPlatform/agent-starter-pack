@@ -189,7 +189,7 @@ Thumbs.db
 .persist_vector_store
 tests/load_test/.results/*.html
 tests/load_test/.results/*.csv
-locust_env
+.locust_env
 my_env.tfvars
 .streamlit_chats
 .saved_chats

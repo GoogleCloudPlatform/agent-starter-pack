@@ -150,6 +150,11 @@ resource "google_cloud_run_v2_service" "app" {
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello"
 
+      env {
+        name  = "APP_URL"
+        value = "https://${var.project_name}-${data.google_project.project.number}.${var.region}.run.app"
+      }
+
       resources {
         limits = {
           cpu    = "4"

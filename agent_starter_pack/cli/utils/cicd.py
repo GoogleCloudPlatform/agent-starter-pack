@@ -103,9 +103,10 @@ def create_github_connection(
     """
     console.print("\n🔗 Creating GitHub connection...")
 
-    # First, ensure Cloud Build API is enabled
-    console.print("🔧 Ensuring Cloud Build API is enabled...")
+    # First, ensure required APIs are enabled
+    console.print("🔧 Ensuring required APIs are enabled...")
     try:
+        # Enable Cloud Build API
         run_command(
             [
                 "gcloud",
@@ -120,13 +121,28 @@ def create_github_connection(
         )
         console.print("✅ Cloud Build API enabled")
 
-        # Wait for the API to fully initialize and create the service account
+        # Enable Secret Manager API
+        run_command(
+            [
+                "gcloud",
+                "services",
+                "enable",
+                "secretmanager.googleapis.com",
+                "--project",
+                project_id,
+            ],
+            capture_output=True,
+            check=False,  # Don't fail if already enabled
+        )
+        console.print("✅ Secret Manager API enabled")
+
+        # Wait for the APIs to fully initialize and create the service account
         console.print(
             "⏳ Waiting for Cloud Build service account to be created (this typically takes 5-10 seconds)..."
         )
         time.sleep(10)
     except subprocess.CalledProcessError as e:
-        console.print(f"⚠️ Could not enable Cloud Build API: {e}", style="yellow")
+        console.print(f"⚠️ Could not enable required APIs: {e}", style="yellow")
 
     # Get the Cloud Build service account and grant permissions with retry logic
     try:

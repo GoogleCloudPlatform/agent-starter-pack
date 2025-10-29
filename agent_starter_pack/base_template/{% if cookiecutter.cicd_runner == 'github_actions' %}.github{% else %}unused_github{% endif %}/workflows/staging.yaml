@@ -195,7 +195,7 @@ jobs:
 {%- elif cookiecutter.deployment_target == 'cloud_run' %}
           export _ID_TOKEN="{% raw %}${{ steps.fetch-token.outputs._id_token }}{% endraw %}"
           export _STAGING_URL="{% raw %}${{ steps.fetch-url.outputs._staging_url }}{% endraw %}"
-          pip install locust==2.31.1
+          pip install locust==2.31.1{%- if cookiecutter.is_adk_a2a %} a2a-sdk~=0.3.9{%- endif %}
           locust -f tests/load_test/load_test.py \
           --headless \
           -H ${_STAGING_URL} \

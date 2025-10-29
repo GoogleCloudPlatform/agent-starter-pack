@@ -72,7 +72,7 @@ make install && make playground
 | `make build-frontend` | Build the frontend for production |
 {%- endif %}
 {%- if cookiecutter.is_adk %}
-| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise (see Makefile for parameters) |
+| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
 {%- endif %}
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |

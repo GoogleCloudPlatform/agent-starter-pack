@@ -347,7 +347,7 @@ def deploy_agent_engine_app(
     if not staging_bucket_uri:
         staging_bucket_uri = f"gs://{project}-agent-engine"
     if not artifacts_bucket_name:
-        artifacts_bucket_name = f"gs://{project}-agent-engine"
+        artifacts_bucket_name = f"{project}-agent-engine"
 
 {%- if "adk" in cookiecutter.tags %}
     create_bucket_if_not_exists(

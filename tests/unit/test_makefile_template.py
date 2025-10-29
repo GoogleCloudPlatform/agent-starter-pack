@@ -44,6 +44,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": True,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
@@ -55,6 +56,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "agent_engine",
         "is_adk": True,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
@@ -66,6 +68,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": True,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
@@ -77,6 +80,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "agent_engine",
         "is_adk": False,
         "is_adk_live": True,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
@@ -88,6 +92,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": True,
         "datastore_type": "vertex_ai_search",
         "agent_garden": False,
@@ -100,6 +105,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": True,
         "datastore_type": "vertex_ai_vector_search",
         "agent_garden": False,
@@ -112,6 +118,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "How can you help?",
@@ -123,6 +130,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Custom agent question",
@@ -154,11 +162,36 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": True,
         "is_adk_live": False,
+        "is_adk_a2a": False,
         "data_ingestion": False,
         "agent_garden": True,
         "agent_sample_id": "sample-123",
         "agent_sample_publisher": "google",
         "example_question": "Agent garden question",
+        "settings": {},
+    },
+    "adk_a2a_cloud_run": {
+        "project_name": "test-a2a",
+        "agent_directory": "test_a2a",
+        "deployment_target": "cloud_run",
+        "is_adk": True,
+        "is_adk_live": False,
+        "is_adk_a2a": True,
+        "data_ingestion": False,
+        "agent_garden": False,
+        "example_question": "What can you help me with?",
+        "settings": {},
+    },
+    "adk_a2a_agent_engine": {
+        "project_name": "test-a2a",
+        "agent_directory": "test_a2a",
+        "deployment_target": "agent_engine",
+        "is_adk": True,
+        "is_adk_live": False,
+        "is_adk_a2a": True,
+        "data_ingestion": False,
+        "agent_garden": False,
+        "example_question": "What can you help me with?",
         "settings": {},
     },
 }
@@ -365,7 +398,8 @@ class TestMakefileGeneration:
         # Should export requirements
         assert "uv export" in output
         assert ".requirements.txt" in output
-        assert "agent_engine_app.py" in output
+        assert "agent_engine_app" in output
+        assert "uv run -m" in output
 
     def test_non_adk_has_streamlit_extra(
         self, makefile_renderer: MakefileRenderer

@@ -18,20 +18,40 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: What can you help me with?|"
 	@echo "|                                                                             |"
-	@echo "| 🔍 IMPORTANT: Select the 'test_adk_base' folder to interact with your agent.          |"
+	@echo "| 🔍 IMPORTANT: Select the 'test_a2a' folder to interact with your agent.          |"
 	@echo "==============================================================================="
 	uv run adk web . --port 8501 --reload_agents
+
+# ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+	uv run uvicorn test_a2a.server:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
 # Deploy the agent remotely
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 deploy:
-	# Export dependencies to requirements file using uv export.
-	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt) && \
-	uv run -m test_adk_base.agent_engine_app
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \
+	gcloud beta run deploy test-a2a \
+		--source . \
+		--memory "4Gi" \
+		--project $$PROJECT_ID \
+		--region "us-central1" \
+		--no-allow-unauthenticated \
+		--no-cpu-throttling \
+		--labels "created-by=adk" \
+		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
+		--set-env-vars \
+		"COMMIT_SHA=$(shell git rev-parse HEAD),APP_URL=https://test-a2a-$$PROJECT_NUMBER.us-central1.run.app" \
+		$(if $(IAP),--iap) \
+		$(if $(PORT),--port=$(PORT))
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -61,13 +81,3 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
-
-# ==============================================================================
-# Gemini Enterprise Integration
-# ==============================================================================
-
-# Register the deployed agent to Gemini Enterprise
-# Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
-# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
-register-gemini-enterprise:
-	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise

@@ -63,7 +63,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Remote Templates', link: '/remote-templates/' },
       { text: 'Agents', link: '/agents/overview' },
-      { text: 'CLI', link: '/cli/index.md' },
+      { text: 'CLI', link: '/cli' },
       { text: 'Community', link: '/guide/community-showcase' }
     ],
     sidebar: [

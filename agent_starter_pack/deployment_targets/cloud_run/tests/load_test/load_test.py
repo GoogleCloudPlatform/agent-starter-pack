@@ -163,7 +163,7 @@ from locust import HttpUser, between, task
 {%- endif %}
 {%- if cookiecutter.is_adk_a2a %}
 
-ENDPOINT = "/a2a/{{cookiecutter.agent_directory}}/"
+ENDPOINT = "/a2a/{{cookiecutter.agent_directory}}"
 {%- elif cookiecutter.is_adk %}
 
 ENDPOINT = "/run_sse"

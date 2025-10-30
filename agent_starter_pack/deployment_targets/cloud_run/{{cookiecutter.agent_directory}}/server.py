@@ -302,6 +302,10 @@ from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard
+from a2a.utils.constants import (
+    AGENT_CARD_WELL_KNOWN_PATH,
+    EXTENDED_AGENT_CARD_PATH,
+)
 {%- endif %}
 from fastapi import FastAPI
 {%- if cookiecutter.is_adk_a2a %}
@@ -358,13 +362,15 @@ request_handler = DefaultRequestHandler(
     agent_executor=A2aAgentExecutor(runner=runner), task_store=InMemoryTaskStore()
 )
 
+A2A_RPC_PATH = f"/a2a/{adk_app.name}"
+
 
 async def build_dynamic_agent_card() -> AgentCard:
     """Builds the Agent Card dynamically from the root_agent."""
     agent_card_builder = AgentCardBuilder(
         agent=adk_app.root_agent,
         capabilities=AgentCapabilities(streaming=True),
-        rpc_url=f"{os.getenv('APP_URL', 'http://0.0.0.0:8000')}/a2a/{adk_app.name}/",
+        rpc_url=f"{os.getenv('APP_URL', 'http://0.0.0.0:8000')}{A2A_RPC_PATH}",
         agent_version=os.getenv("AGENT_VERSION", "0.1.0"),
     )
     agent_card = await agent_card_builder.build()
@@ -374,10 +380,13 @@ async def build_dynamic_agent_card() -> AgentCard:
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
     agent_card = await build_dynamic_agent_card()
-    a2a_app = A2AFastAPIApplication(
-        agent_card=agent_card, http_handler=request_handler
-    ).build()
-    app_instance.mount(f"/a2a/{adk_app.name}", a2a_app)
+    a2a_app = A2AFastAPIApplication(agent_card=agent_card, http_handler=request_handler)
+    a2a_app.add_routes_to_app(
+        app_instance,
+        agent_card_url=f"{A2A_RPC_PATH}{AGENT_CARD_WELL_KNOWN_PATH}",
+        rpc_url=A2A_RPC_PATH,
+        extended_agent_card_url=f"{A2A_RPC_PATH}{EXTENDED_AGENT_CARD_PATH}",
+    )
     yield
 
 

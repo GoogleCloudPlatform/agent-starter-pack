@@ -508,8 +508,8 @@ def _extract_agent_garden_labels(
                 else:
                     import tomli as tomllib
 
-                with open(pyproject_path, "rb") as f:
-                    pyproject_data = tomllib.load(f)
+                with open(pyproject_path, "rb") as toml_file:
+                    pyproject_data = tomllib.load(toml_file)
 
                 # Extract project name from pyproject.toml
                 project_name_from_toml = pyproject_data.get("project", {}).get("name")
@@ -781,14 +781,14 @@ def process_template(
                 / "docs"
                 / "adk-cheatsheet.md"
             )
-            with open(adk_cheatsheet_path, encoding="utf-8") as f:
-                adk_cheatsheet_content = f.read()
+            with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
+                adk_cheatsheet_content = md_file.read()
 
             llm_txt_path = (
                 pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
             )
-            with open(llm_txt_path, encoding="utf-8") as f:
-                llm_txt_content = f.read()
+            with open(llm_txt_path, encoding="utf-8") as txt_file:
+                llm_txt_content = txt_file.read()
 
             cookiecutter_config = {
                 "project_name": project_name,
@@ -842,8 +842,8 @@ def process_template(
 
             with open(
                 cookiecutter_template / "cookiecutter.json", "w", encoding="utf-8"
-            ) as f:
-                json.dump(cookiecutter_config, f, indent=4)
+            ) as json_file:
+                json.dump(cookiecutter_config, json_file, indent=4)
 
             logging.debug(f"Template structure created at {cookiecutter_template}")
             logging.debug(
@@ -992,8 +992,12 @@ def process_template(
                                             file_template_dir / "cookiecutter.json",
                                             "w",
                                             encoding="utf-8",
-                                        ) as f:
-                                            json.dump(cookiecutter_config, f, indent=4)
+                                        ) as config_file:
+                                            json.dump(
+                                                cookiecutter_config,
+                                                config_file,
+                                                indent=4,
+                                            )
 
                                         # Process the file template
                                         cookiecutter(
@@ -1154,13 +1158,13 @@ def process_template(
 
                 # Replace cookiecutter project name with actual project name in lock file
                 lock_file_path = final_destination / "uv.lock"
-                with open(lock_file_path, "r+", encoding="utf-8") as f:
-                    content = f.read()
-                    f.seek(0)
-                    f.write(
+                with open(lock_file_path, "r+", encoding="utf-8") as lock_file:
+                    content = lock_file.read()
+                    lock_file.seek(0)
+                    lock_file.write(
                         content.replace("{{cookiecutter.project_name}}", project_name)
                     )
-                    f.truncate()
+                    lock_file.truncate()
                 logging.debug(f"Updated project name in lock file at {lock_file_path}")
 
         except Exception as e:

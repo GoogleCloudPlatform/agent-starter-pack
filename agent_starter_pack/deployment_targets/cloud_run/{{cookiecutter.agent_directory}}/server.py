@@ -364,6 +364,7 @@ request_handler = DefaultRequestHandler(
 
 A2A_RPC_PATH = f"/a2a/{adk_app.name}"
 
+
 async def build_dynamic_agent_card() -> AgentCard:
     """Builds the Agent Card dynamically from the root_agent."""
     agent_card_builder = AgentCardBuilder(

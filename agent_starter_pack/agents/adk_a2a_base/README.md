@@ -11,6 +11,18 @@ This agent uses the `gemini-2.5-flash` model and is equipped with two simple too
 *   `get_weather`: Simulates fetching weather (hardcoded for SF).
 *   `get_current_time`: Simulates fetching the time (hardcoded for SF).
 
+## Validating Your A2A Implementation
+
+When deploying to **Cloud Run**, this template includes the **[A2A Protocol Inspector](https://github.com/a2aproject/a2a-inspector)** for validating your agent's A2A implementation.
+
+```bash
+make inspector
+```
+
+**Note:** The inspector currently supports JSON-RPC 2.0 only and is not yet compatible with Agent Engine's HTTP-JSON transport protocol.
+
+For detailed setup instructions including local and remote testing workflows, refer to the `README.md` in your generated project.
+
 ## Additional Resources
 
 ### ADK Resources

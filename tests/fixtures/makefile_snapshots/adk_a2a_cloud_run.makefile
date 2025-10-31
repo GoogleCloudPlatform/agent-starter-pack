@@ -29,6 +29,57 @@ playground:
 # Launch local development server with hot-reload
 local-backend:
 	uv run uvicorn test_a2a.server:app --host localhost --port 8000 --reload
+# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' condition
+# when a2a-inspector adds HTTP-JSON transport support (currently JSON-RPC 2.0 only)
+
+# ==============================================================================
+# A2A Protocol Inspector
+# ==============================================================================
+
+# Launch A2A Protocol Inspector to test your agent implementation
+inspector: setup-inspector-if-needed build-inspector-if-needed
+	@echo "==============================================================================="
+	@echo "| 🔍 A2A Protocol Inspector                                                  |"
+	@echo "==============================================================================="
+	@echo "| 🌐 Inspector UI: http://localhost:5001                                     |"
+	@echo "|                                                                             |"
+	@echo "| 💡 Testing Locally:                                                         |"
+	@echo "|    Connect to: http://localhost:8000                                       |"
+	@echo "|                                                                             |"
+	@echo "| 💡 Testing Remote Deployment:                                               |"
+	@echo "|    Connect to your deployed Cloud Run URL                                  |"
+	@echo "|    🔐 See README for authentication setup                                  |"
+	@echo "==============================================================================="
+	@echo ""
+	cd tools/a2a-inspector/backend && uv run app.py
+
+# Internal: Setup inspector if not already present (runs once)
+# TODO: Update to --branch v1.0.0 when a2a-inspector publishes releases
+setup-inspector-if-needed:
+	@if [ ! -d "tools/a2a-inspector" ]; then \
+		echo "" && \
+		echo "📦 First-time setup: Installing A2A Inspector..." && \
+		echo "" && \
+		mkdir -p tools && \
+		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector && \
+		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet 24086e48b244b503dc6ccc976c9485bd6ec04ec8) && \
+		echo "📥 Installing Python dependencies..." && \
+		(cd tools/a2a-inspector && uv sync --quiet) && \
+		echo "📥 Installing Node.js dependencies..." && \
+		(cd tools/a2a-inspector/frontend && npm install --silent) && \
+		echo "🔨 Building frontend..." && \
+		(cd tools/a2a-inspector/frontend && npm run build --silent) && \
+		echo "" && \
+		echo "✅ A2A Inspector setup complete!" && \
+		echo ""; \
+	fi
+
+# Internal: Build inspector frontend if needed
+build-inspector-if-needed:
+	@if [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
+		echo "🔨 Building inspector frontend..."; \
+		cd tools/a2a-inspector/frontend && npm run build; \
+	fi
 
 # ==============================================================================
 # Backend Deployment Targets

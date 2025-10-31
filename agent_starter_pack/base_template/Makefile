@@ -188,20 +188,20 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 # TODO: Update to --branch v1.0.0 when a2a-inspector publishes releases
 setup-inspector-if-needed:
 	@if [ ! -d "tools/a2a-inspector" ]; then \
-		echo ""; \
-		echo "📦 First-time setup: Installing A2A Inspector..."; \
-		echo ""; \
-		mkdir -p tools; \
-		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector; \
-		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet 24086e48b244b503dc6ccc976c9485bd6ec04ec8); \
-		echo "📥 Installing Python dependencies..."; \
-		(cd tools/a2a-inspector && uv sync --quiet); \
-		echo "📥 Installing Node.js dependencies..."; \
-		(cd tools/a2a-inspector/frontend && npm install --silent); \
-		echo "🔨 Building frontend..."; \
-		(cd tools/a2a-inspector/frontend && npm run build --silent); \
-		echo ""; \
-		echo "✅ A2A Inspector setup complete!"; \
+		echo "" && \
+		echo "📦 First-time setup: Installing A2A Inspector..." && \
+		echo "" && \
+		mkdir -p tools && \
+		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector && \
+		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet 24086e48b244b503dc6ccc976c9485bd6ec04ec8) && \
+		echo "📥 Installing Python dependencies..." && \
+		(cd tools/a2a-inspector && uv sync --quiet) && \
+		echo "📥 Installing Node.js dependencies..." && \
+		(cd tools/a2a-inspector/frontend && npm install --silent) && \
+		echo "🔨 Building frontend..." && \
+		(cd tools/a2a-inspector/frontend && npm run build --silent) && \
+		echo "" && \
+		echo "✅ A2A Inspector setup complete!" && \
 		echo ""; \
 	fi
 

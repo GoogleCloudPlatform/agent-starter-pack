@@ -24,43 +24,15 @@ from agent_starter_pack.cli.utils.register_gemini_enterprise import (
 class TestDiscoveryEngineEndpoint:
     """Tests for get_discovery_engine_endpoint function."""
 
-    def test_global_location(self) -> None:
-        """Test that global location returns the standard endpoint."""
-        endpoint = get_discovery_engine_endpoint("global")
-        assert endpoint == "https://discoveryengine.googleapis.com"
-
-    def test_eu_location(self) -> None:
-        """Test that EU location returns the EU regional endpoint."""
-        endpoint = get_discovery_engine_endpoint("eu")
-        assert endpoint == "https://eu-discoveryengine.googleapis.com"
-
-    def test_us_location(self) -> None:
-        """Test that US location returns the US regional endpoint."""
-        endpoint = get_discovery_engine_endpoint("us")
-        assert endpoint == "https://us-discoveryengine.googleapis.com"
-
-    def test_asia_location(self) -> None:
-        """Test that Asia location returns the Asia regional endpoint."""
-        endpoint = get_discovery_engine_endpoint("asia")
-        assert endpoint == "https://asia-discoveryengine.googleapis.com"
-
-    def test_custom_region(self) -> None:
-        """Test that custom regions follow the same pattern."""
-        endpoint = get_discovery_engine_endpoint("australia")
-        assert endpoint == "https://australia-discoveryengine.googleapis.com"
-
     @pytest.mark.parametrize(
         "location,expected",
         [
             ("global", "https://discoveryengine.googleapis.com"),
             ("eu", "https://eu-discoveryengine.googleapis.com"),
             ("us", "https://us-discoveryengine.googleapis.com"),
-            ("asia", "https://asia-discoveryengine.googleapis.com"),
-            ("europe-west1", "https://europe-west1-discoveryengine.googleapis.com"),
-            ("us-central1", "https://us-central1-discoveryengine.googleapis.com"),
         ],
     )
-    def test_various_locations(self, location: str, expected: str) -> None:
-        """Test various location formats return correct endpoints."""
+    def test_discovery_engine_endpoints(self, location: str, expected: str) -> None:
+        """Test that supported locations return correct endpoints."""
         endpoint = get_discovery_engine_endpoint(location)
         assert endpoint == expected

@@ -81,6 +81,30 @@ Output directory for the project (default: current directory)
 ### `--agent-directory`, `-dir` DIRECTORY
 Name of the agent directory (overrides template default, usually `app`). This determines where your agent code files will be located within the project structure.
 
+### `--base-template`, `-bt` TEMPLATE
+Override the base template specified in a remote template's configuration. Only applicable when using remote templates with the `--agent` flag. This allows you to use a different built-in agent as the foundation instead of the one specified in the remote template's `pyproject.toml`.
+
+**Interactive dependency management:**
+When overriding the base template, you'll be prompted to add required dependencies using `uv add`:
+
+```bash
+# Use adk_a2a_base as base instead of the remote template's default
+uvx agent-starter-pack create my-agent -a github.com/user/template --base-template adk_a2a_base
+
+✓ Base template override: Using 'adk_a2a_base' as foundation
+  This requires adding the following dependencies:
+    • google-adk>=1.16.0,<2.0.0
+    • a2a-sdk~=0.3.9
+
+? Add these dependencies automatically? [Y/n]
+```
+
+With `--auto-approve`, dependencies are added automatically without prompting:
+```bash
+uvx agent-starter-pack create my-agent -a template --base-template adk_a2a_base --auto-approve
+# Dependencies are added automatically
+```
+
 ### `--in-folder`
 Create agent files directly in the current directory instead of creating a new project subdirectory.
 
@@ -138,8 +162,11 @@ uvx agent-starter-pack create my-agent -a https://github.com/user/my-template
 # Use shorthand notation with branch
 uvx agent-starter-pack create my-agent -a github.com/user/template@develop
 
-# Use your existing project  
+# Use your existing project
 uvx agent-starter-pack create my-agent -a local@./my-project
+
+# Override the base template of a remote template
+uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_live
 ```
 
 ### Advanced Configuration

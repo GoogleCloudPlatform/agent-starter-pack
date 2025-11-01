@@ -37,6 +37,7 @@ from ..utils.remote_template import (
     parse_agent_spec,
 )
 from ..utils.template import (
+    add_base_template_dependencies_interactively,
     get_available_agents,
     get_deployment_targets,
     get_template_path,
@@ -111,6 +112,11 @@ def shared_template_options(f: Callable) -> Callable:
         "--agent-directory",
         "-dir",
         help="Name of the agent directory (overrides template default)",
+    )(f)
+    f = click.option(
+        "--base-template",
+        "-bt",
+        help="Base template to use (overrides template default, only for remote templates)",
     )(f)
     return f
 
@@ -474,6 +480,18 @@ def create(
             if cli_overrides is None:
                 cli_overrides = {}
             if base_template:
+                # Validate that the base template exists
+                if not validate_base_template(base_template):
+                    available_templates = get_available_base_templates()
+                    console.print(
+                        f"Error: Base template '{base_template}' not found.",
+                        style="bold red",
+                    )
+                    console.print(
+                        f"Available base templates: {', '.join(available_templates)}",
+                        style="yellow",
+                    )
+                    return
                 cli_overrides["base_template"] = base_template
 
             # Load remote template config
@@ -727,6 +745,29 @@ def create(
             # Replace region in all files if a different region was specified
             if region != "us-central1":
                 replace_region_in_files(project_path, region, debug=debug)
+
+            # Handle base template dependencies if override was used
+            if base_template and template_source_path and remote_config:
+                # Load base template config to get extra_dependencies
+                base_template_path = (
+                    pathlib.Path(__file__).parent.parent.parent
+                    / "agents"
+                    / base_template
+                    / ".template"
+                )
+                base_config = load_template_config(base_template_path)
+                base_deps = base_config.get("settings", {}).get(
+                    "extra_dependencies", []
+                )
+
+                if base_deps:
+                    # Call interactive dependency addition
+                    add_base_template_dependencies_interactively(
+                        project_path,
+                        base_deps,
+                        base_template,
+                        auto_approve=auto_approve,
+                    )
         finally:
             # Clean up the temporary directory if one was created
             if temp_dir_to_clean:

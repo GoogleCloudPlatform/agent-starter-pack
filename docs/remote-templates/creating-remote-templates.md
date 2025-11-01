@@ -146,6 +146,7 @@ description = "An awesome AI agent template"
 dependencies = ["google-adk>=1.8.0", "custom-lib"]
 
 [tool.agent-starter-pack]
+# Base template to inherit from - users can override with --base-template flag
 base_template = "adk_base"
 name = "My Awesome Template"  # Optional: falls back to [project].name
 description = "Custom description"  # Optional: falls back to [project].description
@@ -156,6 +157,8 @@ frontend_type = "adk_streamlit"
 # Optional: Customize the directory name for agent files (default: "app")
 agent_directory = "app"
 ```
+
+**Note:** Users can override the `base_template` when creating from your template using `--base-template`. When they do, the CLI will automatically prompt them to add any additional dependencies required by the new base template using `uv add`.
 
 ## Configuration Reference
 

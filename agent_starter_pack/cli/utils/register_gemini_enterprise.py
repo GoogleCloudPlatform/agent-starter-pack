@@ -27,6 +27,30 @@ from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
 
 
+def get_discovery_engine_endpoint(location: str) -> str:
+    """Get the appropriate Discovery Engine API endpoint for the given location.
+
+    Args:
+        location: The location/region (e.g., 'global', 'us', 'eu')
+
+    Returns:
+        The Discovery Engine API endpoint base URL
+
+    Examples:
+        >>> get_discovery_engine_endpoint('global')
+        'https://discoveryengine.googleapis.com'
+        >>> get_discovery_engine_endpoint('eu')
+        'https://eu-discoveryengine.googleapis.com'
+        >>> get_discovery_engine_endpoint('us')
+        'https://us-discoveryengine.googleapis.com'
+    """
+    if location == "global":
+        return "https://discoveryengine.googleapis.com"
+    else:
+        # Regional endpoints use the format: https://{region}-discoveryengine.googleapis.com
+        return f"https://{location}-discoveryengine.googleapis.com"
+
+
 def get_agent_engine_id(
     agent_engine_id: str | None, metadata_file: str = "deployment_metadata.json"
 ) -> str:
@@ -179,9 +203,10 @@ def register_agent(
     # Get access token
     access_token = get_access_token()
 
-    # Build API endpoint
+    # Build API endpoint with regional support
+    base_endpoint = get_discovery_engine_endpoint(as_location)
     url = (
-        f"https://discoveryengine.googleapis.com/v1alpha/projects/{project_number}/"
+        f"{base_endpoint}/v1alpha/projects/{project_number}/"
         f"locations/{as_location}/collections/{collection}/engines/{engine_id}/"
         "assistants/default_assistant/agents"
     )
@@ -267,7 +292,7 @@ def register_agent(
 
                     if existing_agent:
                         agent_name = existing_agent.get("name")
-                        update_url = f"https://discoveryengine.googleapis.com/v1alpha/{agent_name}"
+                        update_url = f"{base_endpoint}/v1alpha/{agent_name}"
 
                         print(f"  Updating agent: {agent_name}")
 

@@ -707,9 +707,9 @@ def create(
         try:
             # Process template (handles both local and remote templates)
             process_template(
-                final_agent,
-                template_path,
-                project_name,
+                agent_name=final_agent,
+                template_dir=template_path,
+                project_name=project_name,
                 deployment_target=final_deployment,
                 cicd_runner=final_cicd_runner,
                 include_data_ingestion=include_data_ingestion,

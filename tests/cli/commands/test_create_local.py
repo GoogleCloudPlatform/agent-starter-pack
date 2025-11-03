@@ -72,7 +72,7 @@ def test_create_with_local_path(
     call_args, call_kwargs = mock_process_template.call_args
 
     # The template path should now be inside a temporary directory
-    actual_template_path = call_args[1]
+    actual_template_path = call_kwargs["template_dir"]
     assert "asp_local_template_" in str(actual_template_path)
     assert actual_template_path.name == ".template"
 

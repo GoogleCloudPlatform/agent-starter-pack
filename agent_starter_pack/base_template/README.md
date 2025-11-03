@@ -73,7 +73,11 @@ make install && make playground
 {%- endif %}
 {%- if cookiecutter.is_adk %}
 | `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
-{%- endif %}
+{%- endif -%}
+{%- endif -%}
+{# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' when inspector adds HTTP-JSON support #}
+{%- if cookiecutter.is_adk_a2a and cookiecutter.deployment_target == 'cloud_run' %}
+| `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
@@ -83,6 +87,71 @@ make install && make playground
 {%- endif %}
 
 For full command options and usage, refer to the [Makefile](Makefile).
+
+{# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' condition #}
+{# when a2a-inspector adds HTTP-JSON transport support (currently JSON-RPC 2.0 only) #}
+{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+
+## Using the A2A Inspector
+
+This agent implements the [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/), enabling interoperability with agents across different frameworks and languages.
+
+The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) provides the following core features:
+- 🔍 View agent card and capabilities
+- ✅ Validate A2A specification compliance
+- 💬 Test communication with live chat interface
+- 🐛 Debug with raw JSON-RPC 2.0 message console
+
+### Local Testing
+
+1. Start your agent:
+   ```bash
+   make local-backend
+   ```
+
+2. In a separate terminal, launch the A2A Protocol Inspector:
+   ```bash
+   make inspector
+   ```
+
+3. Open http://localhost:5001 and connect to `http://localhost:8000`
+
+### Remote Testing
+
+1. Deploy your agent:
+   ```bash
+   make deploy
+   ```
+
+2. Launch the inspector:
+   ```bash
+   make inspector
+   ```
+
+3. Get an authentication token:
+   ```bash
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+   gcloud auth print-identity-token
+{%- else %}
+   gcloud auth print-access-token
+{%- endif %}
+   ```
+
+4. In the inspector UI at http://localhost:5001:
+   - Add an HTTP header with name: `Authorization`
+   - Set the value to: `Bearer <your-token-from-step-3>`
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+   - Connect to your deployed Cloud Run URL
+{%- else %}
+   - Connect to your Agent Engine URL using this format:
+     ```
+     https://us-central1-aiplatform.googleapis.com/v1beta1/projects/{PROJECT_ID}/locations/{REGION}/reasoningEngines/{ENGINE_ID}/a2a/v1/card
+     ```
+     Find your `PROJECT_ID`, `REGION`, and `ENGINE_ID` in the `latest_deployment_metadata.json` file created after deployment.
+{%- endif %}
+{%- endif %}
+{%- endif %}
 
 {% if cookiecutter.is_adk_live %}
 ## Usage

@@ -195,3 +195,6 @@ my_env.tfvars
 .saved_chats
 .env
 .requirements.txt
+
+# A2A Inspector
+tools/a2a-inspector/

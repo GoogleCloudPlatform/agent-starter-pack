@@ -17,6 +17,7 @@ import logging
 import os
 import pathlib
 import shutil
+import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
@@ -25,7 +26,7 @@ from typing import Any
 import yaml
 from cookiecutter.main import cookiecutter
 from rich.console import Console
-from rich.prompt import IntPrompt, Prompt
+from rich.prompt import Confirm, IntPrompt, Prompt
 
 from agent_starter_pack.cli.utils.version import get_current_version
 
@@ -34,6 +35,105 @@ from .remote_template import (
     get_base_template_name,
     render_and_merge_makefiles,
 )
+
+
+def add_base_template_dependencies_interactively(
+    project_path: pathlib.Path,
+    base_dependencies: list[str],
+    base_template_name: str,
+    auto_approve: bool = False,
+) -> bool:
+    """Interactively add base template dependencies using uv add.
+
+    Args:
+        project_path: Path to the project directory
+        base_dependencies: List of dependencies from base template's extra_dependencies
+        base_template_name: Name of the base template being used
+        auto_approve: Whether to skip confirmation and auto-install
+
+    Returns:
+        True if dependencies were added successfully, False otherwise
+    """
+    if not base_dependencies:
+        return True
+
+    console = Console()
+
+    # Construct dependency string once for reuse
+    deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
+
+    # Show what dependencies will be added
+    console.print(
+        f"\n✓ Base template override: Using '{base_template_name}' as foundation",
+        style="bold cyan",
+    )
+    console.print("  This requires adding the following dependencies:", style="white")
+    for dep in base_dependencies:
+        console.print(f"    • {dep}", style="yellow")
+
+    # Ask for confirmation unless auto-approve
+    should_add = True
+    if not auto_approve:
+        should_add = Confirm.ask(
+            "\n? Add these dependencies automatically?", default=True
+        )
+
+    if not should_add:
+        console.print("\n⚠️  Skipped dependency installation.", style="yellow")
+        console.print("   To add them manually later, run:", style="dim")
+        console.print(f"       cd {project_path.name}", style="dim")
+        console.print(f"       uv add {deps_str}\n", style="dim")
+        return False
+
+    # Run uv add
+    try:
+        if auto_approve:
+            console.print(
+                f"✓ Auto-installing dependencies: {', '.join(base_dependencies)}",
+                style="bold cyan",
+            )
+        else:
+            console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
+
+        # Run uv add in the project directory
+        cmd = ["uv", "add"] + base_dependencies
+        result = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Show success message
+        if not auto_approve:
+            # Show a summary line from uv output
+            output_lines = result.stderr.strip().split("\n")
+            for line in output_lines:
+                if "Resolved" in line or "Installed" in line:
+                    console.print(f"  {line}", style="dim")
+                    break
+
+        console.print("✓ Dependencies added successfully\n", style="bold green")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"\n✗ Failed to add dependencies: {e.stderr.strip()}", style="bold red"
+        )
+        console.print("  You can add them manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
+    except FileNotFoundError:
+        console.print(
+            "\n✗ uv command not found. Please install uv first.", style="bold red"
+        )
+        console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
+        console.print("\n  To add dependencies manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
 
 
 def validate_agent_directory_name(agent_dir: str) -> None:

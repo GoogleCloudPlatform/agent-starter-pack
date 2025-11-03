@@ -491,7 +491,7 @@ def create(
                         f"Available base templates: {', '.join(available_templates)}",
                         style="yellow",
                     )
-                    return
+                    raise click.Abort()
                 cli_overrides["base_template"] = base_template
 
             # Load remote template config
@@ -749,12 +749,7 @@ def create(
             # Handle base template dependencies if override was used
             if base_template and template_source_path and remote_config:
                 # Load base template config to get extra_dependencies
-                base_template_path = (
-                    pathlib.Path(__file__).parent.parent.parent
-                    / "agents"
-                    / base_template
-                    / ".template"
-                )
+                base_template_path = get_template_path(base_template, debug=debug)
                 base_config = load_template_config(base_template_path)
                 base_deps = base_config.get("settings", {}).get(
                     "extra_dependencies", []

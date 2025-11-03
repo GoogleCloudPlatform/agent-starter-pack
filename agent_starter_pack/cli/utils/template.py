@@ -26,7 +26,7 @@ from typing import Any
 import yaml
 from cookiecutter.main import cookiecutter
 from rich.console import Console
-from rich.prompt import IntPrompt, Prompt
+from rich.prompt import Confirm, IntPrompt, Prompt
 
 from agent_starter_pack.cli.utils.version import get_current_version
 
@@ -59,6 +59,9 @@ def add_base_template_dependencies_interactively(
 
     console = Console()
 
+    # Construct dependency string once for reuse
+    deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
+
     # Show what dependencies will be added
     console.print(
         f"\n✓ Base template override: Using '{base_template_name}' as foundation",
@@ -71,8 +74,6 @@ def add_base_template_dependencies_interactively(
     # Ask for confirmation unless auto-approve
     should_add = True
     if not auto_approve:
-        from rich.prompt import Confirm
-
         should_add = Confirm.ask(
             "\n? Add these dependencies automatically?", default=True
         )
@@ -81,13 +82,11 @@ def add_base_template_dependencies_interactively(
         console.print("\n⚠️  Skipped dependency installation.", style="yellow")
         console.print("   To add them manually later, run:", style="dim")
         console.print(f"       cd {project_path.name}", style="dim")
-        deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
         console.print(f"       uv add {deps_str}\n", style="dim")
         return False
 
     # Run uv add
     try:
-        deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
         if auto_approve:
             console.print(
                 f"✓ Auto-installing dependencies: {', '.join(base_dependencies)}",
@@ -124,7 +123,6 @@ def add_base_template_dependencies_interactively(
         )
         console.print("  You can add them manually:", style="yellow")
         console.print(f"      cd {project_path.name}", style="dim")
-        deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
         console.print(f"      uv add {deps_str}\n", style="dim")
         return False
     except FileNotFoundError:
@@ -134,7 +132,6 @@ def add_base_template_dependencies_interactively(
         console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
         console.print("\n  To add dependencies manually:", style="yellow")
         console.print(f"      cd {project_path.name}", style="dim")
-        deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
         console.print(f"      uv add {deps_str}\n", style="dim")
         return False
 

@@ -598,7 +598,11 @@ resource "google_monitoring_dashboard" "reasoning_engine_observability" {
   })
 
   depends_on = [
-    google_logging_metric.agent_error_categorized
+    google_logging_metric.agent_error_categorized,
+    {% if cookiecutter.agent_name == 'agentic_rag' -%}
+    google_logging_metric.agent_retriever_latency,
+    google_logging_metric.agent_retriever_document_count,
+    {%- endif %}
   ]
 }
 {% endif %}

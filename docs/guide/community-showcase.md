@@ -10,20 +10,14 @@ Discover how developers are using our templates in real-world applications.
 
 ## Featured Projects
 
-### Sherlock by [Devoteam](https://devoteam.com/)
-**Repository:** [jasonquekavalon/sherlock](https://github.com/jasonquekavalon/agentic-era-hack)
-**Blog Post:** [Building an AI Agent for error log detection and remediation at the Agentic Era Hackathon](https://www.youtube.com/watch?v=i_nb9EpTVF0)
-
-An intelligent log analysis agent for enterprises with large application landscapes that generate massive volumes of log entries. Sherlock investigates log entries with varying warning levels and messages, automatically creates Jira tickets prioritized by severity, and can even detect issues during microservice version rollouts and trigger automatic rollbacks on Cloud Run.
-
 ### Smart Learning Platform by [tensr](https://tensr.be/)
-**Repository:** [jossehuybrechts/smart-learning](https://github.com/jossehuybrechts/smart-learning)
+**Repository:** [jossehuybrechts/smart-learning](https://github.com/jossehuybrechts/smart-learning)  
 **Blog Post:** [Building a Smart Learning Platform with Google's Agent Starter Pack](https://medium.com/@tensr/9f75876bc618)
 
 An intelligent learning platform that adapts to individual learning styles and provides personalized educational content. This project demonstrates how to build a production-ready educational AI agent using the Agent Starter Pack's templates and deployment infrastructure.
 
 ### Production Monitoring Assistant by [norma](https://norma.dev/)
-**Repository:** [adilmoumni/prod-monitoring-assistant](https://github.com/adilmoumni/prod-monitoring-assistant)
+**Repository:** [adilmoumni/prod-monitoring-assistant](https://github.com/adilmoumni/prod-monitoring-assistant)  
 **Blog Post:** [Building an AI Agent for Production Monitoring at the Agentic Era Hackathon](https://medium.com/norma-dev/building-an-ai-agent-for-production-monitoring-at-the-agentic-era-hackathon-ffa283dd391d)
 
 An AI-powered production monitoring assistant built for the Agentic Era Hackathon. This agent helps DevOps teams monitor system health, detect anomalies, and provide intelligent insights for maintaining production environments.

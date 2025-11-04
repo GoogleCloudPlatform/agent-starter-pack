@@ -11,8 +11,8 @@ Discover how developers are using our templates in real-world applications.
 ## Featured Projects
 
 ### Sherlock by [Devoteam](https://devoteam.com/)
-**Repository:** [jasonquekavalon/sherlock](https://github.com/jasonquekavalon/agentic-era-hack)
-**Blog Post:** [Building an AI Agent for error log detection and remediation at the Agentic Era Hackathon](https://www.youtube.com/watch?v=i_nb9EpTVF0)
+**Repository:** [jasonquekavalon/agentic-era-hack](https://github.com/jasonquekavalon/agentic-era-hack)
+**Video:** [Building an AI Agent for error log detection and remediation at the Agentic Era Hackathon](https://www.youtube.com/watch?v=i_nb9EpTVF0)
 
 An intelligent log analysis agent for enterprises with large application landscapes that generate massive volumes of log entries. Sherlock investigates log entries with varying warning levels and messages, automatically creates Jira tickets prioritized by severity, and can even detect issues during microservice version rollouts and trigger automatic rollbacks on Cloud Run.
 

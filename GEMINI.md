@@ -158,6 +158,241 @@ Test changes across multiple dimensions:
 - **Missing Conditionals**: Wrap agent-specific code in proper `{% if %}` blocks
 - **Dependency Conflicts**: Some agents lack certain extras (e.g., adk_live + lint)
 
+## Linting and Testing Multiple Combinations
+
+### Understanding the Linting System
+
+The project uses **Ruff** for both linting (code checking) and formatting. The test suite validates that all template combinations generate properly formatted, lint-free code.
+
+**Key Command:**
+```bash
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="agent,target,--param,value" make lint-templated-agents
+```
+
+### Testing Methodology
+
+**Critical Principle:** A change to ANY template file can affect MULTIPLE agent/deployment combinations. Always test across combinations, not just one.
+
+**Common Test Combinations:**
+```bash
+# Test individual combinations
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,cloud_run" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base_react,cloud_run" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base_react,agent_engine" make lint-templated-agents
+```
+
+### Critical Whitespace Control Patterns
+
+Jinja2 whitespace control is the #1 source of linting failures. Understanding these patterns is essential.
+
+#### Pattern 1: Conditional Imports with Blank Line Separation
+
+**Problem:** Python requires blank lines to separate third-party imports from project imports. Conditional imports must handle this correctly.
+
+**Wrong - Creates extra blank line:**
+```jinja
+from opentelemetry.sdk.trace import TracerProvider, export
+{% if cookiecutter.session_type == "agent_engine" %}
+from vertexai import agent_engines
+{% endif %}
+
+from app.app_utils.gcs import create_bucket_if_not_exists
+```
+
+**Correct - Exactly one blank line:**
+```jinja
+from opentelemetry.sdk.trace import TracerProvider, export
+{% if cookiecutter.session_type == "agent_engine" -%}
+from vertexai import agent_engines
+{% endif %}
+
+{%- if cookiecutter.is_adk_a2a %}
+from {{cookiecutter.agent_directory}}.agent import app as adk_app
+
+{% endif %}
+from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
+```
+
+**Key points:**
+- Use `{%- -%}` to control BOTH sides when needed
+- The blank line AFTER the conditional import goes INSIDE the if block when needed
+- Test BOTH when condition is true AND false
+
+#### Pattern 2: Long Import Lines
+
+**Problem:** Ruff enforces line length limits. Long import statements must be split.
+
+**Wrong - Too long:**
+```python
+from app.app_utils.typing import Feedback, InputChat, Request, dumps, ensure_valid_config
+```
+
+**Correct - Split with parentheses:**
+```python
+from app.app_utils.typing import (
+    Feedback,
+    InputChat,
+    Request,
+    dumps,
+    ensure_valid_config,
+)
+```
+
+#### Pattern 3: File End Newlines
+
+**Problem:** Ruff requires exactly ONE newline at the end of every file, no more, no less.
+
+**Wrong - No newline:**
+```jinja
+agent_engine = AgentEngineApp(project_id=project_id)
+{%- endif %}
+```
+
+**Wrong - Extra newline:**
+```jinja
+agent_engine = AgentEngineApp(project_id=project_id)
+{%- endif %}
+
+```
+
+**Correct - Exactly one:**
+```jinja
+agent_engine = AgentEngineApp(project_id=project_id)
+{%- endif %}
+```
+
+**Key for nested conditionals:**
+```jinja
+agent_engine = AgentEngineApp(
+    app=adk_app,
+    artifact_service_builder=artifact_service_builder,
+)
+{%- endif -%}
+{% else %}
+
+import logging
+```
+
+Notice `{%- endif -%}` to prevent blank line before the else block.
+
+### Debugging Linting Failures
+
+**Step 1: Identify the exact error**
+```bash
+# Look for the diff output in the error message
+--- app/fast_api_app.py
++++ app/fast_api_app.py
+@@ -21,6 +21,7 @@
+ from opentelemetry import trace
+ from vertexai import agent_engines
++
+ from app.app_utils.gcs import create_bucket_if_not_exists
+```
+
+The `+` line shows what Ruff WANTS to add. In this case, it wants a blank line after `agent_engines`.
+
+**Step 2: Find the generated file**
+```bash
+# Generated files are in target/
+cat target/project-name/app/fast_api_app.py | head -30
+```
+
+**Step 3: Trace back to template**
+```bash
+# Find the template source
+find agent_starter_pack -name "fast_api_app.py" -type f
+```
+
+**Step 4: Check BOTH branches of conditionals**
+- If `{% if condition %}` exists, test with condition true AND false
+- Use different agent combinations to toggle different conditions
+
+### Common Linting Errors and Fixes
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| Missing blank line between imports | Conditional import without proper spacing | Add blank line inside `{% if %}` block with correct `{%- -%}` control |
+| Extra blank line between imports | Jinja block creating unwanted newline | Use `{%- endif -%}` to strip both sides |
+| Missing newline at end of file | Template ends without final newline | Ensure template has exactly one blank line at end |
+| Extra blank line at end of file | Multiple newlines or `{% endif %}` creating extra line | Use `{%- endif -%}` pattern |
+| Line too long | Import statement exceeds limit | Split into multi-line with parentheses |
+
+### Files Most Prone to Linting Issues
+
+1. **`agent_engine_app.py`** (deployment_targets/agent_engine/)
+   - Multiple conditional paths (adk_live, adk_a2a, regular)
+   - End-of-file newline issues
+
+2. **`fast_api_app.py`** (deployment_targets/cloud_run/)
+   - Conditional imports (session_type, is_adk_a2a)
+   - Long import lines
+   - Complex nested conditionals
+
+3. **Any file with `{% if cookiecutter.agent_name == "..." %}`**
+   - Different agents trigger different code paths
+   - Must test multiple agent types
+
+### Testing Workflow for Template Changes
+
+**Before committing ANY template change:**
+
+```bash
+# 1. Test the specific combination you're working on
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
+
+# 2. Test related combinations (same deployment, different agents)
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,cloud_run" make lint-templated-agents
+
+# 3. Test alternate code paths (different deployment, session types)
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+
+# 4. If modifying deployment target files, test all agents with that target
+# For agent_engine changes:
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base_react,agent_engine" make lint-templated-agents
+```
+
+### Quick Reference: Whitespace Control Cheat Sheet
+
+```jinja
+# Remove whitespace BEFORE the tag
+{%- if condition %}
+
+# Remove whitespace AFTER the tag
+{% if condition -%}
+
+# Remove whitespace on BOTH sides
+{%- if condition -%}
+
+# Typical pattern for conditional imports
+{% if condition -%}
+import something
+{% endif %}
+
+# Typical pattern for conditional code blocks with blank line before
+{%- if condition %}
+
+some_code()
+{%- endif %}
+
+# Pattern for preventing blank line between consecutive conditionals
+{%- endif -%}
+{%- if next_condition %}
+```
+
+**Golden Rule:** After ANY template change affecting imports, conditionals, or file endings, test AT LEAST 3 combinations:
+1. The target combination
+2. An alternate agent with same deployment
+3. An alternate deployment with same agent
+
 ## File Modification Checklist
 
 -   [ ] **Jinja Syntax:** All `{% if %}` and `{% for %}` blocks correctly closed?

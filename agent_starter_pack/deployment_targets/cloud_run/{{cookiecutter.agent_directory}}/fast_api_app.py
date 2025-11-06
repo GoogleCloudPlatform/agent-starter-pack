@@ -35,9 +35,9 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai.agent_engines import _utils
 from websockets.exceptions import ConnectionClosedError
 
-from .agent import root_agent
-from .utils.tracing import CloudTraceLoggingSpanExporter
-from .utils.typing import Feedback
+from .agent import app as adk_app
+from .app_utils.tracing import CloudTraceLoggingSpanExporter
+from .app_utils.typing import Feedback
 
 app = FastAPI()
 app.add_middleware(
@@ -78,11 +78,10 @@ memory_service = InMemoryMemoryService()
 
 # Initialize ADK runner
 runner = Runner(
-    agent=root_agent,
+    app=adk_app,
     session_service=session_service,
     artifact_service=artifact_service,
     memory_service=memory_service,
-    app_name="live-app",
 )
 
 
@@ -320,16 +319,16 @@ from google.adk.cli.fast_api import get_fast_api_app
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
-{%- if cookiecutter.session_type == "agent_engine" %}
+{% if cookiecutter.session_type == "agent_engine" -%}
 from vertexai import agent_engines
-{%- endif %}
+{% endif %}
 
-{% if cookiecutter.is_adk_a2a -%}
+{%- if cookiecutter.is_adk_a2a %}
 from {{cookiecutter.agent_directory}}.agent import app as adk_app
-{% endif -%}
-from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
-from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.utils.typing import Feedback
+{%- endif %}
+from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
+from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
@@ -453,8 +452,14 @@ from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
 
 from {{cookiecutter.agent_directory}}.agent import agent
-from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.utils.typing import Feedback, InputChat, Request, dumps, ensure_valid_config
+from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.typing import (
+    Feedback,
+    InputChat,
+    Request,
+    dumps,
+    ensure_valid_config,
+)
 
 # Initialize FastAPI app and logging
 app = FastAPI(

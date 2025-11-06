@@ -60,7 +60,7 @@ app.state.config = {
     "project_id": None,
     "location": "us-central1",
     "local_agent_path": "..agent.root_agent",
-    "agent_engine_class_path": "..agent_engine_app.AgentEngineApp",
+    "agent_engine_object_path": "..agent_engine_app.agent_engine",
 }
 
 
@@ -299,14 +299,12 @@ def get_connect_and_run_callable(
             )
         else:
             # Local agent engine mode
-            # Dynamically import agent and engine class
-            agent_callable = _dynamic_import(config["local_agent_path"])
+            # Dynamically import the pre-configured agent_engine object
+            agent_engine = _dynamic_import(config["agent_engine_object_path"])
             logging.info(
-                f"Starting local agent engine with callable: {agent_callable.__name__ if hasattr(agent_callable, '__name__') else agent_callable}"
+                f"Starting local agent engine with object: {type(agent_engine).__name__}"
             )
 
-            AgentEngineApp = _dynamic_import(config["agent_engine_class_path"])
-            agent_engine = AgentEngineApp(agent=agent_callable)
             adapter = WebSocketToQueueAdapter(websocket, agent_engine)
 
         logging.info("Starting bidirectional communication with agent engine")
@@ -417,10 +415,10 @@ if __name__ == "__main__":
         help="Python path to local agent callable (e.g., 'app.agent.root_agent')",
     )
     parser.add_argument(
-        "--agent-engine-class",
+        "--agent-engine-object",
         type=str,
-        default="..agent_engine_app.AgentEngineApp",
-        help="Python path to agent engine class",
+        default="..agent_engine_app.agent_engine",
+        help="Python path to agent engine object instance",
     )
     parser.add_argument(
         "--port",
@@ -444,7 +442,7 @@ if __name__ == "__main__":
         "project_id": None,
         "location": "us-central1",
         "local_agent_path": args.local_agent,
-        "agent_engine_class_path": args.agent_engine_class,
+        "agent_engine_object_path": args.agent_engine_object,
     }
 
     if args.mode == "remote":
@@ -512,7 +510,7 @@ if __name__ == "__main__":
     else:
         print("Starting server in LOCAL mode")
         print(f"  Using agent: {config['local_agent_path']}")
-        print(f"  Using agent engine class: {config['agent_engine_class_path']}")
+        print(f"  Using agent engine object: {config['agent_engine_object_path']}")
 
     # Store configuration in app state
     app.state.config = config

@@ -12,7 +12,7 @@ Follow these steps to execute load tests on your local machine:
 Launch the FastAPI server in a separate terminal:
 
 ```bash
-uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **2. (In another tab) Create virtual environment with Locust**
@@ -92,7 +92,7 @@ Follow these steps to execute load tests on your local machine:
 Launch the FastAPI server in a separate terminal:
 
 ```bash
-uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **2. (In another tab) Create virtual environment with Locust**

@@ -18,6 +18,7 @@ import os
 import google
 import vertexai
 from google.adk.agents import Agent
+from google.adk.apps.app import App
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
@@ -115,3 +116,5 @@ root_agent = Agent(
     instruction=instruction,
     tools=[retrieve_docs],
 )
+
+app = App(root_agent=root_agent, name="app")

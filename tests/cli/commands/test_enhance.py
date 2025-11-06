@@ -291,10 +291,10 @@ class TestEnhanceAgentEngineAppGeneration:
     @pytest.mark.parametrize(
         "base_template,expected_import",
         [
-            ("adk_base", "root_agent"),
-            ("adk_live", "root_agent"),
+            ("adk_base", "app as adk_app"),
+            ("adk_live", "app as adk_app"),
             ("langgraph_base_react", "agent"),
-            ("agentic_rag", "root_agent"),  # agentic_rag is ADK-based
+            ("agentic_rag", "app as adk_app"),  # agentic_rag is ADK-based
         ],
     )
     def test_agent_engine_app_has_correct_import(
@@ -312,11 +312,14 @@ class TestEnhanceAgentEngineAppGeneration:
             # Create appropriate agent.py content based on template type
             if "adk" in base_template or base_template == "agentic_rag":
                 agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+app = App(root_agent=root_agent, name="app")
 """
             else:
                 agent_content = """from langchain_core.runnables import RunnablePassthrough
@@ -375,11 +378,14 @@ agent = RunnablePassthrough()
             agent_dir.mkdir()
             agent_file = agent_dir / "agent.py"
             agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+app = App(root_agent=root_agent, name="app")
 """
             agent_file.write_text(agent_content)
 
@@ -418,7 +424,7 @@ root_agent = Agent(
 
             # Verify the import uses the custom directory name
             content = agent_engine_app.read_text()
-            expected_import_line = "from my_custom_agent.agent import root_agent"
+            expected_import_line = "from my_custom_agent.agent import app as adk_app"
             assert expected_import_line in content, (
                 f"Expected '{expected_import_line}' in agent_engine_app.py"
             )
@@ -571,11 +577,14 @@ root_agent = Agent(
             agent_file = agent_dir / "agent.py"
 
             agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+app = App(root_agent=root_agent, name="app")
 """
             agent_file.write_text(agent_content)
 
@@ -600,7 +609,7 @@ root_agent = Agent(
 
             # Verify Cloud Run specific files were populated
             cloud_run_files = [
-                agent_dir / "server.py",  # Cloud Run server
+                agent_dir / "fast_api_app.py",  # Cloud Run FastAPI app
                 pathlib.Path("Dockerfile"),  # Cloud Run Dockerfile
                 pathlib.Path("deployment") / "terraform" / "service.tf",
             ]

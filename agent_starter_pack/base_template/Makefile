@@ -8,7 +8,7 @@ install:
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %}
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}
 {%- else %}
-	uv sync --dev{% if not cookiecutter.is_adk and not cookiecutter.is_adk_live %} --extra streamlit{%- endif %}{% if cookiecutter.is_adk_live %} && (cd frontend && npm install){%- endif %}
+	uv sync{% if cookiecutter.is_adk_live %} && (cd frontend && npm install){%- endif %}
 {%- endif %}
 
 # ==============================================================================
@@ -24,6 +24,9 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("playground")}}
 {%- endif %}
 {%- else %}
+{%- if not cookiecutter.is_adk and not cookiecutter.is_adk_live %}
+	uv sync --extra streamlit
+{%- endif %}
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
@@ -38,15 +41,15 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	@echo "==============================================================================="
 {%- if cookiecutter.is_adk_live %}
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 {%- else %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- endif %}
 {%- elif cookiecutter.is_adk %}
 	uv run adk web . --port 8501 --reload_agents
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload &
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
 {%- endif %}
 	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 {%- endif %}
@@ -88,9 +91,9 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 # Launch local development server with hot-reload
 local-backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- else %}
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 {%- endif %}
 {%- endif %}
 {%- if cookiecutter.is_adk_live %}
@@ -125,7 +128,7 @@ playground-remote: build-frontend-if-needed
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 	@echo "| ☁️  Connected to deployed agent engine                                      |"
 	@echo "==============================================================================="
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode remote
 {%- endif %}
 {%- endif %}
 {%- if cookiecutter.is_adk_live and cookiecutter.deployment_target == 'agent_engine' %}
@@ -242,9 +245,13 @@ deploy:
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
-	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt) && \
-	uv run -m {{cookiecutter.agent_directory}}.agent_engine_app
+	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt) && \
+	uv run -m {{cookiecutter.agent_directory}}.app_utils.deploy \
+		--source-packages=./{{cookiecutter.agent_directory}} \
+		--entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
+		--entrypoint-object=agent_engine \
+		--requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt
 {%- endif %}
 
 # Alias for 'make deploy' for backward compatibility
@@ -290,6 +297,7 @@ data-ingestion:
 
 # Run unit and integration tests
 test:
+	uv sync --dev{% if not cookiecutter.is_adk and not cookiecutter.is_adk_live %} --extra streamlit{%- endif %}
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

@@ -33,7 +33,7 @@ env-specific-task:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run uvicorn test_custom.server:app --host localhost --port 8000 --reload
+	uv run uvicorn test_custom.fast_api_app:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -76,6 +76,7 @@ setup-dev-env:
 
 # Run unit and integration tests
 test:
+	uv sync --dev --extra streamlit
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

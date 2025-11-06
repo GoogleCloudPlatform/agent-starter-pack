@@ -47,7 +47,7 @@ def start_server() -> subprocess.Popen[str]:
         sys.executable,
         "-m",
         "uvicorn",
-        "app.utils.expose_app:app",
+        "app.app_utils.expose_app:app",
         "--host",
         "0.0.0.0",
         "--port",
@@ -219,9 +219,6 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
 import os
 
 import pytest
-import pytest_asyncio
-from google.adk.artifacts import InMemoryArtifactService
-from google.adk.sessions import InMemorySessionService
 
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 from tests.helpers import (
@@ -236,7 +233,6 @@ import logging
 import pytest
 from google.adk.events.event import Event
 
-from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- else %}
 
@@ -249,28 +245,23 @@ from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- if cookiecutter.is_adk_a2a %}
 
 
-@pytest_asyncio.fixture
-async def agent_app() -> AgentEngineApp:
+@pytest.fixture
+def agent_app() -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
-    app = await AgentEngineApp.create(
-        artifact_service_builder=lambda: InMemoryArtifactService(),
-        session_service_builder=lambda: InMemorySessionService(),
-    )
-    app.set_up()
-    return app
+    from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
+
+    agent_engine.set_up()
+    return agent_engine
 {%- else %}
 
 
 @pytest.fixture
 def agent_app() -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
-{%- if cookiecutter.is_adk %}
-    app = AgentEngineApp(agent=root_agent)
-{%- else %}
-    app = AgentEngineApp()
-{%- endif %}
-    app.set_up()
-    return app
+    from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
+
+    agent_engine.set_up()
+    return agent_engine
 {% endif %}
 {%- if cookiecutter.is_adk_a2a %}
 

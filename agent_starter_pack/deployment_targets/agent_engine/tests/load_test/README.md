@@ -16,13 +16,13 @@ The load test simulates realistic user interactions by:
 Launch the expose app server in a separate terminal, pointing to your deployed agent engine:
 
 ```bash
-uv run python -m app.utils.expose_app --mode remote --remote-id <your-agent-engine-id>
+uv run python -m app.app_utils.expose_app --mode remote --remote-id <your-agent-engine-id>
 ```
 
 Or if you have `deployment_metadata.json` in your project root:
 
 ```bash
-uv run python -m app.utils.expose_app --mode remote
+uv run python -m app.app_utils.expose_app --mode remote
 ```
 
 **2. Execute the Load Test:**

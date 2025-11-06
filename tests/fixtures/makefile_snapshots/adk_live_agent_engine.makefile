@@ -5,7 +5,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev && (cd frontend && npm install)
+	uv sync && (cd frontend && npm install)
 
 # ==============================================================================
 # Playground Targets
@@ -19,7 +19,7 @@ playground: build-frontend-if-needed
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 	@echo "| 💡 Try asking: Tell me about your capabilities|"
 	@echo "==============================================================================="
-	uv run python -m test_adk_live.utils.expose_app --mode local --local-agent test_adk_live.agent.root_agent
+	uv run python -m test_adk_live.app_utils.expose_app --mode local --local-agent test_adk_live.agent.root_agent
 
 # ==============================================================================
 # Local Development Commands
@@ -27,7 +27,7 @@ playground: build-frontend-if-needed
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run python -m test_adk_live.utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
+	uv run python -m test_adk_live.app_utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
 
 # ==============================================================================
 # ADK Live Commands
@@ -58,7 +58,7 @@ playground-remote: build-frontend-if-needed
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 	@echo "| ☁️  Connected to deployed agent engine                                      |"
 	@echo "==============================================================================="
-	uv run python -m test_adk_live.utils.expose_app --mode remote
+	uv run python -m test_adk_live.app_utils.expose_app --mode remote
 
 # Start the frontend UI separately for development (requires backend running separately)
 ui:
@@ -86,9 +86,13 @@ playground-dev:
 # Deploy the agent remotely
 deploy:
 	# Export dependencies to requirements file using uv export.
-	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt) && \
-	uv run -m test_adk_live.agent_engine_app
+	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_adk_live/app_utils/.requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > test_adk_live/app_utils/.requirements.txt) && \
+	uv run -m test_adk_live.app_utils.deploy \
+		--source-packages=./test_adk_live \
+		--entrypoint-module=test_adk_live.agent_engine_app \
+		--entrypoint-object=agent_engine \
+		--requirements-file=test_adk_live/app_utils/.requirements.txt
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -109,6 +113,7 @@ setup-dev-env:
 
 # Run unit and integration tests
 test:
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

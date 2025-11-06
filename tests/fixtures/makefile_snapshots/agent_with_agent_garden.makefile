@@ -5,7 +5,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev
+	uv sync
 
 # ==============================================================================
 # Playground Targets
@@ -28,7 +28,7 @@ playground:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run uvicorn test_garden.server:app --host localhost --port 8000 --reload
+	uv run uvicorn test_garden.fast_api_app:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -71,6 +71,7 @@ setup-dev-env:
 
 # Run unit and integration tests
 test:
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

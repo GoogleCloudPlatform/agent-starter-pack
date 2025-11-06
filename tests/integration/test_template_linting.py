@@ -95,8 +95,11 @@ def test_template_linting(
             ["uv", "run", "codespell"],
             ["uv", "run", "ruff", "check", ".", "--diff"],
             ["uv", "run", "ruff", "format", ".", "--check", "--diff"],
-            ["uv", "run", "mypy", "."],
         ]
+
+        # Only add mypy if SKIP_MYPY is not set
+        if not os.getenv("SKIP_MYPY"):
+            lint_commands.append(["uv", "run", "mypy", "."])
 
         for cmd in lint_commands:
             try:

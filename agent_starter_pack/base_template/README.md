@@ -12,11 +12,11 @@ This project is organized as follows:
 ├── {{cookiecutter.agent_directory}}/                 # Core application code
 │   ├── agent.py         # Main agent logic
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-│   ├── server.py        # FastAPI Backend server
+│   ├── fast_api_app.py  # FastAPI Backend server
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 │   ├── agent_engine_app.py # Agent Engine application logic
 {%- endif %}
-│   └── utils/           # Utility functions and helpers
+│   └── app_utils/       # App utilities and helpers
 {%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
 ├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build
 {%- elif cookiecutter.cicd_runner == 'github_actions' %}

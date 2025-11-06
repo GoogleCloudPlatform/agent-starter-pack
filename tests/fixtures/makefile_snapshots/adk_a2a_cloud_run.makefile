@@ -5,7 +5,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev
+	uv sync
 
 # ==============================================================================
 # Playground Targets
@@ -28,7 +28,7 @@ playground:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run uvicorn test_a2a.server:app --host localhost --port 8000 --reload
+	uv run uvicorn test_a2a.fast_api_app:app --host localhost --port 8000 --reload
 # TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' condition
 # when a2a-inspector adds HTTP-JSON transport support (currently JSON-RPC 2.0 only)
 
@@ -123,6 +123,7 @@ setup-dev-env:
 
 # Run unit and integration tests
 test:
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

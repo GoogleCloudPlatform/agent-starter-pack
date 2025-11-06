@@ -17,6 +17,6 @@ example_question: "What's the weather in San Francisco?"
 settings:
   requires_data_ingestion: false
   deployment_targets: ["agent_engine", "cloud_run"]
-  extra_dependencies: ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9"]
+  extra_dependencies: ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9", "nest-asyncio>=1.6.0,<2.0.0"]
   tags: ["adk", "a2a"]
   frontend_type: "None"

@@ -5,7 +5,7 @@
 # Install dependencies using uv package manager
 install:
 	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/0.8.13/install.sh | sh; source $HOME/.local/bin/env; }
-	uv sync --dev --extra streamlit
+	uv sync
 
 # ==============================================================================
 # Playground Targets
@@ -13,12 +13,13 @@ install:
 
 # Launch local dev playground
 playground:
+	uv sync --extra streamlit
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: What's in the knowledge base?|"
 	@echo "==============================================================================="
-	uv run uvicorn test_rag.server:app --host localhost --port 8000 --reload &
+	uv run uvicorn test_rag.fast_api_app:app --host localhost --port 8000 --reload &
 	uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 
 # ==============================================================================
@@ -27,7 +28,7 @@ playground:
 
 # Launch local development server with hot-reload
 local-backend:
-	uv run uvicorn test_rag.server:app --host localhost --port 8000 --reload
+	uv run uvicorn test_rag.fast_api_app:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -86,6 +87,7 @@ data-ingestion:
 
 # Run unit and integration tests
 test:
+	uv sync --dev --extra streamlit
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

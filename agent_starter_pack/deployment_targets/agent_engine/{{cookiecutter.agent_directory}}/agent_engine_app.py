@@ -16,15 +16,15 @@
 {%- if cookiecutter.is_adk %}
 {%- if cookiecutter.is_adk_a2a %}
 import asyncio
-import copy
 {%- endif %}
 import logging
 import os
 from typing import Any
 
-import click
 import google.auth
-import vertexai
+{%- if cookiecutter.is_adk_a2a %}
+import nest_asyncio
+{%- endif %}
 {%- if cookiecutter.is_adk_a2a %}
 from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
@@ -39,55 +39,61 @@ from google.adk.sessions import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, export
-from vertexai._genai.types import AgentEngine, AgentEngineConfig{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
 {%- if cookiecutter.is_adk_live %}
-from vertexai.preview.reasoning_engines import AdkApp
+from vertexai.agent_engines.templates.adk import AdkApp
+from vertexai.preview.reasoning_engines import AdkApp as PreviewAdkApp
 {%- elif cookiecutter.is_adk_a2a %}
 from vertexai.preview.reasoning_engines import A2aAgent
 {%- else %}
 from vertexai.agent_engines.templates.adk import AdkApp
 {%- endif %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_adk or cookiecutter.is_adk_live %}
 
-from {{cookiecutter.agent_directory}}.agent import app
+from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- else %}
 
-from {{cookiecutter.agent_directory}}.agent import root_agent
 {%- endif %}
-from {{cookiecutter.agent_directory}}.utils.deployment import (
-    parse_env_vars,
-    print_deployment_success,
-    write_deployment_metadata,
-)
-from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
-from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.utils.typing import Feedback
+from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 {%- if cookiecutter.is_adk_a2a %}
 
 
 class AgentEngineApp(A2aAgent):
     @staticmethod
-    async def create(
-        artifact_service_builder: Any = None,
-        session_service_builder: Any = None,
+    def create(
+        app: App | None = None,
+        artifact_service: Any = None,
+        session_service: Any = None,
     ) -> Any:
-        """Create an AgentEngineApp instance."""
+        """Create an AgentEngineApp instance.
+
+        This method detects whether it's being called in an async context (like notebooks
+        or Agent Engine) and handles agent card creation appropriately.
+        """
+        if app is None:
+            app = adk_app
 
         def create_runner() -> Runner:
             """Create a Runner for the AgentEngineApp."""
             return Runner(
                 app=app,
-                session_service=session_service_builder()
-                if session_service_builder
-                else None,
-                artifact_service=artifact_service_builder()
-                if artifact_service_builder
-                else None,
+                session_service=session_service,
+                artifact_service=artifact_service,
             )
+
+        # Build agent card in an async context if needed
+        try:
+            asyncio.get_running_loop()
+            # Running event loop detected - enable nested asyncio.run()
+            nest_asyncio.apply()
+        except RuntimeError:
+            pass
+
+        agent_card = asyncio.run(AgentEngineApp.build_agent_card(app=app))
 
         return AgentEngineApp(
             agent_executor_builder=lambda: A2aAgentExecutor(runner=create_runner()),
-            agent_card=await AgentEngineApp.build_agent_card(app=app),
+            agent_card=agent_card,
         )
 
     @staticmethod
@@ -111,8 +117,6 @@ class AgentEngineApp(AdkApp):
 {%- endif %}
     def set_up(self) -> None:
         """Set up logging and tracing for the agent engine app."""
-        import logging
-
         super().set_up()
         logging.basicConfig(level=logging.INFO)
         logging_client = google_cloud_logging.Client()
@@ -138,19 +142,51 @@ class AgentEngineApp(AdkApp):
         """
         operations = super().register_operations()
         operations[""] = operations.get("", []) + ["register_feedback"]
+{%- if cookiecutter.is_adk_live %}
+        # Add bidi_stream_query for adk_live
+        operations["bidi_stream"] = ["bidi_stream_query"]
+{%- endif %}
         return operations
 {%- if cookiecutter.is_adk_a2a %}
 
     def clone(self) -> "AgentEngineApp":
         """Returns a clone of the Agent Engine application."""
-        template_attributes = self._tmpl_attrs
-        return self.__class__(
-            agent_card=copy.deepcopy(self.agent_card),
-            agent_executor_builder=self._tmpl_attrs.get("agent_executor_builder"),
-        )
+        return self
+{%- endif %}
+{%- if cookiecutter.is_adk_live %}
+
+
+# Add bidi_stream_query support from preview AdkApp for adk_live
+AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 {%- endif %}
 
+
+_, project_id = google.auth.default()
+artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
+{%- if cookiecutter.is_adk_a2a %}
+agent_engine = AgentEngineApp.create(
+    app=adk_app,
+    artifact_service=(
+        GcsArtifactService(bucket_name=artifacts_bucket_name)
+        if artifacts_bucket_name
+        else None
+    ),
+    session_service=InMemorySessionService(),
+)
 {%- else %}
+artifact_service_builder = (
+    lambda: GcsArtifactService(bucket_name=artifacts_bucket_name)
+    if artifacts_bucket_name
+    else None
+)
+
+agent_engine = AgentEngineApp(
+    app=adk_app,
+    artifact_service_builder=artifact_service_builder,
+)
+{%- endif -%}
+{% else %}
+
 import logging
 import os
 from collections.abc import Iterable, Mapping
@@ -158,22 +194,13 @@ from typing import (
     Any,
 )
 
-import click
 import google.auth
-import vertexai
 from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
-from vertexai._genai.types import AgentEngine, AgentEngineConfig
 
-from {{cookiecutter.agent_directory}}.utils.deployment import (
-    parse_env_vars,
-    print_deployment_success,
-    write_deployment_metadata,
-)
-from {{cookiecutter.agent_directory}}.utils.gcs import create_bucket_if_not_exists
-from {{cookiecutter.agent_directory}}.utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
+from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
 
 
 class AgentEngineApp:
@@ -274,188 +301,8 @@ class AgentEngineApp:
             "": ["query", "register_feedback"],
             "stream": ["stream_query"],
         }
+
+
+_, project_id = google.auth.default()
+agent_engine = AgentEngineApp(project_id=project_id)
 {%- endif %}
-
-
-@click.command()
-@click.option(
-    "--project",
-    default=None,
-    help="GCP project ID (defaults to application default credentials)",
-)
-@click.option(
-    "--location",
-    default="us-central1",
-    help="GCP region (defaults to us-central1)",
-)
-@click.option(
-    "--agent-name",
-    default="{{cookiecutter.project_name}}",
-    help="Name for the agent engine",
-)
-@click.option(
-    "--requirements-file",
-    default=".requirements.txt",
-    help="Path to requirements.txt file",
-)
-@click.option(
-    "--extra-packages",
-    multiple=True,
-    default=["./{{cookiecutter.agent_directory}}"],
-    help="Additional packages to include",
-)
-@click.option(
-    "--set-env-vars",
-    default=None,
-    help="Comma-separated list of environment variables in KEY=VALUE format",
-)
-@click.option(
-    "--service-account",
-    default=None,
-    help="Service account email to use for the agent engine",
-)
-@click.option(
-    "--staging-bucket-uri",
-    default=None,
-    help="GCS bucket URI for staging files (defaults to gs://{project}-agent-engine)",
-)
-@click.option(
-    "--artifacts-bucket-name",
-    default=None,
-    help="GCS bucket name for artifacts (defaults to gs://{project}-agent-engine)",
-)
-def deploy_agent_engine_app(
-    project: str | None,
-    location: str,
-    agent_name: str,
-    requirements_file: str,
-    extra_packages: tuple[str, ...],
-    set_env_vars: str | None,
-    service_account: str | None,
-    staging_bucket_uri: str | None,
-    artifacts_bucket_name: str | None,
-) -> AgentEngine:
-    """Deploy the agent engine app to Vertex AI."""
-
-    logging.basicConfig(level=logging.INFO)
-
-    # Parse environment variables if provided
-    env_vars = parse_env_vars(set_env_vars)
-
-    if not project:
-        _, project = google.auth.default()
-    if not staging_bucket_uri:
-        staging_bucket_uri = f"gs://{project}-agent-engine"
-    if not artifacts_bucket_name:
-        artifacts_bucket_name = f"{project}-agent-engine"
-
-{%- if "adk" in cookiecutter.tags %}
-    create_bucket_if_not_exists(
-        bucket_name=artifacts_bucket_name, project=project, location=location
-    )
-{%- endif %}
-    create_bucket_if_not_exists(
-        bucket_name=staging_bucket_uri, project=project, location=location
-    )
-
-    print("""
-    ╔═══════════════════════════════════════════════════════════╗
-    ║                                                           ║
-    ║   🤖 DEPLOYING AGENT TO VERTEX AI AGENT ENGINE 🤖         ║
-    ║                                                           ║
-    ╚═══════════════════════════════════════════════════════════╝
-    """)
-
-    extra_packages_list = list(extra_packages)
-
-    # Initialize vertexai client
-    client = vertexai.Client(
-        project=project,
-        location=location,
-    )
-    vertexai.init(project=project, location=location)
-
-    # Read requirements
-    with open(requirements_file) as f:
-        requirements = f.read().strip().split("\n")
-{%- if cookiecutter.is_adk_a2a %}
-    agent_engine = asyncio.run(
-        AgentEngineApp.create(
-            artifact_service_builder=lambda: GcsArtifactService(
-                bucket_name=artifacts_bucket_name
-            ),
-            session_service_builder=lambda: InMemorySessionService(),
-        )
-    )
-{%- elif cookiecutter.is_adk %}
-    agent_engine = AgentEngineApp(
-        agent=root_agent,
-        artifact_service_builder=lambda: GcsArtifactService(
-            bucket_name=artifacts_bucket_name
-        ),
-    )
-{%- else %}
-    agent_engine = AgentEngineApp(project_id=project)
-{%- endif %}
-    # Set worker parallelism to 1
-    env_vars["NUM_WORKERS"] = "1"
-
-    # Common configuration for both create and update operations
-    labels: dict[str, str] = {}
-{%- if cookiecutter.agent_garden %}
-{%- if cookiecutter.agent_sample_id and cookiecutter.agent_sample_publisher %}
-    labels["vertex-agent-sample-id"] = "{{cookiecutter.agent_sample_id}}"
-    labels["vertex-agent-sample-publisher"] = "{{cookiecutter.agent_sample_publisher}}"
-    labels["deployed-with"] = "agent-garden"
-{%- endif %}
-{%- endif %}
-
-    config = AgentEngineConfig(
-        display_name=agent_name,
-        description="{{cookiecutter.agent_description}}",
-        extra_packages=extra_packages_list,
-        env_vars=env_vars,
-        service_account=service_account,
-        requirements=requirements,
-        staging_bucket=staging_bucket_uri,
-        labels=labels,
-        gcs_dir_name=agent_name,
-{%- if cookiecutter.is_adk_live %}
-        agent_server_mode=AgentServerMode.EXPERIMENTAL,  # Enable bidi streaming
-        resource_limits={"cpu": "4", "memory": "8Gi"},
-{%- endif %}
-    )
-
-    agent_config = {
-        "agent": agent_engine,
-        "config": config,
-    }
-    logging.info(f"Agent config: {agent_config}")
-
-    # Check if an agent with this name already exists
-    existing_agents = list(client.agent_engines.list())
-    matching_agents = [
-        agent
-        for agent in existing_agents
-        if agent.api_resource.display_name == agent_name
-    ]
-
-    if matching_agents:
-        # Update the existing agent with new configuration
-        logging.info(f"\n📝 Updating existing agent: {agent_name}")
-        remote_agent = client.agent_engines.update(
-            name=matching_agents[0].api_resource.name, **agent_config
-        )
-    else:
-        # Create a new agent if none exists
-        logging.info(f"\n🚀 Creating new agent: {agent_name}")
-        remote_agent = client.agent_engines.create(**agent_config)
-
-    write_deployment_metadata(remote_agent)
-    print_deployment_success(remote_agent, location, project)
-
-    return remote_agent
-
-
-if __name__ == "__main__":
-    deploy_agent_engine_app()

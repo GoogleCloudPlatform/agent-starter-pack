@@ -16,6 +16,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -666,6 +667,9 @@ def process_template(
     logging.debug(f"Include pipeline: {datastore}")
     logging.debug(f"Output directory: {output_dir}")
 
+    # Create console for user feedback
+    console = Console()
+
     def get_agent_directory(
         template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
     ) -> str:
@@ -889,6 +893,59 @@ def process_template(
             )
             with open(llm_txt_path, encoding="utf-8") as txt_file:
                 llm_txt_content = txt_file.read()
+
+            # For remote templates, inject app object if missing (backward compatibility)
+            if is_remote:
+                agent_directory = get_agent_directory(template_config, cli_overrides)
+                agent_py_path = project_template / agent_directory / "agent.py"
+                if agent_py_path.exists():
+                    try:
+                        content = agent_py_path.read_text(encoding="utf-8")
+                        # Check for app object (assignment, function definition, or import)
+                        app_patterns = [
+                            r"^\s*app\s*=",  # assignment: app = ...
+                            r"^\s*def\s+app\(",  # function: def app(...)
+                            r"from\s+.*\s+import\s+.*\bapp\b",  # import: from ... import app
+                        ]
+                        has_app = any(
+                            re.search(pattern, content, re.MULTILINE)
+                            for pattern in app_patterns
+                        )
+
+                        if not has_app:
+                            console.print(
+                                f"ℹ️  Adding 'app' object to [cyan]{agent_directory}/agent.py[/cyan] for backward compatibility",
+                                style="dim",
+                            )
+                            # Inject app object at the end of the file
+                            content += (
+                                '\n\napp = App(root_agent=root_agent, name="app")\n'
+                            )
+
+                            # Add App import if not already present
+                            if "from google.adk.apps.app import App" not in content:
+                                # Find the last import line
+                                import_pattern = r"^(from|import)\s+"
+                                lines = content.split("\n")
+                                last_import_idx = -1
+                                for i, line in enumerate(lines):
+                                    if re.match(import_pattern, line.strip()):
+                                        last_import_idx = i
+
+                                if last_import_idx >= 0:
+                                    # Insert after last import
+                                    lines.insert(
+                                        last_import_idx + 1,
+                                        "from google.adk.apps.app import App",
+                                    )
+                                    content = "\n".join(lines)
+
+                            # Write the modified content back
+                            agent_py_path.write_text(content, encoding="utf-8")
+                    except Exception as e:
+                        logging.warning(
+                            f"Could not inject app object into {agent_directory}/agent.py: {type(e).__name__}: {e}"
+                        )
 
             cookiecutter_config = {
                 "project_name": project_name,

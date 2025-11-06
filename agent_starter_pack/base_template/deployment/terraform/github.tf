@@ -98,13 +98,6 @@ resource "github_actions_variable" "cicd_project_id" {
   depends_on    = [github_repository.repo]
 }
 
-resource "github_actions_variable" "bucket_name_load_test_results" {
-  repository    = var.repository_name
-  variable_name = "BUCKET_NAME_LOAD_TEST_RESULTS"
-  value         = google_storage_bucket.bucket_load_test_results.name
-  depends_on    = [github_repository.repo]
-}
-
 resource "github_actions_variable" "app_sa_email_staging" {
   repository    = var.repository_name
   variable_name = "APP_SA_EMAIL_STAGING"
@@ -122,14 +115,14 @@ resource "github_actions_variable" "app_sa_email_prod" {
 resource "github_actions_variable" "logs_bucket_name_staging" {
   repository    = var.repository_name
   variable_name = "LOGS_BUCKET_NAME_STAGING"
-  value         = google_storage_bucket.logs_data_bucket[var.staging_project_id].url
+  value         = google_storage_bucket.logs_data_bucket[var.staging_project_id].name
   depends_on    = [github_repository.repo]
 }
 
 resource "github_actions_variable" "logs_bucket_name_prod" {
   repository    = var.repository_name
   variable_name = "LOGS_BUCKET_NAME_PROD"
-  value         = google_storage_bucket.logs_data_bucket[var.prod_project_id].url
+  value         = google_storage_bucket.logs_data_bucket[var.prod_project_id].name
   depends_on    = [github_repository.repo]
 }
 

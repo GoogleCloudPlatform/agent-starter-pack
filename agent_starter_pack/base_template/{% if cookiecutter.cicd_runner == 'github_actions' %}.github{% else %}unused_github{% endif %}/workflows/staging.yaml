@@ -147,7 +147,7 @@ jobs:
             --entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
             --entrypoint-object=agent_engine \
             --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
+            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
 
       - name: Fetch Auth Token
         id: fetch-token
@@ -243,10 +243,10 @@ jobs:
       - name: Export Load Test Results to GCS
         run: |
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-          gcloud storage cp --recursive tests/load_test/.results gs://{% raw %}${{ vars.BUCKET_NAME_LOAD_TEST_RESULTS }}{% endraw %}/results-${TIMESTAMP} --quiet
+          gcloud storage cp --recursive tests/load_test/.results gs://{% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}/load-test-results/results-${TIMESTAMP} --quiet
           echo "_________________________________________________________________________"
-          echo "Load test results copied to gs://{% raw %}${{ vars.BUCKET_NAME_LOAD_TEST_RESULTS }}{% endraw %}/results-${TIMESTAMP}"
-          echo "HTTP link: https://console.cloud.google.com/storage/browser/{% raw %}${{ vars.BUCKET_NAME_LOAD_TEST_RESULTS }}{% endraw %}/results-${TIMESTAMP}"
+          echo "Load test results copied to gs://{% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}/load-test-results/results-${TIMESTAMP}"
+          echo "HTTP link: https://console.cloud.google.com/storage/browser/{% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}/load-test-results/results-${TIMESTAMP}"
           echo "_________________________________________________________________________"
 
   call_production_workflow:

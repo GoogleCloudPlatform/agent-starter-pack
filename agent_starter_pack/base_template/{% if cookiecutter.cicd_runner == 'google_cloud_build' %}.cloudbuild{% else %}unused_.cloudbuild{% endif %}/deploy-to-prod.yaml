@@ -96,7 +96,7 @@ steps:
           --entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
           --entrypoint-object=agent_engine \
           --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_PROD},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_PROD},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_PROD},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_PROD}{%- endif %}{%- endif %}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME=${_LOGS_BUCKET_NAME_PROD}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_PROD},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_PROD},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_PROD},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_PROD}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}

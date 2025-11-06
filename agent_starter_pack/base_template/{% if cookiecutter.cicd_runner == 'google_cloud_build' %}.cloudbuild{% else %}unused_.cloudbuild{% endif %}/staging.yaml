@@ -146,7 +146,7 @@ steps:
           --entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
           --entrypoint-object=agent_engine \
           --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME=${_LOGS_BUCKET_NAME_STAGING}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
@@ -277,10 +277,10 @@ steps:
       - "-c"
       - |
         export _TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-        gsutil -m cp -r tests/load_test/.results gs://${_BUCKET_NAME_LOAD_TEST_RESULTS}/results-$${_TIMESTAMP}
+        gsutil -m cp -r tests/load_test/.results gs://${_LOGS_BUCKET_NAME_STAGING}/load-test-results/results-$${_TIMESTAMP}
         echo "_________________________________________________________________________"
-        echo "Load test results copied to gs://${_BUCKET_NAME_LOAD_TEST_RESULTS}/results-$${_TIMESTAMP}"
-        echo "HTTP link: https://console.cloud.google.com/storage/browser/${_BUCKET_NAME_LOAD_TEST_RESULTS}/results-$${_TIMESTAMP}"
+        echo "Load test results copied to gs://${_LOGS_BUCKET_NAME_STAGING}/load-test-results/results-$${_TIMESTAMP}"
+        echo "HTTP link: https://console.cloud.google.com/storage/browser/${_LOGS_BUCKET_NAME_STAGING}/load-test-results/results-$${_TIMESTAMP}"
         echo "_________________________________________________________________________"
 
   # Trigger Prod Deployment

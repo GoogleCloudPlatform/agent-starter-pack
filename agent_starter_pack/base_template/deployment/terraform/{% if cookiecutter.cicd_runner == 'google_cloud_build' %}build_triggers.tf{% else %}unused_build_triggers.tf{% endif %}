@@ -72,30 +72,27 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
   ]
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
   substitutions = {
-    _STAGING_PROJECT_ID            = var.staging_project_id
-    _BUCKET_NAME_LOAD_TEST_RESULTS = resource.google_storage_bucket.bucket_load_test_results.name
-    _LOGS_BUCKET_NAME_STAGING      = resource.google_storage_bucket.logs_data_bucket[var.staging_project_id].url
-    _REGION                        = var.region
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+    _STAGING_PROJECT_ID       = var.staging_project_id
+    _LOGS_BUCKET_NAME_STAGING = resource.google_storage_bucket.logs_data_bucket[var.staging_project_id].name
+    _REGION                   = var.region
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
     _CONTAINER_NAME                = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
-{% elif cookiecutter.deployment_target == 'agent_engine' %}
-
-{% endif %}
-{% if cookiecutter.data_ingestion %}
+{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+{%- endif %}
+{%- if cookiecutter.data_ingestion %}
     _PIPELINE_GCS_ROOT_STAGING     = "gs://${resource.google_storage_bucket.data_ingestion_pipeline_gcs_root["staging"].name}"
     _PIPELINE_SA_EMAIL_STAGING             = resource.google_service_account.vertexai_pipeline_app_sa["staging"].email
     _PIPELINE_CRON_SCHEDULE        = var.pipeline_cron_schedule
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     _DATA_STORE_ID_STAGING         = resource.google_discovery_engine_data_store.data_store_staging.data_store_id
     _DATA_STORE_REGION             = var.data_store_region
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
     _VECTOR_SEARCH_INDEX_STAGING   = resource.google_vertex_ai_index.vector_search_index_staging.id
     _VECTOR_SEARCH_INDEX_ENDPOINT_STAGING = resource.google_vertex_ai_index_endpoint.vector_search_index_endpoint_staging.id
     _VECTOR_SEARCH_BUCKET_STAGING  = resource.google_storage_bucket.vector_search_data_bucket["staging"].url
-
-{% endif %}
-{% endif %}
+{%- endif %}
+{%- endif %}
     # Your other CD Pipeline substitutions
   }
   depends_on = [
@@ -124,27 +121,26 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
   }
   substitutions = {
     _PROD_PROJECT_ID             = var.prod_project_id
-    _LOGS_BUCKET_NAME_PROD       = resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].url
+    _LOGS_BUCKET_NAME_PROD       = resource.google_storage_bucket.logs_data_bucket[var.prod_project_id].name
     _REGION                      = var.region
-{% if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
     _CONTAINER_NAME              = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
-{% elif cookiecutter.deployment_target == 'agent_engine' %}
-
-{% endif %}
-{% if cookiecutter.data_ingestion %}
+{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+{%- endif %}
+{%- if cookiecutter.data_ingestion %}
     _PIPELINE_GCS_ROOT_PROD        = "gs://${resource.google_storage_bucket.data_ingestion_pipeline_gcs_root["prod"].name}"
     _PIPELINE_SA_EMAIL_PROD             = resource.google_service_account.vertexai_pipeline_app_sa["prod"].email
     _PIPELINE_CRON_SCHEDULE        = var.pipeline_cron_schedule
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     _DATA_STORE_ID_PROD            = resource.google_discovery_engine_data_store.data_store_prod.data_store_id
     _DATA_STORE_REGION             = var.data_store_region
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
     _VECTOR_SEARCH_INDEX_PROD      = resource.google_vertex_ai_index.vector_search_index_prod.id
     _VECTOR_SEARCH_INDEX_ENDPOINT_PROD = resource.google_vertex_ai_index_endpoint.vector_search_index_endpoint_prod.id
     _VECTOR_SEARCH_BUCKET_PROD     = resource.google_storage_bucket.vector_search_data_bucket["prod"].url
-{% endif %}
-{% endif %}
+{%- endif %}
+{%- endif %}
     # Your other Deploy to Prod Pipeline substitutions
   }
   depends_on = [

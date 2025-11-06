@@ -127,6 +127,8 @@ Visit our [documentation site](https://googlecloudplatform.github.io/agent-start
 
 - **[Exploring the Agent Starter Pack](https://www.youtube.com/watch?v=9zqwym-N3lg)**: A comprehensive tutorial demonstrating how to rapidly deploy AI Agents using the Agent Starter Pack, covering architecture, templates, and step-by-step deployment.
 
+- **[Deploy Your First ADK Agent in Under 5 Minutes](https://www.youtube.com/watch?v=_PU0fNGIvUw)** (January 2025): Learn how to create and deploy your first AI agent in under 5 minutes. This tutorial from PracticalGCP explains what's happening behind the scenes, covering project structure, ADK Playground, testing notebooks, and all the make commands.
+
 - **[6-minute introduction](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791)** (April 2024): Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 
 - **[120-minute livestream demo](https://www.youtube.com/watch?v=yIRIT_EtALs&t=235s)** (March 6, 2025): Watch us build 3 Agents in under 30 minutes using the `agent-starter-pack`!

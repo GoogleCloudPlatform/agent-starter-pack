@@ -77,7 +77,7 @@ resource "google_alloydb_cluster" "session_db_cluster" {
 
   initial_user {
     user     = "postgres"
-    password = random_password.db_password.result
+    password = "temporary-password-will-be-updated"
   }
 
   network_config {

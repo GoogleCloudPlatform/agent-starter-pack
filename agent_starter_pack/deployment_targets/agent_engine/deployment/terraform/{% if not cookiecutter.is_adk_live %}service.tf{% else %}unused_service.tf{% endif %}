@@ -40,7 +40,7 @@ resource "google_vertex_ai_reasoning_engine" "app_staging" {
     deployment_spec {
       env {
         name  = "ARTIFACTS_BUCKET_NAME"
-        value = google_storage_bucket.logs_bucket["staging"].name
+        value = google_storage_bucket.logs_data_bucket[var.staging_project_id].name
       }
     }
 {%- endif %}
@@ -80,7 +80,7 @@ resource "google_vertex_ai_reasoning_engine" "app_prod" {
     deployment_spec {
       env {
         name  = "ARTIFACTS_BUCKET_NAME"
-        value = google_storage_bucket.logs_bucket["prod"].name
+        value = google_storage_bucket.logs_data_bucket[var.prod_project_id].name
       }
     }
 {%- endif %}

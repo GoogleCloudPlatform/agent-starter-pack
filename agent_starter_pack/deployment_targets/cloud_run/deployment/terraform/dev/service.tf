@@ -61,6 +61,13 @@ resource "google_service_networking_connection" "vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.private_ip_alloc.name]
 }
 
+# Generate a random password for the database user
+resource "random_password" "db_password" {
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
 # AlloyDB Cluster
 resource "google_alloydb_cluster" "session_db_cluster" {
   project         = var.dev_project_id
@@ -68,12 +75,18 @@ resource "google_alloydb_cluster" "session_db_cluster" {
   location        = var.region
   deletion_policy = "FORCE"
 
+  initial_user {
+    user     = "postgres"
+    password = random_password.db_password.result
+  }
+
   network_config {
     network = google_compute_network.default.id
   }
 
   depends_on = [
-    google_service_networking_connection.vpc_connection
+    google_service_networking_connection.vpc_connection,
+    random_password.db_password
   ]
 }
 
@@ -88,13 +101,6 @@ resource "google_alloydb_instance" "session_db_instance" {
   machine_config {
     cpu_count = 2
   }
-}
-
-# Generate a random password for the database user
-resource "random_password" "db_password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 # Store the password in Secret Manager

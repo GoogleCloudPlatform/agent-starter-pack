@@ -65,27 +65,42 @@ resource "google_compute_global_address" "private_ip_alloc" {
 # VPC connection for AlloyDB
 resource "google_service_networking_connection" "vpc_connection" {
   for_each = local.deploy_project_ids
-  
+
   network                 = google_compute_network.default[each.key].id
   service                 = "servicenetworking.googleapis.com"
   reserved_peering_ranges = [google_compute_global_address.private_ip_alloc[each.key].name]
 }
 
+# Generate a random password for the database user
+resource "random_password" "db_password" {
+  for_each = local.deploy_project_ids
+
+  length           = 16
+  special          = true
+  override_special = "!#$%&*()-_=+[]{}<>:?"
+}
+
 # AlloyDB Cluster
 resource "google_alloydb_cluster" "session_db_cluster" {
   for_each = local.deploy_project_ids
-  
+
   project         = local.deploy_project_ids[each.key]
   cluster_id      = "${var.project_name}-alloydb-cluster"
   location        = var.region
   deletion_policy = "FORCE"
+
+  initial_user {
+    user     = "postgres"
+    password = random_password.db_password[each.key].result
+  }
 
   network_config {
     network = google_compute_network.default[each.key].id
   }
 
   depends_on = [
-    google_service_networking_connection.vpc_connection
+    google_service_networking_connection.vpc_connection,
+    random_password.db_password
   ]
 }
 
@@ -102,15 +117,6 @@ resource "google_alloydb_instance" "session_db_instance" {
   machine_config {
     cpu_count = 2
   }
-}
-
-# Generate a random password for the database user
-resource "random_password" "db_password" {
-  for_each = local.deploy_project_ids
-  
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
 # Store the password in Secret Manager

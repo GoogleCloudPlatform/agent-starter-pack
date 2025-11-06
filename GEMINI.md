@@ -160,30 +160,38 @@ Test changes across multiple dimensions:
 
 ## Linting and Testing Multiple Combinations
 
-### Understanding the Linting System
+**IMPORTANT:** Only run linting when explicitly requested by the user. Do not proactively lint unless asked.
 
-The project uses **Ruff** for both linting (code checking) and formatting. The test suite validates that all template combinations generate properly formatted, lint-free code.
+### Linting System
 
-**Key Command:**
+The project uses **Ruff** for linting and formatting. Use these commands to validate template combinations:
+
+**Linting:**
 ```bash
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="agent,target,--param,value" make lint-templated-agents
 ```
 
+**Testing:**
+```bash
+_TEST_AGENT_COMBINATION="agent,target,--param,value" make test-templated-agents
+```
+
+Both commands use the same `_TEST_AGENT_COMBINATION` environment variable to control which agent combination to validate.
+
 ### Testing Methodology
 
-**Critical Principle:** A change to ANY template file can affect MULTIPLE agent/deployment combinations. Always test across combinations, not just one.
+**Critical Principle:** Template changes can affect MULTIPLE agent/deployment combinations. Test across combinations when making template modifications.
 
-**Common Test Combinations:**
+**Common Combinations:**
 ```bash
-# Test individual combinations
+# Linting examples
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,cloud_run" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base_react,cloud_run" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base_react,agent_engine" make lint-templated-agents
+
+# Testing examples
+_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make test-templated-agents
+_TEST_AGENT_COMBINATION="langgraph_base_react,agent_engine" make test-templated-agents
 ```
 
 ### Critical Whitespace Control Patterns

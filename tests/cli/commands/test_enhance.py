@@ -563,12 +563,13 @@ root_agent = Agent(
             # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
             expected_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+from google.adk.apps.app import App
 
 app = App(root_agent=root_agent, name="app")
 """
@@ -629,20 +630,11 @@ app = App(root_agent=root_agent, name="app")
                     f"Expected Cloud Run file {cloud_run_file} was not created"
                 )
 
-            # Verify agent.py was modified to add app object (backward compatibility)
+            # Verify agent.py was NOT modified for cloud_run (no injection for cloud_run)
             preserved_agent_content = agent_file.read_text()
-            expected_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
-
-root_agent = Agent(
-    name="test_agent",
-    model="gemini-2.0-flash-001",
-)
-
-app = App(root_agent=root_agent, name="app")
-"""
-            assert preserved_agent_content == expected_content, (
-                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
+            # For cloud_run, agent.py should remain unchanged
+            assert preserved_agent_content == agent_content, (
+                f"agent.py should not be modified for cloud_run! Expected:\n{agent_content}\n\nGot:\n{preserved_agent_content}"
             )
 
     def test_data_ingestion_populates_files(self, tmp_path: pathlib.Path) -> None:
@@ -710,12 +702,13 @@ root_agent = Agent(
             # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
             expected_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+from google.adk.apps.app import App
 
 app = App(root_agent=root_agent, name="app")
 """

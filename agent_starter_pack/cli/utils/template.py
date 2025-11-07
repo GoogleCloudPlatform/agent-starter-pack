@@ -654,32 +654,11 @@ def _inject_app_object_if_missing(
                 f"ℹ️  Adding 'app' object to [cyan]{agent_directory}/agent.py[/cyan] for backward compatibility",
                 style="dim",
             )
-            # Inject app object at the end of the file
-            # Strip trailing whitespace to ensure consistent formatting
-            content = (
-                content.rstrip() + '\n\napp = App(root_agent=root_agent, name="app")\n'
-            )
-
-            # Add App import if not already present
+            # Add import and app object at the end of the file
+            content = content.rstrip()
             if "from google.adk.apps.app import App" not in content:
-                # Find the last import line
-                import_pattern = r"^(from|import)\s+"
-                lines = content.split("\n")
-                last_import_idx = -1
-                for i, line in enumerate(lines):
-                    if re.match(import_pattern, line.strip()):
-                        last_import_idx = i
-
-                if last_import_idx >= 0:
-                    # Insert after last import
-                    lines.insert(
-                        last_import_idx + 1,
-                        "from google.adk.apps.app import App",
-                    )
-                else:
-                    # No imports found, add at the top of the file
-                    lines.insert(0, "from google.adk.apps.app import App")
-                content = "\n".join(lines)
+                content += "\n\nfrom google.adk.apps.app import App\n"
+            content += '\napp = App(root_agent=root_agent, name="app")\n'
 
             # Write the modified content back
             agent_py_path.write_text(content, encoding="utf-8")
@@ -1091,10 +1070,14 @@ def process_template(
                 logging.debug("Remote template files copied successfully")
 
                 # Inject app object if missing (backward compatibility for ADK remote templates)
-                # Only inject for ADK agents
+                # Only inject for ADK agents with agent_engine deployment
                 is_adk = "adk" in tags
                 agent_py_path = generated_project_dir / agent_directory / "agent.py"
-                if is_adk and agent_py_path.exists():
+                if (
+                    is_adk
+                    and agent_py_path.exists()
+                    and deployment_target == "agent_engine"
+                ):
                     _inject_app_object_if_missing(
                         agent_py_path, agent_directory, console
                     )

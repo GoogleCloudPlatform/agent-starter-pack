@@ -94,20 +94,13 @@ def print_deployment_success(
     resource_name_parts = remote_agent.api_resource.name.split("/")
     agent_engine_id = resource_name_parts[-1]
     project_number = resource_name_parts[1]
-    console_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
 
-{%- if cookiecutter.is_adk %}
 {%- if cookiecutter.is_adk_live %}
     print("\n✅ Deployment successful! Run your agent with: `make playground-remote`")
 {%- elif cookiecutter.is_adk_a2a %}
     print(
         "\n✅ Deployment successful! Test your agent: notebooks/adk_a2a_app_testing.ipynb"
     )
-{%- else %}
-    print(
-        "\n✅ Deployment successful! Test your agent: notebooks/adk_app_testing.ipynb"
-    )
-{%- endif %}
 {%- else %}
     print("\n✅ Deployment successful!")
 {%- endif %}
@@ -119,7 +112,13 @@ def print_deployment_success(
             f"service-{project_number}@gcp-sa-aiplatform-re.iam.gserviceaccount.com"
         )
         print(f"Service Account: {default_sa}")
+{%- if cookiecutter.is_adk and not cookiecutter.is_adk_live and not cookiecutter.is_adk_a2a %}
+    playground_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}/playground?project={project}"
+    print(f"\n📊 Open Console Playground: {playground_url}\n")
+{%- else %}
+    console_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
     print(f"\n📊 View in Console: {console_url}\n")
+{%- endif %}
 
 
 @click.command()

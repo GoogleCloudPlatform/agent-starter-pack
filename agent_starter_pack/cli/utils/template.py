@@ -627,6 +627,68 @@ def _extract_agent_garden_labels(
     return agent_sample_id, agent_sample_publisher
 
 
+def _inject_app_object_if_missing(
+    agent_py_path: pathlib.Path, agent_directory: str, console: Console
+) -> None:
+    """Inject app object into agent.py if missing (backward compatibility for ADK).
+
+    Args:
+        agent_py_path: Path to the agent.py file
+        agent_directory: Name of the agent directory for logging
+        console: Rich console for user feedback
+    """
+    try:
+        content = agent_py_path.read_text(encoding="utf-8")
+        # Check for app object (assignment, function definition, or import)
+        app_patterns = [
+            r"^\s*app\s*=",  # assignment: app = ...
+            r"^\s*def\s+app\(",  # function: def app(...)
+            r"from\s+.*\s+import\s+.*\bapp\b",  # import: from ... import app
+        ]
+        has_app = any(
+            re.search(pattern, content, re.MULTILINE) for pattern in app_patterns
+        )
+
+        if not has_app:
+            console.print(
+                f"ℹ️  Adding 'app' object to [cyan]{agent_directory}/agent.py[/cyan] for backward compatibility",
+                style="dim",
+            )
+            # Inject app object at the end of the file
+            # Strip trailing whitespace to ensure consistent formatting
+            content = (
+                content.rstrip() + '\n\napp = App(root_agent=root_agent, name="app")\n'
+            )
+
+            # Add App import if not already present
+            if "from google.adk.apps.app import App" not in content:
+                # Find the last import line
+                import_pattern = r"^(from|import)\s+"
+                lines = content.split("\n")
+                last_import_idx = -1
+                for i, line in enumerate(lines):
+                    if re.match(import_pattern, line.strip()):
+                        last_import_idx = i
+
+                if last_import_idx >= 0:
+                    # Insert after last import
+                    lines.insert(
+                        last_import_idx + 1,
+                        "from google.adk.apps.app import App",
+                    )
+                else:
+                    # No imports found, add at the top of the file
+                    lines.insert(0, "from google.adk.apps.app import App")
+                content = "\n".join(lines)
+
+            # Write the modified content back
+            agent_py_path.write_text(content, encoding="utf-8")
+    except Exception as e:
+        logging.warning(
+            f"Could not inject app object into {agent_directory}/agent.py: {type(e).__name__}: {e}"
+        )
+
+
 def process_template(
     agent_name: str,
     template_dir: pathlib.Path,
@@ -894,59 +956,6 @@ def process_template(
             with open(llm_txt_path, encoding="utf-8") as txt_file:
                 llm_txt_content = txt_file.read()
 
-            # For remote templates, inject app object if missing (backward compatibility)
-            if is_remote:
-                agent_directory = get_agent_directory(template_config, cli_overrides)
-                agent_py_path = project_template / agent_directory / "agent.py"
-                if agent_py_path.exists():
-                    try:
-                        content = agent_py_path.read_text(encoding="utf-8")
-                        # Check for app object (assignment, function definition, or import)
-                        app_patterns = [
-                            r"^\s*app\s*=",  # assignment: app = ...
-                            r"^\s*def\s+app\(",  # function: def app(...)
-                            r"from\s+.*\s+import\s+.*\bapp\b",  # import: from ... import app
-                        ]
-                        has_app = any(
-                            re.search(pattern, content, re.MULTILINE)
-                            for pattern in app_patterns
-                        )
-
-                        if not has_app:
-                            console.print(
-                                f"ℹ️  Adding 'app' object to [cyan]{agent_directory}/agent.py[/cyan] for backward compatibility",
-                                style="dim",
-                            )
-                            # Inject app object at the end of the file
-                            content += (
-                                '\n\napp = App(root_agent=root_agent, name="app")\n'
-                            )
-
-                            # Add App import if not already present
-                            if "from google.adk.apps.app import App" not in content:
-                                # Find the last import line
-                                import_pattern = r"^(from|import)\s+"
-                                lines = content.split("\n")
-                                last_import_idx = -1
-                                for i, line in enumerate(lines):
-                                    if re.match(import_pattern, line.strip()):
-                                        last_import_idx = i
-
-                                if last_import_idx >= 0:
-                                    # Insert after last import
-                                    lines.insert(
-                                        last_import_idx + 1,
-                                        "from google.adk.apps.app import App",
-                                    )
-                                    content = "\n".join(lines)
-
-                            # Write the modified content back
-                            agent_py_path.write_text(content, encoding="utf-8")
-                    except Exception as e:
-                        logging.warning(
-                            f"Could not inject app object into {agent_directory}/agent.py: {type(e).__name__}: {e}"
-                        )
-
             cookiecutter_config = {
                 "project_name": project_name,
                 "agent_name": agent_name,
@@ -1080,6 +1089,15 @@ def process_template(
                     agent_directory=agent_directory,
                 )
                 logging.debug("Remote template files copied successfully")
+
+                # Inject app object if missing (backward compatibility for ADK remote templates)
+                # Only inject for ADK agents
+                is_adk = "adk" in tags
+                agent_py_path = generated_project_dir / agent_directory / "agent.py"
+                if is_adk and agent_py_path.exists():
+                    _inject_app_object_if_missing(
+                        agent_py_path, agent_directory, console
+                    )
 
             # Move the generated project to the final destination
             generated_project_dir = temp_path / project_name

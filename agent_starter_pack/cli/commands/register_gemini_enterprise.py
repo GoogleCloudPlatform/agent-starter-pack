@@ -371,7 +371,7 @@ def register_agent(
     help="OAuth authorization resource name "
     "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}).",
 )
-def main(
+def register_gemini_enterprise(
     agent_engine_id: str | None,
     metadata_file: str,
     gemini_enterprise_app_id: str | None,
@@ -420,7 +420,3 @@ def main(
         )
     except Exception as e:
         raise click.ClickException(f"Error during registration: {e}") from e
-
-
-if __name__ == "__main__":
-    main()

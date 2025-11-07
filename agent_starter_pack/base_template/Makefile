@@ -315,5 +315,5 @@ lint:
 # Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
 # Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
 register-gemini-enterprise:
-	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise
+	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise
 {%- endif %}

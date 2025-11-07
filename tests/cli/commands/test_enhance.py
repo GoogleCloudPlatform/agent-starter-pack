@@ -560,10 +560,20 @@ root_agent = Agent(
                     f"Expected frontend file {frontend_file} was not created for adk_live"
                 )
 
-            # Verify agent.py was NOT modified (customer file preservation)
+            # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
-            assert preserved_agent_content == agent_content, (
-                "agent.py was modified during enhance!"
+            expected_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+
+app = App(root_agent=root_agent, name="app")
+"""
+            assert preserved_agent_content == expected_content, (
+                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
             )
 
     def test_cloud_run_deployment_populates_files(self, tmp_path: pathlib.Path) -> None:
@@ -619,10 +629,20 @@ app = App(root_agent=root_agent, name="app")
                     f"Expected Cloud Run file {cloud_run_file} was not created"
                 )
 
-            # Verify agent.py was NOT modified
+            # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
-            assert preserved_agent_content == agent_content, (
-                "agent.py was modified during enhance!"
+            expected_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+
+app = App(root_agent=root_agent, name="app")
+"""
+            assert preserved_agent_content == expected_content, (
+                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
             )
 
     def test_data_ingestion_populates_files(self, tmp_path: pathlib.Path) -> None:
@@ -687,8 +707,18 @@ root_agent = Agent(
                     f"Expected data ingestion file {data_file} was not created"
                 )
 
-            # Verify agent.py was NOT modified
+            # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
-            assert preserved_agent_content == agent_content, (
-                "agent.py was modified during enhance!"
+            expected_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+
+app = App(root_agent=root_agent, name="app")
+"""
+            assert preserved_agent_content == expected_content, (
+                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
             )

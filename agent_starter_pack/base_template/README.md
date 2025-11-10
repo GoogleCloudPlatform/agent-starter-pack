@@ -75,8 +75,7 @@ make install && make playground
 | `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
 {%- endif -%}
 {%- endif -%}
-{# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' when inspector adds HTTP-JSON support #}
-{%- if cookiecutter.is_adk_a2a and cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.is_adk_a2a %}
 | `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
@@ -88,10 +87,7 @@ make install && make playground
 
 For full command options and usage, refer to the [Makefile](Makefile).
 
-{# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' condition #}
-{# when a2a-inspector adds HTTP-JSON transport support (currently JSON-RPC 2.0 only) #}
 {%- if cookiecutter.is_adk_a2a %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 ## Using the A2A Inspector
 
@@ -101,9 +97,10 @@ The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) provides the fo
 - 🔍 View agent card and capabilities
 - ✅ Validate A2A specification compliance
 - 💬 Test communication with live chat interface
-- 🐛 Debug with raw JSON-RPC 2.0 message console
+- 🐛 Debug with the raw message console
 
 ### Local Testing
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 1. Start your agent:
    ```bash
@@ -116,6 +113,10 @@ The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) provides the fo
    ```
 
 3. Open http://localhost:5001 and connect to `http://localhost:8000`
+{%- else %}
+
+> **Note:** For Agent Engine deployments, local testing with A2A endpoints requires deployment first, as `make playground` uses the ADK web interface. For local development, use `make playground`. To test A2A protocol compliance, follow the Remote Testing instructions below.
+{%- endif %}
 
 ### Remote Testing
 
@@ -149,7 +150,6 @@ The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) provides the fo
      https://us-central1-aiplatform.googleapis.com/v1beta1/projects/{PROJECT_ID}/locations/{REGION}/reasoningEngines/{ENGINE_ID}/a2a/v1/card
      ```
      Find your `PROJECT_ID`, `REGION`, and `ENGINE_ID` in the `latest_deployment_metadata.json` file created after deployment.
-{%- endif %}
 {%- endif %}
 {%- endif %}
 

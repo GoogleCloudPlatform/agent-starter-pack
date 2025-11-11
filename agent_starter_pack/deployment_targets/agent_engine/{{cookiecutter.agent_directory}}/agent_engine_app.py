@@ -254,24 +254,6 @@ class AgentEngineApp:
             logging.error("Failed to initialize Telemetry: %s", str(e))
         self.runnable = agent
 
-    # Add any additional variables here that should be included in the tracing logs
-    def set_tracing_properties(self, config: RunnableConfig | None) -> None:
-        """Sets tracing association properties for the current request.
-
-        Args:
-            config: Optional RunnableConfig containing request metadata
-        """
-        config = ensure_valid_config(config)
-        Traceloop.set_association_properties(
-            {
-                "log_type": "tracing",
-                "run_id": str(config["run_id"]),
-                "user_id": config["metadata"].pop("user_id", "None"),
-                "session_id": config["metadata"].pop("session_id", "None"),
-                "commit_sha": os.environ.get("COMMIT_SHA", "None"),
-            }
-        )
-
     def stream_query(
         self,
         *,

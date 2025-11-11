@@ -39,6 +39,19 @@ from .agent import app as adk_app
 from .app_utils.tracing import CloudTraceLoggingSpanExporter
 from .app_utils.typing import Feedback
 
+# Enable GenAI event capture for telemetry
+import os
+
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+os.environ.setdefault("ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS", "false")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -330,6 +343,19 @@ from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_
 from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 
+# Enable GenAI event capture for telemetry
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+{%- if cookiecutter.is_adk %}
+os.environ.setdefault("ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS", "false")
+{%- endif %}
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
@@ -443,6 +469,17 @@ app.description = "API for interacting with the Agent {{cookiecutter.project_nam
 {% else %}
 import logging
 import os
+
+# Enable GenAI event capture for telemetry
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 from collections.abc import Generator
 
 from fastapi import FastAPI

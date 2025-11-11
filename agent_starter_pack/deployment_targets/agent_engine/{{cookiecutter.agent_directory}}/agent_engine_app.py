@@ -161,6 +161,19 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 {%- endif %}
 
 
+# Enable GenAI event capture for telemetry
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+{%- if cookiecutter.is_adk %}
+os.environ.setdefault("ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS", "false")
+{%- endif %}
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 _, project_id = google.auth.default()
 artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
 {%- if cookiecutter.is_adk_a2a %}
@@ -189,6 +202,17 @@ agent_engine = AgentEngineApp(
 
 import logging
 import os
+
+# Enable GenAI event capture for telemetry
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 from collections.abc import Iterable, Mapping
 from typing import (
     Any,

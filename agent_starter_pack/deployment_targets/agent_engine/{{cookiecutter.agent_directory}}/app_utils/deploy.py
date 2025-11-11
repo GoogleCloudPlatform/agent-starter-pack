@@ -244,6 +244,12 @@ def deploy_agent_engine_app(
     if "NUM_WORKERS" not in env_vars:
         env_vars["NUM_WORKERS"] = str(num_workers)
 
+    # Enable telemetry (tracing and logging) for Agent Engine
+    if "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY" not in env_vars:
+        env_vars["GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY"] = "true"
+    if "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT" not in env_vars:
+        env_vars["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
+
     if not project:
         _, project = google.auth.default()
 

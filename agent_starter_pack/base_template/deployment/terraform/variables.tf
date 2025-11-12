@@ -50,22 +50,6 @@ variable "repository_name" {
   type        = string
 }
 
-variable "telemetry_logs_filter" {
-  type        = string
-  description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."
-{%- if cookiecutter.is_adk %}
-  default     = "labels.service_name=\"{{cookiecutter.project_name}}\" labels.type=\"agent_telemetry\""
-{%- else %}
-  default     = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"{{cookiecutter.project_name}}\""
-{%- endif %}
-}
-
-variable "feedback_logs_filter" {
-  type        = string
-  description = "Log Sink filter for capturing feedback data. Captures logs where the `log_type` field is `feedback`."
-  default     = "jsonPayload.log_type=\"feedback\""
-}
-
 variable "app_sa_roles" {
   description = "List of roles to assign to the application service account"
   type        = list(string)

@@ -30,13 +30,11 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai.agent_engines import _utils
 from websockets.exceptions import ConnectionClosedError
 
 from .agent import app as adk_app
-from .app_utils.tracing import CloudTraceLoggingSpanExporter
+from .app_utils.telemetry import setup_telemetry
 from .app_utils.typing import Feedback
 
 app = FastAPI()
@@ -62,13 +60,8 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+setup_telemetry()
 _, project_id = google.auth.default()
-provider = TracerProvider()
-processor = export.BatchSpanProcessor(
-    CloudTraceLoggingSpanExporter(project_id=project_id)
-)
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
 
 
 # Initialize ADK services
@@ -317,8 +310,6 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.cli.fast_api import get_fast_api_app
 {%- endif %}
 from google.cloud import logging as google_cloud_logging
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, export
 {% if cookiecutter.session_type == "agent_engine" -%}
 from vertexai import agent_engines
 {% endif %}
@@ -327,9 +318,10 @@ from vertexai import agent_engines
 from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- endif %}
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 
+setup_telemetry()
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
@@ -339,15 +331,11 @@ allow_origins = (
 )
 {%- endif %}
 
+# Artifact bucket for ADK
 bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs"
 create_bucket_if_not_exists(
     bucket_name=bucket_name, project=project_id, location="us-central1"
 )
-
-provider = TracerProvider()
-processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
 
 {%- if cookiecutter.is_adk_a2a %}
 
@@ -452,7 +440,7 @@ from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
 
 from {{cookiecutter.agent_directory}}.agent import agent
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import (
     Feedback,
     InputChat,
@@ -469,16 +457,17 @@ app = FastAPI(
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 
-# Initialize Telemetry
+setup_telemetry()
+import google.auth
+_, project_id = google.auth.default()
 try:
     Traceloop.init(
         app_name=app.title,
         disable_batch=False,
-        exporter=CloudTraceLoggingSpanExporter(),
         instruments={Instruments.LANGCHAIN, Instruments.CREW},
     )
 except Exception as e:
-    logging.error("Failed to initialize Telemetry: %s", str(e))
+    logging.error("Failed to initialize Traceloop: %s", str(e))
 
 
 def set_tracing_properties(config: RunnableConfig) -> None:

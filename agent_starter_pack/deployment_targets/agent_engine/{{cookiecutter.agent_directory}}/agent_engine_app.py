@@ -38,8 +38,6 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 {%- endif %}
 from google.cloud import logging as google_cloud_logging
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, export
 {%- if cookiecutter.is_adk_live %}
 from vertexai.agent_engines.templates.adk import AdkApp
 from vertexai.preview.reasoning_engines import AdkApp as PreviewAdkApp
@@ -54,7 +52,7 @@ from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- else %}
 
 {%- endif %}
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 {%- if cookiecutter.is_adk_a2a %}
 
@@ -116,20 +114,13 @@ class AgentEngineApp(A2aAgent):
 
 class AgentEngineApp(AdkApp):
 {%- endif %}
-    def set_up(self) -> None:
-        """Set up logging and tracing for the agent engine app."""
-        super().set_up()
+    def __init__(self, **kwargs: Any) -> None:
+        """Initialize the agent engine app with logging and telemetry."""
+        setup_telemetry()
+        super().__init__(**kwargs)
         logging.basicConfig(level=logging.INFO)
         logging_client = google_cloud_logging.Client()
         self.logger = logging_client.logger(__name__)
-        provider = TracerProvider()
-        processor = export.BatchSpanProcessor(
-            CloudTraceLoggingSpanExporter(
-                project_id=os.environ.get("GOOGLE_CLOUD_PROJECT")
-            )
-        )
-        provider.add_span_processor(processor)
-        trace.set_tracer_provider(provider)
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
@@ -164,13 +155,13 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 
 _, project_id = google.auth.default()
 vertexai.init(project=project_id, location="us-central1")
-artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
+logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 {%- if cookiecutter.is_adk_a2a %}
 agent_engine = AgentEngineApp.create(
     app=adk_app,
     artifact_service=(
-        GcsArtifactService(bucket_name=artifacts_bucket_name)
-        if artifacts_bucket_name
+        GcsArtifactService(bucket_name=logs_bucket_name)
+        if logs_bucket_name
         else InMemoryArtifactService()
     ),
     session_service=InMemorySessionService(),
@@ -179,9 +170,9 @@ agent_engine = AgentEngineApp.create(
 agent_engine = AgentEngineApp(
     app=adk_app,
     artifact_service_builder=lambda: GcsArtifactService(
-        bucket_name=artifacts_bucket_name
+        bucket_name=logs_bucket_name
     )
-    if artifacts_bucket_name
+    if logs_bucket_name
     else InMemoryArtifactService(),
 )
 {%- endif -%}
@@ -200,35 +191,34 @@ from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
 
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
+from {{cookiecutter.agent_directory}}.app_utils.typing import (
+    Feedback,
+    InputChat,
+    dumpd,
+    ensure_valid_config,
+)
 
 
 class AgentEngineApp:
     """Class for managing agent engine functionality."""
 
     def __init__(self, project_id: str | None = None) -> None:
-        """Initialize the AgentEngineApp variables"""
-        self.project_id = project_id
-
-    def set_up(self) -> None:
-        """The set_up method is used to define application initialization logic"""
-        # Lazy import agent at setup time to avoid deployment dependencies
+        """Initialize the AgentEngineApp with logging and telemetry."""
+        setup_telemetry()
         from {{cookiecutter.agent_directory}}.agent import agent
 
+        self.project_id = project_id
         logging_client = google_cloud_logging.Client(project=self.project_id)
         self.logger = logging_client.logger(__name__)
-
-        # Initialize Telemetry
         try:
             Traceloop.init(
                 app_name="{{cookiecutter.project_name}}",
                 disable_batch=False,
-                exporter=CloudTraceLoggingSpanExporter(project_id=self.project_id),
                 instruments={Instruments.LANGCHAIN, Instruments.CREW},
             )
         except Exception as e:
-            logging.error("Failed to initialize Telemetry: %s", str(e))
+            logging.error("Failed to initialize Traceloop: %s", str(e))
         self.runnable = agent
 
     # Add any additional variables here that should be included in the tracing logs

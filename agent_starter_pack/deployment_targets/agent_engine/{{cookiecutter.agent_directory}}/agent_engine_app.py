@@ -22,10 +22,10 @@ import os
 from typing import Any
 
 import google.auth
-import vertexai
 {%- if cookiecutter.is_adk_a2a %}
 import nest_asyncio
 {%- endif %}
+import vertexai
 {%- if cookiecutter.is_adk_a2a %}
 from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor

@@ -9,11 +9,8 @@ dependencies = [
 {%- for dep in cookiecutter.extra_dependencies %}
     "{{ dep }}",
 {%- endfor %}
-    "opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0",
-{%- if not cookiecutter.is_adk %}
-    "langchain-core>=0.3.9",
-    "traceloop-sdk~=0.38.7",
-{%- endif %}
+    "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
+    "gcsfs>=2024.11.0",
     "google-cloud-logging>=3.12.0,<4.0.0",
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "google-cloud-aiplatform[evaluation]>=1.118.0,<2.0.0",
@@ -25,11 +22,8 @@ dependencies = [
     "protobuf>=6.31.1,<7.0.0",
 {%- endif %}
 ]
-{% if cookiecutter.deployment_target == 'cloud_run' %}
 requires-python = ">=3.10,<3.14"
-{% elif cookiecutter.deployment_target == 'agent_engine' %}
-requires-python = ">=3.10,<3.13"
-{%- endif %}
+
 
 [dependency-groups]
 dev = [

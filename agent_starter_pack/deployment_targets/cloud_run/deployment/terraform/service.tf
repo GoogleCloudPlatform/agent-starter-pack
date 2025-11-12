@@ -239,6 +239,16 @@ resource "google_cloud_run_v2_service" "app_staging" {
         }
       }
 {%- endif %}
+
+      env {
+        name  = "LOGS_BUCKET_NAME"
+        value = google_storage_bucket.logs_data_bucket[var.staging_project_id].name
+      }
+
+      env {
+        name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+        value = "NO_CONTENT"
+      }
     }
 
     service_account                = google_service_account.app_sa["staging"].email
@@ -364,6 +374,16 @@ resource "google_cloud_run_v2_service" "app_prod" {
         }
       }
 {%- endif %}
+
+      env {
+        name  = "LOGS_BUCKET_NAME"
+        value = google_storage_bucket.logs_data_bucket[var.prod_project_id].name
+      }
+
+      env {
+        name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+        value = "NO_CONTENT"
+      }
     }
 
     service_account                = google_service_account.app_sa["prod"].email

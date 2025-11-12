@@ -865,6 +865,24 @@ wheels = [
 ]
 
 [[package]]
+name = "gcsfs"
+version = "2025.10.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "decorator" },
+    { name = "fsspec" },
+    { name = "google-auth" },
+    { name = "google-auth-oauthlib" },
+    { name = "google-cloud-storage" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/27/62/e3131f4cb0e0a9b8d5a0586ba2cbef3a5ec05b5352d9bad50e1eb1417fed/gcsfs-2025.10.0.tar.gz", hash = "sha256:7ac9b16a145bcb1a69fa9cf770ccd3cee7b9a09236911dd586c1d9911b71583d", size = 85595, upload-time = "2025-10-30T15:16:30.08Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/f3/393d486f33bf78ce8af4ced1814e936d0e71c630e8d98c1257a06e511c9a/gcsfs-2025.10.0-py2.py3-none-any.whl", hash = "sha256:654457af3a524e03d86658c5d8c6f3887689d6aa0c2c6b1c3b2d8e1fe2b77c09", size = 36911, upload-time = "2025-10-30T15:16:29.044Z" },
+]
+
+[[package]]
 name = "google-api-core"
 version = "2.28.1"
 source = { registry = "https://pypi.org/simple" }
@@ -898,6 +916,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ff/ef/66d14cf0e01b08d2d51ffc3c20410c4e134a1548fc246a6081eae585a4fe/google_auth-2.43.0.tar.gz", hash = "sha256:88228eee5fc21b62a1b5fe773ca15e67778cb07dc8363adcb4a8827b52d81483", size = 296359, upload-time = "2025-11-06T00:13:36.587Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6f/d1/385110a9ae86d91cc14c5282c61fe9f4dc41c0b9f7d423c6ad77038c4448/google_auth-2.43.0-py2.py3-none-any.whl", hash = "sha256:af628ba6fa493f75c7e9dbe9373d148ca9f4399b5ea29976519e0a3848eddd16", size = 223114, upload-time = "2025-11-06T00:13:35.209Z" },
+]
+
+[[package]]
+name = "google-auth-oauthlib"
+version = "1.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-auth" },
+    { name = "requests-oauthlib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fb/87/e10bf24f7bcffc1421b84d6f9c3377c30ec305d082cd737ddaa6d8f77f7c/google_auth_oauthlib-1.2.2.tar.gz", hash = "sha256:11046fb8d3348b296302dd939ace8af0a724042e8029c1b872d87fabc9f41684", size = 20955, upload-time = "2025-04-22T16:40:29.172Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ac/84/40ee070be95771acd2f4418981edb834979424565c3eec3cd88b6aa09d24/google_auth_oauthlib-1.2.2-py3-none-any.whl", hash = "sha256:fd619506f4b3908b5df17b65f39ca8d66ea56986e5472eb5978fd8f3786f00a2", size = 19072, upload-time = "2025-04-22T16:40:28.174Z" },
 ]
 
 [[package]]
@@ -1048,22 +1079,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f4/cd/7e112cf025b2b591067b599e4bfe965df0c12b0cc0afdb5556469bff126d/google_cloud_storage-3.6.0.tar.gz", hash = "sha256:29cc6b9a6c0fc9cdad071e375d540a5a50fbc9a7fad8300fa02fb904f6fe2ca2", size = 17251072, upload-time = "2025-11-17T10:18:29.81Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ae/ef/3b57bf617ee0c79450c1ff211d1eb888db8fc1050ac74b3e52cc6ed86e63/google_cloud_storage-3.6.0-py3-none-any.whl", hash = "sha256:5decbdddd63b7d1fc3e266a393ad6453d2e27d172bd982b1e2f15481668db097", size = 299039, upload-time = "2025-11-17T10:18:27.66Z" },
-]
-
-[[package]]
-name = "google-cloud-trace"
-version = "1.17.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "google-api-core", extra = ["grpc"] },
-    { name = "google-auth" },
-    { name = "grpcio" },
-    { name = "proto-plus" },
-    { name = "protobuf" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/5e/89/5ecbcf7d2d37ead01fc84e774bc758638855c630b32720fa58edcf9667ae/google_cloud_trace-1.17.0.tar.gz", hash = "sha256:68703bfc93718083f061d9130a3852e3181ec1b6b796b76856997c28f51b9595", size = 97995, upload-time = "2025-10-20T14:57:28.662Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/84/e6b776f0b5d68451be68d3d43efe8eacc677182709dd7e84c960668a9909/google_cloud_trace-1.17.0-py3-none-any.whl", hash = "sha256:975dc0c2a9b1d7644bca45d78a2c5011ab5c73e94bd6537203deda374f88f7b3", size = 104118, upload-time = "2025-10-20T14:55:23.108Z" },
 ]
 
 [[package]]
@@ -2137,6 +2152,7 @@ source = { editable = "." }
 dependencies = [
     { name = "a2a-sdk", extra = ["http-server"] },
     { name = "fastapi" },
+    { name = "gcsfs" },
     { name = "google-cloud-aiplatform", extra = ["evaluation"] },
     { name = "google-cloud-logging" },
     { name = "langchain" },
@@ -2146,7 +2162,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "nest-asyncio" },
-    { name = "opentelemetry-exporter-gcp-trace" },
+    { name = "opentelemetry-instrumentation-google-genai" },
     { name = "psycopg2-binary" },
     { name = "traceloop-sdk" },
     { name = "uvicorn" },
@@ -2176,6 +2192,7 @@ requires-dist = [
     { name = "a2a-sdk", extras = ["http-server"], specifier = "~=0.3.12" },
     { name = "codespell", marker = "extra == 'lint'", specifier = ">=2.2.0,<3.0.0" },
     { name = "fastapi", specifier = "~=0.115.8" },
+    { name = "gcsfs", specifier = ">=2024.11.0" },
     { name = "google-cloud-aiplatform", extras = ["evaluation"], specifier = ">=1.118.0,<2.0.0" },
     { name = "google-cloud-logging", specifier = ">=3.12.0,<4.0.0" },
     { name = "jupyter", marker = "extra == 'jupyter'", specifier = ">=1.0.0,<2.0.0" },
@@ -2187,7 +2204,7 @@ requires-dist = [
     { name = "langgraph", specifier = "~=1.0.3" },
     { name = "mypy", marker = "extra == 'lint'", specifier = ">=1.15.0,<2.0.0" },
     { name = "nest-asyncio", specifier = ">=1.6.0,<2.0.0" },
-    { name = "opentelemetry-exporter-gcp-trace", specifier = ">=1.9.0,<2.0.0" },
+    { name = "opentelemetry-instrumentation-google-genai", specifier = ">=0.1.0,<1.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10,<3.0.0" },
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.4.6,<1.0.0" },
     { name = "traceloop-sdk", specifier = "~=0.38.7" },
@@ -2736,6 +2753,15 @@ wheels = [
 ]
 
 [[package]]
+name = "oauthlib"
+version = "3.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0b/5f/19930f824ffeb0ad4372da4812c50edbd1434f678c90c2733e1188edfc63/oauthlib-3.3.1.tar.gz", hash = "sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9", size = 185918, upload-time = "2025-06-19T22:48:08.269Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/be/9c/92789c596b8df838baa98fa71844d84283302f7604ed565dafe5a6b5041a/oauthlib-3.3.1-py3-none-any.whl", hash = "sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1", size = 160065, upload-time = "2025-06-19T22:48:06.508Z" },
+]
+
+[[package]]
 name = "openai"
 version = "2.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2765,21 +2791,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/08/d8/0f354c375628e048bd0570645b310797299754730079853095bf000fba69/opentelemetry_api-1.38.0.tar.gz", hash = "sha256:f4c193b5e8acb0912b06ac5b16321908dd0843d75049c091487322284a3eea12", size = 65242, upload-time = "2025-10-16T08:35:50.25Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ae/a2/d86e01c28300bd41bab8f18afd613676e2bd63515417b77636fc1add426f/opentelemetry_api-1.38.0-py3-none-any.whl", hash = "sha256:2891b0197f47124454ab9f0cf58f3be33faca394457ac3e09daba13ff50aa582", size = 65947, upload-time = "2025-10-16T08:35:30.23Z" },
-]
-
-[[package]]
-name = "opentelemetry-exporter-gcp-trace"
-version = "1.11.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "google-cloud-trace" },
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-resourcedetector-gcp" },
-    { name = "opentelemetry-sdk" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/10/9c/4c3b26e5494f8b53c7873732a2317df905abe2b8ab33e9edfcbd5a8ff79b/opentelemetry_exporter_gcp_trace-1.11.0.tar.gz", hash = "sha256:c947ab4ab53e16517ade23d6fe71fe88cf7ca3f57a42c9f0e4162d2b929fecb6", size = 18770, upload-time = "2025-11-04T19:32:15.109Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/5f/4a/876703e8c5845198d95cd4006c8d1b2e3b129a9e288558e33133360f8d5d/opentelemetry_exporter_gcp_trace-1.11.0-py3-none-any.whl", hash = "sha256:b3dcb314e1a9985e9185cb7720b693eb393886fde98ae4c095ffc0893de6cefa", size = 14016, upload-time = "2025-11-04T19:32:09.009Z" },
 ]
 
 [[package]]
@@ -2934,6 +2945,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/13/3c/b4ed16d0707e25549993976566b0b3546db06ee5aadf73cdabbbac369118/opentelemetry_instrumentation_crewai-0.38.12.tar.gz", hash = "sha256:e48db70792ab635ef72859d7282af32aa1468de5ce862697b558db5be930efd9", size = 4530, upload-time = "2025-03-07T20:28:02.357Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a2/ce/aaf0640140dbb899987c2caf818a0ff1cbb053e4313b8aef0980ca9714b6/opentelemetry_instrumentation_crewai-0.38.12-py3-none-any.whl", hash = "sha256:b4e16d145615065e644ca56e5f1a61f3ace78fe5ec7bee0bc1fce07a4b56ddfc", size = 6078, upload-time = "2025-03-07T20:27:30.244Z" },
+]
+
+[[package]]
+name = "opentelemetry-instrumentation-google-genai"
+version = "0.4b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "opentelemetry-util-genai" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b4/d3/00c67e1f3c070c02fd2ffa9db3eed6f03c32fbe5a08280ce155ec2df9b14/opentelemetry_instrumentation_google_genai-0.4b0.tar.gz", hash = "sha256:743776f6ff4133ad8a84d45af956b7dbb1624c58ac136faa054ec8d4059754ee", size = 47411, upload-time = "2025-10-16T15:13:27.695Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/84/5c/19b701f273da6b730df84073abe0ebe42386c6b6d469fab024039d1df4b4/opentelemetry_instrumentation_google_genai-0.4b0-py3-none-any.whl", hash = "sha256:df2c2af64075bd6253cafb71921a58a2f3554b75eef3a74a55d300e0815626ba", size = 29648, upload-time = "2025-10-16T15:13:26.649Z" },
 ]
 
 [[package]]
@@ -3325,21 +3351,6 @@ wheels = [
 ]
 
 [[package]]
-name = "opentelemetry-resourcedetector-gcp"
-version = "1.11.0a0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "opentelemetry-api" },
-    { name = "opentelemetry-sdk" },
-    { name = "requests" },
-    { name = "typing-extensions" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/c1/5d/2b3240d914b87b6dd9cd5ca2ef1ccaf1d0626b897d4c06877e22c8c10fcf/opentelemetry_resourcedetector_gcp-1.11.0a0.tar.gz", hash = "sha256:915a1d6fd15daca9eedd3fc52b0f705375054f2ef140e2e7a6b4cca95a47cdb1", size = 18796, upload-time = "2025-11-04T19:32:16.59Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/6c/1e13fe142a7ca3dc6489167203a1209d32430cca12775e1df9c9a41c54b2/opentelemetry_resourcedetector_gcp-1.11.0a0-py3-none-any.whl", hash = "sha256:5d65a2a039b1d40c6f41421dbb08d5f441368275ac6de6e76a8fccd1f6acb67e", size = 18798, upload-time = "2025-11-04T19:32:10.915Z" },
-]
-
-[[package]]
 name = "opentelemetry-sdk"
 version = "1.38.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3373,6 +3384,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/2b/8f/7fb173fd1928398b81d0952f7a9f30381ce3215817e3ac6e92f180434874/opentelemetry_semantic_conventions_ai-0.4.3.tar.gz", hash = "sha256:761a68a7e99436dfc53cfe1f99507316aa0114ac480f0c42743b9320b7c94831", size = 4540, upload-time = "2025-03-04T16:33:13.893Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/95/56/b178de82b650526ff5d5e67037786008ea0acd043051d535c483dabd3cc4/opentelemetry_semantic_conventions_ai-0.4.3-py3-none-any.whl", hash = "sha256:9ff60bbf38c8a891c20a355b4ca1948380361e27412c3ead264de0d050fa2570", size = 5384, upload-time = "2025-03-04T16:33:11.784Z" },
+]
+
+[[package]]
+name = "opentelemetry-util-genai"
+version = "0.2b0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dc/06/869c18f22fa32d6db9ebbc5bd82f18614c379b726aa9770d1b2d20f9178c/opentelemetry_util_genai-0.2b0.tar.gz", hash = "sha256:803d5d5e720f3e057c64d935dfd46dc013784820715d996980cb5b79bb5774a3", size = 20542, upload-time = "2025-10-15T20:07:31.873Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/94/0d/1dc4705e44540183ab603aa4e1b0e3f888e63156678192e8c64f42c782ed/opentelemetry_util_genai-0.2b0-py3-none-any.whl", hash = "sha256:06dc8664713f9cec216d7093585a1a5fbb5f6fb7a387f19430774a5028aaa30b", size = 22237, upload-time = "2025-10-15T20:07:30.991Z" },
 ]
 
 [[package]]
@@ -4354,6 +4379,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c9/74/b3ff8e6c8446842c3f5c837e9c3dfcfe2018ea6ecef224c710c85ef728f4/requests-2.32.5.tar.gz", hash = "sha256:dbba0bac56e100853db0ea71b82b4dfd5fe2bf6d3754a8893c3af500cec7d7cf", size = 134517, upload-time = "2025-08-18T20:46:02.573Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1e/db/4254e3eabe8020b458f1a747140d32277ec7a271daf1d235b70dc0b4e6e3/requests-2.32.5-py3-none-any.whl", hash = "sha256:2462f94637a34fd532264295e186976db0f5d453d1cdd31473c85a6a161affb6", size = 64738, upload-time = "2025-08-18T20:46:00.542Z" },
+]
+
+[[package]]
+name = "requests-oauthlib"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "oauthlib" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/42/f2/05f29bc3913aea15eb670be136045bf5c5bbf4b99ecb839da9b422bb2c85/requests-oauthlib-2.0.0.tar.gz", hash = "sha256:b3dffaebd884d8cd778494369603a9e7b58d29111bf6b41bdc2dcd87203af4e9", size = 55650, upload-time = "2024-03-22T20:32:29.939Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/5d/63d4ae3b9daea098d5d6f5da83984853c1bbacd5dc826764b249fe119d24/requests_oauthlib-2.0.0-py2.py3-none-any.whl", hash = "sha256:7dd8a5c40426b779b0868c404bdef9768deccf22749cde15852df527e6269b36", size = 24179, upload-time = "2024-03-22T20:32:28.055Z" },
 ]
 
 [[package]]

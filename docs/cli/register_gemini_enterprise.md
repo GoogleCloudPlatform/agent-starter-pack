@@ -8,8 +8,11 @@ Register a deployed Agent Engine to Gemini Enterprise, making it available as a 
 # Via Makefile (recommended)
 ID="projects/.../engines/xxx" make register-gemini-enterprise
 
-# Direct command
-uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise [OPTIONS]
+# Direct command (installed)
+agent-starter-pack register-gemini-enterprise [OPTIONS]
+
+# Or with uvx (no install required)
+uvx agent-starter-pack@latest register-gemini-enterprise [OPTIONS]
 ```
 
 ## Quick Start
@@ -82,7 +85,7 @@ export GEMINI_ENTERPRISE_APP_ID="projects/.../engines/xxx"
 export GEMINI_DISPLAY_NAME="Product Support Agent"
 export GEMINI_DESCRIPTION="AI agent for product support"
 
-agent-starter-pack-register-gemini-enterprise
+agent-starter-pack register-gemini-enterprise
 ```
 
 ## Troubleshooting

@@ -49,6 +49,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "What can you help me with?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_base_agent_engine_no_data": {
         "project_name": "test-adk-base",
@@ -61,6 +62,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "What can you help me with?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_live_cloud_run": {
         "project_name": "test-adk-live",
@@ -73,6 +75,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_live_agent_engine": {
         "project_name": "test-adk-live",
@@ -85,6 +88,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "agentic_rag_cloud_run_vertex_search": {
         "project_name": "test-rag",
@@ -98,6 +102,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "What's in the knowledge base?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "agentic_rag_cloud_run_vector_search": {
         "project_name": "test-rag",
@@ -111,6 +116,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "What's in the knowledge base?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "langgraph_cloud_run_no_data": {
         "project_name": "test-langgraph",
@@ -123,6 +129,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "How can you help?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "agent_with_custom_commands": {
         "project_name": "test-custom",
@@ -155,6 +162,7 @@ TEST_CONFIGURATIONS = {
                 },
             }
         },
+        "package_version": "0.20.0",
     },
     "agent_with_agent_garden": {
         "project_name": "test-garden",
@@ -169,6 +177,7 @@ TEST_CONFIGURATIONS = {
         "agent_sample_publisher": "google",
         "example_question": "Agent garden question",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_a2a_cloud_run": {
         "project_name": "test-a2a",
@@ -181,6 +190,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "What can you help me with?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_a2a_agent_engine": {
         "project_name": "test-a2a",
@@ -193,6 +203,7 @@ TEST_CONFIGURATIONS = {
         "agent_garden": False,
         "example_question": "What can you help me with?",
         "settings": {},
+        "package_version": "0.20.0",
     },
 }
 

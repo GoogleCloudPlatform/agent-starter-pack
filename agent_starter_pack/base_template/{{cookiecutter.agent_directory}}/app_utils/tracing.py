@@ -12,144 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-import logging
-from collections.abc import Sequence
-from typing import Any
+import os
 
-import google.cloud.storage as storage
-from google.cloud import logging as google_cloud_logging
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.sdk.trace import ReadableSpan
-from opentelemetry.sdk.trace.export import SpanExportResult
+from app.app_utils.gcs import create_bucket_if_not_exists
 
 
-class CloudTraceLoggingSpanExporter(CloudTraceSpanExporter):
-    """
-    An extended version of CloudTraceSpanExporter that logs span data to Google Cloud Logging
-    and handles large attribute values by storing them in Google Cloud Storage.
+def setup_telemetry(project_id: str, location: str = "us-central1") -> str:
+    """Configure OpenTelemetry and GenAI telemetry."""
+    # Enable GenAI event capture
+    os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+    os.environ.setdefault("ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS", "false")
+    os.environ.setdefault(
+        "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "NO_CONTENT"
+    )
 
-    This class helps bypass the 256 character limit of Cloud Trace for attribute values
-    by leveraging Cloud Logging (which has a 256KB limit) and Cloud Storage for larger payloads.
-    """
+    # Configure telemetry upload to GCS
+    os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT", "jsonl")
+    os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK", "upload")
+    os.environ.setdefault(
+        "OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental"
+    )
 
-    def __init__(
-        self,
-        logging_client: google_cloud_logging.Client | None = None,
-        storage_client: storage.Client | None = None,
-        bucket_name: str | None = None,
-        debug: bool = False,
-        **kwargs: Any,
-    ) -> None:
-        """
-        Initialize the exporter with Google Cloud clients and configuration.
+    # Set resource attributes
+    commit_sha = os.environ.get("COMMIT_SHA", "dev")
+    os.environ.setdefault(
+        "OTEL_RESOURCE_ATTRIBUTES",
+        f"service.namespace=myagent-1762901584,service.version={commit_sha}",
+    )
 
-        :param logging_client: Google Cloud Logging client
-        :param storage_client: Google Cloud Storage client
-        :param bucket_name: Name of the GCS bucket to store large payloads
-        :param debug: Enable debug mode for additional logging
-        :param kwargs: Additional arguments to pass to the parent class
-        """
-        super().__init__(**kwargs)
-        self.debug = debug
-        self.logging_client = logging_client or google_cloud_logging.Client(
-            project=self.project_id
-        )
-        self.logger = self.logging_client.logger(__name__)
-        self.storage_client = storage_client or storage.Client(project=self.project_id)
-        self.bucket_name = (
-            bucket_name or f"{self.project_id}-{{cookiecutter.project_name}}-logs"
-        )
-        self.bucket = self.storage_client.bucket(self.bucket_name)
+    # Setup telemetry bucket
+    bucket = os.environ.get("GENAI_TELEMETRY_BUCKET", f"{project_id}-genai-telemetry")
+    path = os.environ.get("GENAI_TELEMETRY_PATH", "telemetry")
 
-    def export(self, spans: Sequence[ReadableSpan]) -> SpanExportResult:
-        """
-        Export the spans to Google Cloud Logging and Cloud Trace.
+    create_bucket_if_not_exists(bucket_name=bucket, project=project_id, location=location)
 
-        :param spans: A sequence of spans to export
-        :return: The result of the export operation
-        """
-        for span in spans:
-            span_context = span.get_span_context()
-            trace_id = format(span_context.trace_id, "x")
-            span_id = format(span_context.span_id, "x")
-            span_dict = json.loads(span.to_json())
+    os.environ.setdefault(
+        "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH",
+        f"gs://{bucket}/{path}",
+    )
 
-            span_dict["trace"] = f"projects/{self.project_id}/traces/{trace_id}"
-            span_dict["span_id"] = span_id
-
-            span_dict = self._process_large_attributes(
-                span_dict=span_dict, span_id=span_id
-            )
-
-            if self.debug:
-                print(span_dict)
-
-            # Log the span data to Google Cloud Logging
-{%- if cookiecutter.is_adk %}
-            self.logger.log_struct(
-                span_dict,
-                labels={
-                    "type": "agent_telemetry",
-                    "service_name": "{{cookiecutter.project_name}}",
-                },
-                severity="INFO",
-            )
-{%- else %}
-            self.logger.log_struct(span_dict, severity="INFO")
-{%- endif %}
-        # Export spans to Google Cloud Trace using the parent class method
-        return super().export(spans)
-
-    def store_in_gcs(self, content: str, span_id: str) -> str:
-        """
-        Initiate storing large content in Google Cloud Storage/
-
-        :param content: The content to store
-        :param span_id: The ID of the span
-        :return: The  GCS URI of the stored content
-        """
-        if not self.storage_client.bucket(self.bucket_name).exists():
-            logging.warning(
-                f"Bucket {self.bucket_name} not found. "
-                "Unable to store span attributes in GCS."
-            )
-            return "GCS bucket not found"
-
-        blob_name = f"spans/{span_id}.json"
-        blob = self.bucket.blob(blob_name)
-
-        blob.upload_from_string(content, "application/json")
-        return f"gs://{self.bucket_name}/{blob_name}"
-
-    def _process_large_attributes(self, span_dict: dict, span_id: str) -> dict:
-        """
-        Process large attribute values by storing them in GCS if they exceed the size
-        limit of Google Cloud Logging.
-
-        :param span_dict: The span data dictionary
-        :param trace_id: The trace ID
-        :param span_id: The span ID
-        :return: The updated span dictionary
-        """
-        attributes = span_dict["attributes"]
-        if len(json.dumps(attributes).encode()) > 255 * 1024:  # 250 KB
-            # Separate large payload from other attributes
-            attributes_payload = dict(attributes.items())
-            attributes_retain = dict(attributes.items())
-
-            # Store large payload in GCS
-            gcs_uri = self.store_in_gcs(json.dumps(attributes_payload), span_id)
-            attributes_retain["uri_payload"] = gcs_uri
-            attributes_retain["url_payload"] = (
-                f"https://storage.mtls.cloud.google.com/"
-                f"{self.bucket_name}/spans/{span_id}.json"
-            )
-
-            span_dict["attributes"] = attributes_retain
-            logging.info(
-                "Length of payload span above 250 KB, storing attributes in GCS "
-                "to avoid large log entry errors"
-            )
-
-        return span_dict
+    return bucket

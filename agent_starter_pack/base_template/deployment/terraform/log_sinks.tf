@@ -78,24 +78,42 @@ resource "google_project_iam_member" "feedback_bigquery_data_editor" {
   member  = google_logging_project_sink.feedback_export_to_bigquery[each.key].writer_identity
 }
 
-# Log bucket configuration for the _Default bucket
-resource "google_logging_project_bucket_config" "default_bucket" {
+# Custom log bucket for GenAI telemetry logs
+resource "google_logging_project_bucket_config" "genai_telemetry_bucket" {
   for_each       = local.deploy_project_ids
   project        = each.value
   location       = "global"
-  bucket_id      = "_Default"
+  bucket_id      = "${var.project_name}-genai-telemetry"
   retention_days = 30
+  description    = "Log bucket for GenAI telemetry events with restricted access"
 }
 
-# Log view for GenAI telemetry events
+# Sink to route GenAI logs to the custom bucket
+resource "google_logging_project_sink" "genai_to_custom_bucket" {
+  for_each    = local.deploy_project_ids
+  name        = "${var.project_name}-genai-to-bucket"
+  project     = each.value
+  destination = "logging.googleapis.com/${google_logging_project_bucket_config.genai_telemetry_bucket[each.key].id}"
+  filter      = var.telemetry_logs_filter
+}
+
+# Project-level exclusion to prevent GenAI logs from going to _Default bucket
+resource "google_logging_project_exclusion" "exclude_genai_from_default" {
+  for_each    = local.deploy_project_ids
+  name        = "${var.project_name}-exclude-genai-from-default"
+  project     = each.value
+  description = "Exclude GenAI telemetry logs from _Default bucket. Logs are routed to custom bucket instead."
+  filter      = var.telemetry_logs_filter
+}
+
+# Log view for GenAI telemetry events on the custom bucket
 resource "google_logging_log_view" "genai_telemetry_view" {
   for_each    = local.deploy_project_ids
   name        = "${var.project_name}-genai-telemetry"
-  bucket      = google_logging_project_bucket_config.default_bucket[each.key].id
+  bucket      = google_logging_project_bucket_config.genai_telemetry_bucket[each.key].id
   description = "View for GenAI telemetry events (user messages, system prompts, model completions) for ${var.project_name}"
-  # Log views use source(), log_id(), and resource.type filters
-  # Filter by project and resource type to capture GenAI telemetry logs
-  filter      = "source(\"projects/${each.value}\") AND resource.type = \"generic_task\""
+  # View filter uses source() since bucket already contains only GenAI logs via sink
+  filter      = "source(\"projects/${each.value}\")"
 }
 
 # Example: Grant a user/group access to the GenAI telemetry log view
@@ -105,19 +123,8 @@ resource "google_logging_log_view" "genai_telemetry_view" {
 #   for_each = local.deploy_project_ids
 #   project  = each.value
 #   location = "global"
-#   bucket   = google_logging_project_bucket_config.default_bucket[each.key].bucket_id
+#   bucket   = google_logging_project_bucket_config.genai_telemetry_bucket[each.key].bucket_id
 #   name     = google_logging_log_view.genai_telemetry_view[each.key].name
 #   role     = "roles/logging.viewAccessor"
 #   member   = "user:example@example.com"  # Change to your user/group/service account
 # }
-
-# Exclude GenAI logs from default bucket views (_AllLogs, _Default)
-# This prevents users with roles/logging.viewer from seeing GenAI telemetry logs
-# Logs are still exported to BigQuery for authorized users
-resource "google_logging_project_exclusion" "exclude_genai_from_default" {
-  for_each    = var.exclude_genai_logs_from_default_bucket ? local.deploy_project_ids : {}
-  name        = "${var.project_name}-exclude-genai-telemetry"
-  project     = each.value
-  description = "Exclude GenAI telemetry logs from _Default bucket. Logs are still exported to BigQuery."
-  filter      = var.telemetry_logs_filter
-}

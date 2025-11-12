@@ -9,7 +9,7 @@ dependencies = [
 {%- for dep in cookiecutter.extra_dependencies %}
     "{{ dep }}",
 {%- endfor %}
-    "opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0",
+    "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
 {%- if not cookiecutter.is_adk %}
     "langchain-core>=0.3.9",
     "traceloop-sdk~=0.38.7",

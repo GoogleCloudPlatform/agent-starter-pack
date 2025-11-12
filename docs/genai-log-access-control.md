@@ -8,18 +8,25 @@ The Agent Starter Pack automatically captures GenAI telemetry events (user messa
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ _Default Log Bucket (global)                                │
+│ Custom Log Bucket: {project-name}-genai-telemetry           │
 │                                                               │
 │  ┌─────────────────────────────────────────────────────┐   │
 │  │ Log View: {project-name}-genai-telemetry            │   │
-│  │ Filter: logName=~"gen_ai\\." AND                    │   │
-│  │         resource.labels.namespace="{project-name}"  │   │
+│  │ Filter: source("projects/{project-id}")             │   │
+│  │ (Bucket already filtered by sink)                   │   │
 │  │                                                       │   │
 │  │ IAM: roles/logging.viewAccessor                     │   │
 │  │      → Grant to specific users/groups               │   │
 │  └─────────────────────────────────────────────────────┘   │
 │                                                               │
-│  Default views (_AllLogs, _Default) still show all logs     │
+│  GenAI logs routed here via log sink with exclusion         │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ _Default Log Bucket (global)                                │
+│                                                               │
+│  All logs EXCEPT GenAI telemetry (excluded by sink)         │
+│  Users with roles/logging.viewer can see these logs         │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -34,7 +41,7 @@ resource "google_logging_log_view_iam_member" "genai_telemetry_viewer" {
   for_each = local.deploy_project_ids
   project  = each.value
   location = "global"
-  bucket   = google_logging_project_bucket_config.default_bucket[each.key].bucket_id
+  bucket   = google_logging_project_bucket_config.genai_telemetry_bucket[each.key].bucket_id
   name     = google_logging_log_view.genai_telemetry_view[each.key].name
   role     = "roles/logging.viewAccessor"
   member   = "user:analyst@example.com"  # Change to your user/group
@@ -43,43 +50,51 @@ resource "google_logging_log_view_iam_member" "genai_telemetry_viewer" {
 
 ### Restricting Access (Hiding from Most Users)
 
-**Important:** Log views do NOT restrict users who already have `roles/logging.viewer` or project-level `roles/logging.viewAccessor`. These roles bypass log view restrictions.
+**Solution:** GenAI logs are automatically routed to a **separate custom log bucket** and excluded from the _Default bucket.
 
-To fully restrict GenAI logs from general users, add a log exclusion:
+This approach:
+- GenAI logs go to `{project-name}-genai-telemetry` bucket (not _Default)
+- Users with `roles/logging.viewer` **cannot** see GenAI logs (they're not in _Default bucket)
+- GenAI logs are **still exported** to BigQuery (controlled by dataset IAM)
+- Only users with `roles/logging.viewAccessor` on the log view OR BigQuery access can see them
+
+GenAI logs are excluded from _Default bucket using a project-level exclusion:
 
 ```terraform
+# Sink routes GenAI logs to custom bucket
+resource "google_logging_project_sink" "genai_to_custom_bucket" {
+  destination = "logging.googleapis.com/...genai-telemetry"
+  filter      = var.telemetry_logs_filter
+}
+
+# Project-level exclusion prevents GenAI logs from _Default bucket
 resource "google_logging_project_exclusion" "exclude_genai_from_default" {
-  for_each = local.deploy_project_ids
-  name     = "exclude-genai-telemetry"
-  project  = each.value
-  filter   = var.telemetry_logs_filter
+  name        = "${var.project_name}-exclude-genai-from-default"
+  description = "Exclude GenAI telemetry logs from _Default bucket. Logs are routed to custom bucket instead."
+  filter      = var.telemetry_logs_filter
 }
 ```
-
-With exclusions enabled:
-- GenAI logs are **excluded** from default bucket views (_AllLogs, _Default)
-- GenAI logs are **still exported** to BigQuery (controlled by dataset IAM)
-- Only users with BigQuery `roles/bigquery.dataViewer` can query them
 
 ## Resources Created
 
 | Resource | Purpose |
 |----------|---------|
-| `google_logging_project_bucket_config.default_bucket` | Manages _Default bucket retention (30 days) |
-| `google_logging_log_view.genai_telemetry_view` | Filtered view showing only GenAI telemetry logs |
+| `google_logging_project_bucket_config.genai_telemetry_bucket` | Custom log bucket for GenAI logs (30 day retention) |
+| `google_logging_project_sink.genai_to_custom_bucket` | Routes GenAI logs to custom bucket |
+| `google_logging_project_exclusion.exclude_genai_from_default` | Prevents GenAI logs from going to _Default bucket |
+| `google_logging_log_view.genai_telemetry_view` | View on custom bucket showing GenAI telemetry logs |
 | `google_logging_log_view_iam_member` (optional) | Grants specific users access to the log view |
-| `google_logging_project_exclusion` (optional) | Hides GenAI logs from default views |
 
 ## Use Cases
 
 ### Scenario 1: Data Analysts Need GenAI Logs
-Grant `roles/logging.viewAccessor` on the log view resource (not project-level).
+Grant `roles/logging.viewAccessor` on the log view resource (not project-level) OR grant BigQuery access.
 
-### Scenario 2: Hide GenAI Logs from All Users
-Enable log exclusion. Logs remain in BigQuery for authorized analysts.
+### Scenario 2: Hide GenAI Logs from Most Users (Default)
+GenAI logs are automatically in a separate bucket. Users with `roles/logging.viewer` won't see them.
 
 ### Scenario 3: Team-Based Access
-Create separate log views per team with different filters, grant team-specific IAM bindings.
+Create separate log views on the custom bucket with different filters, grant team-specific IAM bindings.
 
 ## Viewing Logs
 

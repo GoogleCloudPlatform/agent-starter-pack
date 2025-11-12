@@ -56,12 +56,6 @@ variable "telemetry_logs_filter" {
   default     = "logName=~\"gen_ai\\\\.\" AND resource.labels.namespace=\"{{cookiecutter.project_name}}\""
 }
 
-variable "exclude_genai_logs_from_default_bucket" {
-  type        = bool
-  description = "If true, excludes GenAI telemetry logs from the _Default bucket views. Logs are still exported to BigQuery. Set to true to restrict access to GenAI logs - users with roles/logging.viewer won't see them in Logs Explorer."
-  default     = false
-}
-
 variable "feedback_logs_filter" {
   type        = string
   description = "Log Sink filter for capturing feedback data. Captures logs where the `log_type` field is `feedback`."

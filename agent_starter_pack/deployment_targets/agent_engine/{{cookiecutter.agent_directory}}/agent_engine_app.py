@@ -22,6 +22,7 @@ import os
 from typing import Any
 
 import google.auth
+import vertexai
 {%- if cookiecutter.is_adk_a2a %}
 import nest_asyncio
 {%- endif %}
@@ -162,6 +163,7 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 
 
 _, project_id = google.auth.default()
+vertexai.init(project=project_id, location="us-central1")
 artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
 {%- if cookiecutter.is_adk_a2a %}
 agent_engine = AgentEngineApp.create(
@@ -193,6 +195,7 @@ from typing import (
 )
 
 import google.auth
+import vertexai
 from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
@@ -302,5 +305,6 @@ class AgentEngineApp:
 
 
 _, project_id = google.auth.default()
+vertexai.init(project=project_id, location="us-central1")
 agent_engine = AgentEngineApp(project_id=project_id)
 {%- endif %}

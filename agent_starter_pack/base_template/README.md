@@ -218,7 +218,7 @@ This template follows a "bring your own agent" approach - you focus on your busi
 2. **Integrate:** Import your agent into the app by editing `{{cookiecutter.agent_directory}}/agent.py`.
 3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
 4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
-5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
+5. **Monitor:** Track performance and gather insights using BigQuery telemetry data, Cloud Logging, and Cloud Trace to iterate on your application.
 
 The project includes a `GEMINI.md` file that provides context for AI tools like Gemini CLI when asking questions about your template.
 {% endif %}
@@ -248,8 +248,20 @@ The repository includes a Terraform configuration for the setup of a production 
 
 {% if not cookiecutter.is_adk_live %}
 ## Monitoring and Observability
-> You can use [this Looker Studio dashboard]({%- if cookiecutter.is_adk %}https://lookerstudio.google.com/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC{%- else %}https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC{%- endif %}
-) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.
 
-The application uses OpenTelemetry for comprehensive observability with all events being sent to Google Cloud Trace and Logging for monitoring and to BigQuery for long term storage. 
+The application uses [OpenTelemetry GenAI instrumentation](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for comprehensive observability. Telemetry data is automatically captured and exported to:
+
+- **Google Cloud Storage**: GenAI telemetry in JSONL format for efficient querying
+- **BigQuery**: External tables and linked datasets provide immediate access to telemetry data via SQL queries
+- **Cloud Logging**: Dedicated logging bucket with 10-year retention for GenAI operation logs
+
+**Query your telemetry data:**
+
+```bash
+# Example: Query recent completions
+bq query --use_legacy_sql=false \
+  "SELECT * FROM \`{{cookiecutter.project_name}}_telemetry.completions\` LIMIT 10"
+```
+
+For detailed setup instructions, example queries, testing in dev, and optional dashboard visualization, see the [starter pack observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html).
 {%- endif %}

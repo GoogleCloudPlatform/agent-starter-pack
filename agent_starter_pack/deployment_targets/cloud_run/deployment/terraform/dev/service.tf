@@ -216,6 +216,16 @@ resource "google_cloud_run_v2_service" "app" {
         }
       }
 {%- endif %}
+
+      env {
+        name  = "LOGS_BUCKET_NAME"
+        value = google_storage_bucket.logs_data_bucket.name
+      }
+
+      env {
+        name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+        value = "NO_CONTENT"
+      }
     }
 
     service_account = google_service_account.app_sa.email

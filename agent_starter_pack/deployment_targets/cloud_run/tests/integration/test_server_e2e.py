@@ -202,8 +202,8 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "invocation_id": "test-run-123",
-        "user_id": "test-user",
+        "user_id": "test-user-123",
+        "session_id": "test-session-123",
         "log_type": "feedback",
     }
 
@@ -220,7 +220,6 @@ import subprocess
 import sys
 import threading
 import time
-import uuid
 from collections.abc import Iterator
 from typing import Any
 
@@ -629,11 +628,8 @@ def test_collect_feedback(server_fixture: subprocess.Popen[str]) -> None:
     # Create sample feedback data
     feedback_data = {
         "score": 4,
-{%- if cookiecutter.is_adk %}
-        "invocation_id": str(uuid.uuid4()),
-{%- else %}
-        "run_id": str(uuid.uuid4()),
-{%- endif %}
+        "user_id": "test-user-456",
+        "session_id": "test-session-456",
         "text": "Great response!",
     }
 

@@ -15,6 +15,7 @@
 import asyncio
 import json
 import logging
+import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal
@@ -27,7 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google.cloud import logging as google_cloud_logging
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from websockets.exceptions import ConnectionClosedError
 
 app = FastAPI()
@@ -329,9 +330,9 @@ class Feedback(BaseModel):
 
     score: int | float
     text: str | None = ""
-    run_id: str
-    user_id: str | None
     log_type: Literal["feedback"] = "feedback"
+    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @app.post("/feedback")

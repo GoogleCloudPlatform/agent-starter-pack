@@ -121,12 +121,8 @@ class AgentEngineApp(AdkApp):
         logging.basicConfig(level=logging.INFO)
         logging_client = google_cloud_logging.Client()
         self.logger = logging_client.logger(__name__)
-        # Gemini models region
-{%- if cookiecutter.is_adk_live %}
-        os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
-{%- else %}
-        os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
-{%- endif %}
+        if gemini_location:
+            os.environ["GOOGLE_CLOUD_LOCATION"] = gemini_location
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
@@ -156,6 +152,7 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 {%- endif %}
 
 
+gemini_location = os.environ.get("GOOGLE_CLOUD_LOCATION")
 logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 {%- if cookiecutter.is_adk_a2a %}
 agent_engine = AgentEngineApp.create(

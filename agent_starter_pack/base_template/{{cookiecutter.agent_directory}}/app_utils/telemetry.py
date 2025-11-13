@@ -18,32 +18,24 @@ import os
 def setup_telemetry() -> str:
     """Configure OpenTelemetry and GenAI telemetry with GCS upload."""
     os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
-    os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "NO_CONTENT"
-
-    os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT", "jsonl")
-    os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK", "upload")
-    os.environ.setdefault(
-        "OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental"
-    )
-
-    commit_sha = os.environ.get("COMMIT_SHA", "dev")
-    os.environ.setdefault(
-        "OTEL_RESOURCE_ATTRIBUTES",
-        f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
-    )
 
     bucket = os.environ.get("LOGS_BUCKET_NAME")
-    if not bucket:
-        from google.cloud.aiplatform import initializer
-
-        project_id = initializer.global_config.project
-        bucket = f"{project_id}-{{cookiecutter.project_name}}-logs"
-
-    path = os.environ.get("GENAI_TELEMETRY_PATH", "genai-telemetry")
-
-    os.environ.setdefault(
-        "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH",
-        f"gs://{bucket}/{path}",
-    )
+    if bucket:
+        os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "NO_CONTENT"
+        os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT", "jsonl")
+        os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK", "upload")
+        os.environ.setdefault(
+            "OTEL_SEMCONV_STABILITY_OPT_IN", "gen_ai_latest_experimental"
+        )
+        commit_sha = os.environ.get("COMMIT_SHA", "dev")
+        os.environ.setdefault(
+            "OTEL_RESOURCE_ATTRIBUTES",
+            f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+        )
+        path = os.environ.get("GENAI_TELEMETRY_PATH", "genai-telemetry")
+        os.environ.setdefault(
+            "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH",
+            f"gs://{bucket}/{path}",
+        )
 
     return bucket

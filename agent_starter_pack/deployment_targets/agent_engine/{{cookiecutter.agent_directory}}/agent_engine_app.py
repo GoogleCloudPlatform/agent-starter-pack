@@ -21,7 +21,6 @@ import logging
 import os
 from typing import Any
 
-import google.auth
 {%- if cookiecutter.is_adk_a2a %}
 import nest_asyncio
 {%- endif %}
@@ -114,13 +113,20 @@ class AgentEngineApp(A2aAgent):
 
 class AgentEngineApp(AdkApp):
 {%- endif %}
-    def __init__(self, **kwargs: Any) -> None:
+    def set_up(self) -> None:
         """Initialize the agent engine app with logging and telemetry."""
+        vertexai.init()
         setup_telemetry()
-        super().__init__(**kwargs)
+        super().set_up()
         logging.basicConfig(level=logging.INFO)
         logging_client = google_cloud_logging.Client()
         self.logger = logging_client.logger(__name__)
+        # Gemini models region
+{%- if cookiecutter.is_adk_live %}
+        os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+{%- else %}
+        os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
+{%- endif %}
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
@@ -128,10 +134,7 @@ class AgentEngineApp(AdkApp):
         self.logger.log_struct(feedback_obj.model_dump(), severity="INFO")
 
     def register_operations(self) -> dict[str, list[str]]:
-        """Registers the operations of the Agent.
-
-        Extends the base operations to include feedback registration functionality.
-        """
+        """Registers the operations of the Agent."""
         operations = super().register_operations()
         operations[""] = operations.get("", []) + ["register_feedback"]
 {%- if cookiecutter.is_adk_live %}
@@ -153,8 +156,6 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 {%- endif %}
 
 
-_, project_id = google.auth.default()
-vertexai.init(project=project_id, location="us-central1")
 logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 {%- if cookiecutter.is_adk_a2a %}
 agent_engine = AgentEngineApp.create(

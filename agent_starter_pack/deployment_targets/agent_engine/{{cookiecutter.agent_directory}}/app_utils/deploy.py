@@ -240,6 +240,9 @@ def deploy_agent_engine_app(
     env_vars = parse_key_value_pairs(set_env_vars)
     labels_dict = parse_key_value_pairs(labels)
 
+    # Set GOOGLE_CLOUD_REGION to match deployment location
+    env_vars["GOOGLE_CLOUD_REGION"] = location
+
     # Add NUM_WORKERS from CLI argument (can be overridden via --set-env-vars)
     if "NUM_WORKERS" not in env_vars:
         env_vars["NUM_WORKERS"] = str(num_workers)

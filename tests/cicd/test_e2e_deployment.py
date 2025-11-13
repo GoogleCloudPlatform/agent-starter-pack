@@ -98,12 +98,12 @@ def get_test_matrix() -> list[CICDTestConfig]:
     return [
         # Google Cloud Build configurations (default)
         # CICDTestConfig(
-        #     agent="langgraph_base_react",
+        #     agent="langgraph_base",
         #     deployment_target="agent_engine",
         #     extra_params="",
         # ),
         # CICDTestConfig(
-        #     agent="langgraph_base_react",
+        #     agent="langgraph_base",
         #     deployment_target="cloud_run",
         #     extra_params="",
         # ),
@@ -139,7 +139,7 @@ def get_test_matrix() -> list[CICDTestConfig]:
         #     extra_params="--cicd-runner,github_actions",
         # ),
         # CICDTestConfig(
-        #     agent="langgraph_base_react",
+        #     agent="langgraph_base",
         #     deployment_target="cloud_run",
         #     extra_params="--cicd-runner,github_actions",
         # ),

@@ -76,7 +76,7 @@ make install && make playground
 {%- endif -%}
 {%- endif -%}
 {# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' when inspector adds HTTP-JSON support #}
-{%- if cookiecutter.is_adk_a2a and cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.is_a2a and cookiecutter.deployment_target == 'cloud_run' %}
 | `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
@@ -90,7 +90,7 @@ For full command options and usage, refer to the [Makefile](Makefile).
 
 {# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' condition #}
 {# when a2a-inspector adds HTTP-JSON transport support (currently JSON-RPC 2.0 only) #}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 ## Using the A2A Inspector

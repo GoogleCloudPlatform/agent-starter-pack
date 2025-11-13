@@ -84,7 +84,7 @@ def _run_agent_test(
             assert (project_path / file).exists(), f"Missing file: {file}"
 
         # Verify frontend folder for agents with streamlit frontend
-        if agent in ["langgraph_base_react", "crewai_coding_crew"]:
+        if agent in ["langgraph_base", "crewai_coding_crew"]:
             frontend_dir = project_path / "frontend"
             assert frontend_dir.exists(), f"Frontend folder missing for {agent}"
             assert (frontend_dir / "streamlit_app.py").exists(), (
@@ -128,7 +128,7 @@ def _run_agent_test(
 @pytest.mark.parametrize(
     "agent,deployment_target,extra_params",
     get_test_combinations_to_run(),
-    # Edit here to manually force a specific combination e.g [("langgraph_base_react", "agent_engine", None)]
+    # Edit here to manually force a specific combination e.g [("langgraph_base", "agent_engine", None)]
 )
 def test_agent_deployment(
     agent: str, deployment_target: str, extra_params: list[str] | None

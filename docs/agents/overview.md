@@ -10,7 +10,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
 | `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
-| `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
+| `langgraph_base` | A base ReAct agent using LangGraph | Graph based conversational agent |
 | `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
 | `adk_live` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
 
@@ -52,7 +52,7 @@ Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)
 *   Answer synthesis from retrieved context.
 *   Infrastructure deployment via Terraform and a choice of CI/CD runners (Google Cloud Build or GitHub Actions).
 
-### LangGraph Base ReAct (`langgraph_base_react`)
+### LangGraph Base ReAct (`langgraph_base`)
 
 This template provides a minimal example of a ReAct agent built using [LangGraph](https://langchain-ai.github.io/langgraph/). It serves as an excellent starting point for developing agents with graph-based structures, offering:
 

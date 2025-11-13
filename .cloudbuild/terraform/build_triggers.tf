@@ -67,12 +67,12 @@ locals {
       value = "adk_base,cloud_run"
     },
     {
-      name  = "langgraph_base_react-agent_engine"
-      value = "langgraph_base_react,agent_engine"
+      name  = "langgraph_base-agent_engine"
+      value = "langgraph_base,agent_engine"
     },
     {
-      name  = "langgraph_base_react-cloud_run"
-      value = "langgraph_base_react,cloud_run,-dir,tag"
+      name  = "langgraph_base-cloud_run"
+      value = "langgraph_base,cloud_run,-dir,tag"
     },
     {
       name  = "crewai_coding_crew-agent_engine"
@@ -157,8 +157,8 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "adk_base,cloud_run,-dir,tag"
     },
     {
-      name = "langgraph_base_react-agent_engine"
-      value = "langgraph_base_react,agent_engine"
+      name = "langgraph_base-agent_engine"
+      value = "langgraph_base,agent_engine"
     },
     {
       name = "agentic_rag-agent_engine-vertex_ai_search"

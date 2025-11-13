@@ -16,7 +16,7 @@
 
 import pytest
 
-from agent_starter_pack.cli.utils.register_gemini_enterprise import (
+from agent_starter_pack.cli.commands.register_gemini_enterprise import (
     get_discovery_engine_endpoint,
 )
 

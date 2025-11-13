@@ -1,7 +1,7 @@
 {
-  "adk_a2a_agent_engine": "55c02cea17b1514a737a296ee379a19bb11452f0efe7eb9c329058cff34b7482",
-  "adk_a2a_cloud_run": "c66601bc408d0cd3eb1e1e424126e8561612cebb77fa8020dc4b33753b88e834",
-  "adk_base_agent_engine_no_data": "c0d407869c19551e534de18b138007ef29e7dcf63a45969caff266361d06be2c",
+  "adk_a2a_agent_engine": "08e69c6ecca0515b8c5ebfde58bb785ed1f69f0bf8e2c835dbe9f5ef1c3ffd8e",
+  "adk_a2a_cloud_run": "af30ef40c1c84582d9322d48864d2329b2f34efe615e6a873eb1e695cffd24c7",
+  "adk_base_agent_engine_no_data": "78181ba4967c57ce14917384829da889c8673f6d8c8984567e27a4db9b9b0a5c",
   "adk_base_cloud_run_no_data": "b63105d6122d61b85ce3d578de319133afaf1de2f37c56c56665da290e7fe375",
   "adk_live_agent_engine": "0d759388e24fad173bd923b413eadf02af482203fa497b748aeb4f67dd954c48",
   "adk_live_cloud_run": "b6371a9cda3cfb08baac1924b56302047e5d8f144c3992fe032dd58e36fc8c43",

@@ -31,7 +31,7 @@ from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
 from google.adk.apps.app import App
 {%- endif %}
-from google.adk.artifacts import GcsArtifactService
+from google.adk.artifacts import GcsArtifactService, InMemoryArtifactService
 {%- if cookiecutter.is_a2a %}
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
@@ -162,6 +162,7 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 
 
 _, project_id = google.auth.default()
+vertexai.init(project=project_id, location="us-central1")
 artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
 {%- if cookiecutter.is_a2a %}
 agent_engine = AgentEngineApp.create(
@@ -169,20 +170,18 @@ agent_engine = AgentEngineApp.create(
     artifact_service=(
         GcsArtifactService(bucket_name=artifacts_bucket_name)
         if artifacts_bucket_name
-        else None
+        else InMemoryArtifactService()
     ),
     session_service=InMemorySessionService(),
 )
 {%- else %}
-artifact_service_builder = (
-    lambda: GcsArtifactService(bucket_name=artifacts_bucket_name)
-    if artifacts_bucket_name
-    else None
-)
-
 agent_engine = AgentEngineApp(
     app=adk_app,
-    artifact_service_builder=artifact_service_builder,
+    artifact_service_builder=lambda: GcsArtifactService(
+        bucket_name=artifacts_bucket_name
+    )
+    if artifacts_bucket_name
+    else InMemoryArtifactService(),
 )
 {%- endif -%}
 {% else %}
@@ -399,6 +398,7 @@ class AgentEngineApp:
 
 
 _, project_id = google.auth.default()
+vertexai.init(project=project_id, location="us-central1")
 agent_engine = AgentEngineApp(project_id=project_id)
 {%- endif %}
 {%- endif %}

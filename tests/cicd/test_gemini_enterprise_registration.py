@@ -198,7 +198,7 @@ class TestGeminiEnterpriseRegistration:
             # Step 4: Register with Gemini Enterprise
             logger.info("\n🔗 Step 4: Registering with Gemini Enterprise")
             register_result = run_command(
-                ["uv", "run", "agent-starter-pack-register-gemini-enterprise"],
+                ["uv", "run", "agent-starter-pack", "register-gemini-enterprise"],
                 cwd=str(project_path),
                 env={"ID": gemini_app_id},
                 capture_output=True,

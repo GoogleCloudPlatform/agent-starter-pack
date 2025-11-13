@@ -29,8 +29,6 @@ playground:
 # Launch local development server with hot-reload
 local-backend:
 	uv run uvicorn test_a2a.fast_api_app:app --host localhost --port 8000 --reload
-# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' condition
-# when a2a-inspector adds HTTP-JSON transport support (currently JSON-RPC 2.0 only)
 
 # ==============================================================================
 # A2A Protocol Inspector
@@ -62,7 +60,7 @@ setup-inspector-if-needed:
 		echo "" && \
 		mkdir -p tools && \
 		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector && \
-		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet 24086e48b244b503dc6ccc976c9485bd6ec04ec8) && \
+		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet c15ae469d6dcb26f72ffe08a46dd561974af764b) && \
 		echo "📥 Installing Python dependencies..." && \
 		(cd tools/a2a-inspector && uv sync --quiet) && \
 		echo "📥 Installing Node.js dependencies..." && \

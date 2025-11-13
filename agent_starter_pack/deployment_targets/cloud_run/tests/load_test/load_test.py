@@ -138,6 +138,8 @@ class RemoteAgentUser(WebSocketUser):
     host = "http://localhost:8000"  # Default for local testing
 {%- else %}
 
+import json
+import logging
 import os
 import time
 {%- if cookiecutter.is_a2a %}
@@ -171,6 +173,12 @@ ENDPOINT = "/run_sse"
 
 ENDPOINT = "/stream_messages"
 {%- endif %}
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
 class ChatStreamUser(HttpUser):
@@ -267,6 +275,7 @@ class ChatStreamUser(HttpUser):
 {%- endif %}
             if response.status_code == 200:
                 events = []
+                has_error = False
                 for line in response.iter_lines():
                     if line:
                         line_str = line.decode("utf-8")
@@ -281,16 +290,40 @@ class ChatStreamUser(HttpUser):
                                 response=response,
                                 context={},
                             )
+
+                        # Check for error responses in the JSON payload
+                        try:
+                            event_data = json.loads(line_str)
+                            if isinstance(event_data, dict) and "code" in event_data:
+                                # Flag any non-2xx codes as errors
+                                if event_data["code"] >= 400:
+                                    has_error = True
+                                    error_msg = event_data.get(
+                                        "message", "Unknown error"
+                                    )
+                                    response.failure(f"Error in response: {error_msg}")
+                                    logger.error(
+                                        "Received error response: code=%s, message=%s",
+                                        event_data["code"],
+                                        error_msg,
+                                    )
+                        except json.JSONDecodeError:
+                            # If it's not valid JSON, continue processing
+                            pass
+
                 end_time = time.time()
                 total_time = end_time - start_time
-                self.environment.events.request.fire(
-                    request_type="POST",
-                    name=f"{ENDPOINT} end",
-                    response_time=total_time * 1000,  # Convert to milliseconds
-                    response_length=len(events),
-                    response=response,
-                    context={},
-                )
+
+                # Only fire success event if no errors were found
+                if not has_error:
+                    self.environment.events.request.fire(
+                        request_type="POST",
+                        name=f"{ENDPOINT} end",
+                        response_time=total_time * 1000,  # Convert to milliseconds
+                        response_length=len(events),
+                        response=response,
+                        context={},
+                    )
             else:
                 response.failure(f"Unexpected status code: {response.status_code}")
 {%- endif %}

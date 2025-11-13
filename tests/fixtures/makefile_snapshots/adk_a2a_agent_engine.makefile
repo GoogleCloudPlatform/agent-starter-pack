@@ -23,6 +23,55 @@ playground:
 	uv run adk web . --port 8501 --reload_agents
 
 # ==============================================================================
+# A2A Protocol Inspector
+# ==============================================================================
+
+# Launch A2A Protocol Inspector to test your agent implementation
+inspector: setup-inspector-if-needed build-inspector-if-needed
+	@echo "==============================================================================="
+	@echo "| 🔍 A2A Protocol Inspector                                                  |"
+	@echo "==============================================================================="
+	@echo "| 🌐 Inspector UI: http://localhost:5001                                     |"
+	@echo "|                                                                             |"
+	@echo "| 💡 Testing Remote Deployment:                                               |"
+	@echo "|    Connect to your deployed Agent Engine URL                               |"
+	@echo "|    🔐 See README for authentication setup                                  |"
+	@echo "|                                                                             |"
+	@echo "| ℹ️  Note: Local testing requires deploying to Agent Engine first.          |"
+	@echo "|    Local 'make playground' uses ADK web interface (not A2A endpoints)      |"
+	@echo "==============================================================================="
+	@echo ""
+	cd tools/a2a-inspector/backend && uv run app.py
+
+# Internal: Setup inspector if not already present (runs once)
+# TODO: Update to --branch v1.0.0 when a2a-inspector publishes releases
+setup-inspector-if-needed:
+	@if [ ! -d "tools/a2a-inspector" ]; then \
+		echo "" && \
+		echo "📦 First-time setup: Installing A2A Inspector..." && \
+		echo "" && \
+		mkdir -p tools && \
+		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector && \
+		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet c15ae469d6dcb26f72ffe08a46dd561974af764b) && \
+		echo "📥 Installing Python dependencies..." && \
+		(cd tools/a2a-inspector && uv sync --quiet) && \
+		echo "📥 Installing Node.js dependencies..." && \
+		(cd tools/a2a-inspector/frontend && npm install --silent) && \
+		echo "🔨 Building frontend..." && \
+		(cd tools/a2a-inspector/frontend && npm run build --silent) && \
+		echo "" && \
+		echo "✅ A2A Inspector setup complete!" && \
+		echo ""; \
+	fi
+
+# Internal: Build inspector frontend if needed
+build-inspector-if-needed:
+	@if [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
+		echo "🔨 Building inspector frontend..."; \
+		cd tools/a2a-inspector/frontend && npm run build; \
+	fi
+
+# ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
@@ -75,4 +124,4 @@ lint:
 # Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
 # Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
 register-gemini-enterprise:
-	uvx --from agent-starter-pack agent-starter-pack-register-gemini-enterprise
+	uvx agent-starter-pack@0.20.0 register-gemini-enterprise

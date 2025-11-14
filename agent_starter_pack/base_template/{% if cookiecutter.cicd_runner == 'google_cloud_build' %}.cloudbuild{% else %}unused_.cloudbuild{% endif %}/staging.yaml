@@ -39,7 +39,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
   # Extract version from pyproject.toml
   - name: "gcr.io/cloud-builders/gcloud-slim"
     id: extract-version
@@ -60,7 +60,7 @@ steps:
         "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
         "--build-arg",
         "COMMIT_SHA=$COMMIT_SHA",
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
         "--build-arg",
         "AGENT_VERSION=$(cat /workspace/agent_version.txt || echo '0.0.0')",
 {%- endif %}
@@ -107,7 +107,7 @@ steps:
       - |
         echo $(gcloud auth print-identity-token -q) > id_token.txt
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
   # Extract version from pyproject.toml
   - name: "gcr.io/cloud-builders/gcloud-slim"
     id: extract-version
@@ -135,7 +135,7 @@ steps:
     args:
       - "-c"
       - |
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
         AGENT_VERSION=$(cat /workspace/agent_version.txt || echo '0.0.0')
 {%- endif %}
         uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt
@@ -146,7 +146,7 @@ steps:
           --entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
           --entrypoint-object=agent_engine \
           --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME=${_LOGS_BUCKET_NAME_STAGING}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME=${_LOGS_BUCKET_NAME_STAGING}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 
@@ -209,7 +209,7 @@ steps:
       - |
         export _ID_TOKEN=$(cat id_token.txt)
         export _STAGING_URL=$(cat staging_url.txt)
-        pip install locust==2.31.1{%- if cookiecutter.is_adk_a2a %} a2a-sdk~=0.3.9{%- endif %} --user
+        pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.9{%- endif %} --user
         locust -f tests/load_test/load_test.py \
         --headless \
         -H $$_STAGING_URL \

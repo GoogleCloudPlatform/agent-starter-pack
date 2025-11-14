@@ -25,7 +25,7 @@ The `enhance` command supports all the same options as [`create`](./create.md), 
 #### `--base-template` TEMPLATE
 Override the base template for inheritance when enhancing your existing project. Available base templates include:
 - `adk_base` - Basic agent template (default)
-- `langgraph_base_react` - LangGraph-based ReAct agent
+- `langgraph_base` - LangGraph-based ReAct agent
 - `agentic_rag` - RAG-enabled agent template
 
 ### Key Shared Options
@@ -78,7 +78,7 @@ uvx agent-starter-pack enhance --session-type alloydb
 
 ```bash
 # Enhance current project with LangGraph capabilities
-uvx agent-starter-pack enhance . --base-template langgraph_base_react
+uvx agent-starter-pack enhance . --base-template langgraph_base
 
 # Enhance with RAG-enabled base template
 uvx agent-starter-pack enhance . --base-template agentic_rag
@@ -134,7 +134,7 @@ The inheritance hierarchy works as follows:
 ```
 Your Existing Project
     ↓ (inherits from)
-Base Template (adk_base, langgraph_base_react, etc.)
+Base Template (adk_base, langgraph_base, etc.)
     ↓ (provides)
 Core Infrastructure & Capabilities
 ```
@@ -165,7 +165,7 @@ uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
 uvx agent-starter-pack enhance adk@gemini-fullstack
 
 # Or change base template inheritance
-uvx agent-starter-pack enhance . --base-template langgraph_base_react
+uvx agent-starter-pack enhance . --base-template langgraph_base
 ```
 
 ## Automatic Backup

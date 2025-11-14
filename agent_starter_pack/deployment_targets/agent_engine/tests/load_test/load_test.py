@@ -139,7 +139,7 @@ class RemoteAgentUser(WebSocketUser):
     # Set the host via command line: locust -f load_test.py --host=https://your-deployed-service.run.app
     host = "http://localhost:8000"  # Default for local testing
 {%- else %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 import json
 import logging

@@ -114,7 +114,7 @@ def mock_load_template_config() -> Generator[MagicMock, None, None]:
     """Mocks the template config loading to prevent file system access."""
     with patch("agent_starter_pack.cli.commands.create.load_template_config") as mock:
         mock.return_value = {
-            "name": "langgraph_base_react",
+            "name": "langgraph_base",
             "description": "LangGraph Base React Agent",
             "settings": {
                 "deployment_targets": ["cloud_run", "agent_engine"],
@@ -132,7 +132,7 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
     with patch("agent_starter_pack.cli.commands.create.get_available_agents") as mock:
         mock.return_value = {
             1: {
-                "name": "langgraph_base_react",
+                "name": "langgraph_base",
                 "description": "LangGraph Base React Agent",
             },
             2: {"name": "another-agent", "description": "Another Test Agent"},
@@ -396,7 +396,7 @@ class TestCreateCommand:
             mock_prompt.return_value = 1
             result = display_agent_selection()
 
-        assert result == "langgraph_base_react"
+        assert result == "langgraph_base"
         mock_get_available_agents.assert_called_once()
 
     def test_normalize_project_name(self, mock_console: MagicMock) -> None:

@@ -81,7 +81,7 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: |
           gcloud auth configure-docker {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev --quiet
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
       - name: Extract version from pyproject.toml
         id: extract-version
@@ -94,7 +94,7 @@ jobs:
         run: |
           docker build -t {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
             --build-arg COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %} \
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
             --build-arg AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %} \
 {%- endif %}
             .
@@ -127,7 +127,7 @@ jobs:
         run: |
           pip install uv==0.8.13
           uv sync --locked
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
       - name: Extract version from pyproject.toml
         id: extract-version
@@ -147,7 +147,7 @@ jobs:
             --entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
             --entrypoint-object=agent_engine \
             --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
+            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_a2a %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
 
       - name: Fetch Auth Token
         id: fetch-token
@@ -198,7 +198,7 @@ jobs:
 {%- elif cookiecutter.deployment_target == 'cloud_run' %}
           export _ID_TOKEN="{% raw %}${{ steps.fetch-token.outputs._id_token }}{% endraw %}"
           export _STAGING_URL="{% raw %}${{ steps.fetch-url.outputs._staging_url }}{% endraw %}"
-          pip install locust==2.31.1{%- if cookiecutter.is_adk_a2a %} a2a-sdk~=0.3.9{%- endif %}
+          pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.9{%- endif %}
           locust -f tests/load_test/load_test.py \
           --headless \
           -H ${_STAGING_URL} \

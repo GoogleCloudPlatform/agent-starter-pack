@@ -69,7 +69,7 @@ jobs:
         run: |
           pip install uv==0.8.13
           uv sync --locked
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
       - name: Extract version from pyproject.toml
         id: extract-version
@@ -115,7 +115,7 @@ jobs:
 
       - name: Deploy to Production (Agent Engine)
         run: |
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
           AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}
 {%- endif %}
           uv export --no-hashes --no-sources --no-header --no-dev --no-emit-project --no-annotate --locked > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt
@@ -126,6 +126,6 @@ jobs:
             --entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
             --entrypoint-object=agent_engine \
             --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_adk_a2a %},AGENT_VERSION=$AGENT_VERSION{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_PROD }}{% endraw %}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}{%- endif %}{%- endif %}"
+            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_a2a %},AGENT_VERSION=$AGENT_VERSION{%- endif %}{%- if cookiecutter.is_adk %},ARTIFACTS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_PROD }}{% endraw %}{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}{%- endif %}{%- endif %}"
 {%- endif %}
 

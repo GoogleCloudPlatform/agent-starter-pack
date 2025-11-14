@@ -191,7 +191,7 @@ SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,cloud_run" make lint-tem
 
 # Testing examples
 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make test-templated-agents
-_TEST_AGENT_COMBINATION="langgraph_base_react,agent_engine" make test-templated-agents
+_TEST_AGENT_COMBINATION="langgraph_base,agent_engine" make test-templated-agents
 ```
 
 ### Critical Whitespace Control Patterns
@@ -219,7 +219,7 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai import agent_engines
 {% endif %}
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from {{cookiecutter.agent_directory}}.agent import app as adk_app
 
 {% endif %}
@@ -337,7 +337,7 @@ find agent_starter_pack -name "fast_api_app.py" -type f
    - End-of-file newline issues
 
 2. **`fast_api_app.py`** (deployment_targets/cloud_run/)
-   - Conditional imports (session_type, is_adk_a2a)
+   - Conditional imports (session_type, is_a2a)
    - Long import lines
    - Complex nested conditionals
 
@@ -365,7 +365,7 @@ SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-
 # For agent_engine changes:
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base_react,agent_engine" make lint-templated-agents
+SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base,agent_engine" make lint-templated-agents
 ```
 
 ### Quick Reference: Whitespace Control Cheat Sheet

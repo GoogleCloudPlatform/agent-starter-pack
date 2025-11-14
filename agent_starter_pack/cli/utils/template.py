@@ -217,7 +217,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "adk_a2a_base",
         "adk_live",
         "agentic_rag",
-        "langgraph_base_react",
+        "langgraph_base",
     ]
 
     agents_list = []
@@ -947,7 +947,7 @@ def process_template(
                 "tags": tags,
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
-                "is_adk_a2a": "a2a" in tags,
+                "is_a2a": "a2a" in tags,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "session_type": session_type or "",
@@ -1410,6 +1410,11 @@ def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> N
     # Skip copying if frontend_type is "None" or empty
     if not frontend_type or frontend_type == "None":
         logging.debug("Frontend type is 'None' or empty, skipping frontend files")
+        return
+
+    # Skip copying if frontend_type is "inspector" - it's installed at runtime via make inspector
+    if frontend_type == "inspector":
+        logging.debug("Frontend type is 'inspector', skipping (installed at runtime)")
         return
 
     # Get the frontends directory path

@@ -225,7 +225,7 @@ def display_agent_directory_selection(
 @click.option(
     "--base-template",
     "-b",
-    help="Base template to inherit from (e.g., adk_base, langgraph_base_react, agentic_rag)",
+    help="Base template to inherit from (e.g., adk_base, langgraph_base, agentic_rag)",
 )
 @click.option(
     "--adk",

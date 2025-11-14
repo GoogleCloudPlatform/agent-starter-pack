@@ -226,7 +226,7 @@ from typing import Any
 
 import pytest
 import requests
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from a2a.types import (
     JSONRPCErrorResponse,
     Message,
@@ -247,7 +247,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 BASE_URL = "http://127.0.0.1:8000/"
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 A2A_RPC_URL = BASE_URL + "a2a/{{cookiecutter.agent_directory}}/"
 AGENT_CARD_URL = A2A_RPC_URL + ".well-known/agent-card.json"
 {%- elif cookiecutter.is_adk %}
@@ -309,7 +309,7 @@ def wait_for_server(timeout: int = 90, interval: int = 1) -> bool:
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
             response = requests.get(AGENT_CARD_URL, timeout=10)
 {%- else %}
             response = requests.get("http://127.0.0.1:8000/docs", timeout=10)
@@ -344,7 +344,7 @@ def server_fixture(request: Any) -> Iterator[subprocess.Popen[str]]:
 
 
 def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
     """Test the chat stream functionality using A2A JSON-RPC protocol."""
     logger.info("Starting chat stream test")
 
@@ -517,7 +517,7 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
 {%- endif %}
 
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 
 def test_chat_non_streaming(server_fixture: subprocess.Popen[str]) -> None:
@@ -643,7 +643,7 @@ def test_collect_feedback(server_fixture: subprocess.Popen[str]) -> None:
     assert response.status_code == 200
 
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 
 def test_a2a_agent_json_generation(server_fixture: subprocess.Popen[str]) -> None:

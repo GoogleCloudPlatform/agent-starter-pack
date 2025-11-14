@@ -11,17 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-description: "An agent implementing a base ReAct agent using LangGraph"
-settings:
-  requires_data_ingestion: false
-  deployment_targets: ["agent_engine", "cloud_run"]
-  extra_dependencies: [
-    "langchain-google-vertexai>=2.0.7",
-    "langchain~=0.3.14",
-    "langgraph~=0.6.2",
-    "langchain-community~=0.3.17",
-    "langchain-openai~=0.3.5",
-  ]
-  frontend_type: "streamlit"
-example_question: "What's the weather in San Francisco?"

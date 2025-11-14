@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# mypy: disable-error-code="union-attr"
+from langchain.agents import create_agent
 from langchain_google_vertexai import ChatVertexAI
-from langgraph.prebuilt import create_react_agent
+from langgraph.graph.state import CompiledStateGraph
 
 LOCATION = "global"
 LLM = "gemini-2.5-flash"
@@ -29,6 +29,6 @@ def get_weather(query: str) -> str:
     return "It's 90 degrees and sunny."
 
 
-agent = create_react_agent(
-    model=llm, tools=[get_weather], prompt="You are a helpful assistant"
+root_agent: CompiledStateGraph = create_agent(
+    model=llm, tools=[get_weather], system_prompt="You are a helpful assistant"
 )

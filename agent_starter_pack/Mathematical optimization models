@@ -1,0 +1,225 @@
+"""
+agentic_optimizer.py
+
+Minimal "agentic" pipeline for creating + solving simple linear optimization problems.
+
+Requirements:
+    pip install pulp
+    (optional) pip install openai  # if you want LLM parsing support
+
+Usage:
+    python agentic_optimizer.py            # runs demo examples
+    python agentic_optimizer.py --nl "maximize 3x + 5y subject to 2x + 3y <= 100; x,y >= 0"
+"""
+
+import re
+import sys
+import argparse
+from typing import Dict, List, Tuple, Any
+
+try:
+    import pulp
+except Exception as e:
+    raise ImportError("PuLP is required. Install with: pip install pulp") from e
+
+# --------- Data structures ----------
+Model = Dict[str, Any]
+# Model keys: 'sense' ('max' or 'min'), 'objective' (dict var->coef), 'constraints' (list of (lhs dict, sense, rhs)), 'vars' (list of var names)
+
+# --------- Simple parser for short structured NL-like statements ----------
+VAR_TOKEN = r'[A-Za-z]\w*'  # simple var name pattern (x, y, items1)
+
+def parse_coefs(expr: str) -> Dict[str, float]:
+    """
+    Parse something like "3x + 5y - 2 z" into {'x':3, 'y':5, 'z':-2}
+    Works for simple forms without parentheses.
+    """
+    expr = expr.replace('-', '+-')
+    parts = [p.strip() for p in expr.split('+') if p.strip() != ""]
+    coefs = {}
+    for p in parts:
+        # match coefficient and var name
+        m = re.match(r'^\s*([+-]?\d*\.?\d*)\s*(' + VAR_TOKEN + r')\s*$', p)
+        if m:
+            coef_str, var = m.group(1), m.group(2)
+            coef = float(coef_str) if coef_str not in ("", "+", "-") else (1.0 if coef_str in ("", "+") else -1.0)
+            coefs[var] = coefs.get(var, 0.0) + coef
+        else:
+            # if only a var (like "x") or number*var without space handled above
+            m2 = re.match(r'^\s*([+-]?\d*\.?\d*)\s*$', p)
+            if m2:
+                # stray number - ignore
+                continue
+            else:
+                # try find patterns like "3*x" or "3 x"
+                m3 = re.match(r'^\s*([+-]?\d*\.?\d*)\s*\*?\s*(' + VAR_TOKEN + r')\s*$', p)
+                if m3:
+                    coef_str, var = m3.group(1), m3.group(2)
+                    coef = float(coef_str) if coef_str not in ("", "+", "-") else (1.0 if coef_str in ("", "+") else -1.0)
+                    coefs[var] = coefs.get(var, 0.0) + coef
+                else:
+                    raise ValueError(f"Cannot parse term: '{p}'")
+    return coefs
+
+def parse_short_nl(text: str) -> Model:
+    """
+    Parse short patterns like:
+      "maximize 3x + 5y subject to 2x + 3y <= 100; x,y >= 0"
+      or
+      "minimize 4a + 2b subject to a + b >= 10; 2a + b <= 20"
+    Very limited but useful for demos.
+    """
+    text = text.strip()
+    sense = 'max'
+    if text.lower().startswith('min'):
+        sense = 'min'
+    # objective extraction
+    obj_m = re.search(r'(maximize|minimize)\s+(.+?)\s+subject to', text, flags=re.IGNORECASE)
+    if not obj_m:
+        raise ValueError("Couldn't find objective. Use 'maximize ... subject to ...'")
+    obj_expr = obj_m.group(2).strip().rstrip(';')
+    objective = parse_coefs(obj_expr)
+
+    # constraints extraction (after 'subject to')
+    cons_part = text[obj_m.end():].strip()
+    # split constraints by ';' or ',' or ' and '
+    cons_tokens = re.split(r';|\band\b|,', cons_part)
+    constraints = []
+    var_set = set(objective.keys())
+    for token in cons_tokens:
+        token = token.strip()
+        if token == "":
+            continue
+        # handle nonnegativity like "x,y >= 0" or "x, y >= 0"
+        m_nonneg = re.match(r'^(.+?)\s*(>=|<=|=)\s*([\-]?\d+(\.\d+)?)\s*$', token)
+        if m_nonneg:
+            lhs_raw, op, rhs = m_nonneg.group(1), m_nonneg.group(2), float(m_nonneg.group(3))
+            # lhs_raw might be "x,y" meaning x>=0,y>=0 when rhs==0
+            if ',' in lhs_raw:
+                varnames = [v.strip() for v in lhs_raw.split(',') if v.strip()]
+                if len(varnames) > 1 and rhs == 0:
+                    # add var >= 0 constraints
+                    for v in varnames:
+                        constraints.append(( {v:1.0}, '>=', 0.0))
+                        var_set.add(v)
+                    continue
+            # else try parse as a linear expr
+            lhs_coefs = parse_coefs(lhs_raw)
+            var_set.update(lhs_coefs.keys())
+            constraints.append((lhs_coefs, op, rhs))
+            continue
+
+        # normal linear constraints with <=, >=, =
+        m2 = re.match(r'^(.+?)\s*(<=|>=|=)\s*([\-]?\d+(\.\d+)?)\s*$', token)
+        if m2:
+            lhs_raw = m2.group(1)
+            op = m2.group(2)
+            rhs = float(m2.group(3))
+            lhs_coefs = parse_coefs(lhs_raw)
+            var_set.update(lhs_coefs.keys())
+            constraints.append((lhs_coefs, op, rhs))
+            continue
+
+        # try forms like "x,y >= 0" handled earlier, else raise
+        raise ValueError(f"Could not parse constraint token: '{token}'")
+
+    return {
+        'sense': sense,
+        'objective': objective,
+        'constraints': constraints,
+        'vars': sorted(list(var_set))
+    }
+
+# --------- Builder + solver using PuLP ----------
+def build_and_solve(model: Model, verbose: bool = True) -> Dict[str, Any]:
+    sense = model['sense']
+    obj = model['objective']
+    cons = model['constraints']
+    var_names = model['vars']
+
+    prob = pulp.LpProblem("AgenticModel", pulp.LpMaximize if sense == 'max' else pulp.LpMinimize)
+
+    # create variables (non-negative by default)
+    vars_dict = {v: pulp.LpVariable(v, lowBound=0) for v in var_names}
+
+    # objective
+    prob += pulp.lpSum(coef * vars_dict[v] for v, coef in obj.items()), "Objective"
+
+    # constraints
+    for i, (lhs, op, rhs) in enumerate(cons):
+        expr = pulp.lpSum(coef * vars_dict[v] for v, coef in lhs.items())
+        if op == '<=':
+            prob += (expr <= rhs), f"c_{i}"
+        elif op == '>=':
+            prob += (expr >= rhs), f"c_{i}"
+        elif op == '=':
+            prob += (expr == rhs), f"c_{i}"
+        else:
+            raise ValueError("Unsupported operator in constraints: " + str(op))
+
+    # solve
+    prob.solve()
+    status = pulp.LpStatus.get(prob.status, "UNKNOWN")
+    result = {
+        'status': status,
+        'objective_value': pulp.value(prob.objective),
+        'variables': {v: pulp.value(var) for v, var in vars_dict.items()}
+    }
+    if verbose:
+        print("Solve status:", result['status'])
+        print("Objective value:", result['objective_value'])
+        print("Variables:")
+        for v, val in result['variables'].items():
+            print(f"  {v} = {val}")
+    return result
+
+# --------- Optional LLM parsing (sketch) ----------
+def llm_parse_stub(nl_text: str) -> Model:
+    """
+    Placeholder showing how you would call an LLM (e.g., OpenAI) to parse arbitrary NL into a structured model.
+    This function does NOT make external calls. To use an actual LLM, implement an API call here.
+
+    Example prompt you'd send to the LLM:
+      "Convert to JSON with fields: sense('max'/'min'), objective: {'x':3,'y':5}, constraints: [ {'lhs':{'x':2,'y':3}, 'op':'<=', 'rhs':100} ]"
+    """
+    # For demo, we fallback to a pre-defined toy model:
+    demo = "maximize 3x + 5y subject to 2x + 3y <= 100; x,y >= 0"
+    return parse_short_nl(demo)
+
+# --------- Demo + CLI ----------
+def demo_examples():
+    print("Demo 1: Simple LP parsed from short natural-like text")
+    text1 = "maximize 3x + 5y subject to 2x + 3y <= 100; x,y >= 0"
+    print("Input:", text1)
+    model1 = parse_short_nl(text1)
+    build_and_solve(model1)
+
+    print("\nDemo 2: A different LP")
+    text2 = "minimize 4a + 2b subject to a + 2b >= 10; 3a + b <= 30; a,b >= 0"
+    print("Input:", text2)
+    model2 = parse_short_nl(text2)
+    build_and_solve(model2)
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--nl', type=str, help="Short NL optimization statement (enclose in quotes).")
+    parser.add_argument('--use-llm', action='store_true', help="Use LLM to parse (stub: not implemented).")
+    args = parser.parse_args()
+
+    if args.nl:
+        try:
+            model = parse_short_nl(args.nl)
+        except Exception as e:
+            print("Local parse failed:", e)
+            if args.use_llm:
+                print("Falling back to LLM parse (stub). Implement actual LLM call to enable).")
+                model = llm_parse_stub(args.nl)
+            else:
+                print("Try simpler input or run with --use-llm (stub). Exiting.")
+                return
+        build_and_solve(model)
+    else:
+        demo_examples()
+
+if __name__ == '__main__':
+    main()

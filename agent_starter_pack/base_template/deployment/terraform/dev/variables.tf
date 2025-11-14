@@ -31,12 +31,8 @@ variable "region" {
 
 variable "telemetry_logs_filter" {
   type        = string
-  description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."
-{%- if cookiecutter.is_adk %}
-  default     = "labels.service_name=\"{{cookiecutter.project_name}}\" labels.type=\"agent_telemetry\""
-{%- else %}
-  default     = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"{{cookiecutter.project_name}}\""
-{%- endif %}
+  description = "Log Sink filter for capturing GenAI event logs (gen_ai.system.message, gen_ai.user.message, gen_ai.choice) for this specific agent."
+  default     = "logName=~\"gen_ai\\\\.\" AND resource.labels.namespace=\"{{cookiecutter.project_name}}\""
 }
 
 variable "feedback_logs_filter" {

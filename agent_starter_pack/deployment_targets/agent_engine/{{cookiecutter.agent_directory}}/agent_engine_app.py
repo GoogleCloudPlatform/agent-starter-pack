@@ -162,6 +162,19 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 {%- endif %}
 
 
+# Enable GenAI event capture for telemetry
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+{%- if cookiecutter.is_adk %}
+os.environ.setdefault("ADK_CAPTURE_MESSAGE_CONTENT_IN_SPANS", "false")
+{%- endif %}
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 _, project_id = google.auth.default()
 vertexai.init(project=project_id, location="us-central1")
 artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
@@ -189,6 +202,17 @@ agent_engine = AgentEngineApp(
 
 import logging
 import os
+
+# Enable GenAI event capture for telemetry
+os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
+# Set resource attributes with service namespace and commit SHA for version tracking
+commit_sha = os.environ.get("COMMIT_SHA", "dev")
+os.environ.setdefault(
+    "OTEL_RESOURCE_ATTRIBUTES",
+    f"service.namespace={{cookiecutter.project_name}},service.version={commit_sha}",
+)
+
 from collections.abc import Iterable, Mapping
 from typing import (
     Any,
@@ -230,24 +254,6 @@ class AgentEngineApp:
         except Exception as e:
             logging.error("Failed to initialize Telemetry: %s", str(e))
         self.runnable = agent
-
-    # Add any additional variables here that should be included in the tracing logs
-    def set_tracing_properties(self, config: RunnableConfig | None) -> None:
-        """Sets tracing association properties for the current request.
-
-        Args:
-            config: Optional RunnableConfig containing request metadata
-        """
-        config = ensure_valid_config(config)
-        Traceloop.set_association_properties(
-            {
-                "log_type": "tracing",
-                "run_id": str(config["run_id"]),
-                "user_id": config["metadata"].pop("user_id", "None"),
-                "session_id": config["metadata"].pop("session_id", "None"),
-                "commit_sha": os.environ.get("COMMIT_SHA", "None"),
-            }
-        )
 
     def stream_query(
         self,

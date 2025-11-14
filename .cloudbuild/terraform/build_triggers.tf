@@ -75,10 +75,6 @@ locals {
       value = "langgraph_base,cloud_run,-dir,tag"
     },
     {
-      name  = "crewai_coding_crew-agent_engine"
-      value = "crewai_coding_crew,agent_engine"
-    },
-    {
       name  = "crewai_coding_crew-cloud_run"
       value = "crewai_coding_crew,cloud_run"
     },

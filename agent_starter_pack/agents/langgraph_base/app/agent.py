@@ -29,7 +29,6 @@ def get_weather(query: str) -> str:
     return "It's 90 degrees and sunny."
 
 
-agent: CompiledStateGraph = create_agent(
+root_agent: CompiledStateGraph = create_agent(
     model=llm, tools=[get_weather], system_prompt="You are a helpful assistant"
 )
-

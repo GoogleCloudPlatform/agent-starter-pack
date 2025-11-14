@@ -16,6 +16,10 @@ This project is organized as follows:
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 │   ├── agent_engine_app.py # Agent Engine application logic
 {%- endif %}
+{%- if cookiecutter.is_a2a and not cookiecutter.is_adk %}
+│   ├── executor/        # A2A protocol executor implementation
+│   ├── converters/      # Message converters for A2A protocol
+{%- endif %}
 │   └── app_utils/       # App utilities and helpers
 {%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
 ├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build

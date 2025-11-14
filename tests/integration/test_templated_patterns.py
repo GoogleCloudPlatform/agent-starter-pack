@@ -83,12 +83,15 @@ def _run_agent_test(
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
-        # Verify frontend folder for agents with streamlit frontend
-        if agent in ["langgraph_base", "crewai_coding_crew"]:
-            frontend_dir = project_path / "frontend"
-            assert frontend_dir.exists(), f"Frontend folder missing for {agent}"
-            assert (frontend_dir / "streamlit_app.py").exists(), (
-                f"streamlit_app.py missing for {agent}"
+        # Verify A2A inspector setup for A2A agents
+        if agent == "langgraph_base":
+            # A2A agents use inspector which is installed at runtime via make inspector
+            # Just verify the Makefile has the inspector target
+            makefile_path = project_path / "Makefile"
+            assert makefile_path.exists(), "Makefile missing"
+            makefile_content = makefile_path.read_text()
+            assert "inspector:" in makefile_content, (
+                "inspector target missing in Makefile"
             )
 
         # Install dependencies

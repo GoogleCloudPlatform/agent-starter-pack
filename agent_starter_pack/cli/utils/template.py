@@ -1412,6 +1412,11 @@ def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> N
         logging.debug("Frontend type is 'None' or empty, skipping frontend files")
         return
 
+    # Skip copying if frontend_type is "inspector" - it's installed at runtime via make inspector
+    if frontend_type == "inspector":
+        logging.debug("Frontend type is 'inspector', skipping (installed at runtime)")
+        return
+
     # Get the frontends directory path
     frontends_path = (
         pathlib.Path(__file__).parent.parent.parent / "frontends" / frontend_type

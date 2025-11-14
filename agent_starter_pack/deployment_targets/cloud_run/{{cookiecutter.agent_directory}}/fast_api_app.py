@@ -441,16 +441,12 @@ app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
 {% else %}
+{%- if cookiecutter.is_a2a %}
 import logging
 import os
-{%- if cookiecutter.is_a2a %}
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-{%- else %}
-from collections.abc import Generator
-{%- endif %}
 
-{%- if cookiecutter.is_a2a %}
 from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
@@ -459,7 +455,19 @@ from a2a.utils.constants import (
     AGENT_CARD_WELL_KNOWN_PATH,
     EXTENDED_AGENT_CARD_PATH,
 )
-{%- endif %}
+from fastapi import FastAPI
+from google.cloud import logging as google_cloud_logging
+from traceloop.sdk import Instruments, Traceloop
+
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+from {{cookiecutter.agent_directory}}.executor.a2a_agent_executor import LangGraphAgentExecutor
+{%- else %}
+import logging
+import os
+from collections.abc import Generator
+
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse, StreamingResponse
 from google.cloud import logging as google_cloud_logging
@@ -475,14 +483,14 @@ from {{cookiecutter.agent_directory}}.app_utils.typing import (
     dumps,
     ensure_valid_config,
 )
-{%- if cookiecutter.is_a2a %}
-from {{cookiecutter.agent_directory}}.a2a_agent_executor import LangGraphAgentExecutor
 {%- endif %}
+
 
 {%- if cookiecutter.is_a2a %}
 
 request_handler = DefaultRequestHandler(
-    agent_executor=LangGraphAgentExecutor(), task_store=InMemoryTaskStore()
+    agent_executor=LangGraphAgentExecutor(graph=root_agent),
+    task_store=InMemoryTaskStore(),
 )
 
 A2A_RPC_PATH = "/a2a/{{cookiecutter.agent_directory}}"
@@ -491,14 +499,14 @@ A2A_RPC_PATH = "/a2a/{{cookiecutter.agent_directory}}"
 def build_agent_card() -> AgentCard:
     """Builds the Agent Card for the LangGraph agent."""
     skill = AgentSkill(
-        id="langgraph_react",
-        name="LangGraph ReAct Agent",
-        description="A ReAct agent built with LangGraph that can answer questions and use tools",
-        tags=["langgraph", "react", "agent"],
-        examples=["{{cookiecutter.example_question}}"],
+        id="root_agent-get_weather",
+        name="get_weather",
+        description="Simulates a web search. Use it get information on weather.",
+        tags=["llm", "tools"],
+        examples=["What's the weather in San Francisco?"],
     )
     agent_card = AgentCard(
-        name="{{cookiecutter.project_name}}",
+        name="root_agent",
         description="API for interacting with the Agent {{cookiecutter.project_name}}",
         url=f"{os.getenv('APP_URL', 'http://0.0.0.0:8000')}{A2A_RPC_PATH}",
         version=os.getenv("AGENT_VERSION", "0.1.0"),
@@ -513,9 +521,7 @@ def build_agent_card() -> AgentCard:
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
     agent_card = build_agent_card()
-    a2a_app = A2AFastAPIApplication(
-        agent_card=agent_card, http_handler=request_handler
-    )
+    a2a_app = A2AFastAPIApplication(agent_card=agent_card, http_handler=request_handler)
     a2a_app.add_routes_to_app(
         app_instance,
         agent_card_url=f"{A2A_RPC_PATH}{AGENT_CARD_WELL_KNOWN_PATH}",
@@ -532,6 +538,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 {%- else %}
+
 # Initialize FastAPI app and logging
 app = FastAPI(
     title="{{cookiecutter.project_name}}",
@@ -552,9 +559,9 @@ try:
 except Exception as e:
     logging.error("Failed to initialize Telemetry: %s", str(e))
 
-
-
 {%- if not cookiecutter.is_a2a %}
+
+
 def set_tracing_properties(config: RunnableConfig) -> None:
     """Sets tracing association properties for the current request.
 

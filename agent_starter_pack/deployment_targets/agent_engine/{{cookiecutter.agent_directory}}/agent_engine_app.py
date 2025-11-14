@@ -25,6 +25,7 @@ import google.auth
 {%- if cookiecutter.is_a2a %}
 import nest_asyncio
 {%- endif %}
+import vertexai
 {%- if cookiecutter.is_a2a %}
 from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
@@ -186,10 +187,13 @@ agent_engine = AgentEngineApp(
 {%- endif -%}
 {% else %}
 
-import logging
-import os
 {%- if cookiecutter.is_a2a %}
 import asyncio
+{%- else %}
+import logging
+{%- endif %}
+import os
+{%- if cookiecutter.is_a2a %}
 from typing import Any
 {%- else %}
 from collections.abc import Iterable, Mapping
@@ -201,21 +205,21 @@ from typing import (
 import google.auth
 {%- if cookiecutter.is_a2a %}
 import nest_asyncio
-from a2a.server.request_handlers import DefaultRequestHandler
-from a2a.server.tasks import InMemoryTaskStore
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
-{%- endif %}
+from google.cloud import logging as google_cloud_logging
+from vertexai.preview.reasoning_engines import A2aAgent
+
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+from {{cookiecutter.agent_directory}}.executor.a2a_agent_executor import LangGraphAgentExecutor
+{%- else %}
+import vertexai
 from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
 from traceloop.sdk import Instruments, Traceloop
-{%- if cookiecutter.is_a2a %}
-from vertexai.preview.reasoning_engines import A2aAgent
-{%- endif %}
 
 from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
-{%- if cookiecutter.is_a2a %}
-from {{cookiecutter.agent_directory}}.a2a_agent_executor import LangGraphAgentExecutor
 {%- endif %}
 
 {%- if cookiecutter.is_a2a %}
@@ -238,44 +242,42 @@ class AgentEngineApp(A2aAgent):
             pass
 
         agent_card = asyncio.run(AgentEngineApp.build_agent_card())
-        request_handler = DefaultRequestHandler(
-            agent_executor=LangGraphAgentExecutor(), task_store=InMemoryTaskStore()
-        )
 
         return AgentEngineApp(
+            agent_executor_builder=lambda: LangGraphAgentExecutor(graph=root_agent),
             agent_card=agent_card,
-            http_handler=request_handler,
-            transport_protocol=TransportProtocol.grpc,
         )
 
     @staticmethod
     async def build_agent_card() -> AgentCard:
         """Build the Agent Card for the LangGraph agent."""
         skill = AgentSkill(
-            id="langgraph_react",
-            name="LangGraph ReAct Agent",
-            description="A ReAct agent built with LangGraph that can answer questions and use tools",
-            tags=["langgraph", "react", "agent"],
-            examples=["{{cookiecutter.example_question}}"],
+            id="root_agent-get_weather",
+            name="get_weather",
+            description="Simulates a web search. Use it get information on weather.",
+            tags=["llm", "tools"],
+            examples=["What's the weather in San Francisco?"],
         )
-
         agent_card = AgentCard(
-            name="{{cookiecutter.project_name}}",
-            description="An agent implementing a base ReAct agent using LangGraph with Agent2Agent (A2A) Protocol support",
-            url="",  # URL will be set by Agent Engine
+            name="root_agent",
+            description="A base ReAct agent using LangGraph with Agent2Agent (A2A) Protocol support",
+            url="http://localhost:9999/",  # RPC URL for Agent Engine
             version=os.getenv("AGENT_VERSION", "0.1.0"),
             default_input_modes=["text/plain"],
             default_output_modes=["text/plain"],
-            capabilities=AgentCapabilities(streaming=True),
+            capabilities=AgentCapabilities(
+                streaming=False
+            ),  # Agent Engine does not support streaming yet
             skills=[skill],
         )
+
+        agent_card.preferred_transport = TransportProtocol.http_json  # Http Only.
+        agent_card.supports_authenticated_extended_card = True
 
         return agent_card
 
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
-        from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
-
         feedback_obj = Feedback.model_validate(feedback)
         logging_client = google_cloud_logging.Client()
         logger = logging_client.logger(__name__)
@@ -307,7 +309,7 @@ class AgentEngineApp:
     def set_up(self) -> None:
         """The set_up method is used to define application initialization logic"""
         # Lazy import agent at setup time to avoid deployment dependencies
-        from {{cookiecutter.agent_directory}}.agent import agent
+        from {{cookiecutter.agent_directory}}.agent import root_agent
 
         logging_client = google_cloud_logging.Client(project=self.project_id)
         self.logger = logging_client.logger(__name__)
@@ -322,7 +324,7 @@ class AgentEngineApp:
             )
         except Exception as e:
             logging.error("Failed to initialize Telemetry: %s", str(e))
-        self.runnable = agent
+        self.runnable = root_agent
 
     # Add any additional variables here that should be included in the tracing logs
     def set_tracing_properties(self, config: RunnableConfig | None) -> None:

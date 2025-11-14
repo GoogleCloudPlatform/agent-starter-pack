@@ -361,10 +361,22 @@ agent = RunnablePassthrough()
 
             # Read the content and verify the correct import
             content = agent_engine_app.read_text()
-            expected_import_line = f"from app.agent import {expected_import}"
-            assert expected_import_line in content, (
-                f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
-            )
+
+            # For A2A non-ADK agents (like langgraph_base), they don't import from app.agent
+            if base_template == "langgraph_base":
+                # Verify A2A-specific imports for LangGraph agents
+                assert (
+                    "from app.executor.a2a_agent_executor import LangGraphAgentExecutor"
+                    in content
+                ), (
+                    f"Expected A2A LangGraph imports in agent_engine_app.py but got:\n{content}"
+                )
+            else:
+                # For ADK-based agents, verify the standard import
+                expected_import_line = f"from app.agent import {expected_import}"
+                assert expected_import_line in content, (
+                    f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
+                )
 
     def test_agent_engine_app_created_in_custom_agent_directory(
         self, tmp_path: pathlib.Path

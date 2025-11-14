@@ -220,3 +220,34 @@ variable "create_repository" {
   default     = false
 }
 {% endif %}
+
+# Monitoring Configuration
+variable "alert_notification_email" {
+  type        = string
+  description = "Email address for alert notifications. Leave empty for console-only alerts."
+  default     = ""
+}
+
+variable "latency_alert_threshold_ms" {
+  type        = number
+  description = "P95 latency threshold in milliseconds for alerting. P95 means 95% of requests complete faster than this threshold."
+  default     = 3000
+}
+
+variable "error_rate_alert_threshold" {
+  type        = number
+  description = "Error count threshold per 5-minute window for alerting."
+  default     = 10
+}
+
+variable "retriever_latency_p99_threshold_ms" {
+  type        = number
+  description = "P99 retriever latency threshold in milliseconds for alerting. P99 means 99% of retrieval operations complete faster than this threshold."
+  default     = 10000
+}
+
+variable "agent_error_rate_threshold_per_sec" {
+  type        = number
+  description = "Agent error rate threshold in errors per second for alerting (Cloud Run agents)."
+  default     = 0.5
+}

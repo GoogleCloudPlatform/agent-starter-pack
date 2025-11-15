@@ -66,7 +66,7 @@ setup-inspector-if-needed:
 
 # Internal: Build inspector frontend if needed
 build-inspector-if-needed:
-	@if [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
+	@if [ -d "tools/a2a-inspector" ] && [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
 		echo "🔨 Building inspector frontend..."; \
 		cd tools/a2a-inspector/frontend && npm run build; \
 	fi

@@ -79,8 +79,7 @@ make install && make playground
 | `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
 {%- endif -%}
 {%- endif -%}
-{# TODO: Remove 'and cookiecutter.deployment_target == 'cloud_run'' when inspector adds HTTP-JSON support #}
-{%- if cookiecutter.is_a2a and cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.is_a2a %}
 | `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |

@@ -98,15 +98,7 @@ class LangGraphTaskResultAggregator:
     ) -> Part:
         """Convert a media content block to an A2A Part."""
 
-        # Infer mime_type from media_type if not explicitly provided
         mime_type = content.get("mime_type")
-        if not mime_type:
-            if media_type == "image":
-                mime_type = "image/jpeg"
-            elif media_type == "audio":
-                mime_type = "audio/mpeg"
-            elif media_type == "video":
-                mime_type = "video/mp4"
 
         if "url" in content:
             return Part(

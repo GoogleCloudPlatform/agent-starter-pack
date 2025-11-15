@@ -16,10 +16,15 @@ A base ReAct agent built using **[LangGraph](https://docs.langchain.com/oss/pyth
 
 ## Validating Your A2A Implementation
 
-When deploying to **Cloud Run**, this template includes the **[A2A Protocol Inspector](https://github.com/a2aproject/a2a-inspector)** for validating your agent's A2A implementation.
+This template includes the **[A2A Protocol Inspector](https://github.com/a2aproject/a2a-inspector)** for validating your agent's A2A implementation.
 
 ```bash
 make inspector
 ```
+
+The inspector now supports both JSON-RPC 2.0 (Cloud Run) and HTTP-JSON (Agent Engine) transport protocols:
+
+- **Cloud Run**: Test locally at `http://localhost:8000` or connect to your deployed Cloud Run URL
+- **Agent Engine**: Must deploy first, then connect to your deployed Agent Engine URL (local testing not available)
 
 For detailed setup instructions including local and remote testing workflows, refer to the `README.md` in your generated project.

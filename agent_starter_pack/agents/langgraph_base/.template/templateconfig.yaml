@@ -18,11 +18,11 @@ settings:
   deployment_targets: ["agent_engine", "cloud_run"]
   extra_dependencies: [
     "langchain-google-vertexai>=3.0.3",
-    "langchain~=1.0.5",
+    "langchain~=1.0.7",
     "langgraph~=1.0.3",
     "langchain-community~=0.4.1",
-    "langchain-openai~=1.0.2",
-    "a2a-sdk[http-server]~=0.3.9",
+    "langchain-openai~=1.0.3",
+    "a2a-sdk[http-server]~=0.3.12",
     "nest-asyncio>=1.6.0,<2.0.0",
   ]
   tags: ["langgraph", "a2a"]

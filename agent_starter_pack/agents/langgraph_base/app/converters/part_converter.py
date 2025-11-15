@@ -81,24 +81,7 @@ def convert_langchain_content_to_a2a_part(content: Any) -> Part:
         elif content_type in ("image", "audio", "video"):
             # Handle URL-based media
             if "url" in content:
-                url = content["url"]
-                if url.startswith("data:"):
-                    # Parse data URI format: data:mime_type;base64,data
-                    try:
-                        header, base64_data = url.split(",", 1)
-                        mime_type = header.split(";")[0].replace("data:", "")
-                        return Part(
-                            root=FilePart(
-                                file=FileWithBytes(
-                                    bytes=base64_data, mime_type=mime_type or None
-                                )
-                            )
-                        )
-                    except Exception as e:
-                        logger.warning(f"Failed to parse data URI: {e}")
-                        return Part(root=FilePart(file=FileWithUri(uri=url)))
-                else:
-                    return Part(root=FilePart(file=FileWithUri(uri=url)))
+                return Part(root=FilePart(file=FileWithUri(uri=content["url"])))
 
             # Handle base64-encoded media
             elif "base64" in content:
@@ -139,15 +122,6 @@ def convert_a2a_parts_to_langchain_content(parts: list[Part]) -> LangChainConten
 
     if len(converted) == 1 and isinstance(converted[0], str):
         return converted[0]
-
-    if (
-        len(converted) == 1
-        and isinstance(converted[0], dict)
-        and converted[0].get("type") == "text"
-    ):
-        text_value = converted[0].get("text")
-        if isinstance(text_value, str):
-            return text_value
 
     return converted
 

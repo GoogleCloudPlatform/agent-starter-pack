@@ -28,6 +28,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from rich.console import Console
 
 console = Console(highlight=False)
+console_err = Console(stderr=True, highlight=False)
 
 
 def get_discovery_engine_endpoint(location: str) -> str:
@@ -186,10 +187,9 @@ def prompt_for_agent_engine_id(default_from_metadata: str | None) -> str:
         if parsed:
             return agent_engine_id
         else:
-            console.print(
+            console_err.print(
                 "❌ Invalid format. Expected: projects/{project}/locations/{location}/reasoningEngines/{id}",
                 style="bold red",
-                file=sys.stderr,
             )
 
 
@@ -424,10 +424,9 @@ def register_agent(
                         console.print(f"   Agent Name: {result.get('name', 'N/A')}")
                         return result
                     else:
-                        console.print(
+                        console_err.print(
                             "❌ [red]Could not find existing agent to update[/]",
                             style="bold red",
-                            file=sys.stderr,
                         )
                         raise
             except (ValueError, KeyError):
@@ -435,18 +434,16 @@ def register_agent(
                 pass
 
         # If not an "already exists" error, or update failed, raise the original error
-        console.print(
+        console_err.print(
             f"\n❌ [red]HTTP error occurred: {http_err}[/]",
             style="bold red",
-            file=sys.stderr,
         )
-        console.print(f"   Response: {response.text}", file=sys.stderr)
+        console_err.print(f"   Response: {response.text}")
         raise
     except requests.exceptions.RequestException as req_err:
-        console.print(
+        console_err.print(
             f"\n❌ [red]Request error occurred: {req_err}[/]",
             style="bold red",
-            file=sys.stderr,
         )
         raise
 

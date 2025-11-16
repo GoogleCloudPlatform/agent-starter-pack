@@ -25,6 +25,9 @@ import requests
 import vertexai
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
+from rich.console import Console
+
+console = Console(highlight=False)
 
 
 def get_discovery_engine_endpoint(location: str) -> str:
@@ -51,35 +54,52 @@ def get_discovery_engine_endpoint(location: str) -> str:
         return f"https://{location}-discoveryengine.googleapis.com"
 
 
-def get_agent_engine_id(
-    agent_engine_id: str | None, metadata_file: str = "deployment_metadata.json"
-) -> str:
-    """Get the agent engine ID from parameter or deployment metadata.
+def get_agent_engine_id_from_metadata(
+    metadata_file: str = "deployment_metadata.json",
+) -> str | None:
+    """Try to read the agent engine ID from deployment metadata.
 
     Args:
-        agent_engine_id: Optional agent engine resource name
         metadata_file: Path to deployment metadata JSON file
 
     Returns:
-        The agent engine resource name
-
-    Raises:
-        ValueError: If agent_engine_id is not provided and metadata file doesn't exist
+        The agent engine resource name if found, None otherwise
     """
-    if agent_engine_id:
-        return agent_engine_id
-
-    # Try to read from deployment_metadata.json
     metadata_path = Path(metadata_file)
     if not metadata_path.exists():
-        raise ValueError(
-            f"No agent engine ID provided and {metadata_file} not found. "
-            "Please provide --agent-engine-id or deploy your agent first."
-        )
+        return None
 
-    with open(metadata_path, encoding="utf-8") as f:
-        metadata = json.load(f)
-        return metadata["remote_agent_engine_id"]
+    try:
+        with open(metadata_path, encoding="utf-8") as f:
+            metadata = json.load(f)
+            return metadata.get("remote_agent_engine_id")
+    except (json.JSONDecodeError, KeyError):
+        return None
+
+
+def parse_agent_engine_id(agent_engine_id: str) -> dict[str, str] | None:
+    """Parse an Agent Engine resource name to extract components.
+
+    Args:
+        agent_engine_id: Agent Engine resource name
+            (e.g., projects/PROJECT_NUM/locations/REGION/reasoningEngines/ENGINE_ID)
+
+    Returns:
+        Dictionary with 'project', 'location', 'engine_id' keys, or None if invalid format
+    """
+    parts = agent_engine_id.split("/")
+    if (
+        len(parts) == 6
+        and parts[0] == "projects"
+        and parts[2] == "locations"
+        and parts[4] == "reasoningEngines"
+    ):
+        return {
+            "project": parts[1],
+            "location": parts[3],
+            "engine_id": parts[5],
+        }
+    return None
 
 
 def get_access_token() -> str:
@@ -134,6 +154,104 @@ def get_agent_engine_metadata(agent_engine_id: str) -> tuple[str | None, str | N
             f"Warning: Could not fetch metadata from Agent Engine: {e}", file=sys.stderr
         )
         return None, None
+
+
+def prompt_for_agent_engine_id(default_from_metadata: str | None) -> str:
+    """Prompt user for Agent Engine ID with optional default.
+
+    Args:
+        default_from_metadata: Default value from deployment_metadata.json if available
+
+    Returns:
+        The Agent Engine resource name
+    """
+    if default_from_metadata:
+        console.print("\nFound Agent Engine ID from deployment_metadata.json:")
+        console.print(f"  [bold]{default_from_metadata}[/]")
+        use_default = click.confirm(
+            "Use this Agent Engine ID?", default=True, show_default=True
+        )
+        if use_default:
+            return default_from_metadata
+
+    console.print(
+        "\nEnter your Agent Engine resource name"
+        "\n[blue]Example: projects/123456789/locations/us-central1/reasoningEngines/1234567890[/]"
+        "\n(You can find this in the Agent Builder Console or deployment_metadata.json)"
+    )
+
+    while True:
+        agent_engine_id = click.prompt("Agent Engine ID", type=str).strip()
+        parsed = parse_agent_engine_id(agent_engine_id)
+        if parsed:
+            return agent_engine_id
+        else:
+            console.print(
+                "❌ Invalid format. Expected: projects/{project}/locations/{location}/reasoningEngines/{id}",
+                style="bold red",
+            )
+
+
+def prompt_for_gemini_enterprise_components(
+    default_project: str | None = None, default_location: str | None = None
+) -> str:
+    """Prompt user for Gemini Enterprise resource components and construct full ID.
+
+    Args:
+        default_project: Default project number from Agent Engine ID
+        default_location: Default location from Agent Engine ID (unused - GE defaults to 'global')
+
+    Returns:
+        Full Gemini Enterprise app resource name
+    """
+    console.print("\n[blue]" + "=" * 70 + "[/]")
+    console.print("[blue]GEMINI ENTERPRISE CONFIGURATION[/]")
+    console.print("[blue]" + "=" * 70 + "[/]")
+
+    console.print(
+        "\nYou need to provide the Gemini Enterprise app details."
+        "\nFind these in: Google Cloud Console → Gemini Enterprise → Apps"
+        "\nCopy the ID from the 'ID' column for your Gemini Enterprise instance."
+    )
+
+    # Project number
+    if default_project:
+        console.print(f"\n[dim]Default from Agent Engine: {default_project}[/]")
+    project_number = click.prompt(
+        "Project number", type=str, default=default_project or ""
+    ).strip()
+
+    # Location - GE apps are typically in 'global', 'us', or 'eu'
+    console.print("\nGemini Enterprise apps are in: global, us, or eu")
+    location = click.prompt(
+        "Location/Region",
+        type=str,
+        default="global",
+        show_default=True,
+    ).strip()
+
+    # Gemini Enterprise short ID
+    console.print(
+        "\nEnter your Gemini Enterprise ID (from the 'ID' column in the Apps table)."
+        "\n[blue]Example: gemini-enterprise-1762990_8862980842627[/]"
+    )
+    ge_short_id = click.prompt("Gemini Enterprise ID", type=str).strip()
+
+    # Construct full resource name
+    # Format: projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_id}
+    full_id = f"projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_short_id}"
+
+    console.print("\nConstructed Gemini Enterprise App ID:")
+    console.print(f"  [bold]{full_id}[/]")
+    confirmed = click.confirm("Is this correct?", default=True)
+
+    if not confirmed:
+        click.echo("Let's try again...")
+        return prompt_for_gemini_enterprise_components(
+            default_project, default_location
+        )
+
+    return full_id
 
 
 def register_agent(
@@ -237,11 +355,10 @@ def register_agent(
         "adk_agent_definition": adk_agent_definition,
     }
 
-    print("Registering agent to Gemini Enterprise...")
-    print(f"  Agent Engine: {agent_engine_id}")
-    print(f"  Gemini Enterprise App: {gemini_enterprise_app_id}")
-    print(f"  Display Name: {display_name}")
-    print(f"  API Endpoint: {url}")
+    console.print("\n[blue]Registering agent to Gemini Enterprise...[/]")
+    console.print(f"  Agent Engine: {agent_engine_id}")
+    console.print(f"  Gemini Enterprise App: {gemini_enterprise_app_id}")
+    console.print(f"  Display Name: {display_name}")
 
     try:
         # Try to create a new registration first
@@ -249,8 +366,8 @@ def register_agent(
         response.raise_for_status()
 
         result = response.json()
-        print("\n✅ Successfully registered agent to Gemini Enterprise!")
-        print(f"   Agent Name: {result.get('name', 'N/A')}")
+        console.print("\n✅ Successfully registered agent to Gemini Enterprise!")
+        console.print(f"   Agent Name: {result.get('name', 'N/A')}")
         return result
 
     except requests.exceptions.HTTPError as http_err:
@@ -265,8 +382,8 @@ def register_agent(
                     "already exists" in error_message.lower()
                     or "duplicate" in error_message.lower()
                 ):
-                    print(
-                        "\n⚠️  Agent already registered. Updating existing registration..."
+                    console.print(
+                        "\n⚠️  [yellow]Agent already registered. Updating existing registration...[/]"
                     )
 
                     # For update, we need to use the specific agent resource name
@@ -294,7 +411,7 @@ def register_agent(
                         agent_name = existing_agent.get("name")
                         update_url = f"{base_endpoint}/v1alpha/{agent_name}"
 
-                        print(f"  Updating agent: {agent_name}")
+                        console.print(f"  Updating agent: {agent_name}")
 
                         # PATCH request to update
                         update_response = requests.patch(
@@ -303,15 +420,15 @@ def register_agent(
                         update_response.raise_for_status()
 
                         result = update_response.json()
-                        print(
+                        console.print(
                             "\n✅ Successfully updated agent registration in Gemini Enterprise!"
                         )
-                        print(f"   Agent Name: {result.get('name', 'N/A')}")
+                        console.print(f"   Agent Name: {result.get('name', 'N/A')}")
                         return result
                     else:
-                        print(
-                            "\n❌ Could not find existing agent to update",
-                            file=sys.stderr,
+                        console.print(
+                            "❌ [red]Could not find existing agent to update[/]",
+                            style="bold red",
                         )
                         raise
             except (ValueError, KeyError):
@@ -319,11 +436,13 @@ def register_agent(
                 pass
 
         # If not an "already exists" error, or update failed, raise the original error
-        print(f"\n❌ HTTP error occurred: {http_err}", file=sys.stderr)
-        print(f"   Response: {response.text}", file=sys.stderr)
+        console.print(f"\n❌ [red]HTTP error occurred: {http_err}[/]", style="bold red")
+        console.print(f"   Response: {response.text}")
         raise
     except requests.exceptions.RequestException as req_err:
-        print(f"\n❌ Request error occurred: {req_err}", file=sys.stderr)
+        console.print(
+            f"\n❌ [red]Request error occurred: {req_err}[/]", style="bold red"
+        )
         raise
 
 
@@ -343,6 +462,7 @@ def register_agent(
     "--gemini-enterprise-app-id",
     help="Gemini Enterprise app full resource name "
     "(e.g., projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}). "
+    "If not provided, the command will prompt you interactively. "
     "Can also be set via ID or GEMINI_ENTERPRISE_APP_ID env var.",
 )
 @click.option(
@@ -381,33 +501,58 @@ def register_gemini_enterprise(
     project_id: str | None,
     authorization_id: str | None,
 ) -> None:
-    """Register an Agent Engine to Gemini Enterprise."""
-    # Get agent engine ID
-    try:
-        resolved_agent_engine_id = get_agent_engine_id(agent_engine_id, metadata_file)
-    except ValueError as e:
-        raise click.ClickException(str(e)) from e
+    """Register an Agent Engine to Gemini Enterprise.
 
-    # Auto-detect display_name and description from Agent Engine
-    auto_display_name, auto_description = get_agent_engine_metadata(
-        resolved_agent_engine_id
-    )
+    This command can run interactively or accept all parameters via command-line options.
+    If key parameters are missing, it will prompt the user for input.
+    """
+    console.print("\n🤖 Agent Engine → Gemini Enterprise Registration\n")
 
-    # Handle gemini_enterprise_app_id with fallback to ID env var
+    # Step 1: Get Agent Engine ID (with smart defaults from deployment_metadata.json)
+    resolved_agent_engine_id = agent_engine_id
+
+    if not resolved_agent_engine_id:
+        # Check if we have ID from env var (backward compatibility)
+        env_id = os.getenv("AGENT_ENGINE_ID")
+        if env_id:
+            resolved_agent_engine_id = env_id
+        else:
+            # Try to get from metadata file
+            metadata_id = get_agent_engine_id_from_metadata(metadata_file)
+            # Prompt user (with default if available)
+            resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
+
+    # Validate and parse Agent Engine ID
+    parsed_ae = parse_agent_engine_id(resolved_agent_engine_id)
+    if not parsed_ae:
+        raise click.ClickException(
+            f"Invalid Agent Engine ID format: {resolved_agent_engine_id}\n"
+            "Expected: projects/{{project}}/locations/{{location}}/reasoningEngines/{{id}}"
+        )
+
+    # Step 2: Get Gemini Enterprise App ID
     resolved_gemini_enterprise_app_id = (
         gemini_enterprise_app_id
         or os.getenv("ID")
         or os.getenv("GEMINI_ENTERPRISE_APP_ID")
     )
+
     if not resolved_gemini_enterprise_app_id:
-        raise click.ClickException(
-            "Error: --gemini-enterprise-app-id or ID/GEMINI_ENTERPRISE_APP_ID env var required"
+        # Interactive mode: prompt for components and construct the full ID
+        resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
+            default_project=parsed_ae["project"], default_location=parsed_ae["location"]
         )
+
+    # Step 3: Get display name and description (from Agent Engine metadata or defaults)
+    auto_display_name, auto_description = get_agent_engine_metadata(
+        resolved_agent_engine_id
+    )
 
     resolved_display_name = display_name or auto_display_name or "My Agent"
     resolved_description = description or auto_description or "AI Agent"
     resolved_tool_description = tool_description or resolved_description
 
+    # Step 4: Register the agent
     try:
         register_agent(
             agent_engine_id=resolved_agent_engine_id,

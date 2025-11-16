@@ -189,17 +189,17 @@ def prompt_for_agent_engine_id(default_from_metadata: str | None) -> str:
             console.print(
                 "❌ Invalid format. Expected: projects/{project}/locations/{location}/reasoningEngines/{id}",
                 style="bold red",
+                file=sys.stderr,
             )
 
 
 def prompt_for_gemini_enterprise_components(
-    default_project: str | None = None, default_location: str | None = None
+    default_project: str | None = None,
 ) -> str:
     """Prompt user for Gemini Enterprise resource components and construct full ID.
 
     Args:
         default_project: Default project number from Agent Engine ID
-        default_location: Default location from Agent Engine ID (unused - GE defaults to 'global')
 
     Returns:
         Full Gemini Enterprise app resource name
@@ -214,44 +214,42 @@ def prompt_for_gemini_enterprise_components(
         "\nCopy the ID from the 'ID' column for your Gemini Enterprise instance."
     )
 
-    # Project number
-    if default_project:
-        console.print(f"\n[dim]Default from Agent Engine: {default_project}[/]")
-    project_number = click.prompt(
-        "Project number", type=str, default=default_project or ""
-    ).strip()
+    while True:
+        # Project number
+        if default_project:
+            console.print(f"\n[dim]Default from Agent Engine: {default_project}[/]")
+        project_number = click.prompt(
+            "Project number", type=str, default=default_project or ""
+        ).strip()
 
-    # Location - GE apps are typically in 'global', 'us', or 'eu'
-    console.print("\nGemini Enterprise apps are in: global, us, or eu")
-    location = click.prompt(
-        "Location/Region",
-        type=str,
-        default="global",
-        show_default=True,
-    ).strip()
+        # Location - GE apps are typically in 'global', 'us', or 'eu'
+        console.print("\nGemini Enterprise apps are in: global, us, or eu")
+        location = click.prompt(
+            "Location/Region",
+            type=str,
+            default="global",
+            show_default=True,
+        ).strip()
 
-    # Gemini Enterprise short ID
-    console.print(
-        "\nEnter your Gemini Enterprise ID (from the 'ID' column in the Apps table)."
-        "\n[blue]Example: gemini-enterprise-1762990_8862980842627[/]"
-    )
-    ge_short_id = click.prompt("Gemini Enterprise ID", type=str).strip()
-
-    # Construct full resource name
-    # Format: projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_id}
-    full_id = f"projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_short_id}"
-
-    console.print("\nConstructed Gemini Enterprise App ID:")
-    console.print(f"  [bold]{full_id}[/]")
-    confirmed = click.confirm("Is this correct?", default=True)
-
-    if not confirmed:
-        click.echo("Let's try again...")
-        return prompt_for_gemini_enterprise_components(
-            default_project, default_location
+        # Gemini Enterprise short ID
+        console.print(
+            "\nEnter your Gemini Enterprise ID (from the 'ID' column in the Apps table)."
+            "\n[blue]Example: gemini-enterprise-1762990_8862980842627[/]"
         )
+        ge_short_id = click.prompt("Gemini Enterprise ID", type=str).strip()
 
-    return full_id
+        # Construct full resource name
+        # Format: projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_id}
+        full_id = f"projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_short_id}"
+
+        console.print("\nConstructed Gemini Enterprise App ID:")
+        console.print(f"  [bold]{full_id}[/]")
+        confirmed = click.confirm("Is this correct?", default=True)
+
+        if confirmed:
+            return full_id
+
+        click.echo("Let's try again...")
 
 
 def register_agent(
@@ -429,6 +427,7 @@ def register_agent(
                         console.print(
                             "❌ [red]Could not find existing agent to update[/]",
                             style="bold red",
+                            file=sys.stderr,
                         )
                         raise
             except (ValueError, KeyError):
@@ -436,12 +435,18 @@ def register_agent(
                 pass
 
         # If not an "already exists" error, or update failed, raise the original error
-        console.print(f"\n❌ [red]HTTP error occurred: {http_err}[/]", style="bold red")
-        console.print(f"   Response: {response.text}")
+        console.print(
+            f"\n❌ [red]HTTP error occurred: {http_err}[/]",
+            style="bold red",
+            file=sys.stderr,
+        )
+        console.print(f"   Response: {response.text}", file=sys.stderr)
         raise
     except requests.exceptions.RequestException as req_err:
         console.print(
-            f"\n❌ [red]Request error occurred: {req_err}[/]", style="bold red"
+            f"\n❌ [red]Request error occurred: {req_err}[/]",
+            style="bold red",
+            file=sys.stderr,
         )
         raise
 
@@ -540,7 +545,7 @@ def register_gemini_enterprise(
     if not resolved_gemini_enterprise_app_id:
         # Interactive mode: prompt for components and construct the full ID
         resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
-            default_project=parsed_ae["project"], default_location=parsed_ae["location"]
+            default_project=parsed_ae["project"]
         )
 
     # Step 3: Get display name and description (from Agent Engine metadata or defaults)

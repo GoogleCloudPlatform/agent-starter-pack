@@ -17,6 +17,10 @@ steps:
   - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: force-cleanup
     entrypoint: /bin/bash
+    env:
+      - 'PROJECT_IDS=${_PROJECT_IDS}'
+      - 'E2E_PROJECT_IDS=${_E2E_PROJECT_IDS}'
+      - 'CICD_PROJECT_ID=${_CICD_PROJECT_ID}'
     args:
       - "-c"
       - |
@@ -28,3 +32,8 @@ timeout: 18000s  # 5 hour timeout for cleanup operations
 logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
 options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+
+substitutions:
+  _PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg'
+  _E2E_PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg'
+  _CICD_PROJECT_ID: 'asp-e2e-cicd'

@@ -72,7 +72,9 @@ lint:
 # ==============================================================================
 
 # Register the deployed agent to Gemini Enterprise
-# Usage: ID="projects/.../engines/xxx" make register-gemini-enterprise
+# Usage: make register-gemini-enterprise (interactive - will prompt for required IDs)
+# The command auto-detects Agent Engine ID from deployment_metadata.json when available
+# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
 # Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
 register-gemini-enterprise:
 	uvx agent-starter-pack@0.20.0 register-gemini-enterprise

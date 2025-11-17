@@ -5,8 +5,8 @@ Register a deployed Agent Engine to Gemini Enterprise, making it available as a 
 ## Usage
 
 ```bash
-# Via Makefile (recommended)
-ID="projects/.../engines/xxx" make register-gemini-enterprise
+# Via Makefile (recommended) - Interactive mode
+make register-gemini-enterprise
 
 # Direct command (installed)
 agent-starter-pack register-gemini-enterprise [OPTIONS]
@@ -17,19 +17,30 @@ uvx agent-starter-pack@latest register-gemini-enterprise [OPTIONS]
 
 ## Quick Start
 
-After deploying your agent, register it with just the Gemini Enterprise app ID. The agent engine ID is automatically read from `deployment_metadata.json`:
+After deploying your agent, simply run the interactive command:
 
 ```bash
 make deploy  # Creates deployment_metadata.json
-
-ID="projects/123456/locations/global/collections/default_collection/engines/my-engine" \
-  make register-gemini-enterprise
+make register-gemini-enterprise  # Interactive prompts guide you
 ```
 
 The command automatically:
-- Reads agent engine ID from `deployment_metadata.json`
+- Detects Agent Engine ID from `deployment_metadata.json` (with confirmation)
+- Prompts for Gemini Enterprise app details step-by-step
 - Fetches display name and description from the deployed Agent Engine
+- Constructs the full Gemini Enterprise resource name
 - Creates or updates the registration in Gemini Enterprise
+
+### Interactive Prompts
+
+When you run the command, you'll be prompted for:
+
+1. **Agent Engine ID** - Auto-detected from `deployment_metadata.json`, you can confirm or provide a different one
+2. **Project number** - Defaults to the project from Agent Engine ID
+3. **Location** - Defaults to `global` (options: global, us, eu)
+4. **Gemini Enterprise ID** - The short ID from the Gemini Enterprise Apps table (e.g., `gemini-enterprise-1762980_1762980842627`)
+
+The command constructs the full resource name and asks for confirmation before proceeding.
 
 ## Prerequisites
 
@@ -37,21 +48,35 @@ The command automatically:
 - Gemini Enterprise application configured in Google Cloud
 - Authentication: `gcloud auth application-default login`
 
+## Non-Interactive Mode
+
+For CI/CD or scripting, you can provide all parameters via environment variables or command-line options:
+
+```bash
+# Using environment variables
+ID="projects/123456/locations/global/collections/default_collection/engines/my-engine" \
+  make register-gemini-enterprise
+
+# Or provide the full Gemini Enterprise app ID
+GEMINI_ENTERPRISE_APP_ID="projects/123456/locations/global/collections/default_collection/engines/my-engine" \
+  agent-starter-pack register-gemini-enterprise
+```
+
 ## Parameters
 
-### Required
+### Optional
 
 **`--gemini-enterprise-app-id`** (env: `ID`, `GEMINI_ENTERPRISE_APP_ID`)
 
-Gemini Enterprise app resource name.
+Gemini Enterprise app resource name. If not provided, the command runs in interactive mode.
 
 Format: `projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}`
 
 Note: Use project **number** (numeric), not project ID (string).
 
-Find it: Cloud Console > Discovery Engine > Apps > [Your App] > Details
+Find the Gemini Enterprise ID: Cloud Console > Gemini Enterprise > Apps > ID column
 
-### Optional
+### Other Options
 
 | Parameter | Environment Variable | Default | Description |
 |-----------|---------------------|---------|-------------|
@@ -65,7 +90,17 @@ Find it: Cloud Console > Discovery Engine > Apps > [Your App] > Details
 
 ## Examples
 
-**Basic registration:**
+**Interactive mode (recommended):**
+```bash
+make register-gemini-enterprise
+# Follow the prompts to provide:
+# - Agent Engine ID (auto-detected)
+# - Project number (auto-filled)
+# - Location (defaults to 'global')
+# - Gemini Enterprise ID
+```
+
+**Non-interactive with environment variables:**
 ```bash
 ID="projects/123456789/locations/global/collections/default_collection/engines/my-engine" \
   make register-gemini-enterprise
@@ -73,32 +108,25 @@ ID="projects/123456789/locations/global/collections/default_collection/engines/m
 
 **With custom metadata:**
 ```bash
-ID="projects/.../engines/xxx" \
+ID="projects/123456789/locations/global/collections/default_collection/engines/my-engine" \
   GEMINI_DISPLAY_NAME="Support Agent" \
   GEMINI_DESCRIPTION="Customer support assistant" \
   make register-gemini-enterprise
 ```
 
-**Using environment variables:**
-```bash
-export GEMINI_ENTERPRISE_APP_ID="projects/.../engines/xxx"
-export GEMINI_DISPLAY_NAME="Product Support Agent"
-export GEMINI_DESCRIPTION="AI agent for product support"
-
-agent-starter-pack register-gemini-enterprise
-```
-
 ## Troubleshooting
 
-**"No agent engine ID provided and deployment_metadata.json not found"**
-- Run `make deploy` first to create the metadata file, or provide `--agent-engine-id` explicitly
+**Interactive prompts not showing**
+- Make sure you're running the command without providing all parameters
+- If you set `GEMINI_ENTERPRISE_APP_ID` or `ID` environment variable, the command skips interactive mode
 
-**"Invalid GEMINI_ENTERPRISE_APP_ID format"**
-- Ensure format: `projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}`
-- Use project **number** (numeric), not project ID
+**"Invalid Agent Engine ID format"**
+- Ensure format: `projects/{project_number}/locations/{location}/reasoningEngines/{engine_id}`
+- Check that you're using the correct resource name from `deployment_metadata.json` or Agent Builder Console
 
-**"Could not access secret with service account"**
-- Grant Cloud Build service account the `secretmanager.secretAccessor` role
+**Can't find Gemini Enterprise ID**
+- Go to: Cloud Console > Gemini Enterprise > Apps
+- Copy the value from the **ID** column (e.g., `gemini-enterprise-1762980_1762980842627`)
 
 **Authentication errors**
 - Run: `gcloud auth application-default login`

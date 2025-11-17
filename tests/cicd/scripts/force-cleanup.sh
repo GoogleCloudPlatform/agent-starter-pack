@@ -14,9 +14,10 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}🚀 Starting comprehensive cleanup...${NC}"
 
 # Project configuration
-export PROJECT_IDS="agent-starter-pack-e2e-dev,agent-starter-pack-e2e-st,agent-starter-pack-e2e-pr,asp-starter-dev,asp-starter-prod,asp-starter-staging"
-export E2E_PROJECT_IDS="agent-starter-pack-e2e-dev,agent-starter-pack-e2e-st,agent-starter-pack-e2e-pr,asp-starter-dev,asp-starter-prod,asp-starter-staging"
-export CICD_PROJECT_ID="agent-starter-pack-e2e-dev"
+# Use environment variables if set, otherwise use defaults
+export PROJECT_IDS="${PROJECT_IDS:-asp-starter-dev,asp-starter-prod,asp-starter-staging}"
+export E2E_PROJECT_IDS="${E2E_PROJECT_IDS:-asp-starter-dev,asp-starter-prod,asp-starter-staging}"
+export CICD_PROJECT_ID="${CICD_PROJECT_ID:-asp-starter-dev}"
 
 echo -e "${YELLOW}📋 Target projects: ${PROJECT_IDS}${NC}"
 echo ""

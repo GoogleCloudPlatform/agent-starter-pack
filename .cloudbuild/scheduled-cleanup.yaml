@@ -34,6 +34,6 @@ options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
 
 substitutions:
-  _PROJECT_IDS: 'asp-starter-dev,asp-starter-prod,asp-starter-staging'
-  _E2E_PROJECT_IDS: 'asp-starter-dev,asp-starter-prod,asp-starter-staging'
-  _CICD_PROJECT_ID: 'asp-starter-dev'
+  _PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg'
+  _E2E_PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg'
+  _CICD_PROJECT_ID: 'asp-e2e-cicd'

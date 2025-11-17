@@ -210,8 +210,8 @@ from google.cloud import logging as google_cloud_logging
 from vertexai.preview.reasoning_engines import A2aAgent
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
-from {{cookiecutter.agent_directory}}.executor.a2a_agent_executor import LangGraphAgentExecutor
 {%- else %}
 import vertexai
 from google.cloud import logging as google_cloud_logging

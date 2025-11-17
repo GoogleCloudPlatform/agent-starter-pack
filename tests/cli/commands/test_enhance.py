@@ -366,7 +366,7 @@ agent = RunnablePassthrough()
             if base_template == "langgraph_base":
                 # Verify A2A-specific imports for LangGraph agents
                 assert (
-                    "from app.executor.a2a_agent_executor import LangGraphAgentExecutor"
+                    "from app.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor"
                     in content
                 ), (
                     f"Expected A2A LangGraph imports in agent_engine_app.py but got:\n{content}"

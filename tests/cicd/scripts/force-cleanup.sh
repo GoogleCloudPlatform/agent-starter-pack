@@ -15,9 +15,9 @@ echo -e "${GREEN}🚀 Starting comprehensive cleanup...${NC}"
 
 # Project configuration
 # Use environment variables if set, otherwise use defaults
-export PROJECT_IDS="${PROJECT_IDS:-asp-starter-dev,asp-starter-prod,asp-starter-staging}"
-export E2E_PROJECT_IDS="${E2E_PROJECT_IDS:-asp-starter-dev,asp-starter-prod,asp-starter-staging}"
-export CICD_PROJECT_ID="${CICD_PROJECT_ID:-asp-starter-dev}"
+export PROJECT_IDS="${PROJECT_IDS:-asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg}"
+export E2E_PROJECT_IDS="${E2E_PROJECT_IDS:-asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg}"
+export CICD_PROJECT_ID="${CICD_PROJECT_ID:-asp-e2e-cicd}"
 
 echo -e "${YELLOW}📋 Target projects: ${PROJECT_IDS}${NC}"
 echo ""

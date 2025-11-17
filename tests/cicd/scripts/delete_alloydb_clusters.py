@@ -512,23 +512,23 @@ def delete_reserved_addresses(compute_client, project_id: str) -> tuple[int, int
 
 def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tuple[int, int]:
     """
-    Delete all subnets in a project in parallel.
-    
+    Delete all subnets in a project sequentially to avoid memory corruption.
+
     Args:
         compute_client: The Compute client
         project_id: The GCP project ID
         retry_count: Current retry attempt number
-        
+
     Returns:
         Tuple of (deleted_subnets, total_subnets)
     """
     try:
         logger.info(f"🔍 Listing subnets in project {project_id}...")
-        
+
         # List all subnets across all regions
         request = compute_client.subnetworks().aggregatedList(project=project_id)
         response = request.execute()
-        
+
         all_subnets = []
         for zone, zone_data in response.get('items', {}).items():
             if 'subnetworks' in zone_data:
@@ -536,37 +536,26 @@ def delete_subnets(compute_client, project_id: str, retry_count: int = 0) -> tup
                     # Extract region from zone (e.g., "regions/us-central1" -> "us-central1")
                     region = zone.split('/')[-1] if '/' in zone else zone.replace('regions/', '')
                     all_subnets.append((subnet, region))
-        
+
         if not all_subnets:
             logger.info(f"✅ No subnets found in {project_id}")
             return 0, 0
-            
+
         logger.info(f"🎯 Found {len(all_subnets)} subnet(s) in {project_id}")
         total_subnets = len(all_subnets)
         deleted_subnets = 0
-        
-        # Delete subnets in parallel with reduced concurrency to avoid network issues
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Submit all subnet deletion tasks
-            future_to_subnet = {
-                executor.submit(delete_single_subnet, compute_client, project_id, subnet, region): (subnet['name'], region)
-                for subnet, region in all_subnets
-            }
-            
-            # Wait for all deletions to complete
-            for future in as_completed(future_to_subnet):
-                subnet_name, region = future_to_subnet[future]
-                try:
-                    if future.result():
-                        deleted_subnets += 1
-                        logger.info(f"✅ Subnet deletion completed: {subnet_name} in {region}")
-                    else:
-                        logger.error(f"❌ Subnet deletion failed: {subnet_name} in {region}")
-                except Exception as exc:
-                    logger.error(f"❌ Subnet deletion raised exception {subnet_name} in {region}: {exc}")
-        
+
+        # Delete subnets sequentially to avoid memory corruption issues with concurrent API calls
+        for subnet, region in all_subnets:
+            subnet_name = subnet['name']
+            if delete_single_subnet(compute_client, project_id, subnet, region):
+                deleted_subnets += 1
+                logger.info(f"✅ Subnet deletion completed: {subnet_name} in {region}")
+            else:
+                logger.error(f"❌ Subnet deletion failed: {subnet_name} in {region}")
+
         return deleted_subnets, total_subnets
-        
+
     except Exception as e:
         if retry_count < MAX_RETRIES:
             logger.warning(f"⏱️ Error listing subnets, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})")
@@ -733,20 +722,14 @@ def delete_alloydb_and_network_resources_in_project(
             
             # First delete Cloud Run services as they may hold serverless address reservations
             deleted_services, total_services = delete_cloud_run_services(project_id, region)
-            
+
             # Then delete reserved IP addresses as they may block subnet deletion
             deleted_addresses, total_addresses = delete_reserved_addresses(compute_client, project_id)
-            
-            # Run VPC peering and subnet deletion in parallel since they are independent
-            with ThreadPoolExecutor(max_workers=2) as executor:
-                # Submit both tasks
-                peering_future = executor.submit(delete_vpc_peering_connections, compute_client, project_id)
-                subnet_future = executor.submit(delete_subnets, compute_client, project_id)
-                
-                # Wait for both to complete
-                deleted_peerings, total_peerings = peering_future.result()
-                deleted_subnets, total_subnets = subnet_future.result()
-            
+
+            # Delete VPC peering connections and subnets sequentially to avoid memory corruption
+            deleted_peerings, total_peerings = delete_vpc_peering_connections(compute_client, project_id)
+            deleted_subnets, total_subnets = delete_subnets(compute_client, project_id)
+
             # Delete VPC networks after subnets are deleted (dependency requirement)
             deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
             return 0, 0, 0, 0, deleted_peerings, total_peerings, deleted_subnets, total_subnets, deleted_networks, total_networks
@@ -837,17 +820,11 @@ def delete_alloydb_and_network_resources_in_project(
         
         # Then delete reserved IP addresses as they may block subnet deletion
         deleted_addresses, total_addresses = delete_reserved_addresses(compute_client, project_id)
-        
-        # Run VPC peering and subnet deletion in parallel since they are independent
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            # Submit both tasks
-            peering_future = executor.submit(delete_vpc_peering_connections, compute_client, project_id)
-            subnet_future = executor.submit(delete_subnets, compute_client, project_id)
-            
-            # Wait for both to complete
-            deleted_peerings, total_peerings = peering_future.result()
-            deleted_subnets, total_subnets = subnet_future.result()
-        
+
+        # Delete VPC peering connections and subnets sequentially to avoid memory corruption
+        deleted_peerings, total_peerings = delete_vpc_peering_connections(compute_client, project_id)
+        deleted_subnets, total_subnets = delete_subnets(compute_client, project_id)
+
         # Delete VPC networks after subnets are deleted (dependency requirement)
         deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
         

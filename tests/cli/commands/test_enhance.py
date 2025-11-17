@@ -37,7 +37,7 @@ class TestDisplayBaseTemplateSelection:
         # Mock available agents
         mock_get_agents.return_value = {
             1: {"name": "adk_base", "description": "Basic agent template"},
-            2: {"name": "langgraph_base_react", "description": "LangGraph ReAct agent"},
+            2: {"name": "langgraph_base", "description": "LangGraph ReAct agent"},
             3: {"name": "agentic_rag", "description": "RAG-enabled agent"},
         }
 
@@ -61,7 +61,7 @@ class TestDisplayBaseTemplateSelection:
         # Mock available agents
         mock_get_agents.return_value = {
             1: {"name": "adk_base", "description": "Basic agent template"},
-            2: {"name": "langgraph_base_react", "description": "LangGraph ReAct agent"},
+            2: {"name": "langgraph_base", "description": "LangGraph ReAct agent"},
             3: {"name": "agentic_rag", "description": "RAG-enabled agent"},
         }
 
@@ -70,7 +70,7 @@ class TestDisplayBaseTemplateSelection:
 
         result = display_base_template_selection("adk_base")
 
-        assert result == "langgraph_base_react"
+        assert result == "langgraph_base"
 
     @patch("agent_starter_pack.cli.commands.enhance.get_available_agents")
     def test_base_template_selection_no_agents(
@@ -99,7 +99,7 @@ class TestEnhanceCommand:
         # Mock the template config loading
         mock_get_base_name.return_value = "adk_base"
         mock_load_config.return_value = {"base_template": "adk_base"}
-        mock_display_selection.return_value = "langgraph_base_react"
+        mock_display_selection.return_value = "langgraph_base"
 
         runner = CliRunner()
 
@@ -136,13 +136,13 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph_base_react", "--auto-approve"],
+                    [".", "--base-template", "langgraph_base", "--auto-approve"],
                 )
 
                 # Should call create with the specified base template
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "langgraph_base_react"
+                assert call_args[1]["base_template"] == "langgraph_base"
 
     def test_enhance_with_agent_directory_cli_param(self) -> None:
         """Test that enhance respects --agent-directory CLI parameter."""
@@ -267,7 +267,7 @@ packages = ["detected_agent", "frontend"]
                     [
                         ".",
                         "--base-template",
-                        "langgraph_base_react",
+                        "langgraph_base",
                         "--agent-directory",
                         "my_chatbot",
                         "--auto-approve",
@@ -277,11 +277,11 @@ packages = ["detected_agent", "frontend"]
                 # Should call create with both parameters
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "langgraph_base_react"
+                assert call_args[1]["base_template"] == "langgraph_base"
 
                 cli_overrides = call_args[1]["cli_overrides"]
                 assert cli_overrides is not None
-                assert cli_overrides["base_template"] == "langgraph_base_react"
+                assert cli_overrides["base_template"] == "langgraph_base"
                 assert cli_overrides["settings"]["agent_directory"] == "my_chatbot"
 
 
@@ -293,7 +293,7 @@ class TestEnhanceAgentEngineAppGeneration:
         [
             ("adk_base", "app as adk_app"),
             ("adk_live", "app as adk_app"),
-            ("langgraph_base_react", "agent"),
+            ("langgraph_base", "agent"),
             ("agentic_rag", "app as adk_app"),  # agentic_rag is ADK-based
         ],
     )
@@ -361,10 +361,22 @@ agent = RunnablePassthrough()
 
             # Read the content and verify the correct import
             content = agent_engine_app.read_text()
-            expected_import_line = f"from app.agent import {expected_import}"
-            assert expected_import_line in content, (
-                f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
-            )
+
+            # For A2A non-ADK agents (like langgraph_base), they don't import from app.agent
+            if base_template == "langgraph_base":
+                # Verify A2A-specific imports for LangGraph agents
+                assert (
+                    "from app.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor"
+                    in content
+                ), (
+                    f"Expected A2A LangGraph imports in agent_engine_app.py but got:\n{content}"
+                )
+            else:
+                # For ADK-based agents, verify the standard import
+                expected_import_line = f"from app.agent import {expected_import}"
+                assert expected_import_line in content, (
+                    f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
+                )
 
     def test_agent_engine_app_created_in_custom_agent_directory(
         self, tmp_path: pathlib.Path
@@ -480,8 +492,8 @@ class TestEnhanceAgentDirectoryPrompt:
         runner = CliRunner()
 
         # Mock the template config to return a non-ADK base template
-        mock_get_base_name.return_value = "langgraph_base_react"
-        mock_load_config.return_value = {"base_template": "langgraph_base_react"}
+        mock_get_base_name.return_value = "langgraph_base"
+        mock_load_config.return_value = {"base_template": "langgraph_base"}
         mock_display_selection.return_value = "app"
 
         with runner.isolated_filesystem():
@@ -491,7 +503,7 @@ class TestEnhanceAgentDirectoryPrompt:
             with patch("agent_starter_pack.cli.commands.enhance.create"):
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph_base_react"],
+                    [".", "--base-template", "langgraph_base"],
                     input="n\n",  # Cancel enhancement
                 )
 
@@ -499,7 +511,7 @@ class TestEnhanceAgentDirectoryPrompt:
                 if mock_display_selection.called:
                     call_args = mock_display_selection.call_args
                     # The base_template should be passed to the function
-                    assert call_args[0][2] == "langgraph_base_react"
+                    assert call_args[0][2] == "langgraph_base"
 
 
 class TestEnhanceFilePopulation:

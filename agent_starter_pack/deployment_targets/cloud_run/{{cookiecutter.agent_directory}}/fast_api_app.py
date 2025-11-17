@@ -290,13 +290,13 @@ async def serve_frontend_spa(full_path: str) -> FileResponse:
     )
 {% elif cookiecutter.is_adk %}
 import os
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 {%- endif %}
 
 import google.auth
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from a2a.server.apps import A2AFastAPIApplication
 from a2a.server.request_handlers import DefaultRequestHandler
 from a2a.server.tasks import InMemoryTaskStore
@@ -307,7 +307,7 @@ from a2a.utils.constants import (
 )
 {%- endif %}
 from fastapi import FastAPI
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
 from google.adk.artifacts.gcs_artifact_service import GcsArtifactService
@@ -323,7 +323,7 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai import agent_engines
 {% endif %}
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- endif %}
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
@@ -333,7 +333,7 @@ from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
-{%- if not cookiecutter.is_adk_a2a %}
+{%- if not cookiecutter.is_a2a %}
 allow_origins = (
     os.getenv("ALLOW_ORIGINS", "").split(",") if os.getenv("ALLOW_ORIGINS") else None
 )
@@ -349,7 +349,7 @@ processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
 provider.add_span_processor(processor)
 trace.set_tracer_provider(provider)
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 runner = Runner(
     app=adk_app,
@@ -441,6 +441,29 @@ app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
 {% else %}
+{%- if cookiecutter.is_a2a %}
+import logging
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
+from a2a.server.apps import A2AFastAPIApplication
+from a2a.server.request_handlers import DefaultRequestHandler
+from a2a.server.tasks import InMemoryTaskStore
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill
+from a2a.utils.constants import (
+    AGENT_CARD_WELL_KNOWN_PATH,
+    EXTENDED_AGENT_CARD_PATH,
+)
+from fastapi import FastAPI
+from google.cloud import logging as google_cloud_logging
+from traceloop.sdk import Instruments, Traceloop
+
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor
+from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+{%- else %}
 import logging
 import os
 from collections.abc import Generator
@@ -460,12 +483,68 @@ from {{cookiecutter.agent_directory}}.app_utils.typing import (
     dumps,
     ensure_valid_config,
 )
+{%- endif %}
+
+
+{%- if cookiecutter.is_a2a %}
+
+request_handler = DefaultRequestHandler(
+    agent_executor=LangGraphAgentExecutor(graph=root_agent),
+    task_store=InMemoryTaskStore(),
+)
+
+A2A_RPC_PATH = "/a2a/{{cookiecutter.agent_directory}}"
+
+
+def build_agent_card() -> AgentCard:
+    """Builds the Agent Card for the LangGraph agent."""
+    skill = AgentSkill(
+        id="root_agent-get_weather",
+        name="get_weather",
+        description="Simulates a web search. Use it get information on weather.",
+        tags=["llm", "tools"],
+        examples=["What's the weather in San Francisco?"],
+    )
+    agent_card = AgentCard(
+        name="root_agent",
+        description="API for interacting with the Agent {{cookiecutter.project_name}}",
+        url=f"{os.getenv('APP_URL', 'http://0.0.0.0:8000')}{A2A_RPC_PATH}",
+        version=os.getenv("AGENT_VERSION", "0.1.0"),
+        default_input_modes=["text/plain"],
+        default_output_modes=["text/plain"],
+        capabilities=AgentCapabilities(streaming=True),
+        skills=[skill],
+    )
+    return agent_card
+
+
+@asynccontextmanager
+async def lifespan(app_instance: FastAPI) -> AsyncIterator[None]:
+    agent_card = build_agent_card()
+    a2a_app = A2AFastAPIApplication(agent_card=agent_card, http_handler=request_handler)
+    a2a_app.add_routes_to_app(
+        app_instance,
+        agent_card_url=f"{A2A_RPC_PATH}{AGENT_CARD_WELL_KNOWN_PATH}",
+        rpc_url=A2A_RPC_PATH,
+        extended_agent_card_url=f"{A2A_RPC_PATH}{EXTENDED_AGENT_CARD_PATH}",
+    )
+    yield
+
+
+# Initialize FastAPI app and logging
+app = FastAPI(
+    title="{{cookiecutter.project_name}}",
+    description="API for interacting with the Agent {{cookiecutter.project_name}}",
+    lifespan=lifespan,
+)
+{%- else %}
 
 # Initialize FastAPI app and logging
 app = FastAPI(
     title="{{cookiecutter.project_name}}",
     description="API for interacting with the Agent {{cookiecutter.project_name}}",
 )
+{%- endif %}
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 
@@ -479,6 +558,8 @@ try:
     )
 except Exception as e:
     logging.error("Failed to initialize Telemetry: %s", str(e))
+
+{%- if not cookiecutter.is_a2a %}
 
 
 def set_tracing_properties(config: RunnableConfig) -> None:
@@ -540,6 +621,7 @@ def stream_chat_events(request: Request) -> StreamingResponse:
         stream_messages(input=request.input, config=request.config),
         media_type="text/event-stream",
     )
+{%- endif %}
 {% endif %}
 
 @app.post("/feedback")

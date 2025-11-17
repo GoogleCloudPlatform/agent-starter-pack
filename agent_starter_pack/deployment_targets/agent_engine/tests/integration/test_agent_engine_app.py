@@ -214,7 +214,7 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
 {% else %}
 
 # mypy: disable-error-code="arg-type"
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 import os
 
@@ -242,7 +242,7 @@ import pytest
 
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- endif %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 
 @pytest.fixture
@@ -263,7 +263,7 @@ def agent_app() -> AgentEngineApp:
     agent_engine.set_up()
     return agent_engine
 {% endif %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 
 @pytest.mark.asyncio

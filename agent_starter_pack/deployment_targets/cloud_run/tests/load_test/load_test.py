@@ -142,7 +142,7 @@ import json
 import logging
 import os
 import time
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 import uuid
 
 from a2a.types import (
@@ -163,7 +163,7 @@ from locust import HttpUser, between, task
 
 from locust import HttpUser, between, task
 {%- endif %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 ENDPOINT = "/a2a/{{cookiecutter.agent_directory}}"
 {%- elif cookiecutter.is_adk %}
@@ -188,7 +188,7 @@ class ChatStreamUser(HttpUser):
 
     @task
     def chat_stream(self) -> None:
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
         """Simulates a chat stream interaction using A2A protocol."""
         headers = {"Content-Type": "application/json"}
         if os.environ.get("_ID_TOKEN"):

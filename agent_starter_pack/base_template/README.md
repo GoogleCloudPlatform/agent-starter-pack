@@ -17,6 +17,10 @@ This project is organized as follows:
 │   ├── agent_engine_app.py # Agent Engine application logic
 {%- endif %}
 │   └── app_utils/       # App utilities and helpers
+{%- if cookiecutter.is_a2a and cookiecutter.agent_name == 'langgraph_base' %}
+│       ├── executor/    # A2A protocol executor implementation
+│       └── converters/  # Message converters for A2A protocol
+{%- endif %}
 {%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
 ├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build
 {%- elif cookiecutter.cicd_runner == 'github_actions' %}
@@ -75,7 +79,7 @@ make install && make playground
 | `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
 {%- endif -%}
 {%- endif -%}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 | `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
@@ -87,7 +91,7 @@ make install && make playground
 
 For full command options and usage, refer to the [Makefile](Makefile).
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 ## Using the A2A Inspector
 

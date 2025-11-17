@@ -13,14 +13,16 @@ install:
 
 # Launch local dev playground
 playground:
+	uv sync --extra streamlit
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
-	@echo "| 💡 Try asking: What can you help me with?|"
-	@echo "|                                                                             |"
-	@echo "| 🔍 IMPORTANT: Select the 'test_a2a' folder to interact with your agent.          |"
+	@echo "| 💡 Try asking: How can you help?|"
 	@echo "==============================================================================="
-	uv run adk web . --port 8501 --reload_agents
+	@echo "ℹ️  Note: For Agent Engine, deploy remotely first to test with the inspector."
+	@echo "    Starting local backend for development..."
+	@echo ""
+	uv run python -m test_langgraph.app_utils.expose_app --mode local --local-agent test_langgraph.agent.root_agent
 
 # ==============================================================================
 # A2A Protocol Inspector
@@ -78,13 +80,13 @@ build-inspector-if-needed:
 # Deploy the agent remotely
 deploy:
 	# Export dependencies to requirements file using uv export.
-	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_a2a/app_utils/.requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > test_a2a/app_utils/.requirements.txt) && \
-	uv run -m test_a2a.app_utils.deploy \
-		--source-packages=./test_a2a \
-		--entrypoint-module=test_a2a.agent_engine_app \
+	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_langgraph/app_utils/.requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > test_langgraph/app_utils/.requirements.txt) && \
+	uv run -m test_langgraph.app_utils.deploy \
+		--source-packages=./test_langgraph \
+		--entrypoint-module=test_langgraph.agent_engine_app \
 		--entrypoint-object=agent_engine \
-		--requirements-file=test_a2a/app_utils/.requirements.txt
+		--requirements-file=test_langgraph/app_utils/.requirements.txt
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -105,7 +107,7 @@ setup-dev-env:
 
 # Run unit and integration tests
 test:
-	uv sync --dev
+	uv sync --dev --extra streamlit
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)
@@ -115,15 +117,3 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
-
-# ==============================================================================
-# Gemini Enterprise Integration
-# ==============================================================================
-
-# Register the deployed agent to Gemini Enterprise
-# Usage: make register-gemini-enterprise (interactive - will prompt for required IDs)
-# The command auto-detects Agent Engine ID from deployment_metadata.json when available
-# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
-# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
-register-gemini-enterprise:
-	uvx agent-starter-pack@0.20.0 register-gemini-enterprise

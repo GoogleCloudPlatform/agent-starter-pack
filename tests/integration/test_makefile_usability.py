@@ -183,9 +183,9 @@ def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
         ),
         # adk_live - cloud_run only
         ("adk_live", "cloud_run", None),
-        # langgraph_base_react - both deployment targets
-        ("langgraph_base_react", "agent_engine", None),
-        ("langgraph_base_react", "cloud_run", ["--session-type", "in_memory"]),
+        # langgraph_base - both deployment targets
+        ("langgraph_base", "agent_engine", None),
+        ("langgraph_base", "cloud_run", ["--session-type", "in_memory"]),
     ]
 
 

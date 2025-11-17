@@ -44,7 +44,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": True,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
@@ -57,7 +57,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "agent_engine",
         "is_adk": True,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
@@ -70,7 +70,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": True,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
@@ -83,7 +83,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "agent_engine",
         "is_adk": False,
         "is_adk_live": True,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
@@ -96,7 +96,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": True,
         "datastore_type": "vertex_ai_search",
         "agent_garden": False,
@@ -110,7 +110,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": True,
         "datastore_type": "vertex_ai_vector_search",
         "agent_garden": False,
@@ -118,13 +118,26 @@ TEST_CONFIGURATIONS = {
         "settings": {},
         "package_version": "0.20.0",
     },
-    "langgraph_cloud_run_no_data": {
+    "langgraph_cloud_run": {
         "project_name": "test-langgraph",
         "agent_directory": "test_langgraph",
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": True,
+        "data_ingestion": False,
+        "agent_garden": False,
+        "example_question": "How can you help?",
+        "settings": {},
+        "package_version": "0.20.0",
+    },
+    "langgraph_agent_engine": {
+        "project_name": "test-langgraph",
+        "agent_directory": "test_langgraph",
+        "deployment_target": "agent_engine",
+        "is_adk": False,
+        "is_adk_live": False,
+        "is_a2a": True,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "How can you help?",
@@ -137,7 +150,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Custom agent question",
@@ -170,7 +183,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": True,
         "is_adk_live": False,
-        "is_adk_a2a": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": True,
         "agent_sample_id": "sample-123",
@@ -185,7 +198,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "cloud_run",
         "is_adk": True,
         "is_adk_live": False,
-        "is_adk_a2a": True,
+        "is_a2a": True,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
@@ -198,7 +211,7 @@ TEST_CONFIGURATIONS = {
         "deployment_target": "agent_engine",
         "is_adk": True,
         "is_adk_live": False,
-        "is_adk_a2a": True,
+        "is_a2a": True,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
@@ -392,7 +405,7 @@ class TestMakefileGeneration:
         self, makefile_renderer: MakefileRenderer
     ) -> None:
         """Test Cloud Run backend target uses gcloud run deploy."""
-        config = TEST_CONFIGURATIONS["langgraph_cloud_run_no_data"]
+        config = TEST_CONFIGURATIONS["langgraph_cloud_run"]
         output = makefile_renderer.render(config)
 
         assert "gcloud beta run deploy" in output
@@ -416,7 +429,7 @@ class TestMakefileGeneration:
         self, makefile_renderer: MakefileRenderer
     ) -> None:
         """Test that non-ADK agents include --extra streamlit in playground."""
-        config = TEST_CONFIGURATIONS["langgraph_cloud_run_no_data"]
+        config = TEST_CONFIGURATIONS["langgraph_cloud_run"]
         output = makefile_renderer.render(config)
 
         # Non-ADK agents should have streamlit sync in playground target

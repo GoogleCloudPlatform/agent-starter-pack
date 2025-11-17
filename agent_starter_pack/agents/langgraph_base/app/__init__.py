@@ -12,17 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A multi-agent system implemented with CrewAI created to support coding activities"
-settings:
-  requires_data_ingestion: false
-  deployment_targets: ["cloud_run"]
-  extra_dependencies: [
-    "langchain-google-vertexai>=2.0.7",
-    "langchain~=0.3.14",
-    "langchain-community~=0.3.17", 
-    "langchain-openai~=0.3.5",
-    "langgraph~=0.6.2",
-    "crewai~=0.152.0"
-  ]
-  frontend_type: "streamlit"
-example_question: "How can I implement a function to sort a list in Python?"
+from .agent import root_agent
+
+__all__ = ["root_agent"]

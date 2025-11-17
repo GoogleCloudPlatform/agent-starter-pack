@@ -178,7 +178,7 @@ resource "google_cloud_run_v2_service" "app_staging" {
       # Placeholder, will be replaced by the CI/CD pipeline
       image = "us-docker.pkg.dev/cloudrun/container/hello"
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
       env {
         name  = "APP_URL"
         value = "https://${var.project_name}-${data.google_project.project["staging"].number}.${var.region}.run.app"
@@ -303,7 +303,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
       # Placeholder, will be replaced by the CI/CD pipeline
       image = "us-docker.pkg.dev/cloudrun/container/hello"
 
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
       env {
         name  = "APP_URL"
         value = "https://${var.project_name}-${data.google_project.project["prod"].number}.${var.region}.run.app"

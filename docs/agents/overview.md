@@ -10,7 +10,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
 | `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
-| `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
+| `langgraph_base` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
 | `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
 | `adk_live` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
 
@@ -52,15 +52,13 @@ Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)
 *   Answer synthesis from retrieved context.
 *   Infrastructure deployment via Terraform and a choice of CI/CD runners (Google Cloud Build or GitHub Actions).
 
-### LangGraph Base ReAct (`langgraph_base_react`)
+### LangGraph Base (`langgraph_base`)
 
-This template provides a minimal example of a ReAct agent built using [LangGraph](https://langchain-ai.github.io/langgraph/). It serves as an excellent starting point for developing agents with graph-based structures, offering:
+This template provides a minimal example of a ReAct agent built using [LangGraph](https://langchain-ai.github.io/langgraph/). It supports [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) integration, enabling distributed agent communication and interoperability across frameworks. It serves as an excellent starting point for developing agents with graph-based structures, offering:
 
-*   Explicit state management for complex, multi-step reasoning flows.
-*   Fine-grained control over reasoning cycles.
-*   Robust tool integration and error handling capabilities.
-*   Streaming response support using Vertex AI.
-*   Includes a basic search tool to demonstrate tool usage.
+*   Building agents with explicit state management and complex reasoning flows.
+*   Fine-grained control over agent behavior and tool orchestration.
+*   Distributed, multi-agent systems with A2A protocol support.
 
 ### CrewAI Coding Crew (`crewai_coding_crew`)
 

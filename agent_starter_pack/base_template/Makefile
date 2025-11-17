@@ -47,6 +47,16 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- endif %}
 {%- elif cookiecutter.is_adk %}
 	uv run adk web . --port 8501 --reload_agents
+{%- elif cookiecutter.is_a2a %}
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
+	$(MAKE) inspector
+{%- else %}
+	@echo "ℹ️  Note: For Agent Engine, deploy remotely first to test with the inspector."
+	@echo "    Starting local backend for development..."
+	@echo ""
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+{%- endif %}
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
@@ -152,7 +162,7 @@ playground-dev:
 	@echo "Starting frontend dev server..."
 	$(MAKE) ui
 {%- endif %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 # ==============================================================================
 # A2A Protocol Inspector
@@ -208,7 +218,7 @@ setup-inspector-if-needed:
 
 # Internal: Build inspector frontend if needed
 build-inspector-if-needed:
-	@if [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
+	@if [ -d "tools/a2a-inspector" ] && [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
 		echo "🔨 Building inspector frontend..."; \
 		cd tools/a2a-inspector/frontend && npm run build; \
 	fi
@@ -225,7 +235,7 @@ build-inspector-if-needed:
 deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	PROJECT_ID=$$(gcloud config get-value project) && \
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \
 {%- endif %}
 	gcloud beta run deploy {{cookiecutter.project_name}} \
@@ -238,7 +248,7 @@ deploy:
 		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--set-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.is_adk_a2a %},APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
+		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.is_a2a %},APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}

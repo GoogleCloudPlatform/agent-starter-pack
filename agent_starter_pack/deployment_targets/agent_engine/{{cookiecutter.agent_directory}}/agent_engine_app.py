@@ -14,7 +14,7 @@
 
 # mypy: disable-error-code="attr-defined,arg-type"
 {%- if cookiecutter.is_adk %}
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 import asyncio
 {%- endif %}
 import logging
@@ -22,18 +22,18 @@ import os
 from typing import Any
 
 import google.auth
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 import nest_asyncio
 {%- endif %}
 import vertexai
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
 from google.adk.apps.app import App
 {%- endif %}
 from google.adk.artifacts import GcsArtifactService, InMemoryArtifactService
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 {%- endif %}
@@ -43,7 +43,7 @@ from opentelemetry.sdk.trace import TracerProvider, export
 {%- if cookiecutter.is_adk_live %}
 from vertexai.agent_engines.templates.adk import AdkApp
 from vertexai.preview.reasoning_engines import AdkApp as PreviewAdkApp
-{%- elif cookiecutter.is_adk_a2a %}
+{%- elif cookiecutter.is_a2a %}
 from vertexai.preview.reasoning_engines import A2aAgent
 {%- else %}
 from vertexai.agent_engines.templates.adk import AdkApp
@@ -56,7 +56,7 @@ from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- endif %}
 from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
 
 class AgentEngineApp(A2aAgent):
@@ -148,7 +148,7 @@ class AgentEngineApp(AdkApp):
         operations["bidi_stream"] = ["bidi_stream_query"]
 {%- endif %}
         return operations
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 
     def clone(self) -> "AgentEngineApp":
         """Returns a clone of the Agent Engine application."""
@@ -165,7 +165,7 @@ AgentEngineApp.bidi_stream_query = PreviewAdkApp.bidi_stream_query
 _, project_id = google.auth.default()
 vertexai.init(project=project_id, location="us-central1")
 artifacts_bucket_name = os.environ.get("ARTIFACTS_BUCKET_NAME")
-{%- if cookiecutter.is_adk_a2a %}
+{%- if cookiecutter.is_a2a %}
 agent_engine = AgentEngineApp.create(
     app=adk_app,
     artifact_service=(
@@ -187,14 +187,32 @@ agent_engine = AgentEngineApp(
 {%- endif -%}
 {% else %}
 
+{%- if cookiecutter.is_a2a %}
+import asyncio
+{%- else %}
 import logging
+{%- endif %}
 import os
+{%- if cookiecutter.is_a2a %}
+from typing import Any
+{%- else %}
 from collections.abc import Iterable, Mapping
 from typing import (
     Any,
 )
+{%- endif %}
 
 import google.auth
+{%- if cookiecutter.is_a2a %}
+import nest_asyncio
+from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
+from google.cloud import logging as google_cloud_logging
+from vertexai.preview.reasoning_engines import A2aAgent
+
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+{%- else %}
 import vertexai
 from google.cloud import logging as google_cloud_logging
 from langchain_core.runnables import RunnableConfig
@@ -202,6 +220,83 @@ from traceloop.sdk import Instruments, Traceloop
 
 from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
+{%- endif %}
+
+{%- if cookiecutter.is_a2a %}
+
+
+class AgentEngineApp(A2aAgent):
+    """Agent Engine App with A2A Protocol support for LangGraph agents."""
+
+    @staticmethod
+    def create() -> "AgentEngineApp":
+        """Create an AgentEngineApp instance with A2A support.
+
+        This method handles agent card creation in async context.
+        """
+        # Handle nested asyncio contexts (like notebooks or Agent Engine)
+        try:
+            asyncio.get_running_loop()
+            nest_asyncio.apply()
+        except RuntimeError:
+            pass
+
+        agent_card = asyncio.run(AgentEngineApp.build_agent_card())
+
+        return AgentEngineApp(
+            agent_executor_builder=lambda: LangGraphAgentExecutor(graph=root_agent),
+            agent_card=agent_card,
+        )
+
+    @staticmethod
+    async def build_agent_card() -> AgentCard:
+        """Build the Agent Card for the LangGraph agent."""
+        skill = AgentSkill(
+            id="root_agent-get_weather",
+            name="get_weather",
+            description="Simulates a web search. Use it get information on weather.",
+            tags=["llm", "tools"],
+            examples=["What's the weather in San Francisco?"],
+        )
+        agent_card = AgentCard(
+            name="root_agent",
+            description="A base ReAct agent using LangGraph with Agent2Agent (A2A) Protocol support",
+            url="http://localhost:9999/",  # RPC URL for Agent Engine
+            version=os.getenv("AGENT_VERSION", "0.1.0"),
+            default_input_modes=["text/plain"],
+            default_output_modes=["text/plain"],
+            capabilities=AgentCapabilities(
+                streaming=False
+            ),  # Agent Engine does not support streaming yet
+            skills=[skill],
+        )
+
+        agent_card.preferred_transport = TransportProtocol.http_json  # Http Only.
+        agent_card.supports_authenticated_extended_card = True
+
+        return agent_card
+
+    def register_feedback(self, feedback: dict[str, Any]) -> None:
+        """Collect and log feedback."""
+        feedback_obj = Feedback.model_validate(feedback)
+        logging_client = google_cloud_logging.Client()
+        logger = logging_client.logger(__name__)
+        logger.log_struct(feedback_obj.model_dump(), severity="INFO")
+
+    def register_operations(self) -> dict[str, list[str]]:
+        """Registers the operations of the Agent."""
+        operations = super().register_operations()
+        operations[""] = operations.get("", []) + ["register_feedback"]
+        return operations
+
+    def clone(self) -> "AgentEngineApp":
+        """Returns a clone of the Agent Engine application."""
+        return self
+
+
+_, project_id = google.auth.default()
+agent_engine = AgentEngineApp.create()
+{%- else %}
 
 
 class AgentEngineApp:
@@ -214,7 +309,7 @@ class AgentEngineApp:
     def set_up(self) -> None:
         """The set_up method is used to define application initialization logic"""
         # Lazy import agent at setup time to avoid deployment dependencies
-        from {{cookiecutter.agent_directory}}.agent import agent
+        from {{cookiecutter.agent_directory}}.agent import root_agent
 
         logging_client = google_cloud_logging.Client(project=self.project_id)
         self.logger = logging_client.logger(__name__)
@@ -229,7 +324,7 @@ class AgentEngineApp:
             )
         except Exception as e:
             logging.error("Failed to initialize Telemetry: %s", str(e))
-        self.runnable = agent
+        self.runnable = root_agent
 
     # Add any additional variables here that should be included in the tracing logs
     def set_tracing_properties(self, config: RunnableConfig | None) -> None:
@@ -307,4 +402,5 @@ class AgentEngineApp:
 _, project_id = google.auth.default()
 vertexai.init(project=project_id, location="us-central1")
 agent_engine = AgentEngineApp(project_id=project_id)
+{%- endif %}
 {%- endif %}

@@ -17,7 +17,7 @@
 
 import json
 import os
-import sys
+import subprocess
 from pathlib import Path
 
 import click
@@ -55,29 +55,6 @@ def get_discovery_engine_endpoint(location: str) -> str:
         return f"https://{location}-discoveryengine.googleapis.com"
 
 
-def get_agent_engine_id_from_metadata(
-    metadata_file: str = "deployment_metadata.json",
-) -> str | None:
-    """Try to read the agent engine ID from deployment metadata.
-
-    Args:
-        metadata_file: Path to deployment metadata JSON file
-
-    Returns:
-        The agent engine resource name if found, None otherwise
-    """
-    metadata_path = Path(metadata_file)
-    if not metadata_path.exists():
-        return None
-
-    try:
-        with open(metadata_path, encoding="utf-8") as f:
-            metadata = json.load(f)
-            return metadata.get("remote_agent_engine_id")
-    except (json.JSONDecodeError, KeyError):
-        return None
-
-
 def parse_agent_engine_id(agent_engine_id: str) -> dict[str, str] | None:
     """Parse an Agent Engine resource name to extract components.
 
@@ -103,6 +80,33 @@ def parse_agent_engine_id(agent_engine_id: str) -> dict[str, str] | None:
     return None
 
 
+def parse_gemini_enterprise_app_id(app_id: str) -> dict[str, str] | None:
+    """Parse Gemini Enterprise app resource name to extract components.
+
+    Args:
+        app_id: Gemini Enterprise app resource name
+            (e.g., projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id})
+
+    Returns:
+        Dictionary with 'project_number', 'location', 'collection', 'engine_id' keys, or None if invalid format
+    """
+    parts = app_id.split("/")
+    if (
+        len(parts) == 8
+        and parts[0] == "projects"
+        and parts[2] == "locations"
+        and parts[4] == "collections"
+        and parts[6] == "engines"
+    ):
+        return {
+            "project_number": parts[1],
+            "location": parts[3],
+            "collection": parts[5],
+            "engine_id": parts[7],
+        }
+    return None
+
+
 def get_access_token() -> str:
     """Get Google Cloud access token.
 
@@ -110,7 +114,7 @@ def get_access_token() -> str:
         Access token string
 
     Raises:
-        SystemExit: If authentication fails
+        RuntimeError: If authentication fails
     """
     try:
         credentials, _ = default()
@@ -118,12 +122,98 @@ def get_access_token() -> str:
         credentials.refresh(auth_req)
         return credentials.token
     except Exception as e:
-        print(f"Error getting access token: {e}", file=sys.stderr)
-        print(
-            "Please ensure you are authenticated with 'gcloud auth application-default login'",
-            file=sys.stderr,
+        console_err.print(f"Error getting access token: {e}")
+        console_err.print(
+            "Please ensure you are authenticated with 'gcloud auth application-default login'"
         )
         raise RuntimeError("Failed to get access token") from e
+
+
+def get_identity_token() -> str:
+    """Get Google Cloud identity token.
+
+    Returns:
+        Identity token string
+
+    Raises:
+        RuntimeError: If authentication fails
+    """
+    try:
+        result = subprocess.run(
+            ["gcloud", "auth", "print-identity-token"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        console_err.print(f"Error getting identity token: {e.stderr}")
+        console_err.print(
+            "Please ensure you are authenticated with 'gcloud auth login'"
+        )
+        raise RuntimeError("Failed to get identity token") from e
+    except FileNotFoundError as e:
+        console_err.print("Error: gcloud command not found")
+        console_err.print("Please install Google Cloud SDK")
+        raise RuntimeError("Failed to get identity token") from e
+
+
+def fetch_agent_card_from_url(url: str, deployment_target: str) -> dict | None:
+    """Fetch agent card from a URL with proper authentication.
+
+    Args:
+        url: The URL to fetch the agent card from
+        deployment_target: The deployment target ('agent_engine' or 'cloud_run')
+
+    Returns:
+        Agent card dictionary if successful, None otherwise
+    """
+    try:
+        headers = {}
+
+        # Use appropriate authentication based on deployment target
+        if deployment_target == "agent_engine":
+            access_token = get_access_token()
+            headers["Authorization"] = f"Bearer {access_token}"
+        else:  # cloud_run
+            identity_token = get_identity_token()
+            headers["Authorization"] = f"Bearer {identity_token}"
+
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+
+        return response.json()
+    except requests.exceptions.HTTPError as e:
+        console_err.print(
+            f"⚠️  HTTP error fetching agent card from {url}: {e}",
+            style="yellow",
+        )
+        if e.response.status_code == 401 or e.response.status_code == 403:
+            console_err.print(
+                "  Authentication failed. Ensure you are logged in with 'gcloud auth application-default login'",
+                style="yellow",
+            )
+        return None
+    except Exception as e:
+        console_err.print(
+            f"⚠️  Could not fetch agent card from {url}: {e}",
+            style="yellow",
+        )
+        return None
+
+
+def prompt_for_agent_card_url() -> str:
+    """Prompt user for agent card URL."""
+    console.print("\n[blue]" + "=" * 70 + "[/]")
+    console.print("[blue]A2A AGENT CARD URL[/]")
+    console.print("[blue]" + "=" * 70 + "[/]")
+
+    agent_card_url = click.prompt(
+        "\nAgent card URL",
+        type=str,
+    ).strip()
+
+    return agent_card_url
 
 
 def get_agent_engine_metadata(agent_engine_id: str) -> tuple[str | None, str | None]:
@@ -151,9 +241,7 @@ def get_agent_engine_metadata(agent_engine_id: str) -> tuple[str | None, str | N
 
         return display_name, description
     except Exception as e:
-        print(
-            f"Warning: Could not fetch metadata from Agent Engine: {e}", file=sys.stderr
-        )
+        console_err.print(f"Warning: Could not fetch metadata from Agent Engine: {e}")
         return None, None
 
 
@@ -234,7 +322,7 @@ def prompt_for_gemini_enterprise_components(
         # Gemini Enterprise short ID
         console.print(
             "\nEnter your Gemini Enterprise ID (from the 'ID' column in the Apps table)."
-            "\n[blue]Example: gemini-enterprise-1762990_8862980842627[/]"
+            "\n[blue]Example: gemini-enterprise-123456_1234567890[/]"
         )
         ge_short_id = click.prompt("Gemini Enterprise ID", type=str).strip()
 
@@ -250,6 +338,162 @@ def prompt_for_gemini_enterprise_components(
             return full_id
 
         click.echo("Let's try again...")
+
+
+def register_a2a_agent(
+    agent_card: dict,
+    agent_card_url: str,
+    gemini_enterprise_app_id: str,
+    display_name: str,
+    description: str,
+    project_id: str | None = None,
+    authorization_id: str | None = None,
+) -> dict:
+    """Register an A2A agent to Gemini Enterprise.
+
+    Args:
+        agent_card: Agent card dictionary fetched from the agent
+        agent_card_url: URL where the agent card was fetched from
+        gemini_enterprise_app_id: Full Gemini Enterprise app resource name
+        display_name: Display name for the agent in Gemini Enterprise
+        description: Description of the agent
+        project_id: Optional GCP project ID for billing
+        authorization_id: Optional OAuth authorization ID
+
+    Returns:
+        API response as dictionary
+
+    Raises:
+        requests.HTTPError: If the API request fails
+        ValueError: If gemini_enterprise_app_id format is invalid
+    """
+    parsed = parse_gemini_enterprise_app_id(gemini_enterprise_app_id)
+    if not parsed:
+        raise ValueError(
+            f"Invalid GEMINI_ENTERPRISE_APP_ID format. Expected: "
+            f"projects/{{project_number}}/locations/{{location}}/collections/{{collection}}/engines/{{engine_id}}, "
+            f"got: {gemini_enterprise_app_id}"
+        )
+
+    project_number = parsed["project_number"]
+    as_location = parsed["location"]
+    collection = parsed["collection"]
+    engine_id = parsed["engine_id"]
+
+    # Use provided project ID or fallback to project number from GE app
+    if not project_id:
+        project_id = project_number
+
+    access_token = get_access_token()
+    base_endpoint = get_discovery_engine_endpoint(as_location)
+    url = (
+        f"{base_endpoint}/v1alpha/projects/{project_number}/"
+        f"locations/{as_location}/collections/{collection}/engines/{engine_id}/"
+        "assistants/default_assistant/agents"
+    )
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+        "x-goog-user-project": project_id,
+    }
+
+    # Update agent card URL to point to the actual endpoint
+    agent_card_copy = agent_card.copy()
+    agent_card_copy["url"] = agent_card_url
+
+    # Build payload with A2A agent definition
+    payload = {
+        "displayName": display_name,
+        "description": description,
+        "icon": {
+            "uri": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/smart_toy/default/24px.svg"
+        },
+        "a2aAgentDefinition": {"jsonAgentCard": json.dumps(agent_card_copy)},
+    }
+
+    # Add authorization config if provided
+    if authorization_id:
+        payload["authorizationConfig"] = {"agentAuthorization": authorization_id}
+
+    console.print("\n[blue]Registering A2A agent to Gemini Enterprise...[/]")
+    console.print(f"  Agent Card URL: {agent_card_url}")
+    console.print(f"  Gemini Enterprise App: {gemini_enterprise_app_id}")
+    console.print(f"  Display Name: {display_name}")
+
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=30)
+        response.raise_for_status()
+
+        result = response.json()
+        console.print("\n✅ Successfully registered A2A agent to Gemini Enterprise!")
+        console.print(f"   Agent Name:\n   {result.get('name', 'N/A')}")
+        return result
+
+    except requests.exceptions.HTTPError as http_err:
+        # Check if agent already exists and try to update
+        if response.status_code in (400, 409):
+            try:
+                error_data = response.json()
+                error_message = error_data.get("error", {}).get("message", "")
+
+                if (
+                    "already exists" in error_message.lower()
+                    or "duplicate" in error_message.lower()
+                ):
+                    console.print(
+                        "\n⚠️  [yellow]Agent already registered. Updating existing registration...[/]"
+                    )
+
+                    # List and find existing agent
+                    list_response = requests.get(url, headers=headers, timeout=30)
+                    list_response.raise_for_status()
+                    agents_list = list_response.json().get("agents", [])
+
+                    # Find matching agent (by URL in agent card)
+                    existing_agent = None
+                    for agent in agents_list:
+                        a2a_def = agent.get("a2aAgentDefinition", {})
+                        if a2a_def:
+                            try:
+                                card = json.loads(a2a_def.get("jsonAgentCard", "{}"))
+                                if card.get("url") == agent_card_url:
+                                    existing_agent = agent
+                                    break
+                            except json.JSONDecodeError:
+                                continue
+
+                    if existing_agent:
+                        agent_name = existing_agent.get("name")
+                        update_url = f"{base_endpoint}/v1alpha/{agent_name}"
+
+                        console.print(f"  Updating agent: {agent_name}")
+
+                        update_response = requests.patch(
+                            update_url, headers=headers, json=payload, timeout=30
+                        )
+                        update_response.raise_for_status()
+
+                        result = update_response.json()
+                        console.print(
+                            "\n✅ Successfully updated A2A agent registration!"
+                        )
+                        console.print(f"   Agent Name:\n   {result.get('name', 'N/A')}")
+                        return result
+            except (ValueError, KeyError):
+                pass
+
+        console_err.print(
+            f"\n❌ [red]HTTP error occurred: {http_err}[/]",
+            style="bold red",
+        )
+        console_err.print(f"   Response: {response.text}")
+        raise
+    except requests.exceptions.RequestException as req_err:
+        console_err.print(
+            f"\n❌ [red]Request error occurred: {req_err}[/]",
+            style="bold red",
+        )
+        raise
 
 
 def register_agent(
@@ -285,35 +529,25 @@ def register_agent(
         requests.HTTPError: If the API request fails
         ValueError: If gemini_enterprise_app_id format is invalid
     """
-    # Parse Gemini Enterprise app resource name
-    # Format: projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}
-    parts = gemini_enterprise_app_id.split("/")
-    if (
-        len(parts) != 8
-        or parts[0] != "projects"
-        or parts[2] != "locations"
-        or parts[4] != "collections"
-        or parts[6] != "engines"
-    ):
+    parsed = parse_gemini_enterprise_app_id(gemini_enterprise_app_id)
+    if not parsed:
         raise ValueError(
             f"Invalid GEMINI_ENTERPRISE_APP_ID format. Expected: "
             f"projects/{{project_number}}/locations/{{location}}/collections/{{collection}}/engines/{{engine_id}}, "
             f"got: {gemini_enterprise_app_id}"
         )
 
-    project_number = parts[1]
-    as_location = parts[3]
-    collection = parts[5]
-    engine_id = parts[7]
+    project_number = parsed["project_number"]
+    as_location = parsed["location"]
+    collection = parsed["collection"]
+    engine_id = parsed["engine_id"]
 
     # Use project from agent engine if not explicitly provided (for billing header)
     if not project_id:
-        # Extract from agent_engine_id: projects/{project}/locations/{location}/reasoningEngines/{id}
-        agent_parts = agent_engine_id.split("/")
-        if len(agent_parts) > 1 and agent_parts[0] == "projects":
-            project_id = agent_parts[1]
+        parsed_agent = parse_agent_engine_id(agent_engine_id)
+        if parsed_agent:
+            project_id = parsed_agent["project"]
         else:
-            # Fallback to the project number from the Gemini Enterprise App ID.
             project_id = project_number
 
     # Get access token
@@ -365,7 +599,7 @@ def register_agent(
 
         result = response.json()
         console.print("\n✅ Successfully registered agent to Gemini Enterprise!")
-        console.print(f"   Agent Name: {result.get('name', 'N/A')}")
+        console.print(f"   Agent Name:\n   {result.get('name', 'N/A')}")
         return result
 
     except requests.exceptions.HTTPError as http_err:
@@ -421,7 +655,7 @@ def register_agent(
                         console.print(
                             "\n✅ Successfully updated agent registration in Gemini Enterprise!"
                         )
-                        console.print(f"   Agent Name: {result.get('name', 'N/A')}")
+                        console.print(f"   Agent Name:\n   {result.get('name', 'N/A')}")
                         return result
                     else:
                         console_err.print(
@@ -493,6 +727,13 @@ def register_agent(
     help="OAuth authorization resource name "
     "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}).",
 )
+@click.option(
+    "--agent-card-url",
+    envvar="AGENT_CARD_URL",
+    help="URL to fetch the agent card for A2A agents "
+    "(e.g., https://your-service.run.app/app/a2a/.well-known/agent-card.json). "
+    "If provided, registers as an A2A agent instead of ADK agent.",
+)
 def register_gemini_enterprise(
     agent_engine_id: str | None,
     metadata_file: str,
@@ -502,68 +743,155 @@ def register_gemini_enterprise(
     tool_description: str | None,
     project_id: str | None,
     authorization_id: str | None,
+    agent_card_url: str | None,
 ) -> None:
-    """Register an Agent Engine to Gemini Enterprise.
+    """Register an agent to Gemini Enterprise.
 
     This command can run interactively or accept all parameters via command-line options.
     If key parameters are missing, it will prompt the user for input.
     """
-    console.print("\n🤖 Agent Engine → Gemini Enterprise Registration\n")
+    console.print("\n🤖 Agent → Gemini Enterprise Registration\n")
 
-    # Step 1: Get Agent Engine ID (with smart defaults from deployment_metadata.json)
-    resolved_agent_engine_id = agent_engine_id
-
-    if not resolved_agent_engine_id:
-        # Check if we have ID from env var (backward compatibility)
-        env_id = os.getenv("AGENT_ENGINE_ID")
-        if env_id:
-            resolved_agent_engine_id = env_id
-        else:
-            # Try to get from metadata file
-            metadata_id = get_agent_engine_id_from_metadata(metadata_file)
-            # Prompt user (with default if available)
-            resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
-
-    # Validate and parse Agent Engine ID
-    parsed_ae = parse_agent_engine_id(resolved_agent_engine_id)
-    if not parsed_ae:
-        raise click.ClickException(
-            f"Invalid Agent Engine ID format: {resolved_agent_engine_id}\n"
-            "Expected: projects/{{project}}/locations/{{location}}/reasoningEngines/{{id}}"
-        )
-
-    # Step 2: Get Gemini Enterprise App ID
-    resolved_gemini_enterprise_app_id = (
-        gemini_enterprise_app_id
-        or os.getenv("ID")
-        or os.getenv("GEMINI_ENTERPRISE_APP_ID")
-    )
-
-    if not resolved_gemini_enterprise_app_id:
-        # Interactive mode: prompt for components and construct the full ID
-        resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
-            default_project=parsed_ae["project"]
-        )
-
-    # Step 3: Get display name and description (from Agent Engine metadata or defaults)
-    auto_display_name, auto_description = get_agent_engine_metadata(
-        resolved_agent_engine_id
-    )
-
-    resolved_display_name = display_name or auto_display_name or "My Agent"
-    resolved_description = description or auto_description or "AI Agent"
-    resolved_tool_description = tool_description or resolved_description
-
-    # Step 4: Register the agent
+    # Read metadata file once to determine agent type and deployment target
+    metadata = None
     try:
-        register_agent(
-            agent_engine_id=resolved_agent_engine_id,
-            gemini_enterprise_app_id=resolved_gemini_enterprise_app_id,
-            display_name=resolved_display_name,
-            description=resolved_description,
-            tool_description=resolved_tool_description,
-            project_id=project_id,
-            authorization_id=authorization_id,
+        metadata_path = Path(metadata_file)
+        if metadata_path.exists():
+            with open(metadata_path, encoding="utf-8") as f:
+                metadata = json.load(f)
+    except (json.JSONDecodeError, KeyError, FileNotFoundError):
+        pass
+
+    # Check if this is an A2A agent registration
+    resolved_agent_card_url = agent_card_url or os.getenv("AGENT_CARD_URL")
+
+    # Determine agent type from metadata or user input
+    if not resolved_agent_card_url:
+        if metadata:
+            is_a2a = metadata.get("is_a2a", False)
+            if is_a2a:
+                # A2A agent detected
+                console.print("[blue]→ Detected A2A agent[/]")
+                resolved_agent_card_url = prompt_for_agent_card_url()
+            else:
+                # ADK w/o A2A agent detected
+                console.print("[blue]→ Detected ADK agent[/]")
+                resolved_agent_card_url = None
+        else:
+            # No metadata file - assume A2A
+            resolved_agent_card_url = prompt_for_agent_card_url()
+
+    # A2A
+    if resolved_agent_card_url:
+        # Determine deployment target from metadata for proper authentication
+        deployment_target = "cloud_run"  # Default for A2A agents
+        if metadata:
+            deployment_target = metadata.get("deployment_target", "cloud_run")
+
+        # Fetch agent card
+        agent_card = fetch_agent_card_from_url(
+            resolved_agent_card_url, deployment_target
         )
-    except Exception as e:
-        raise click.ClickException(f"Error during registration: {e}") from e
+        if not agent_card:
+            raise click.ClickException(
+                f"Failed to fetch agent card from {resolved_agent_card_url}. "
+                "Please verify the URL is correct and the agent is running."
+            )
+
+        console.print(f"✓ Fetched agent card: {agent_card.get('name', 'Unknown')}")
+
+        resolved_gemini_enterprise_app_id = (
+            gemini_enterprise_app_id
+            or os.getenv("ID")
+            or os.getenv("GEMINI_ENTERPRISE_APP_ID")
+        )
+
+        if not resolved_gemini_enterprise_app_id:
+            # For A2A, we don't have agent engine ID to extract project from
+            resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
+                default_project=None
+            )
+
+        # Get display name and description (from agent card or user input)
+        resolved_display_name = (
+            display_name
+            or agent_card.get("name")
+            or click.prompt("Display name", default="My A2A Agent")
+        )
+        resolved_description = (
+            description
+            or agent_card.get("description")
+            or click.prompt("Description", default="A2A Agent")
+        )
+
+        # Register as A2A agent
+        try:
+            register_a2a_agent(
+                agent_card=agent_card,
+                agent_card_url=resolved_agent_card_url,
+                gemini_enterprise_app_id=resolved_gemini_enterprise_app_id,
+                display_name=resolved_display_name,
+                description=resolved_description,
+                project_id=project_id,
+                authorization_id=authorization_id,
+            )
+        except Exception as e:
+            raise click.ClickException(f"Error during A2A registration: {e}") from e
+
+    # ADK
+    else:
+        # Step 1: Get Agent Engine ID
+        resolved_agent_engine_id = agent_engine_id
+
+        if not resolved_agent_engine_id:
+            env_id = os.getenv("AGENT_ENGINE_ID")
+            if env_id:
+                resolved_agent_engine_id = env_id
+            else:
+                metadata_id = (
+                    metadata.get("remote_agent_engine_id") if metadata else None
+                )
+                resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
+
+        # Validate and parse Agent Engine ID
+        parsed_ae = parse_agent_engine_id(resolved_agent_engine_id)
+        if not parsed_ae:
+            raise click.ClickException(
+                f"Invalid Agent Engine ID format: {resolved_agent_engine_id}\n"
+                "Expected: projects/{{project}}/locations/{{location}}/reasoningEngines/{{id}}"
+            )
+
+        # Step 2: Get Gemini Enterprise App ID
+        resolved_gemini_enterprise_app_id = (
+            gemini_enterprise_app_id
+            or os.getenv("ID")
+            or os.getenv("GEMINI_ENTERPRISE_APP_ID")
+        )
+
+        if not resolved_gemini_enterprise_app_id:
+            resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
+                default_project=parsed_ae["project"]
+            )
+
+        # Step 3: Get display name and description
+        auto_display_name, auto_description = get_agent_engine_metadata(
+            resolved_agent_engine_id
+        )
+
+        resolved_display_name = display_name or auto_display_name or "My Agent"
+        resolved_description = description or auto_description or "AI Agent"
+        resolved_tool_description = tool_description or resolved_description
+
+        # Step 4: Register as ADK agent
+        try:
+            register_agent(
+                agent_engine_id=resolved_agent_engine_id,
+                gemini_enterprise_app_id=resolved_gemini_enterprise_app_id,
+                display_name=resolved_display_name,
+                description=resolved_description,
+                tool_description=resolved_tool_description,
+                project_id=project_id,
+                authorization_id=authorization_id,
+            )
+        except Exception as e:
+            raise click.ClickException(f"Error during ADK registration: {e}") from e

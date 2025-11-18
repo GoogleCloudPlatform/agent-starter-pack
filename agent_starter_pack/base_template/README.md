@@ -75,7 +75,7 @@ make install && make playground
 | `make playground-remote` | Connect to remote deployed agent with local frontend |
 | `make build-frontend` | Build the frontend for production |
 {%- endif %}
-{%- if cookiecutter.is_adk %}
+{%- if cookiecutter.is_adk or cookiecutter.is_a2a %}
 | `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
 {%- endif -%}
 {%- endif -%}

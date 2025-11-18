@@ -43,7 +43,7 @@ resource "google_sql_database_instance" "session_db" {
   deletion_protection = false # For easier teardown in starter packs
 
   settings {
-    tier = "db-f1-micro" # Cheapest tier for dev/staging
+    tier = each.key == "prod" ? "db-n1-standard-1" : "db-f1-micro" # Use a dedicated-core tier for prod
 
     backup_configuration {
       enabled = true

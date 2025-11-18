@@ -221,7 +221,9 @@ import subprocess
 import sys
 import threading
 import time
+{%- if cookiecutter.is_a2a %}
 import uuid
+{%- endif %}
 from collections.abc import Iterator
 from typing import Any
 

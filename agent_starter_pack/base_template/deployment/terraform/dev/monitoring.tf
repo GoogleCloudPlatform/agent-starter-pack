@@ -12,23 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-terraform {
-  required_version = ">= 1.0.0"
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 7.10.0"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.7.0"
-    }
-  }
-}
+module "monitoring" {
+  source = "../modules/monitoring"
 
-provider "google" {
-  alias                 = "dev_billing_override"
-  billing_project       = var.dev_project_id
-  region                = var.region
-  user_project_override = true
+  project_id                         = var.dev_project_id
+  project_name                       = var.project_name
+  alert_notification_email           = var.alert_notification_email
+  latency_alert_threshold_ms         = var.latency_alert_threshold_ms
+  error_rate_alert_threshold         = var.error_rate_alert_threshold
+  retriever_latency_p99_threshold_ms = var.retriever_latency_p99_threshold_ms
+  agent_error_rate_threshold_per_sec = var.agent_error_rate_threshold_per_sec
 }

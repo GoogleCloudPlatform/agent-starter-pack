@@ -187,7 +187,6 @@ Both commands use the same `_TEST_AGENT_COMBINATION` environment variable to con
 # Linting examples
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,cloud_run" make lint-templated-agents
 
 # Testing examples
 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make test-templated-agents
@@ -355,7 +354,6 @@ SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory
 
 # 2. Test related combinations (same deployment, different agents)
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="crewai_coding_crew,cloud_run" make lint-templated-agents
 
 # 3. Test alternate code paths (different deployment, session types)
 SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents

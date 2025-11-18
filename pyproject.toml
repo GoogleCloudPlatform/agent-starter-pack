@@ -22,7 +22,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "black~=23.11.0",
-    "crewai~=0.95.0",
     "flake8~=6.1.0",
     "google-cloud-logging~=3.11.4",
     "grpcio~=1.70.0",

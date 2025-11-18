@@ -24,7 +24,7 @@ from google.adk.telemetry.setup import maybe_set_otel_providers
 {%- endif %}
 
 
-def setup_telemetry() -> str:
+def setup_telemetry() -> str | None:
     """Configure OpenTelemetry and GenAI telemetry with GCS upload."""
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
     os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
@@ -74,6 +74,8 @@ def setup_telemetry() -> str:
 
     return bucket
 {%- else %}
+import logging
+
 from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 
 

@@ -131,3 +131,15 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: make register-gemini-enterprise (interactive - will prompt for required details)
+# The command auto-detects agent type and deployment target from deployment_metadata.json
+# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_CARD_URL, AGENT_ENGINE_ID
+register-gemini-enterprise:
+	uvx agent-starter-pack@0.20.0 register-gemini-enterprise

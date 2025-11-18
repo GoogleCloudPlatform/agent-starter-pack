@@ -315,7 +315,7 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
-{%- if cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine' %}
+{%- if cookiecutter.is_a2a or (cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine') %}
 
 # ==============================================================================
 # Gemini Enterprise Integration

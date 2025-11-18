@@ -365,9 +365,10 @@ agent = RunnablePassthrough()
             # For A2A non-ADK agents (like langgraph_base), they don't import from app.agent
             if base_template == "langgraph_base":
                 # Verify A2A-specific imports for LangGraph agents
+                # Check both module path and class name (handles multi-line formatting)
                 assert (
-                    "from app.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor"
-                    in content
+                    "from app.app_utils.executor.a2a_agent_executor import" in content
+                    and "LangGraphAgentExecutor" in content
                 ), (
                     f"Expected A2A LangGraph imports in agent_engine_app.py but got:\n{content}"
                 )

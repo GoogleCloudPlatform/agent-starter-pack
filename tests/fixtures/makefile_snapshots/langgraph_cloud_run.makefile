@@ -13,7 +13,6 @@ install:
 
 # Launch local dev playground
 playground:
-	uv sync --extra streamlit
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
@@ -42,7 +41,8 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "| 🌐 Inspector UI: http://localhost:5001                                     |"
 	@echo "|                                                                             |"
 	@echo "| 💡 Testing Locally:                                                         |"
-	@echo "|    Connect to: http://localhost:8000                                       |"
+	@echo "|    Paste this URL into the inspector:                                      |"
+	@echo "|    http://localhost:8000/a2a/test_langgraph/.well-known/agent-card.json              |"
 	@echo "|                                                                             |"
 	@echo "| 💡 Testing Remote Deployment:                                               |"
 	@echo "|    Connect to your deployed Cloud Run URL                                  |"

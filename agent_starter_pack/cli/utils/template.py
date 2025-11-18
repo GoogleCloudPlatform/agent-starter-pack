@@ -354,10 +354,7 @@ def prompt_session_type_selection() -> str:
             "display_name": "In-memory session",
             "description": "Session data stored in memory - ideal for stateless applications",
         },
-        "alloydb": {
-            "display_name": "AlloyDB",
-            "description": "Use AlloyDB for session management. Comes with terraform resources for deployment.",
-        },
+
         "agent_engine": {
             "display_name": "Vertex AI Agent Engine",
             "description": "Managed session service that automatically handles conversation history",

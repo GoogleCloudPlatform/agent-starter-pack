@@ -82,7 +82,7 @@ def shared_template_options(f: Callable) -> Callable:
     f = click.option("--debug", is_flag=True, help="Enable debug logging")(f)
     f = click.option(
         "--session-type",
-        type=click.Choice(["in_memory", "alloydb", "agent_engine"]),
+        type=click.Choice(["in_memory", "cloud_sql", "agent_engine"]),
         help="Type of session storage to use",
     )(f)
     f = click.option(

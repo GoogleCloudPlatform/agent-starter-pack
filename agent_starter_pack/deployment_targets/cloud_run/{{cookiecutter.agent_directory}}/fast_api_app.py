@@ -386,17 +386,17 @@ app = FastAPI(
 
 AGENT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-{%- if cookiecutter.session_type == "alloydb" %}
-# AlloyDB session configuration
+{%- if cookiecutter.session_type == "cloud_sql" %}
+# Cloud SQL session configuration
 db_user = os.environ.get("DB_USER", "postgres")
 db_name = os.environ.get("DB_NAME", "postgres")
 db_pass = os.environ.get("DB_PASS")
-db_host = os.environ.get("DB_HOST")
+instance_connection_name = os.environ.get("INSTANCE_CONNECTION_NAME")
 
-# Set session_service_uri if database credentials are available
 session_service_uri = None
-if db_host and db_pass:
-    session_service_uri = f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
+if instance_connection_name and db_pass:
+    # Use Unix socket for Cloud SQL
+    session_service_uri = f"postgresql://{db_user}:{db_pass}@/{db_name}?host=/cloudsql/{instance_connection_name}"
 {%- elif cookiecutter.session_type == "agent_engine" %}
 # Agent Engine session configuration
 # Check if we should use in-memory session for testing (set USE_IN_MEMORY_SESSION=true for E2E tests)

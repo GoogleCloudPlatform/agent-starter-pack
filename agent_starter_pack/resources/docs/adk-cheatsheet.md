@@ -233,7 +233,7 @@ Agent Config agents can be deployed using:
 *   **Model Support**: Only Gemini models currently supported
 *   **Language Support**: Custom tools must be written in Python
 *   **Unsupported Agent Types**: `LangGraphAgent`, `A2aAgent`
-*   **Unsupported Tools**: `AgentTool`, `LongRunningFunctionTool`, `VertexAiSearchTool`, `MCPToolset`, `CrewaiTool`, `LangchainTool`, `ExampleTool`
+*   **Unsupported Tools**: `AgentTool`, `LongRunningFunctionTool`, `VertexAiSearchTool`, `MCPToolset`, `LangchainTool`, `ExampleTool`
 
 For complete examples and reference, see the [ADK samples repository](https://github.com/search?q=repo%3Agoogle%2Fadk-python+path%3A%2F%5Econtributing%5C%2Fsamples%5C%2F%2F+.yaml&type=code).
 
@@ -945,7 +945,6 @@ Tools extend an agent's abilities beyond text generation.
 
 3.  **Third-Party Tool Wrappers**: For seamless integration with other frameworks.
     *   `LangchainTool`: Wraps a tool from the LangChain ecosystem.
-    *   `CrewaiTool`: Wraps a tool from the CrewAI library.
 
 4.  **OpenAPI & Protocol Tools**: For interacting with APIs and services.
     *   **`OpenAPIToolset`**: Automatically generates a set of `RestApiTool`s from an OpenAPI (Swagger) v3 specification.

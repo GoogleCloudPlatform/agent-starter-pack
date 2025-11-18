@@ -441,7 +441,6 @@ app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
 {% else %}
-{%- if cookiecutter.is_a2a %}
 import logging
 import os
 from collections.abc import AsyncIterator
@@ -463,30 +462,6 @@ from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor
 from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
-{%- else %}
-import logging
-import os
-from collections.abc import Generator
-
-from fastapi import FastAPI
-from fastapi.responses import RedirectResponse, StreamingResponse
-from google.cloud import logging as google_cloud_logging
-from langchain_core.runnables import RunnableConfig
-from traceloop.sdk import Instruments, Traceloop
-
-from {{cookiecutter.agent_directory}}.agent import agent
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.app_utils.typing import (
-    Feedback,
-    InputChat,
-    Request,
-    dumps,
-    ensure_valid_config,
-)
-{%- endif %}
-
-
-{%- if cookiecutter.is_a2a %}
 
 request_handler = DefaultRequestHandler(
     agent_executor=LangGraphAgentExecutor(graph=root_agent),
@@ -537,14 +512,6 @@ app = FastAPI(
     description="API for interacting with the Agent {{cookiecutter.project_name}}",
     lifespan=lifespan,
 )
-{%- else %}
-
-# Initialize FastAPI app and logging
-app = FastAPI(
-    title="{{cookiecutter.project_name}}",
-    description="API for interacting with the Agent {{cookiecutter.project_name}}",
-)
-{%- endif %}
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 
@@ -554,74 +521,10 @@ try:
         app_name=app.title,
         disable_batch=False,
         exporter=CloudTraceLoggingSpanExporter(),
-        instruments={Instruments.LANGCHAIN, Instruments.CREW},
+        instruments={Instruments.LANGCHAIN},
     )
 except Exception as e:
     logging.error("Failed to initialize Telemetry: %s", str(e))
-
-{%- if not cookiecutter.is_a2a %}
-
-
-def set_tracing_properties(config: RunnableConfig) -> None:
-    """Sets tracing association properties for the current request.
-
-    Args:
-        config: Optional RunnableConfig containing request metadata
-    """
-    Traceloop.set_association_properties(
-        {
-            "log_type": "tracing",
-            "run_id": str(config.get("run_id", "None")),
-            "user_id": config["metadata"].pop("user_id", "None"),
-            "session_id": config["metadata"].pop("session_id", "None"),
-            "commit_sha": os.environ.get("COMMIT_SHA", "None"),
-        }
-    )
-
-
-def stream_messages(
-    input: InputChat,
-    config: RunnableConfig | None = None,
-) -> Generator[str, None, None]:
-    """Stream events in response to an input chat.
-
-    Args:
-        input: The input chat messages
-        config: Optional configuration for the runnable
-
-    Yields:
-        JSON serialized event data
-    """
-    config = ensure_valid_config(config=config)
-    set_tracing_properties(config)
-    input_dict = input.model_dump()
-
-    for data in agent.stream(input_dict, config=config, stream_mode="messages"):
-        yield dumps(data) + "\n"
-
-
-# Routes
-@app.get("/", response_class=RedirectResponse)
-def redirect_root_to_docs() -> RedirectResponse:
-    """Redirect the root URL to the API documentation."""
-    return RedirectResponse(url="/docs")
-
-
-@app.post("/stream_messages")
-def stream_chat_events(request: Request) -> StreamingResponse:
-    """Stream chat events in response to an input request.
-
-    Args:
-        request: The chat request containing input and config
-
-    Returns:
-        Streaming response of chat events
-    """
-    return StreamingResponse(
-        stream_messages(input=request.input, config=request.config),
-        media_type="text/event-stream",
-    )
-{%- endif %}
 {% endif %}
 
 @app.post("/feedback")

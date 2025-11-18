@@ -26,7 +26,7 @@ uvx agent-starter-pack@latest register-gemini-enterprise [OPTIONS]
 After deploying your ADK agent to Agent Engine:
 
 ```bash
-make deploy  # Creates deployment_metadata.json
+make deploy
 make register-gemini-enterprise  # Interactive prompts guide you
 ```
 

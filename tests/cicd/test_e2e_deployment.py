@@ -107,16 +107,6 @@ def get_test_matrix() -> list[CICDTestConfig]:
         #     deployment_target="cloud_run",
         #     extra_params="",
         # ),
-        # CICDTestConfig(
-        #     agent="crewai_coding_crew",
-        #     deployment_target="cloud_run",
-        #     extra_params="",
-        # ),
-        # CICDTestConfig(
-        #     agent="crewai_coding_crew",
-        #     deployment_target="agent_engine",
-        #     extra_params="",
-        # ),
         CICDTestConfig(
             agent="agentic_rag",
             deployment_target="agent_engine",

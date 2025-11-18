@@ -24,9 +24,6 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("playground")}}
 {%- endif %}
 {%- else %}
-{%- if not cookiecutter.is_adk and not cookiecutter.is_adk_live %}
-	uv sync --extra streamlit
-{%- endif %}
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"
@@ -177,7 +174,8 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "|                                                                             |"
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	@echo "| 💡 Testing Locally:                                                         |"
-	@echo "|    Connect to: http://localhost:8000                                       |"
+	@echo "|    Paste this URL into the inspector:                                      |"
+	@echo "|    http://localhost:8000/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json              |"
 	@echo "|                                                                             |"
 {%- endif %}
 	@echo "| 💡 Testing Remote Deployment:                                               |"

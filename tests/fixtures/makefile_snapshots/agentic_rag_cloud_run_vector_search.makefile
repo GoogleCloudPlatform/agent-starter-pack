@@ -13,7 +13,6 @@ install:
 
 # Launch local dev playground
 playground:
-	uv sync --extra streamlit
 	@echo "==============================================================================="
 	@echo "| 🚀 Starting your agent playground...                                        |"
 	@echo "|                                                                             |"

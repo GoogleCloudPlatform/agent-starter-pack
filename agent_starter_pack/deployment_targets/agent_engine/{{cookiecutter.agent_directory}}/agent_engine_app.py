@@ -187,23 +187,11 @@ agent_engine = AgentEngineApp(
 {%- endif -%}
 {% else %}
 
-{%- if cookiecutter.is_a2a %}
 import asyncio
-{%- else %}
-import logging
-{%- endif %}
 import os
-{%- if cookiecutter.is_a2a %}
 from typing import Any
-{%- else %}
-from collections.abc import Iterable, Mapping
-from typing import (
-    Any,
-)
-{%- endif %}
 
 import google.auth
-{%- if cookiecutter.is_a2a %}
 import nest_asyncio
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
 from google.cloud import logging as google_cloud_logging
@@ -212,17 +200,6 @@ from vertexai.preview.reasoning_engines import A2aAgent
 from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
-{%- else %}
-import vertexai
-from google.cloud import logging as google_cloud_logging
-from langchain_core.runnables import RunnableConfig
-from traceloop.sdk import Instruments, Traceloop
-
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
-from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback, InputChat, dumpd, ensure_valid_config
-{%- endif %}
-
-{%- if cookiecutter.is_a2a %}
 
 
 class AgentEngineApp(A2aAgent):
@@ -296,111 +273,4 @@ class AgentEngineApp(A2aAgent):
 
 _, project_id = google.auth.default()
 agent_engine = AgentEngineApp.create()
-{%- else %}
-
-
-class AgentEngineApp:
-    """Class for managing agent engine functionality."""
-
-    def __init__(self, project_id: str | None = None) -> None:
-        """Initialize the AgentEngineApp variables"""
-        self.project_id = project_id
-
-    def set_up(self) -> None:
-        """The set_up method is used to define application initialization logic"""
-        # Lazy import agent at setup time to avoid deployment dependencies
-        from {{cookiecutter.agent_directory}}.agent import root_agent
-
-        logging_client = google_cloud_logging.Client(project=self.project_id)
-        self.logger = logging_client.logger(__name__)
-
-        # Initialize Telemetry
-        try:
-            Traceloop.init(
-                app_name="{{cookiecutter.project_name}}",
-                disable_batch=False,
-                exporter=CloudTraceLoggingSpanExporter(project_id=self.project_id),
-                instruments={Instruments.LANGCHAIN, Instruments.CREW},
-            )
-        except Exception as e:
-            logging.error("Failed to initialize Telemetry: %s", str(e))
-        self.runnable = root_agent
-
-    # Add any additional variables here that should be included in the tracing logs
-    def set_tracing_properties(self, config: RunnableConfig | None) -> None:
-        """Sets tracing association properties for the current request.
-
-        Args:
-            config: Optional RunnableConfig containing request metadata
-        """
-        config = ensure_valid_config(config)
-        Traceloop.set_association_properties(
-            {
-                "log_type": "tracing",
-                "run_id": str(config["run_id"]),
-                "user_id": config["metadata"].pop("user_id", "None"),
-                "session_id": config["metadata"].pop("session_id", "None"),
-                "commit_sha": os.environ.get("COMMIT_SHA", "None"),
-            }
-        )
-
-    def stream_query(
-        self,
-        *,
-        input: str | Mapping,
-        config: RunnableConfig | None = None,
-        **kwargs: Any,
-    ) -> Iterable[Any]:
-        """Stream responses from the agent for a given input."""
-
-        config = ensure_valid_config(config)
-        self.set_tracing_properties(config=config)
-        # Validate input. We assert the input is a list of messages
-        input_chat = InputChat.model_validate(input)
-
-        for chunk in self.runnable.stream(
-            input=input_chat, config=config, **kwargs, stream_mode="messages"
-        ):
-            dumped_chunk = dumpd(chunk)
-            yield dumped_chunk
-
-    def query(
-        self,
-        *,
-        input: str | Mapping,
-        config: RunnableConfig | None = None,
-        **kwargs: Any,
-    ) -> Any:
-        """Process a single input and return the agent's response."""
-        config = ensure_valid_config(config)
-        self.set_tracing_properties(config=config)
-        return dumpd(self.runnable.invoke(input=input, config=config, **kwargs))
-
-    def register_feedback(self, feedback: dict[str, Any]) -> None:
-        """Collect and log feedback."""
-        feedback_obj = Feedback.model_validate(feedback)
-        self.logger.log_struct(feedback_obj.model_dump(), severity="INFO")
-
-    def register_operations(self) -> dict[str, list[str]]:
-        """Registers the operations of the Agent.
-
-        This mapping defines how different operation modes (e.g., "", "stream")
-        are implemented by specific methods of the Agent.  The "default" mode,
-        represented by the empty string ``, is associated with the `query` API,
-        while the "stream" mode is associated with the `stream_query` API.
-
-        Returns:
-            Mapping[str, Sequence[str]]: A mapping of operation modes to a list
-            of method names that implement those operation modes.
-        """
-        return {
-            "": ["query", "register_feedback"],
-            "stream": ["stream_query"],
-        }
-
-
-_, project_id = google.auth.default()
-vertexai.init(project=project_id, location="us-central1")
-agent_engine = AgentEngineApp(project_id=project_id)
-{%- endif %}
 {%- endif %}

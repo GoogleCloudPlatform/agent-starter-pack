@@ -11,15 +11,14 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph_base` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
-| `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
 | `adk_live` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
 
 ## Choosing the Right Template
 
 When selecting a template, consider these factors:
 
-1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation crew, or something else?
-2.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, CrewAI, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
+1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation network, or something else?
+2.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
 3.  **Reasoning Complexity**: Does your agent need complex planning and tool use (like ReAct), or is it more focused on retrieval and synthesis (like basic RAG)?
 4.  **Collaboration Needs**: Do you need multiple specialized agents working together?
 5.  **Modality**: Does your agent need to process or respond with audio, video, or just text?
@@ -59,15 +58,6 @@ This template provides a minimal example of a ReAct agent built using [LangGraph
 *   Building agents with explicit state management and complex reasoning flows.
 *   Fine-grained control over agent behavior and tool orchestration.
 *   Distributed, multi-agent systems with A2A protocol support.
-
-### CrewAI Coding Crew (`crewai_coding_crew`)
-
-This template combines [CrewAI](https://www.crewai.com/)'s multi-agent collaboration with LangGraph's conversational control to create an interactive coding assistant. It orchestrates specialized agents (e.g., Senior Engineer, QA Engineer) to understand requirements and generate code. Key features include:
-
-*   Interactive requirements gathering through natural dialogue (LangGraph).
-*   Collaborative code development by a crew of specialized AI agents (CrewAI).
-*   Sequential processing for tasks from requirements to implementation and QA.
-*   Ideal for complex tasks requiring delegation and simulating team collaboration.
 
 ### Live API (`adk_live`)
 

@@ -9,8 +9,10 @@ dependencies = [
 {%- for dep in cookiecutter.extra_dependencies %}
     "{{ dep }}",
 {%- endfor %}
+{%- if cookiecutter.is_adk %}
     "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
     "gcsfs>=2024.11.0",
+{%- endif %}
     "google-cloud-logging>=3.12.0,<4.0.0",
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "google-cloud-aiplatform[evaluation]>=1.118.0,<2.0.0",

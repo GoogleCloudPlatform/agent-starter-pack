@@ -424,6 +424,7 @@ app: FastAPI = get_fast_api_app(
     artifact_service_uri=bucket_name,
     allow_origins=allow_origins,
     session_service_uri=session_service_uri,
+    otel_to_cloud=True,
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"

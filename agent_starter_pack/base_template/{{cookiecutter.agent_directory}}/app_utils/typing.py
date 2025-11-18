@@ -26,12 +26,14 @@ from pydantic import (
     Field,
 )
 {%- else %}
+import uuid
 from typing import (
     Literal,
 )
 
 from pydantic import (
     BaseModel,
+    Field,
 )
 {%- endif %}
 {%- else %}
@@ -103,14 +105,10 @@ class Feedback(BaseModel):
 
     score: int | float
     text: str | None = ""
-{%- if cookiecutter.is_adk %}
-    invocation_id: str
-{%- else %}
-    run_id: str
-{%- endif %}
     log_type: Literal["feedback"] = "feedback"
     service_name: Literal["{{cookiecutter.project_name}}"] = "{{cookiecutter.project_name}}"
-    user_id: str = ""
+    user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 {% if not cookiecutter.is_adk %}
 
 def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:

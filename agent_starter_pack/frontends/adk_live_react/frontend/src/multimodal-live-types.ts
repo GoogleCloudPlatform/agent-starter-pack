@@ -244,7 +244,8 @@ export const isToolCallCancellation = (
 
 // ADK Event types
 export interface AdkEvent {
-  invocation_id: string;
+  user_id: string;
+  session_id: string;
   author: string;
   actions: {
     state_delta: any;
@@ -265,9 +266,10 @@ export interface AdkEvent {
 
 // ADK Event type guards
 export const isAdkEvent = (a: unknown): a is AdkEvent =>
-  typeof a === "object" && 
+  typeof a === "object" &&
   a !== null &&
-  typeof (a as any).invocation_id === "string" &&
+  typeof (a as any).user_id === "string" &&
+  typeof (a as any).session_id === "string" &&
   typeof (a as any).author === "string" &&
   typeof (a as any).actions === "object";
 

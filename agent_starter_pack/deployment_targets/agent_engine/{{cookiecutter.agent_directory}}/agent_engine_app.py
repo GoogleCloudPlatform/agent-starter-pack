@@ -21,10 +21,9 @@ import logging
 import os
 from typing import Any
 
-{%- if cookiecutter.is_a2a %}
+{% if cookiecutter.is_a2a -%}
 import nest_asyncio
-{%- endif %}
-
+{% endif -%}
 import vertexai
 {%- if cookiecutter.is_a2a %}
 from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
@@ -179,7 +178,6 @@ import asyncio
 import os
 from typing import Any
 
-import google.auth
 import nest_asyncio
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
 from google.cloud import logging as google_cloud_logging
@@ -189,7 +187,6 @@ from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import (
     LangGraphAgentExecutor,
 )
-from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 
 
@@ -202,8 +199,6 @@ class AgentEngineApp(A2aAgent):
 
         This method handles agent card creation in async context.
         """
-        setup_telemetry()
-
         # Handle nested asyncio contexts (like notebooks or Agent Engine)
         try:
             asyncio.get_running_loop()

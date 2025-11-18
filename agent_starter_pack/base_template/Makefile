@@ -49,10 +49,15 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
 	$(MAKE) inspector
 {%- else %}
-	@echo "ℹ️  Note: For Agent Engine, deploy remotely first to test with the inspector."
-	@echo "    Starting local backend for development..."
+{%- if cookiecutter.agent_name == 'langgraph_base' %}
+	@echo "ℹ️  Note: Local playground not supported for LangGraph on Agent Engine."
+	@echo "    To test your agent, deploy first with 'make deploy' then use 'make inspector'."
+{%- else %}
+	@echo "ℹ️  Note: Local playground uses ADK web interface (not A2A endpoints)."
+	@echo "    To test A2A protocol, deploy first with 'make deploy' then use 'make inspector'."
 	@echo ""
-	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+	uv run adk web . --port 8501 --reload_agents
+{%- endif %}
 {%- endif %}
 {%- else %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}

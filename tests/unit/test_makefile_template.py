@@ -121,6 +121,7 @@ TEST_CONFIGURATIONS = {
     "langgraph_cloud_run": {
         "project_name": "test-langgraph",
         "agent_directory": "test_langgraph",
+        "agent_name": "langgraph_base",
         "deployment_target": "cloud_run",
         "is_adk": False,
         "is_adk_live": False,
@@ -134,6 +135,7 @@ TEST_CONFIGURATIONS = {
     "langgraph_agent_engine": {
         "project_name": "test-langgraph",
         "agent_directory": "test_langgraph",
+        "agent_name": "langgraph_base",
         "deployment_target": "agent_engine",
         "is_adk": False,
         "is_adk_live": False,

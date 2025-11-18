@@ -175,9 +175,14 @@ def fetch_agent_card_from_url(url: str, deployment_target: str) -> dict | None:
         if deployment_target == "agent_engine":
             access_token = get_access_token()
             headers["Authorization"] = f"Bearer {access_token}"
-        else:  # cloud_run
+        elif deployment_target == "cloud_run":
             identity_token = get_identity_token()
             headers["Authorization"] = f"Bearer {identity_token}"
+        else:
+            raise ValueError(
+                f"Unknown deployment target: {deployment_target}. "
+                f"Expected 'agent_engine' or 'cloud_run'"
+            )
 
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -479,8 +484,10 @@ def register_a2a_agent(
                         )
                         console.print(f"   Agent Name:\n   {result.get('name', 'N/A')}")
                         return result
-            except (ValueError, KeyError):
-                pass
+            except (ValueError, KeyError) as e:
+                console_err.print(
+                    f"Warning: Could not parse error response from API: {e}"
+                )
 
         console_err.print(
             f"\n❌ [red]HTTP error occurred: {http_err}[/]",
@@ -663,9 +670,10 @@ def register_agent(
                             style="bold red",
                         )
                         raise
-            except (ValueError, KeyError):
-                # Failed to parse error response, raise original error
-                pass
+            except (ValueError, KeyError) as e:
+                console_err.print(
+                    f"Warning: Could not parse error response from API: {e}"
+                )
 
         # If not an "already exists" error, or update failed, raise the original error
         console_err.print(

@@ -48,6 +48,10 @@ import vertexai
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
 
+from agent_starter_pack.cli.commands.register_gemini_enterprise import (
+    parse_agent_engine_id,
+)
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -268,11 +272,10 @@ class TestGeminiEnterpriseRegistration:
             # Then, delete the Agent Engine
             if agent_engine_id:
                 try:
-                    # Extract agent engine ID components
-                    parts = agent_engine_id.split("/")
-                    if len(parts) >= 6:
-                        project_id = parts[1]
-                        location = parts[3]
+                    parsed = parse_agent_engine_id(agent_engine_id)
+                    if parsed:
+                        project_id = parsed["project"]
+                        location = parsed["location"]
 
                         # Initialize Vertex AI client
                         client = vertexai.Client(project=project_id, location=location)
@@ -430,11 +433,13 @@ class TestGeminiEnterpriseRegistration:
 
             logger.info(f"✅ A2A agent deployed to Agent Engine: {agent_engine_id}")
 
-            # Construct agent card URL
-            parts = agent_engine_id.split("/")
-            project_id = parts[1]
-            location = parts[3]
-            engine_id = parts[5]
+            parsed = parse_agent_engine_id(agent_engine_id)
+            if not parsed:
+                raise ValueError(f"Invalid agent engine ID format: {agent_engine_id}")
+
+            project_id = parsed["project"]
+            location = parsed["location"]
+            engine_id = parsed["engine_id"]
             agent_card_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/projects/{project_id}/locations/{location}/reasoningEngines/{engine_id}/a2a/v1/card"
             logger.info(f"✅ Agent card URL: {agent_card_url}")
 
@@ -506,11 +511,10 @@ class TestGeminiEnterpriseRegistration:
             # Then, delete the Agent Engine
             if agent_engine_id:
                 try:
-                    # Extract agent engine ID components
-                    parts = agent_engine_id.split("/")
-                    if len(parts) >= 6:
-                        project_id = parts[1]
-                        location = parts[3]
+                    parsed = parse_agent_engine_id(agent_engine_id)
+                    if parsed:
+                        project_id = parsed["project"]
+                        location = parsed["location"]
 
                         # Initialize Vertex AI client
                         client = vertexai.Client(project=project_id, location=location)

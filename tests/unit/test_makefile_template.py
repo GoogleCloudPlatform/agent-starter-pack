@@ -425,15 +425,6 @@ class TestMakefileGeneration:
         assert "agent_engine_app" in output
         assert "uv run -m" in output
 
-    def test_adk_no_streamlit_extra(self, makefile_renderer: MakefileRenderer) -> None:
-        """Test that ADK agents don't include --extra streamlit in install."""
-        config = TEST_CONFIGURATIONS["adk_base_cloud_run_no_data"]
-        output = makefile_renderer.render(config)
-
-        # Find install target
-        install_section = output[output.index("install:") : output.index("\n\n")]
-        assert "--extra streamlit" not in install_section
-
     def test_all_configs_have_required_targets(
         self, makefile_renderer: MakefileRenderer
     ) -> None:

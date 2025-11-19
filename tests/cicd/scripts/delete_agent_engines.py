@@ -61,8 +61,8 @@ def get_project_ids() -> list[str]:
     return project_ids
 
 
-# Default region
-DEFAULT_REGION = "europe-west1"
+# Regions to clean up
+REGIONS = ["us-central1", "europe-west4", "europe-west1"]
 
 # Rate limiting configuration
 MAX_RETRIES = 3
@@ -140,44 +140,41 @@ def delete_single_agent_engine(engine, retry_count: int = 0) -> bool:
 
 
 def delete_agent_engines_in_project(
-    project_id: str, region: str = DEFAULT_REGION
+    project_id: str, region: str
 ) -> tuple[int, int]:
     """
-    Delete Agent Engine services starting with 'test-' or 'myagent' in a specific project.
+    Delete Agent Engine services in a specific project and region.
 
     Args:
         project_id: The GCP project ID
-        region: The GCP region (default: europe-west1)
+        region: The GCP region
 
     Returns:
         Tuple of (successful_deletions, total_engines_found)
     """
-    logger.info(f"🔍 Checking for Agent Engine services in project {project_id}...")
+    logger.info(f"🔍 Checking for Agent Engine services in {project_id} ({region})...")
 
     try:
         # Initialize Vertex AI for this project
         vertexai.init(project=project_id, location=region)
 
         # List all Agent Engine services in the project
-        logger.info(f"📋 Listing all Agent Engine services in {project_id}...")
+        logger.info(f"📋 Listing all Agent Engine services in {project_id} ({region})...")
         all_engines = list(agent_engines.AgentEngine.list())
 
-        # Filter engines that start with 'test-' or 'myagent'
-        engines = [
-            engine for engine in all_engines
-            if (engine.display_name and (engine.display_name.startswith("test-") or engine.display_name.startswith("myagent")))
-        ]
+        # Delete ALL agent engines (no filtering by prefix)
+        engines = all_engines
 
         if not engines:
-            logger.info(f"✅ No Agent Engine services starting with 'test-' or 'myagent' found in {project_id}")
+            logger.info(f"✅ No Agent Engine services found in {project_id} ({region})")
             return 0, 0
 
-        logger.info(f"🎯 Found {len(engines)} Agent Engine service(s) starting with 'test-' or 'myagent' in {project_id}")
+        logger.info(f"🎯 Found {len(engines)} Agent Engine service(s) in {project_id} ({region})")
 
         # Delete each engine with improved error handling
         deleted_count = 0
         for i, engine in enumerate(engines, 1):
-            logger.info(f"📋 Processing engine {i}/{len(engines)} in {project_id}")
+            logger.info(f"📋 Processing engine {i}/{len(engines)} in {project_id} ({region})")
 
             if delete_single_agent_engine(engine):
                 deleted_count += 1
@@ -187,38 +184,42 @@ def delete_agent_engines_in_project(
                 time.sleep(1)
 
         logger.info(
-            f"🎉 Deleted {deleted_count}/{len(engines)} Agent Engine service(s) in {project_id}"
+            f"🎉 Deleted {deleted_count}/{len(engines)} Agent Engine service(s) in {project_id} ({region})"
         )
         return deleted_count, len(engines)
 
     except Exception as e:
-        logger.error(f"❌ Error processing project {project_id}: {e}")
+        logger.error(f"❌ Error processing {project_id} ({region}): {e}")
         return 0, 0
 
 
 def main():
     """Main function to delete Agent Engine services from all specified projects."""
-    logger.info("🚀 Starting Agent Engine cleanup across multiple projects...")
+    logger.info("🚀 Starting Agent Engine cleanup across multiple projects and regions...")
 
     try:
         project_ids = get_project_ids()
         logger.info(f"🎯 Target projects: {', '.join(project_ids)}")
+        logger.info(f"🌍 Target regions: {', '.join(REGIONS)}")
     except ValueError as e:
         logger.error(f"❌ Configuration error: {e}")
         sys.exit(1)
 
     total_deleted = 0
     total_found = 0
-    failed_projects = []
+    failed_locations = []
 
     for project_id in project_ids:
-        try:
-            deleted_count, found_count = delete_agent_engines_in_project(project_id)
-            total_deleted += deleted_count
-            total_found += found_count
-        except Exception as e:
-            logger.error(f"❌ Failed to process project {project_id}: {e}")
-            failed_projects.append(project_id)
+        for region in REGIONS:
+            try:
+                deleted_count, found_count = delete_agent_engines_in_project(
+                    project_id, region
+                )
+                total_deleted += deleted_count
+                total_found += found_count
+            except Exception as e:
+                logger.error(f"❌ Failed to process {project_id} ({region}): {e}")
+                failed_locations.append(f"{project_id}/{region}")
 
     # Summary
     logger.info("\n" + "=" * 60)
@@ -227,12 +228,13 @@ def main():
     logger.info(f"🎯 Total Agent Engine services found: {total_found}")
     logger.info(f"✅ Total Agent Engine services deleted: {total_deleted}")
     logger.info(f"❌ Failed deletions: {total_found - total_deleted}")
+    total_locations = len(project_ids) * len(REGIONS)
     logger.info(
-        f"📁 Projects processed: {len(project_ids) - len(failed_projects)}/{len(project_ids)}"
+        f"📁 Locations processed: {total_locations - len(failed_locations)}/{total_locations}"
     )
 
-    if failed_projects:
-        logger.warning(f"⚠️ Failed to process projects: {', '.join(failed_projects)}")
+    if failed_locations:
+        logger.warning(f"⚠️ Failed to process locations: {', '.join(failed_locations)}")
         sys.exit(1)
     elif total_found > total_deleted:
         logger.warning(
@@ -240,7 +242,7 @@ def main():
         )
         sys.exit(1)
     else:
-        logger.info("🎉 All projects processed successfully!")
+        logger.info("🎉 All projects and regions processed successfully!")
         sys.exit(0)
 
 

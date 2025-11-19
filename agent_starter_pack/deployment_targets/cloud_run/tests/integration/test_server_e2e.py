@@ -283,8 +283,8 @@ def start_server() -> subprocess.Popen[str]:
     env = os.environ.copy()
     env["INTEGRATION_TEST"] = "TRUE"
 {%- if cookiecutter.session_type == "agent_engine" %}
-    # Set test-specific agent engine session name
-    env["AGENT_ENGINE_SESSION_NAME"] = "test-{{cookiecutter.project_name}}"
+    # Use in-memory session for local E2E tests instead of creating Agent Engine
+    env["USE_IN_MEMORY_SESSION"] = "true"
 {%- endif %}
     process = subprocess.Popen(
         command,

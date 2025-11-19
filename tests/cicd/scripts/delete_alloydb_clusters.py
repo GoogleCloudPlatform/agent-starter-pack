@@ -64,8 +64,8 @@ def get_project_ids() -> list[str]:
     return project_ids
 
 
-# Default region
-DEFAULT_REGION = "europe-west1"
+# Regions to clean up
+REGIONS = ["us-central1", "europe-west4", "europe-west1"]
 
 # Rate limiting configuration
 MAX_RETRIES = 3
@@ -364,7 +364,7 @@ def delete_single_subnet(compute_client, project_id: str, subnet: dict, region: 
             return False
 
 
-def delete_cloud_run_services(project_id: str, region: str = DEFAULT_REGION) -> tuple[int, int]:
+def delete_cloud_run_services(project_id: str, region: str) -> tuple[int, int]:
     """
     Delete all Cloud Run services in a project and region using gcloud CLI.
     
@@ -684,21 +684,21 @@ def wait_for_compute_operation(compute_client, project_id: str, operation: dict,
 
 
 def delete_alloydb_and_network_resources_in_project(
-    project_id: str, region: str = DEFAULT_REGION
+    project_id: str, region: str
 ) -> tuple[int, int, int, int, int, int, int, int]:
     """
     Delete all AlloyDB clusters, instances, and network resources in a specific project.
 
     Args:
         project_id: The GCP project ID
-        region: The GCP region (default: europe-west1)
+        region: The GCP region
 
     Returns:
-        Tuple of (deleted_instances, total_instances, deleted_clusters, total_clusters, 
-                 deleted_peerings, total_peerings, deleted_subnets, total_subnets, 
+        Tuple of (deleted_instances, total_instances, deleted_clusters, total_clusters,
+                 deleted_peerings, total_peerings, deleted_subnets, total_subnets,
                  deleted_networks, total_networks)
     """
-    logger.info(f"🔍 Checking for AlloyDB and network resources in project {project_id}...")
+    logger.info(f"🔍 Checking for AlloyDB and network resources in {project_id} ({region})...")
 
     try:
         # Initialize clients
@@ -707,19 +707,16 @@ def delete_alloydb_and_network_resources_in_project(
         parent = f"projects/{project_id}/locations/{region}"
 
         # List all clusters in the project
-        logger.info(f"📋 Listing all AlloyDB clusters in {project_id}...")
+        logger.info(f"📋 Listing all AlloyDB clusters in {project_id} ({region})...")
         all_clusters = list(alloydb_client.list_clusters(parent=parent))
 
-        # Filter clusters that start with 'test-' or 'myagent'
-        clusters = [
-            cluster for cluster in all_clusters
-            if cluster.name.split('/')[-1].startswith("test-") or cluster.name.split('/')[-1].startswith("myagent")
-        ]
+        # Delete ALL AlloyDB clusters (no filtering by prefix)
+        clusters = all_clusters
 
         if not clusters:
-            logger.info(f"✅ No AlloyDB clusters starting with 'test-' or 'myagent' found in {project_id}")
+            logger.info(f"✅ No AlloyDB clusters found in {project_id} ({region})")
             # Still need to clean up network resources even if no AlloyDB clusters
-            
+
             # First delete Cloud Run services as they may hold serverless address reservations
             deleted_services, total_services = delete_cloud_run_services(project_id, region)
 
@@ -734,7 +731,7 @@ def delete_alloydb_and_network_resources_in_project(
             deleted_networks, total_networks = delete_vpc_networks(compute_client, project_id)
             return 0, 0, 0, 0, deleted_peerings, total_peerings, deleted_subnets, total_subnets, deleted_networks, total_networks
 
-        logger.info(f"🎯 Found {len(clusters)} AlloyDB cluster(s) starting with 'test-' or 'myagent' in {project_id}")
+        logger.info(f"🎯 Found {len(clusters)} AlloyDB cluster(s) in {project_id} ({region})")
 
         total_instances = 0
         deleted_instances = 0
@@ -809,11 +806,11 @@ def delete_alloydb_and_network_resources_in_project(
                     logger.error(f"❌ Cluster processing raised exception {cluster_name}: {exc}")
 
         logger.info(
-            f"🎉 Deleted {deleted_instances}/{total_instances} instance(s) and {deleted_clusters}/{len(clusters)} cluster(s) in {project_id}"
+            f"🎉 Deleted {deleted_instances}/{total_instances} instance(s) and {deleted_clusters}/{len(clusters)} cluster(s) in {project_id} ({region})"
         )
-        
+
         # Delete network resources after AlloyDB cleanup
-        logger.info(f"🌐 Starting network cleanup in project {project_id}...")
+        logger.info(f"🌐 Starting network cleanup in {project_id} ({region})...")
         
         # First delete Cloud Run services as they may hold serverless address reservations
         deleted_services, total_services = delete_cloud_run_services(project_id, region)
@@ -838,17 +835,18 @@ def delete_alloydb_and_network_resources_in_project(
                 deleted_networks, total_networks)
 
     except Exception as e:
-        logger.error(f"❌ Error processing project {project_id}: {e}")
+        logger.error(f"❌ Error processing {project_id} ({region}): {e}")
         return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 
 def main():
     """Main function to delete AlloyDB and network resources from all specified projects."""
-    logger.info("🚀 Starting AlloyDB and network cleanup across multiple projects...")
+    logger.info("🚀 Starting AlloyDB and network cleanup across multiple projects and regions...")
 
     try:
         project_ids = get_project_ids()
         logger.info(f"🎯 Target projects: {', '.join(project_ids)}")
+        logger.info(f"🌍 Target regions: {', '.join(REGIONS)}")
     except ValueError as e:
         logger.error(f"❌ Configuration error: {e}")
         sys.exit(1)
@@ -863,27 +861,30 @@ def main():
     total_found_subnets = 0
     total_deleted_networks = 0
     total_found_networks = 0
-    failed_projects = []
+    failed_locations = []
 
     for project_id in project_ids:
-        try:
-            (deleted_instances, found_instances, deleted_clusters, found_clusters,
-             deleted_peerings, found_peerings, deleted_subnets, found_subnets,
-             deleted_networks, found_networks) = delete_alloydb_and_network_resources_in_project(project_id)
-            
-            total_deleted_instances += deleted_instances
-            total_found_instances += found_instances
-            total_deleted_clusters += deleted_clusters
-            total_found_clusters += found_clusters
-            total_deleted_peerings += deleted_peerings
-            total_found_peerings += found_peerings
-            total_deleted_subnets += deleted_subnets
-            total_found_subnets += found_subnets
-            total_deleted_networks += deleted_networks
-            total_found_networks += found_networks
-        except Exception as e:
-            logger.error(f"❌ Failed to process project {project_id}: {e}")
-            failed_projects.append(project_id)
+        for region in REGIONS:
+            try:
+                (deleted_instances, found_instances, deleted_clusters, found_clusters,
+                 deleted_peerings, found_peerings, deleted_subnets, found_subnets,
+                 deleted_networks, found_networks) = delete_alloydb_and_network_resources_in_project(
+                    project_id, region
+                )
+
+                total_deleted_instances += deleted_instances
+                total_found_instances += found_instances
+                total_deleted_clusters += deleted_clusters
+                total_found_clusters += found_clusters
+                total_deleted_peerings += deleted_peerings
+                total_found_peerings += found_peerings
+                total_deleted_subnets += deleted_subnets
+                total_found_subnets += found_subnets
+                total_deleted_networks += deleted_networks
+                total_found_networks += found_networks
+            except Exception as e:
+                logger.error(f"❌ Failed to process {project_id} ({region}): {e}")
+                failed_locations.append(f"{project_id}/{region}")
 
     # Summary
     logger.info("\n" + "=" * 80)
@@ -908,14 +909,15 @@ def main():
     logger.info(f"  ❌ Failed subnet deletions: {total_found_subnets - total_deleted_subnets}")
     logger.info(f"  ❌ Failed network deletions: {total_found_networks - total_deleted_networks}")
     logger.info("")
+    total_locations = len(project_ids) * len(REGIONS)
     logger.info(
-        f"📁 Projects processed: {len(project_ids) - len(failed_projects)}/{len(project_ids)}"
+        f"📁 Locations processed: {total_locations - len(failed_locations)}/{total_locations}"
     )
 
-    if failed_projects:
-        logger.warning(f"⚠️ Failed to process projects: {', '.join(failed_projects)}")
+    if failed_locations:
+        logger.warning(f"⚠️ Failed to process locations: {', '.join(failed_locations)}")
         sys.exit(1)
-    elif ((total_found_instances > total_deleted_instances) or 
+    elif ((total_found_instances > total_deleted_instances) or
           (total_found_clusters > total_deleted_clusters) or
           (total_found_peerings > total_deleted_peerings) or
           (total_found_subnets > total_deleted_subnets) or
@@ -925,7 +927,7 @@ def main():
         )
         sys.exit(1)
     else:
-        logger.info("🎉 All projects processed successfully!")
+        logger.info("🎉 All projects and regions processed successfully!")
         sys.exit(0)
 
 

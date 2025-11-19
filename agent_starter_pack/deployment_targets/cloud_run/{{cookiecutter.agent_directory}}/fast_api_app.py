@@ -399,20 +399,33 @@ if db_host and db_pass:
     session_service_uri = f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
 {%- elif cookiecutter.session_type == "agent_engine" %}
 # Agent Engine session configuration
-# Use environment variable for agent name, default to project name
-agent_name = os.environ.get("AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}")
+# Check if we should use in-memory session for testing (set USE_IN_MEMORY_SESSION=true for E2E tests)
+use_in_memory_session = os.environ.get("USE_IN_MEMORY_SESSION", "").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
-# Check if an agent with this name already exists
-existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))
-
-if existing_agents:
-    # Use the existing agent
-    agent_engine = existing_agents[0]
+if use_in_memory_session:
+    # Use in-memory session for local testing
+    session_service_uri = None
 else:
-    # Create a new agent if none exists
-    agent_engine = agent_engines.create(display_name=agent_name)
+    # Use environment variable for agent name, default to project name
+    agent_name = os.environ.get(
+        "AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}"
+    )
 
-session_service_uri = f"agentengine://{agent_engine.resource_name}"
+    # Check if an agent with this name already exists
+    existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))
+
+    if existing_agents:
+        # Use the existing agent
+        agent_engine = existing_agents[0]
+    else:
+        # Create a new agent if none exists
+        agent_engine = agent_engines.create(display_name=agent_name)
+
+    session_service_uri = f"agentengine://{agent_engine.resource_name}"
 {%- else %}
 # In-memory session configuration - no persistent storage
 session_service_uri = None

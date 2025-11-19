@@ -427,7 +427,7 @@ deployment_targets = ["agent_engine", "cloud_run"]
 [tool.agent-starter-pack]
 base_template = "adk_base"
 [tool.agent-starter-pack.settings]
-session_type = "alloydb"
+session_type = "cloud_sql"
 deployment_targets = ["cloud_run"]
 include_data_ingestion = true
 ```

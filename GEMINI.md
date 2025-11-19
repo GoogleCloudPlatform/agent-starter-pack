@@ -64,7 +64,7 @@ Failure to follow these rules is the most common source of project generation er
 Distinguish between substitution and logic:
 
 -   **Substitution (in file content):** Use double curly braces: `{{ cookiecutter.project_name }}`
--   **Logic (in `if`/`for` blocks):** Use the variable directly: `{% if cookiecutter.use_alloydb %}`
+-   **Logic (in `if`/`for` blocks):** Use the variable directly: `{% if cookiecutter.session_type == 'cloud_sql' %}`
 
 ### 3. Whitespace Control
 Jinja is sensitive to whitespace. Use hyphens to control newlines and prevent unwanted blank lines in rendered files.

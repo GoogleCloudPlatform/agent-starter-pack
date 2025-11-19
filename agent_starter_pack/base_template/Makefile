@@ -60,10 +60,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- endif %}
 {%- endif %}
 {%- else %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
-{%- endif %}
-	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- endif %}
 {%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}

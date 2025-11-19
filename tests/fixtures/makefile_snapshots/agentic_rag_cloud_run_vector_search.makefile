@@ -18,6 +18,7 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: What's in the knowledge base?|"
 	@echo "==============================================================================="
+	uv run uvicorn test_rag.fast_api_app:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Local Development Commands

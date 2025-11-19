@@ -81,9 +81,7 @@ def validate_makefile_usability(
         # Replace uvx agent-starter-pack@<version> with uv run agent-starter-pack
         # This allows testing with the local development version instead of PyPI
         content = re.sub(
-            r'uvx agent-starter-pack@[\d.]+',
-            'uv run agent-starter-pack',
-            content
+            r"uvx agent-starter-pack@[\d.]+", "uv run agent-starter-pack", content
         )
 
         # Write back the modified Makefile

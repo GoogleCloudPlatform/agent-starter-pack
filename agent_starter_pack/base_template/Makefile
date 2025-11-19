@@ -53,13 +53,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	@echo "    Starting local backend for development..."
 	@echo ""
 	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
-{%- endif %}
-{%- else %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
-{%- endif %}
-	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
-{%- endif %}
+{%- endif %}{%- endif %}
 {%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
 
@@ -303,7 +297,7 @@ data-ingestion:
 
 # Run unit and integration tests
 test:
-	uv sync --dev{% if not cookiecutter.is_adk and not cookiecutter.is_adk_live %} --extra streamlit{%- endif %}
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

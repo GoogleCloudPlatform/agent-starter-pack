@@ -365,9 +365,10 @@ resource "google_cloudbuild_trigger" "main_e2e_deployment_test" {
 
   substitutions = {
     _TEST_AGENT_COMBINATION = each.value.value
-    _E2E_DEV_PROJECT     = var.e2e_test_project_mapping.dev
-    _E2E_STAGING_PROJECT = var.e2e_test_project_mapping.staging
-    _E2E_PROD_PROJECT    = var.e2e_test_project_mapping.prod
+    _E2E_DEV_PROJECT        = var.e2e_test_project_mapping.dev
+    _E2E_STAGING_PROJECT    = var.e2e_test_project_mapping.staging
+    _E2E_PROD_PROJECT       = var.e2e_test_project_mapping.prod
+    _SECRETS_PROJECT_ID     = "asp-e2e-vars"
   }
 }
 

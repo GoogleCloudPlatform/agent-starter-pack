@@ -34,9 +34,9 @@ steps:
     
 availableSecrets:
   secretManager:
-  - versionName: projects/asp-e2e-vars/secrets/github-pat/versions/latest
+  - versionName: projects/${_SECRETS_PROJECT_ID}/secrets/github-pat/versions/latest
     env: 'GITHUB_PAT'
-  - versionName: projects/$PROJECT_ID/secrets/github-app-installation-id/versions/latest
+  - versionName: projects/${_SECRETS_PROJECT_ID}/secrets/github-app-installation-id/versions/latest
     env: 'GITHUB_APP_INSTALLATION_ID'
 logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
 options:
@@ -49,3 +49,5 @@ options:
     - "E2E_CICD_PROJECT=${PROJECT_ID}"
     - "RUN_E2E_TESTS=1"
 timeout: 43200s
+substitutions:
+  _SECRETS_PROJECT_ID: 'asp-e2e-vars'

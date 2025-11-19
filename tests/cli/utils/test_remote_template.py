@@ -340,7 +340,7 @@ class TestMergeTemplateConfigs:
         base_config = {
             "settings": {
                 "deployment_targets": ["cloud_run"],
-                "frontend_type": "streamlit",
+                "frontend_type": "None",
                 "requires_data_ingestion": False,
             }
         }
@@ -352,7 +352,7 @@ class TestMergeTemplateConfigs:
 
         # Settings should be merged
         assert result["settings"]["deployment_targets"] == ["cloud_run"]  # From base
-        assert result["settings"]["frontend_type"] == "streamlit"  # From base
+        assert result["settings"]["frontend_type"] == "None"  # From base
         assert result["settings"]["requires_data_ingestion"] is True  # Remote overrides
         assert result["settings"]["custom_setting"] == "value"  # From remote
 

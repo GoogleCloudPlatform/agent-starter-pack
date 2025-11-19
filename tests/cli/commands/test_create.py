@@ -119,10 +119,10 @@ def mock_load_template_config() -> Generator[MagicMock, None, None]:
             "settings": {
                 "deployment_targets": ["cloud_run", "agent_engine"],
                 "requires_data_ingestion": False,
-                "commands": {"extra": {"dev": "streamlit run app/main.py"}},
+                "commands": {"extra": {"dev": "uv run app/main.py"}},
             },
             "has_pipeline": True,
-            "frontend": "streamlit",
+            "frontend": "None",
         }
         yield mock
 

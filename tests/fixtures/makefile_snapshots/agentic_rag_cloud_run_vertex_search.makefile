@@ -18,8 +18,6 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: What's in the knowledge base?|"
 	@echo "==============================================================================="
-	uv run uvicorn test_rag.fast_api_app:app --host localhost --port 8000 --reload &
-	uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
 
 # ==============================================================================
 # Local Development Commands
@@ -86,7 +84,7 @@ data-ingestion:
 
 # Run unit and integration tests
 test:
-	uv sync --dev --extra streamlit
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

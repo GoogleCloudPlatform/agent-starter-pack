@@ -153,7 +153,7 @@ description = "Custom description"  # Optional: falls back to [project].descript
 
 [tool.agent-starter-pack.settings]
 deployment_targets = ["cloud_run", "agent_engine"]
-frontend_type = "adk_streamlit"
+frontend_type = "None"
 # Optional: Customize the directory name for agent files (default: "app")
 agent_directory = "app"
 ```
@@ -418,7 +418,7 @@ extra_dependencies = ["pandas", "numpy", "scikit-learn"]
 [tool.agent-starter-pack]
 base_template = "adk_base"
 [tool.agent-starter-pack.settings]
-frontend_type = "adk_streamlit"
+frontend_type = "None"
 deployment_targets = ["agent_engine", "cloud_run"]
 ```
 

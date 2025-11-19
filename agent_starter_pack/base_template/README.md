@@ -66,7 +66,7 @@ make install && make playground
 | `make deploy`        | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy, `PORT=8080` to specify container port) |
 | `make local-backend` | Launch local development server with hot-reload |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-| `make playground`    | Launch Streamlit interface for testing agent locally and remotely |
+| `make playground`    | Launch local development environment for testing agent |
 | `make deploy`        | Deploy agent to Agent Engine |
 {%- if cookiecutter.is_adk_live %}
 | `make local-backend` | Launch local development server with hot-reload |
@@ -197,7 +197,7 @@ Here’s the recommended workflow for local development:
     ```bash
     make ui
     ```
-    This launches the Streamlit application, which connects to the backend server at `http://localhost:8000`.
+    This launches the frontend application, which connects to the backend server at `http://localhost:8000`.
     </details>
     <br>
 
@@ -216,7 +216,7 @@ This template follows a "bring your own agent" approach - you focus on your busi
 
 1. **Prototype:** Build your Generative AI Agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
 2. **Integrate:** Import your agent into the app by editing `{{cookiecutter.agent_directory}}/agent.py`.
-3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
+3. **Test:** Explore your agent functionality using the local playground with `make playground`. The playground automatically reloads your agent on code changes.
 4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
 5. **Monitor:** Track performance and gather insights using BigQuery telemetry data, Cloud Logging, and Cloud Trace to iterate on your application.
 

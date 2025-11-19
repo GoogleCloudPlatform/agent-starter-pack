@@ -27,7 +27,6 @@ locals {
     "agent_starter_pack/cli/**",
     "tests/**",
     "agent_starter_pack/data_ingestion/**",
-    "agent_starter_pack/frontends/streamlit/**",
     "pyproject.toml",
     "uv.lock",
     ".cloudbuild/**",

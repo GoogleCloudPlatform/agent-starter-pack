@@ -62,6 +62,7 @@ variable "app_sa_roles" {
     "roles/storage.admin",
     "roles/serviceusage.serviceUsageConsumer",
 {%- if cookiecutter.session_type == "cloud_sql" %}
+    "roles/cloudsql.client",
     "roles/secretmanager.secretAccessor",
 {%- endif %}
   ]
@@ -205,3 +206,12 @@ variable "create_repository" {
   default     = false
 }
 {% endif %}
+
+{% if cookiecutter.is_adk %}
+variable "feedback_logs_filter" {
+  description = "Filter for feedback logs"
+  type        = string
+  default     = "jsonPayload.feedback_score > 0 OR jsonPayload.feedback_score < 0"
+}
+{% endif %}
+

@@ -57,6 +57,7 @@ variable "app_sa_roles" {
     "roles/storage.admin",
     "roles/serviceusage.serviceUsageConsumer",
 {%- if cookiecutter.session_type == "cloud_sql" %}
+    "roles/cloudsql.client",
     "roles/secretmanager.secretAccessor",
 {%- endif %}
   ]

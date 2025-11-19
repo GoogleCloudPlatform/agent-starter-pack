@@ -354,7 +354,10 @@ def prompt_session_type_selection() -> str:
             "display_name": "In-memory session",
             "description": "Session data stored in memory - ideal for stateless applications",
         },
-
+        "cloud_sql": {
+            "display_name": "Cloud SQL (PostgreSQL)",
+            "description": "Managed PostgreSQL database for robust session persistence",
+        },
         "agent_engine": {
             "display_name": "Vertex AI Agent Engine",
             "description": "Managed session service that automatically handles conversation history",

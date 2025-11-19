@@ -30,6 +30,6 @@ This object contains fields that control the generated project's features and be
 | `frontend_type`             | string         | Specifies the frontend to use. Examples: `streamlit`, `adk_live_react`. Defaults to `None` (no frontend).                                    |
 | `agent_directory`           | string         | The name of the directory where agent code will be placed. Defaults to `app`. Can be overridden by the CLI `--agent-directory` parameter.    |
 | `requires_data_ingestion`   | boolean        | If `true`, the user will be prompted to configure a datastore.                                                                              |
-| `requires_session`          | boolean        | If `true`, the user will be prompted to choose a session storage type (e.g., `alloydb`) when using the `cloud_run` target.                    |
+| `requires_session`          | boolean        | If `true`, the user will be prompted to choose a session storage type (e.g., `cloud_sql`) when using the `cloud_run` target.                    |
 | `interactive_command`       | string         | The `make` command to run for starting the agent, after the agent code is being created (e.g., `make playground`, `make dev`). Defaults to `playground`. |
 | `extra_dependencies`        | list(string)   | **Note:** This field is ignored by remote templates. It is used internally by the starter pack's built-in templates. Your `pyproject.toml` is the single source of truth for dependencies. |

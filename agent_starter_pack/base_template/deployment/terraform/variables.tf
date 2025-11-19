@@ -54,15 +54,17 @@ variable "app_sa_roles" {
   description = "List of roles to assign to the application service account"
   type        = list(string)
   default = [
-{%- if cookiecutter.session_type == "alloydb" %}
-    "roles/secretmanager.secretAccessor",
-{%- endif %}
+
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/storage.admin",
     "roles/serviceusage.serviceUsageConsumer",
+{%- if cookiecutter.session_type == "cloud_sql" %}
+    "roles/cloudsql.client",
+    "roles/secretmanager.secretAccessor",
+{%- endif %}
   ]
 }
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -210,3 +212,12 @@ variable "create_repository" {
   default     = false
 }
 {% endif %}
+
+{% if cookiecutter.is_adk %}
+variable "feedback_logs_filter" {
+  description = "Filter for feedback logs"
+  type        = string
+  default     = "jsonPayload.feedback_score > 0 OR jsonPayload.feedback_score < 0"
+}
+{% endif %}
+

@@ -91,8 +91,8 @@ locals {
       value = "adk_live,cloud_run"
     },
     {
-      name  = "adk_base-cloud_run-alloydb"
-      value = "adk_base,cloud_run,--session-type,alloydb"
+      name  = "adk_base-cloud_run-cloud_sql"
+      value = "adk_base,cloud_run,--session-type,cloud_sql"
     },
     {
       name  = "adk_b-cr-agent_engine"
@@ -169,8 +169,8 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "adk_live,cloud_run"
     },
     {
-      name  = "adk_base-cloud_run-alloydb"
-      value = "adk_base,cloud_run,--session-type,alloydb"
+      name  = "adk_base-cloud_run-cloud_sql"
+      value = "adk_base,cloud_run,--session-type,cloud_sql"
     },
     {
       name  = "adk_a2a_base-agent_engine"
@@ -193,7 +193,7 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
     }
 
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
-    combo.name => combo.name == "adk_base-cloud_run-alloydb" ? [
+    combo.name => combo.name == "adk_base-cloud_run-cloud_sql" ? [
       "agent_starter_pack/deployment_targets/cloud_run/**",
       "pyproject.toml",
     ] : substr(combo.name, 0, 11) == "agentic_rag" ? [

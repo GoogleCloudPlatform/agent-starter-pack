@@ -68,10 +68,10 @@ uvx agent-starter-pack enhance . --agent-directory chatbot
 uvx agent-starter-pack enhance adk@data-science --deployment-target cloud_run
 
 # Enhance with data ingestion capabilities
-uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
+uvx agent-starter-pack enhance --include-data-ingestion --datastore cloud_sql
 
 # Enhance with custom session storage
-uvx agent-starter-pack enhance --session-type alloydb
+uvx agent-starter-pack enhance --session-type cloud_sql
 ```
 
 ### Base Template Inheritance
@@ -156,7 +156,7 @@ uvx agent-starter-pack enhance --deployment-target cloud_run
 **Add Data Pipeline:**
 ```bash
 # Add data ingestion to existing agent
-uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
+uvx agent-starter-pack enhance --include-data-ingestion --datastore cloud_sql
 ```
 
 **Upgrade Agent Base:**

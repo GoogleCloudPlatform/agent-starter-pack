@@ -38,7 +38,7 @@ except Exception:
 
 
 class GeminiPipelineComparator:
-    """Compares Cloud Build and GitHub Actions pipeline configurations using Gemini 2.5 Flash."""
+    """Compares Cloud Build and GitHub Actions pipeline configurations using Gemini 3 Pro Preview."""
 
     def __init__(self, base_template_path: Path):
         self.base_template_path = base_template_path
@@ -235,7 +235,7 @@ Respond with a JSON object containing:
                 }
 
                 response = self.client.models.generate_content(
-                    model="gemini-2.5-pro",
+                    model="gemini-3-pro-preview",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         temperature=0,

@@ -17,7 +17,7 @@ resource "google_cloudbuild_trigger" "scheduled_cleanup" {
   name            = "scheduled-cleanup"
   project         = var.cicd_runner_project_id
   location        = var.region  # Must match repository connection region
-  description     = "Daily cleanup of test resources (Agent Engines, AlloyDB, Vector Search, Service Accounts)"
+  description     = "Daily cleanup of test resources (Agent Engines, Cloud SQL, Vector Search, Service Accounts)"
   service_account = google_service_account.cicd_runner_sa.id
 
   # Manual trigger - will be invoked by Cloud Scheduler

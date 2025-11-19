@@ -4,7 +4,9 @@ Register a deployed agent to Gemini Enterprise, making it available as a tool wi
 
 Supports:
 - **ADK agents** deployed to Agent Engine
-- **A2A agents** deployed to Agent Engine or Cloud Run
+- **A2A agents** deployed to Cloud Run
+
+> **Note:** A2A agents deployed to Agent Engine are not yet supported for Gemini Enterprise registration. This feature will be available in a future release.
 
 ## Usage
 
@@ -39,18 +41,16 @@ The command automatically:
 
 ### For A2A Agents
 
-For A2A agents deployed to Agent Engine or Cloud Run:
+For A2A agents deployed to Cloud Run:
 
 ```bash
 make deploy
-make register-gemini-enterprise  # Auto-detects A2A agent, prompts for agent card URL
+make register-gemini-enterprise  # Auto-detects A2A agent and Cloud Run URL
 ```
 
-**Auto-detection:** If `deployment_metadata.json` has `"is_a2a": true`, the command automatically knows it's an A2A agent.
+**Auto-detection:** The Makefile automatically constructs the agent card URL from your Cloud Run service.
 
-**No metadata file?** The command assumes A2A and prompts for the agent card URL.
-
-**Specify explicitly:**
+**Manual specification:**
 ```bash
 AGENT_CARD_URL="https://your-service.run.app/a2a/app/.well-known/agent-card.json" \
   make register-gemini-enterprise
@@ -66,9 +66,7 @@ AGENT_CARD_URL="https://your-service.run.app/a2a/app/.well-known/agent-card.json
 4. **Gemini Enterprise ID** - The short ID from the Gemini Enterprise Apps table
 
 #### For A2A Agents:
-1. **Agent card URL** - Provide the URL where the agent card can be fetched:
-   - Agent Engine: `https://{location}-aiplatform.googleapis.com/v1beta1/projects/{project}/locations/{location}/reasoningEngines/{id}/a2a/v1/card`
-   - Cloud Run: `https://your-service.run.app/a2a/app/.well-known/agent-card.json`
+1. **Agent card URL** - Auto-constructed from your Cloud Run service URL
 2. **Gemini Enterprise app details** - Same as ADK agents
 
 ## Prerequisites
@@ -81,6 +79,7 @@ AGENT_CARD_URL="https://your-service.run.app/a2a/app/.well-known/agent-card.json
 **For A2A Agents:**
 - Deployed agent (Agent Engine or Cloud Run) with accessible agent card endpoint
 - Gemini Enterprise application configured in Google Cloud
+- **(Optional)** OAuth 2.0 authorization configured for accessing Google Cloud resources on behalf of users
 - Authentication:
   - `gcloud auth login` - For Cloud Run (identity token)
   - `gcloud auth application-default login` - For Agent Engine (access token)
@@ -118,13 +117,15 @@ Find the Gemini Enterprise ID: Cloud Console > Gemini Enterprise > Apps > ID col
 | Parameter | Environment Variable | Default | Description |
 |-----------|---------------------|---------|-------------|
 | `--agent-card-url` | `AGENT_CARD_URL` | None | Agent card URL for A2A agents. If provided, registers as A2A agent |
+| `--deployment-target` | `DEPLOYMENT_TARGET` | Auto-detected | Deployment target: `agent_engine` or `cloud_run` |
+| `--project-number` | `PROJECT_NUMBER` | Auto-detected | GCP project number (for smart defaults) |
 | `--agent-engine-id` | `AGENT_ENGINE_ID` | From `deployment_metadata.json` | Agent Engine resource name (ADK agents only) |
 | `--metadata-file` | - | `deployment_metadata.json` | Path to deployment metadata file |
 | `--display-name` | `GEMINI_DISPLAY_NAME` | From agent or "My Agent" | Display name in Gemini Enterprise |
 | `--description` | `GEMINI_DESCRIPTION` | From agent or "AI Agent" | Agent description |
 | `--tool-description` | `GEMINI_TOOL_DESCRIPTION` | Same as `--description` | Tool description (ADK agents only) |
 | `--project-id` | `GOOGLE_CLOUD_PROJECT` | Extracted from context | GCP project ID for billing |
-| `--authorization-id` | `GEMINI_AUTHORIZATION_ID` | None | OAuth authorization resource name |
+| `--authorization-id` | `GEMINI_AUTHORIZATION_ID` | None | Optional: Pre-configured OAuth authorization resource name (e.g., projects/{project_number}/locations/global/authorizations/{auth_id}) |
 
 ## Examples
 

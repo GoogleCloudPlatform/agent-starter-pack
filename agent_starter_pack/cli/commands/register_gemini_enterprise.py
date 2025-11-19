@@ -207,11 +207,85 @@ def fetch_agent_card_from_url(url: str, deployment_target: str) -> dict | None:
         return None
 
 
-def prompt_for_agent_card_url() -> str:
-    """Prompt user for agent card URL."""
+def construct_agent_card_url_from_metadata(
+    metadata: dict,
+) -> str | None:
+    """Construct agent card URL from deployment metadata (Agent Engine only).
+
+    Args:
+        metadata: Deployment metadata dictionary
+
+    Returns:
+        Agent card URL if construction succeeds, None otherwise
+    """
+    deployment_target = metadata.get("deployment_target")
+
+    if deployment_target == "agent_engine":
+        # For Agent Engine: construct URL from remote_agent_engine_id
+        remote_agent_engine_id = metadata.get("remote_agent_engine_id")
+        if remote_agent_engine_id and remote_agent_engine_id != "None":
+            parsed = parse_agent_engine_id(remote_agent_engine_id)
+            if parsed:
+                location = parsed["location"]
+                # Agent Engine A2A endpoint format
+                agent_card_url = (
+                    f"https://{location}-aiplatform.googleapis.com/v1beta1/"
+                    f"{remote_agent_engine_id}/a2a/v1/card"
+                )
+                return agent_card_url
+
+    return None
+
+
+def prompt_for_agent_card_url_with_auto_construct(
+    metadata: dict | None,
+    default_url: str | None = None,
+) -> str:
+    """Get agent card URL with automatic construction from deployment metadata.
+
+    Args:
+        metadata: Deployment metadata dictionary (can be None)
+        default_url: Default agent card URL (e.g., from CLI arg)
+
+    Returns:
+        Agent card URL
+    """
+    # If default URL provided, show as smart default
+    if default_url:
+        console.print("\nAgent card URL provided:")
+        console.print(f"  [bold]{default_url}[/]")
+        use_default = click.confirm(
+            "Use this agent card URL?", default=True, show_default=True
+        )
+        if use_default:
+            return default_url
+
+    # Try to auto-construct from metadata (Agent Engine only)
+    if metadata:
+        auto_url = construct_agent_card_url_from_metadata(metadata)
+
+        if auto_url:
+            # Successfully constructed from Agent Engine metadata
+            console.print(
+                "\n✅ Found Agent Engine deployment in deployment_metadata.json"
+            )
+            console.print(f"   Agent card URL: [bold]{auto_url}[/]")
+
+            use_auto = click.confirm(
+                "\nUse this agent card URL?", default=True, show_default=True
+            )
+
+            if use_auto:
+                return auto_url
+
+    # Fallback: manual entry
     console.print("\n[blue]" + "=" * 70 + "[/]")
     console.print("[blue]A2A AGENT CARD URL[/]")
     console.print("[blue]" + "=" * 70 + "[/]")
+    console.print(
+        "\nEnter your agent card URL manually"
+        "\n[blue]Example: https://your-service.run.app/a2a/app/.well-known/agent-card.json[/]"
+    )
 
     agent_card_url = click.prompt(
         "\nAgent card URL",
@@ -310,7 +384,7 @@ def prompt_for_gemini_enterprise_components(
     while True:
         # Project number
         if default_project:
-            console.print(f"\n[dim]Default from Agent Engine: {default_project}[/]")
+            console.print(f"\n[dim]Default: {default_project}[/]")
         project_number = click.prompt(
             "Project number", type=str, default=default_project or ""
         ).strip()
@@ -343,6 +417,54 @@ def prompt_for_gemini_enterprise_components(
             return full_id
 
         click.echo("Let's try again...")
+
+
+def ensure_discovery_engine_invoker_role(
+    project_id: str,
+    project_number: str,
+) -> None:
+    """Grant Cloud Run Invoker role to Discovery Engine service account at project level.
+
+    Silently grants the role if not already present. Only shows warnings/errors
+    if there are permission issues or unexpected failures.
+
+    Args:
+        project_id: GCP project ID
+        project_number: GCP project number
+    """
+    try:
+        # Construct Discovery Engine service account
+        service_account = (
+            f"service-{project_number}@gcp-sa-discoveryengine.iam.gserviceaccount.com"
+        )
+
+        result = subprocess.run(
+            [
+                "gcloud",
+                "projects",
+                "add-iam-policy-binding",
+                project_id,
+                f"--member=serviceAccount:{service_account}",
+                "--role=roles/run.servicesInvoker",
+                "--condition=None",
+                "--quiet",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr.lower()
+            # Ignore "already exists" type errors
+            if "already exists" not in error_msg and "already has" not in error_msg:
+                # Permission errors - show warning but don't fail
+                if "permission" in error_msg or "forbidden" in error_msg:
+                    console.print(
+                        f"\n⚠️  [yellow]Warning: Could not grant roles/run.invoker to {service_account}[/]\n"
+                    )
+
+    except Exception:
+        pass
 
 
 def register_a2a_agent(
@@ -402,10 +524,6 @@ def register_a2a_agent(
         "x-goog-user-project": project_id,
     }
 
-    # Update agent card URL to point to the actual endpoint
-    agent_card_copy = agent_card.copy()
-    agent_card_copy["url"] = agent_card_url
-
     # Build payload with A2A agent definition
     payload = {
         "displayName": display_name,
@@ -413,7 +531,7 @@ def register_a2a_agent(
         "icon": {
             "uri": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/smart_toy/default/24px.svg"
         },
-        "a2aAgentDefinition": {"jsonAgentCard": json.dumps(agent_card_copy)},
+        "a2aAgentDefinition": {"jsonAgentCard": json.dumps(agent_card)},
     }
 
     # Add authorization config if provided
@@ -739,8 +857,19 @@ def register_agent(
     "--agent-card-url",
     envvar="AGENT_CARD_URL",
     help="URL to fetch the agent card for A2A agents "
-    "(e.g., https://your-service.run.app/app/a2a/.well-known/agent-card.json). "
+    "(e.g., https://your-service.run.app/a2a/app/.well-known/agent-card.json). "
     "If provided, registers as an A2A agent instead of ADK agent.",
+)
+@click.option(
+    "--deployment-target",
+    envvar="DEPLOYMENT_TARGET",
+    type=click.Choice(["agent_engine", "cloud_run"], case_sensitive=False),
+    help="Deployment target (agent_engine or cloud_run).",
+)
+@click.option(
+    "--project-number",
+    envvar="PROJECT_NUMBER",
+    help="GCP project number. Used as default when prompting for Gemini Enterprise configuration.",
 )
 def register_gemini_enterprise(
     agent_engine_id: str | None,
@@ -752,6 +881,8 @@ def register_gemini_enterprise(
     project_id: str | None,
     authorization_id: str | None,
     agent_card_url: str | None,
+    deployment_target: str | None,
+    project_number: str | None,
 ) -> None:
     """Register an agent to Gemini Enterprise.
 
@@ -770,39 +901,46 @@ def register_gemini_enterprise(
     except (json.JSONDecodeError, KeyError, FileNotFoundError):
         pass
 
-    # Check if this is an A2A agent registration
-    resolved_agent_card_url = agent_card_url or os.getenv("AGENT_CARD_URL")
+    provided_agent_card_url = agent_card_url or os.getenv("AGENT_CARD_URL")
 
-    # Determine agent type from metadata or user input
-    if not resolved_agent_card_url:
+    if not provided_agent_card_url:
         if metadata:
             is_a2a = metadata.get("is_a2a", False)
             if is_a2a:
-                # A2A agent detected
                 console.print("[blue]→ Detected A2A agent[/]")
-                resolved_agent_card_url = prompt_for_agent_card_url()
+                agent_card_url = prompt_for_agent_card_url_with_auto_construct(
+                    metadata, None
+                )
+                if not deployment_target:
+                    deployment_target = metadata.get("deployment_target", "cloud_run")
             else:
-                # ADK w/o A2A agent detected
                 console.print("[blue]→ Detected ADK agent[/]")
-                resolved_agent_card_url = None
+                agent_card_url = None
         else:
-            # No metadata file - assume A2A
-            resolved_agent_card_url = prompt_for_agent_card_url()
+            agent_card_url = prompt_for_agent_card_url_with_auto_construct(None, None)
+            if not deployment_target:
+                deployment_target = "cloud_run"
+    else:
+        agent_card_url = prompt_for_agent_card_url_with_auto_construct(
+            metadata, provided_agent_card_url
+        )
+        if not deployment_target:
+            deployment_target = (
+                metadata.get("deployment_target", "cloud_run")
+                if metadata
+                else "cloud_run"
+            )
 
-    # A2A
-    if resolved_agent_card_url:
-        # Determine deployment target from metadata for proper authentication
-        deployment_target = "cloud_run"  # Default for A2A agents
-        if metadata:
-            deployment_target = metadata.get("deployment_target", "cloud_run")
-
-        # Fetch agent card
+    # A2A registration
+    if agent_card_url:
+        # Ensure deployment_target has a value (default to cloud_run if not set)
+        resolved_deployment_target = deployment_target or "cloud_run"
         agent_card = fetch_agent_card_from_url(
-            resolved_agent_card_url, deployment_target
+            agent_card_url, resolved_deployment_target
         )
         if not agent_card:
             raise click.ClickException(
-                f"Failed to fetch agent card from {resolved_agent_card_url}. "
+                f"Failed to fetch agent card from {agent_card_url}. "
                 "Please verify the URL is correct and the agent is running."
             )
 
@@ -815,28 +953,55 @@ def register_gemini_enterprise(
         )
 
         if not resolved_gemini_enterprise_app_id:
-            # For A2A, we don't have agent engine ID to extract project from
+            default_project = project_number
+            if (
+                not default_project
+                and metadata
+                and metadata.get("deployment_target") == "agent_engine"
+            ):
+                remote_agent_engine_id = metadata.get("remote_agent_engine_id")
+                if remote_agent_engine_id:
+                    parsed = parse_agent_engine_id(remote_agent_engine_id)
+                    if parsed:
+                        default_project = parsed["project"]
+
             resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
-                default_project=None
+                default_project=default_project
             )
 
-        # Get display name and description (from agent card or user input)
-        resolved_display_name = (
-            display_name
-            or agent_card.get("name")
-            or click.prompt("Display name", default="My A2A Agent")
-        )
-        resolved_description = (
-            description
-            or agent_card.get("description")
-            or click.prompt("Description", default="A2A Agent")
-        )
+        # Get display name and description with smart defaults from agent card
+        if not display_name:
+            default_display_name = agent_card.get("name") or "My A2A Agent"
+            resolved_display_name = click.prompt(
+                "Display name", default=default_display_name
+            )
+        else:
+            resolved_display_name = display_name
+
+        if not description:
+            default_description = agent_card.get("description") or "AI Agent"
+            resolved_description = click.prompt(
+                "Description", default=default_description
+            )
+        else:
+            resolved_description = description
+
+        # For Cloud Run deployments, ensure Discovery Engine has invoker permissions
+        if resolved_deployment_target == "cloud_run":
+            parsed_ge = parse_gemini_enterprise_app_id(
+                resolved_gemini_enterprise_app_id
+            )
+            if parsed_ge and project_number:
+                ensure_discovery_engine_invoker_role(
+                    project_id=project_id or parsed_ge["project_number"],
+                    project_number=project_number,
+                )
 
         # Register as A2A agent
         try:
             register_a2a_agent(
                 agent_card=agent_card,
-                agent_card_url=resolved_agent_card_url,
+                agent_card_url=agent_card_url,
                 gemini_enterprise_app_id=resolved_gemini_enterprise_app_id,
                 display_name=resolved_display_name,
                 description=resolved_description,

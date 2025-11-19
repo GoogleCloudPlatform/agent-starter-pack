@@ -121,7 +121,7 @@ setup-dev-env:
 
 # Run unit and integration tests
 test:
-	uv sync --dev --extra streamlit
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

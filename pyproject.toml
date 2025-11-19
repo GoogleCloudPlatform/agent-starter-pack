@@ -1,6 +1,6 @@
 [project]
 name = "agent-starter-pack"
-version = "0.20.4"
+version = "0.21.0"
 description = "CLI to bootstrap production-ready Google Cloud GenAI agent projects from templates."
 authors = [
     { name = "Google LLC", email = "agent-starter-pack@google.com" },
@@ -42,8 +42,6 @@ dev = [
     "sphinx-autoapi~=3.0.0",
     "sphinx-click~=5.1.0",
     "sphinx-rtd-theme~=2.0.0",
-    "streamlit~=1.42.0",
-    "streamlit-feedback~=0.1.4",
     "types-PyYAML",
     "types-requests",
     "watchdog~=6.0.0",
@@ -62,7 +60,7 @@ lint = [
 ]
 
 [tool.pytest.ini_options]
-pythonpath = [".", "agent_starter_pack/frontends/streamlit", "agent_starter_pack", "agent_starter_pack/agents/agentic_rag"]
+pythonpath = [".", "agent_starter_pack", "agent_starter_pack/agents/agentic_rag"]
 testpaths = ["tests"]
 addopts = "-s -v --ignore=tests/integration"
 log_cli = true
@@ -73,7 +71,7 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 [tool.ruff]
 line-length = 88
 target-version = "py311"
-include = ["agent_starter_pack/cli/**/*.py", "tests/**/*.py", "agent_starter_pack/frontends/streamlit/**/*.py"]
+include = ["agent_starter_pack/cli/**/*.py", "tests/**/*.py"]
 exclude = ["./agent_starter_pack/agents/**/*.py", "./tests/cicd/scripts/**/*.py"]
 
 [tool.ruff.lint]

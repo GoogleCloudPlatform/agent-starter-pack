@@ -27,7 +27,6 @@ locals {
     "agent_starter_pack/cli/**",
     "tests/**",
     "agent_starter_pack/data_ingestion/**",
-    "agent_starter_pack/frontends/streamlit/**",
     "pyproject.toml",
     "uv.lock",
     ".cloudbuild/**",
@@ -91,8 +90,8 @@ locals {
       value = "adk_live,cloud_run"
     },
     {
-      name  = "adk_base-cloud_run-alloydb"
-      value = "adk_base,cloud_run,--session-type,alloydb"
+      name  = "adk_base-cloud_run-cloud_sql"
+      value = "adk_base,cloud_run,--session-type,cloud_sql"
     },
     {
       name  = "adk_b-cr-agent_engine"
@@ -169,8 +168,8 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "adk_live,cloud_run"
     },
     {
-      name  = "adk_base-cloud_run-alloydb"
-      value = "adk_base,cloud_run,--session-type,alloydb"
+      name  = "adk_base-cloud_run-cloud_sql"
+      value = "adk_base,cloud_run,--session-type,cloud_sql"
     },
     {
       name  = "adk_a2a_base-agent_engine"
@@ -193,7 +192,7 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
     }
 
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
-    combo.name => combo.name == "adk_base-cloud_run-alloydb" ? [
+    combo.name => combo.name == "adk_base-cloud_run-cloud_sql" ? [
       "agent_starter_pack/deployment_targets/cloud_run/**",
       "pyproject.toml",
     ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
@@ -365,9 +364,10 @@ resource "google_cloudbuild_trigger" "main_e2e_deployment_test" {
 
   substitutions = {
     _TEST_AGENT_COMBINATION = each.value.value
-    _E2E_DEV_PROJECT     = var.e2e_test_project_mapping.dev
-    _E2E_STAGING_PROJECT = var.e2e_test_project_mapping.staging
-    _E2E_PROD_PROJECT    = var.e2e_test_project_mapping.prod
+    _E2E_DEV_PROJECT        = var.e2e_test_project_mapping.dev
+    _E2E_STAGING_PROJECT    = var.e2e_test_project_mapping.staging
+    _E2E_PROD_PROJECT       = var.e2e_test_project_mapping.prod
+    _SECRETS_PROJECT_ID     = "asp-e2e-vars"
   }
 }
 

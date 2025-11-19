@@ -65,12 +65,13 @@ Include data ingestion pipeline components in the project.
 Type of datastore for data ingestion (requires `--include-data-ingestion`):
 - `vertex_ai_search`
 - `vertex_ai_vector_search` 
-- `alloydb`
+- `vertex_ai_vector_search` 
+- `cloud_sql`
 
 ### `--session-type` TYPE
 Session storage type (for Cloud Run deployment):
 - `in_memory` - Store sessions in memory
-- `alloydb` - Store sessions in AlloyDB
+- `cloud_sql` - Store sessions in Cloud SQL (PostgreSQL)
 - `agent_engine` - Use Agent Engine session management
 
 ## Project Creation Options
@@ -173,7 +174,7 @@ uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_l
 
 ```bash
 # Include data ingestion with specific datastore
-uvx agent-starter-pack create my-rag-agent -a adk_base -i -ds alloydb -d cloud_run
+uvx agent-starter-pack create my-rag-agent -a adk_base -i -ds cloud_sql -d cloud_run
 
 # Create with custom region and CI/CD
 uvx agent-starter-pack create my-agent -a template-url --region europe-west1 --cicd-runner github_actions

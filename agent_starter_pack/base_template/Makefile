@@ -308,7 +308,7 @@ data-ingestion:
 
 # Run unit and integration tests
 test:
-	uv sync --dev{% if not cookiecutter.is_adk and not cookiecutter.is_adk_live %} --extra streamlit{%- endif %}
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)

@@ -21,9 +21,10 @@ settings:
     "langchain~=1.0.7",
     "langgraph~=1.0.3",
     "langchain-community~=0.4.1",
-    "langchain-openai~=1.0.3",
     "a2a-sdk[http-server]~=0.3.12",
     "nest-asyncio>=1.6.0,<2.0.0",
+    "traceloop-sdk>=0.10.0,<1.0.0",
+    "opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0",
   ]
   tags: ["langgraph", "a2a"]
   frontend_type: "inspector"

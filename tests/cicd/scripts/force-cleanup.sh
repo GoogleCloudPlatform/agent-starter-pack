@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Force cleanup script for all test resources
-# This script deletes Agent Engines, AlloyDB clusters, Service Accounts, and Vector Search resources
+# This script deletes Agent Engines, Cloud SQL instances, Service Accounts, and Vector Search resources
 
 set -e
 
@@ -34,7 +34,7 @@ run_with_retry() {
     while [ $attempt -le $max_attempts ]; do
         echo -e "${YELLOW}  Attempt ${attempt}/${max_attempts}...${NC}"
 
-        if uv run --with google-cloud-alloydb --with google-api-python-client python "tests/cicd/scripts/${script_name}" 2>&1; then
+        if uv run --with google-api-python-client python "tests/cicd/scripts/${script_name}" 2>&1; then
             echo -e "${GREEN}  ✅ Completed successfully${NC}"
             echo ""
             return 0
@@ -70,8 +70,10 @@ run_with_retry "delete_agent_engines.py" "1/4 Deleting Agent Engines"
 # 2. Delete Vector Search resources
 run_with_retry "delete_vector_search.py" "2/4 Deleting Vector Search resources"
 
-# 3. Delete AlloyDB clusters
-run_with_retry "delete_alloydb_clusters.py" "3/4 Deleting AlloyDB clusters"
+
+
+# 3. Delete Cloud SQL instances
+run_with_retry "delete_cloud_sql_instances.py" "3/4 Deleting Cloud SQL instances"
 
 # 4. Delete Service Accounts
 run_with_retry "delete_service_accounts.py" "4/4 Deleting Service Accounts"

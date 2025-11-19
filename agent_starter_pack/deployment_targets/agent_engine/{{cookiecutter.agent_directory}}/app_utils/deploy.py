@@ -246,9 +246,18 @@ def deploy_agent_engine_app(
     env_vars = parse_key_value_pairs(set_env_vars)
     labels_dict = parse_key_value_pairs(labels)
 
+    # Set GOOGLE_CLOUD_REGION to match deployment location
+    env_vars["GOOGLE_CLOUD_REGION"] = location
+
     # Add NUM_WORKERS from CLI argument (can be overridden via --set-env-vars)
     if "NUM_WORKERS" not in env_vars:
         env_vars["NUM_WORKERS"] = str(num_workers)
+
+    # Enable telemetry by default for Agent Engine
+    if "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY" not in env_vars:
+        env_vars["GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY"] = "true"
+    if "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT" not in env_vars:
+        env_vars["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "true"
 
     if not project:
         _, project = google.auth.default()
@@ -271,10 +280,12 @@ def deploy_agent_engine_app(
     click.echo(f"  CPU: {cpu}")
     click.echo(f"  Memory: {memory}")
     click.echo(f"  Container Concurrency: {container_concurrency}")
-    click.echo(f"  NUM_WORKERS: {env_vars.get('NUM_WORKERS')}")
     if service_account:
         click.echo(f"  Service Account: {service_account}")
-    click.echo("")
+    if env_vars:
+        click.echo("\n🌍 Environment Variables:")
+        for key, value in sorted(env_vars.items()):
+            click.echo(f"  {key}: {value}")
 
     source_packages_list = list(source_packages)
 

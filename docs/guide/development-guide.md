@@ -137,16 +137,14 @@ git push --set-upstream origin main
 
 ## 3. Monitor Your Deployed Agent
 
-Track your agent's performance using integrated observability tools. OpenTelemetry events are automatically sent to Google Cloud services.
+Track your agent's performance using integrated observability tools. OpenTelemetry GenAI instrumentation automatically captures telemetry data and exports it to Google Cloud services.
 
-*   **Cloud Trace & Logging**: Inspect request flows, analyze latencies, and review prompts/outputs. Access traces at: `https://console.cloud.google.com/traces/list?project=YOUR_PROD_PROJECT_ID`
-*   **BigQuery**: Route trace and log data to BigQuery for long-term storage and advanced analytics.
-*   **Looker Studio Dashboards**: Visualize agent performance with pre-built templates:
-    *   ADK Agents: [Looker Studio ADK Dashboard](https://lookerstudio.google.com/c/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC)
-    *   Non-ADK Agents: [Looker Studio Non-ADK Dashboard](https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC)
-    *(Remember to follow the "Setup Instructions" within the dashboards to connect your data sources).*
+*   **BigQuery**: Query telemetry data including token usage, model interactions, and performance metrics. Data is automatically available via external tables and linked datasets.
+*   **Cloud Logging**: View GenAI operation logs and user feedback in dedicated Cloud Logging buckets with 10-year retention.
+*   **Cloud Trace**: Inspect request flows and analyze latencies for GenAI operations at: `https://console.cloud.google.com/traces/list?project=YOUR_PROJECT_ID`
+*   **Visualization** (Optional): Connect your BigQuery data to BI tools for custom dashboards.
 
-➡️ For details, see the [Observability Guide](./observability.md).
+➡️ For complete setup instructions, example queries, and testing in dev, see the [Observability Guide](./observability.md).
 
 ## 4. Advanced Customization
 

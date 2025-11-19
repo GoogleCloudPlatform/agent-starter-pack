@@ -202,8 +202,8 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "run_id": "test-run-123",
-        "user_id": "test-user",
+        "user_id": "test-user-123",
+        "session_id": "test-session-123",
         "log_type": "feedback",
     }
 
@@ -368,7 +368,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "invocation_id": "test-run-123",
+        "user_id": "test-user-456",
+        "session_id": "test-session-456",
     }
 
     # Should not raise any exceptions
@@ -379,7 +380,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
         invalid_feedback = {
             "score": "invalid",  # Score must be numeric
             "text": "Bad feedback",
-            "invocation_id": "test-run-123",
+            "user_id": "test-user-789",
+            "session_id": "test-session-789",
         }
         agent_app.register_feedback(invalid_feedback)
 
@@ -461,7 +463,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "run_id": "test-run-123",
+        "user_id": "test-user-456",
+        "session_id": "test-session-456",
     }
 
     # Should not raise any exceptions
@@ -472,7 +475,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
         invalid_feedback = {
             "score": "invalid",  # Score must be numeric
             "text": "Bad feedback",
-            "run_id": "test-run-123",
+            "user_id": "test-user-789",
+            "session_id": "test-session-789",
         }
         agent_app.register_feedback(invalid_feedback)
 

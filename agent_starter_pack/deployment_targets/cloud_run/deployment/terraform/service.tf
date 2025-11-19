@@ -19,57 +19,9 @@ data "google_project" "project" {
   project_id = local.deploy_project_ids[each.key]
 }
 
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
 
-# VPC Network for AlloyDB
-resource "google_compute_network" "default" {
-  for_each = local.deploy_project_ids
-  
-  name                    = "${var.project_name}-alloydb-network"
-  project                 = local.deploy_project_ids[each.key]
-  auto_create_subnetworks = false
-  
-  depends_on = [google_project_service.deploy_project_services]
-}
 
-# Subnet for AlloyDB
-resource "google_compute_subnetwork" "default" {
-  for_each = local.deploy_project_ids
-  
-  name          = "${var.project_name}-alloydb-network"
-  ip_cidr_range = "10.0.0.0/24"
-  region        = var.region
-  network       = google_compute_network.default[each.key].id
-  project       = local.deploy_project_ids[each.key]
-
-  # This is required for Cloud Run VPC connectors
-  purpose       = "PRIVATE"
-
-  private_ip_google_access = true
-}
-
-# Private IP allocation for AlloyDB
-resource "google_compute_global_address" "private_ip_alloc" {
-  for_each = local.deploy_project_ids
-  
-  name          = "${var.project_name}-private-ip"
-  project       = local.deploy_project_ids[each.key]
-  address_type  = "INTERNAL"
-  purpose       = "VPC_PEERING"
-  prefix_length = 16
-  network       = google_compute_network.default[each.key].id
-
-  depends_on = [google_project_service.deploy_project_services]
-}
-
-# VPC connection for AlloyDB
-resource "google_service_networking_connection" "vpc_connection" {
-  for_each = local.deploy_project_ids
-
-  network                 = google_compute_network.default[each.key].id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_alloc[each.key].name]
-}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
 
 # Generate a random password for the database user
 resource "random_password" "db_password" {
@@ -80,43 +32,51 @@ resource "random_password" "db_password" {
   override_special = "!#$%&*()-_=+[]{}<>:?"
 }
 
-# AlloyDB Cluster
-resource "google_alloydb_cluster" "session_db_cluster" {
+# Cloud SQL Instance
+resource "google_sql_database_instance" "session_db" {
   for_each = local.deploy_project_ids
 
-  project         = local.deploy_project_ids[each.key]
-  cluster_id      = "${var.project_name}-alloydb-cluster"
-  location        = var.region
-  deletion_policy = "FORCE"
+  project          = local.deploy_project_ids[each.key]
+  name             = "${var.project_name}-db-${each.key}"
+  database_version = "POSTGRES_15"
+  region           = var.region
+  deletion_protection = false # For easier teardown in starter packs
 
-  initial_user {
-    user     = "postgres"
-    password = "temporary-password-will-be-updated"
+  settings {
+    tier = each.key == "prod" ? "db-custom-1-3840" : "db-f1-micro" # Use a custom machine type for prod to avoid tier restrictions
+
+    backup_configuration {
+      enabled = true
+      start_time = "03:00"
+    }
+    
+    # Enable IAM authentication
+    database_flags {
+      name  = "cloudsql.iam_authentication"
+      value = "on"
+    }
   }
 
-  network_config {
-    network = google_compute_network.default[each.key].id
-  }
-
-  depends_on = [
-    google_service_networking_connection.vpc_connection,
-    random_password.db_password
-  ]
+  depends_on = [google_project_service.deploy_project_services]
 }
 
-# AlloyDB Instance
-resource "google_alloydb_instance" "session_db_instance" {
+# Cloud SQL Database
+resource "google_sql_database" "database" {
   for_each = local.deploy_project_ids
-  
-  cluster       = google_alloydb_cluster.session_db_cluster[each.key].name
-  instance_id   = "${var.project_name}-alloydb-instance"
-  instance_type = "PRIMARY"
 
-  availability_type = "REGIONAL" # Regional redundancy
+  project  = local.deploy_project_ids[each.key]
+  name     = "${var.project_name}" # Use project name for DB to avoid conflict with default 'postgres'
+  instance = google_sql_database_instance.session_db[each.key].name
+}
 
-  machine_config {
-    cpu_count = 2
-  }
+# Cloud SQL User
+resource "google_sql_user" "db_user" {
+  for_each = local.deploy_project_ids
+
+  project  = local.deploy_project_ids[each.key]
+  name     = "${var.project_name}" # Use project name for user to avoid conflict with default 'postgres'
+  instance = google_sql_database_instance.session_db[each.key].name
+  password = random_password.db_password[each.key].result
 }
 
 # Store the password in Secret Manager
@@ -138,18 +98,6 @@ resource "google_secret_manager_secret_version" "db_password" {
   
   secret      = google_secret_manager_secret.db_password[each.key].id
   secret_data = random_password.db_password[each.key].result
-}
-
-resource "google_alloydb_user" "db_user" {
-  for_each = local.deploy_project_ids
-  
-  cluster        = google_alloydb_cluster.session_db_cluster[each.key].name
-  user_id        = "postgres"
-  user_type      = "ALLOYDB_BUILT_IN"
-  password       = random_password.db_password[each.key].result
-  database_roles = ["alloydbsuperuser"]
-
-  depends_on = [google_alloydb_instance.session_db_instance]
 }
 
 {%- endif %}
@@ -222,11 +170,17 @@ resource "google_cloud_run_v2_service" "app_staging" {
 {%- endif %}
 {%- endif %}
 
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+      # Mount the volume
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
 
+      # Environment variables
       env {
-        name  = "DB_HOST"
-        value = google_alloydb_instance.session_db_instance["staging"].ip_address
+        name  = "INSTANCE_CONNECTION_NAME"
+        value = google_sql_database_instance.session_db["staging"].connection_name
       }
 
       env {
@@ -238,7 +192,27 @@ resource "google_cloud_run_v2_service" "app_staging" {
           }
         }
       }
+
+      env {
+        name  = "DB_NAME"
+        value = "${var.project_name}"
+      }
+
+      env {
+        name  = "DB_USER"
+        value = "${var.project_name}"
+      }
 {%- endif %}
+
+      env {
+        name  = "LOGS_BUCKET_NAME"
+        value = google_storage_bucket.logs_data_bucket[var.staging_project_id].name
+      }
+
+      env {
+        name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+        value = "NO_CONTENT"
+      }
     }
 
     service_account                = google_service_account.app_sa["staging"].email
@@ -251,12 +225,12 @@ resource "google_cloud_run_v2_service" "app_staging" {
 
     session_affinity = true
 
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
-    # VPC access for AlloyDB connectivity
-    vpc_access {
-      network_interfaces {
-        network    = google_compute_network.default["staging"].id
-        subnetwork = google_compute_subnetwork.default["staging"].id
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    # Cloud SQL volume
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.session_db["staging"].connection_name]
       }
     }
 {%- endif %}
@@ -276,7 +250,13 @@ resource "google_cloud_run_v2_service" "app_staging" {
   }
 
   # Make dependencies conditional to avoid errors.
-  depends_on = [google_project_service.deploy_project_services]
+  depends_on = [
+    google_project_service.deploy_project_services,
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    google_sql_user.db_user,
+    google_secret_manager_secret_version.db_password,
+{%- endif %}
+  ]
 }
 
 resource "google_cloud_run_v2_service" "app_prod" {
@@ -347,11 +327,17 @@ resource "google_cloud_run_v2_service" "app_prod" {
 {%- endif %}
 {%- endif %}
 
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+      # Mount the volume
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
 
+      # Environment variables
       env {
-        name  = "DB_HOST"
-        value = google_alloydb_instance.session_db_instance["prod"].ip_address
+        name  = "INSTANCE_CONNECTION_NAME"
+        value = google_sql_database_instance.session_db["prod"].connection_name
       }
 
       env {
@@ -363,7 +349,27 @@ resource "google_cloud_run_v2_service" "app_prod" {
           }
         }
       }
+
+      env {
+        name  = "DB_NAME"
+        value = "${var.project_name}"
+      }
+
+      env {
+        name  = "DB_USER"
+        value = "${var.project_name}"
+      }
 {%- endif %}
+
+      env {
+        name  = "LOGS_BUCKET_NAME"
+        value = google_storage_bucket.logs_data_bucket[var.prod_project_id].name
+      }
+
+      env {
+        name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+        value = "NO_CONTENT"
+      }
     }
 
     service_account                = google_service_account.app_sa["prod"].email
@@ -376,12 +382,12 @@ resource "google_cloud_run_v2_service" "app_prod" {
 
     session_affinity = true
 
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
-    # VPC access for AlloyDB connectivity
-    vpc_access {
-      network_interfaces {
-        network    = google_compute_network.default["prod"].id
-        subnetwork = google_compute_subnetwork.default["prod"].id
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    # Cloud SQL volume
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [google_sql_database_instance.session_db["prod"].connection_name]
       }
     }
 {%- endif %}
@@ -401,5 +407,11 @@ resource "google_cloud_run_v2_service" "app_prod" {
   }
 
   # Make dependencies conditional to avoid errors.
-  depends_on = [google_project_service.deploy_project_services]
+  depends_on = [
+    google_project_service.deploy_project_services,
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    google_sql_user.db_user,
+    google_secret_manager_secret_version.db_password,
+{%- endif %}
+  ]
 }

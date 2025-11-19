@@ -287,6 +287,9 @@ import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 {%- endif %}
+{%- if cookiecutter.session_type == "cloud_sql" %}
+from urllib.parse import quote
+{%- endif %}
 
 import google.auth
 {%- if cookiecutter.is_a2a %}
@@ -396,7 +399,18 @@ instance_connection_name = os.environ.get("INSTANCE_CONNECTION_NAME")
 session_service_uri = None
 if instance_connection_name and db_pass:
     # Use Unix socket for Cloud SQL
-    session_service_uri = f"postgresql://{db_user}:{db_pass}@/{db_name}?host=/cloudsql/{instance_connection_name}"
+    # URL-encode username and password to handle special characters (e.g., '[', '?', '#', '$')
+    # These characters can cause URL parsing errors, especially '[' which triggers IPv6 validation
+    encoded_user = quote(db_user, safe="")
+    encoded_pass = quote(db_pass, safe="")
+    # URL-encode the connection name to prevent colons from being misinterpreted
+    encoded_instance = instance_connection_name.replace(":", "%3A")
+
+    session_service_uri = (
+        f"postgresql+psycopg2://{encoded_user}:{encoded_pass}@"
+        f"/{db_name}"
+        f"?host=/cloudsql/{encoded_instance}"
+    )
 {%- elif cookiecutter.session_type == "agent_engine" %}
 # Agent Engine session configuration
 # Check if we should use in-memory session for testing (set USE_IN_MEMORY_SESSION=true for E2E tests)

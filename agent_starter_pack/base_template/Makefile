@@ -49,11 +49,19 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
 	$(MAKE) inspector
 {%- else %}
-	@echo "ℹ️  Note: For Agent Engine, deploy remotely first to test with the inspector."
-	@echo "    Starting local backend for development..."
+{%- if cookiecutter.agent_name == 'langgraph_base' %}
+	@echo "ℹ️  Note: Local playground not supported for LangGraph on Agent Engine."
+	@echo "    To test your agent, deploy first with 'make deploy' then use 'make inspector'."
+{%- else %}
+	@echo "ℹ️  Note: Local playground uses ADK web interface (not A2A endpoints)."
+	@echo "    To test A2A protocol, deploy first with 'make deploy' then use 'make inspector'."
 	@echo ""
-	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
-{%- endif %}{%- endif %}
+	uv run adk web . --port 8501 --reload_agents
+{%- endif %}
+{%- endif %}
+{%- else %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
+{%- endif %}
 {%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
 
@@ -307,17 +315,25 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
-{%- if cookiecutter.is_adk and cookiecutter.deployment_target == 'agent_engine' %}
+{%- if (cookiecutter.is_a2a and cookiecutter.deployment_target == 'cloud_run') or (cookiecutter.is_adk and not cookiecutter.is_a2a and cookiecutter.deployment_target == 'agent_engine') %}
 
 # ==============================================================================
 # Gemini Enterprise Integration
 # ==============================================================================
 
 # Register the deployed agent to Gemini Enterprise
-# Usage: make register-gemini-enterprise (interactive - will prompt for required IDs)
-# The command auto-detects Agent Engine ID from deployment_metadata.json when available
+# Usage: make register-gemini-enterprise (interactive - will prompt for required details)
 # For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
-# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION{%- if cookiecutter.deployment_target == 'agent_engine' %}, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID{%- endif %}{%- if cookiecutter.deployment_target == 'cloud_run' %}, AGENT_CARD_URL{%- endif %}
 register-gemini-enterprise:
-	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise
+{%- if cookiecutter.deployment_target == 'cloud_run' and cookiecutter.is_a2a %}
+	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
+	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
+	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
+		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json" \
+		--deployment-target="{{cookiecutter.deployment_target}}" \
+		--project-number="$$PROJECT_NUMBER"
+{%- else %}
+	@uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise
+{%- endif %}
 {%- endif %}

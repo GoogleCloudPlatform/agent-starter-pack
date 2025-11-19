@@ -18,10 +18,8 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: How can you help?|"
 	@echo "==============================================================================="
-	@echo "ℹ️  Note: For Agent Engine, deploy remotely first to test with the inspector."
-	@echo "    Starting local backend for development..."
-	@echo ""
-	uv run python -m test_langgraph.app_utils.expose_app --mode local --local-agent test_langgraph.agent.root_agent
+	@echo "ℹ️  Note: Local playground not supported for LangGraph on Agent Engine."
+	@echo "    To test your agent, deploy first with 'make deploy' then use 'make inspector'."
 
 # ==============================================================================
 # A2A Protocol Inspector

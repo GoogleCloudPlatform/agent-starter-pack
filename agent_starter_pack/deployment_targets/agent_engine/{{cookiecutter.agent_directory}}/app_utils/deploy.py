@@ -75,6 +75,12 @@ def write_deployment_metadata(
     """Write deployment metadata to file."""
     metadata = {
         "remote_agent_engine_id": remote_agent.api_resource.name,
+        "deployment_target": "agent_engine",
+{%- if cookiecutter.is_a2a %}
+        "is_a2a": True,
+{%- else %}
+        "is_a2a": False,
+{%- endif %}
         "deployment_timestamp": datetime.datetime.now().isoformat(),
     }
 

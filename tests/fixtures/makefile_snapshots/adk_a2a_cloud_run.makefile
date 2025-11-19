@@ -132,3 +132,19 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: make register-gemini-enterprise (interactive - will prompt for required details)
+# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, AGENT_CARD_URL
+register-gemini-enterprise:
+	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
+	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
+	uvx agent-starter-pack@0.20.0 register-gemini-enterprise \
+		--agent-card-url="https://test-a2a-$$PROJECT_NUMBER.us-central1.run.app/a2a/test_a2a/.well-known/agent-card.json" \
+		--deployment-target="cloud_run" \
+		--project-number="$$PROJECT_NUMBER"

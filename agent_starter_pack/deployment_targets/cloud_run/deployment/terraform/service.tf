@@ -252,8 +252,10 @@ resource "google_cloud_run_v2_service" "app_staging" {
   # Make dependencies conditional to avoid errors.
   depends_on = [
     google_project_service.deploy_project_services,
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
     google_sql_user.db_user,
-    google_secret_manager_secret_version.db_password
+    google_secret_manager_secret_version.db_password,
+{%- endif %}
   ]
 }
 
@@ -407,7 +409,9 @@ resource "google_cloud_run_v2_service" "app_prod" {
   # Make dependencies conditional to avoid errors.
   depends_on = [
     google_project_service.deploy_project_services,
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
     google_sql_user.db_user,
-    google_secret_manager_secret_version.db_password
+    google_secret_manager_secret_version.db_password,
+{%- endif %}
   ]
 }

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Force cleanup script for all test resources
-# This script deletes Agent Engines, AlloyDB clusters, Service Accounts, and Vector Search resources
+# This script deletes Agent Engines, Cloud SQL instances, Service Accounts, and Vector Search resources
 
 set -e
 
@@ -71,6 +71,9 @@ run_with_retry "delete_agent_engines.py" "1/4 Deleting Agent Engines"
 run_with_retry "delete_vector_search.py" "2/4 Deleting Vector Search resources"
 
 
+
+# 3. Delete Cloud SQL instances
+run_with_retry "delete_cloud_sql_instances.py" "3/4 Deleting Cloud SQL instances"
 
 # 4. Delete Service Accounts
 run_with_retry "delete_service_accounts.py" "4/4 Deleting Service Accounts"

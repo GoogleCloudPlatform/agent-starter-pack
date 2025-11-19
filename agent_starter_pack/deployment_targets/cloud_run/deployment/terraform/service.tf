@@ -43,7 +43,7 @@ resource "google_sql_database_instance" "session_db" {
   deletion_protection = false # For easier teardown in starter packs
 
   settings {
-    tier = each.key == "prod" ? "db-n1-standard-1" : "db-f1-micro" # Use a dedicated-core tier for prod
+    tier = each.key == "prod" ? "db-custom-1-3840" : "db-f1-micro" # Use a custom machine type for prod to avoid tier restrictions
 
     backup_configuration {
       enabled = true
@@ -65,7 +65,7 @@ resource "google_sql_database" "database" {
   for_each = local.deploy_project_ids
 
   project  = local.deploy_project_ids[each.key]
-  name     = "postgres" # Default DB
+  name     = "${var.project_name}" # Use project name for DB to avoid conflict with default 'postgres'
   instance = google_sql_database_instance.session_db[each.key].name
 }
 
@@ -74,7 +74,7 @@ resource "google_sql_user" "db_user" {
   for_each = local.deploy_project_ids
 
   project  = local.deploy_project_ids[each.key]
-  name     = "postgres"
+  name     = "${var.project_name}" # Use project name for user to avoid conflict with default 'postgres'
   instance = google_sql_database_instance.session_db[each.key].name
   password = random_password.db_password[each.key].result
 }
@@ -192,6 +192,16 @@ resource "google_cloud_run_v2_service" "app_staging" {
           }
         }
       }
+
+      env {
+        name  = "DB_NAME"
+        value = "${var.project_name}"
+      }
+
+      env {
+        name  = "DB_USER"
+        value = "${var.project_name}"
+      }
 {%- endif %}
 
       env {
@@ -240,7 +250,11 @@ resource "google_cloud_run_v2_service" "app_staging" {
   }
 
   # Make dependencies conditional to avoid errors.
-  depends_on = [google_project_service.deploy_project_services]
+  depends_on = [
+    google_project_service.deploy_project_services,
+    google_sql_user.db_user,
+    google_secret_manager_secret_version.db_password
+  ]
 }
 
 resource "google_cloud_run_v2_service" "app_prod" {
@@ -333,6 +347,16 @@ resource "google_cloud_run_v2_service" "app_prod" {
           }
         }
       }
+
+      env {
+        name  = "DB_NAME"
+        value = "${var.project_name}"
+      }
+
+      env {
+        name  = "DB_USER"
+        value = "${var.project_name}"
+      }
 {%- endif %}
 
       env {
@@ -381,5 +405,9 @@ resource "google_cloud_run_v2_service" "app_prod" {
   }
 
   # Make dependencies conditional to avoid errors.
-  depends_on = [google_project_service.deploy_project_services]
+  depends_on = [
+    google_project_service.deploy_project_services,
+    google_sql_user.db_user,
+    google_secret_manager_secret_version.db_password
+  ]
 }

@@ -56,6 +56,9 @@ variable "app_sa_roles" {
     "roles/cloudtrace.agent",
     "roles/storage.admin",
     "roles/serviceusage.serviceUsageConsumer",
+{%- if cookiecutter.session_type == "cloud_sql" %}
+    "roles/secretmanager.secretAccessor",
+{%- endif %}
   ]
 }
 {% if cookiecutter.data_ingestion %}

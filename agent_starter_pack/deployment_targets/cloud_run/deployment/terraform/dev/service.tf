@@ -55,16 +55,16 @@ resource "google_sql_database_instance" "session_db" {
 # Cloud SQL Database
 resource "google_sql_database" "database" {
   project  = var.dev_project_id
-  name     = "postgres"
+  name     = "${var.project_name}" # Use project name for DB to avoid conflict with default 'postgres'
   instance = google_sql_database_instance.session_db.name
 }
 
 # Cloud SQL User
 resource "google_sql_user" "db_user" {
   project  = var.dev_project_id
-  name     = "postgres"
+  name     = "${var.project_name}" # Use project name for user to avoid conflict with default 'postgres'
   instance = google_sql_database_instance.session_db.name
-  password = random_password.db_password.result
+  password = google_secret_manager_secret_version.db_password.secret_data
 }
 
 # Store the password in Secret Manager
@@ -174,6 +174,16 @@ resource "google_cloud_run_v2_service" "app" {
             version = "latest"
           }
         }
+      }
+
+      env {
+        name  = "DB_NAME"
+        value = "${var.project_name}"
+      }
+
+      env {
+        name  = "DB_USER"
+        value = "${var.project_name}"
       }
 {%- endif %}
 

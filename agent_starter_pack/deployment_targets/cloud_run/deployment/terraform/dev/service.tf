@@ -233,5 +233,11 @@ resource "google_cloud_run_v2_service" "app" {
   }
 
   # Make dependencies conditional to avoid errors.
-  depends_on = [resource.google_project_service.services]
+  depends_on = [
+    resource.google_project_service.services,
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    google_sql_user.db_user,
+    google_secret_manager_secret_version.db_password,
+{%- endif %}
+  ]
 }

@@ -52,7 +52,7 @@ setup-inspector-if-needed:
 		echo "" && \
 		mkdir -p tools && \
 		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector && \
-		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet c15ae469d6dcb26f72ffe08a46dd561974af764b) && \
+		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet 893e4062f6fbd85a8369228ce862ebbf4a025694) && \
 		echo "📥 Installing Python dependencies..." && \
 		(cd tools/a2a-inspector && uv sync --quiet) && \
 		echo "📥 Installing Node.js dependencies..." && \

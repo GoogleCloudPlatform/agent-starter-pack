@@ -30,13 +30,11 @@ from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
 from google.cloud import logging as google_cloud_logging
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai.agent_engines import _utils
 from websockets.exceptions import ConnectionClosedError
 
 from .agent import app as adk_app
-from .app_utils.tracing import CloudTraceLoggingSpanExporter
+from .app_utils.telemetry import setup_telemetry
 from .app_utils.typing import Feedback
 
 app = FastAPI()
@@ -62,13 +60,8 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+setup_telemetry()
 _, project_id = google.auth.default()
-provider = TracerProvider()
-processor = export.BatchSpanProcessor(
-    CloudTraceLoggingSpanExporter(project_id=project_id)
-)
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
 
 
 # Initialize ADK services
@@ -317,8 +310,6 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.cli.fast_api import get_fast_api_app
 {%- endif %}
 from google.cloud import logging as google_cloud_logging
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider, export
 {% if cookiecutter.session_type == "agent_engine" -%}
 from vertexai import agent_engines
 {% endif %}
@@ -327,9 +318,10 @@ from vertexai import agent_engines
 from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- endif %}
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 
+setup_telemetry()
 _, project_id = google.auth.default()
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
@@ -339,15 +331,11 @@ allow_origins = (
 )
 {%- endif %}
 
+# Artifact bucket for ADK
 bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs"
 create_bucket_if_not_exists(
     bucket_name=bucket_name, project=project_id, location="us-central1"
 )
-
-provider = TracerProvider()
-processor = export.BatchSpanProcessor(CloudTraceLoggingSpanExporter())
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
 
 {%- if cookiecutter.is_a2a %}
 
@@ -411,20 +399,33 @@ if db_host and db_pass:
     session_service_uri = f"postgresql://{db_user}:{db_pass}@{db_host}:5432/{db_name}"
 {%- elif cookiecutter.session_type == "agent_engine" %}
 # Agent Engine session configuration
-# Use environment variable for agent name, default to project name
-agent_name = os.environ.get("AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}")
+# Check if we should use in-memory session for testing (set USE_IN_MEMORY_SESSION=true for E2E tests)
+use_in_memory_session = os.environ.get("USE_IN_MEMORY_SESSION", "").lower() in (
+    "true",
+    "1",
+    "yes",
+)
 
-# Check if an agent with this name already exists
-existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))
-
-if existing_agents:
-    # Use the existing agent
-    agent_engine = existing_agents[0]
+if use_in_memory_session:
+    # Use in-memory session for local testing
+    session_service_uri = None
 else:
-    # Create a new agent if none exists
-    agent_engine = agent_engines.create(display_name=agent_name)
+    # Use environment variable for agent name, default to project name
+    agent_name = os.environ.get(
+        "AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}"
+    )
 
-session_service_uri = f"agentengine://{agent_engine.resource_name}"
+    # Check if an agent with this name already exists
+    existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))
+
+    if existing_agents:
+        # Use the existing agent
+        agent_engine = existing_agents[0]
+    else:
+        # Create a new agent if none exists
+        agent_engine = agent_engines.create(display_name=agent_name)
+
+    session_service_uri = f"agentengine://{agent_engine.resource_name}"
 {%- else %}
 # In-memory session configuration - no persistent storage
 session_service_uri = None
@@ -436,12 +437,12 @@ app: FastAPI = get_fast_api_app(
     artifact_service_uri=bucket_name,
     allow_origins=allow_origins,
     session_service_uri=session_service_uri,
+    otel_to_cloud=True,
 )
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
 {% else %}
-import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -456,12 +457,15 @@ from a2a.utils.constants import (
 )
 from fastapi import FastAPI
 from google.cloud import logging as google_cloud_logging
-from traceloop.sdk import Instruments, Traceloop
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
-from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import LangGraphAgentExecutor
-from {{cookiecutter.agent_directory}}.app_utils.tracing import CloudTraceLoggingSpanExporter
+from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import (
+    LangGraphAgentExecutor,
+)
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+setup_telemetry()
 
 request_handler = DefaultRequestHandler(
     agent_executor=LangGraphAgentExecutor(graph=root_agent),
@@ -512,19 +516,9 @@ app = FastAPI(
     description="API for interacting with the Agent {{cookiecutter.project_name}}",
     lifespan=lifespan,
 )
+
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
-
-# Initialize Telemetry
-try:
-    Traceloop.init(
-        app_name=app.title,
-        disable_batch=False,
-        exporter=CloudTraceLoggingSpanExporter(),
-        instruments={Instruments.LANGCHAIN},
-    )
-except Exception as e:
-    logging.error("Failed to initialize Telemetry: %s", str(e))
 {% endif %}
 
 @app.post("/feedback")

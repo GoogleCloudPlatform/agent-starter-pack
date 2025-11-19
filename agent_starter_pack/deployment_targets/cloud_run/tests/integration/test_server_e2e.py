@@ -202,8 +202,8 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "invocation_id": "test-run-123",
-        "user_id": "test-user",
+        "user_id": "test-user-123",
+        "session_id": "test-session-123",
         "log_type": "feedback",
     }
 
@@ -220,7 +220,9 @@ import subprocess
 import sys
 import threading
 import time
+{%- if cookiecutter.is_a2a %}
 import uuid
+{%- endif %}
 from collections.abc import Iterator
 from typing import Any
 
@@ -281,8 +283,8 @@ def start_server() -> subprocess.Popen[str]:
     env = os.environ.copy()
     env["INTEGRATION_TEST"] = "TRUE"
 {%- if cookiecutter.session_type == "agent_engine" %}
-    # Set test-specific agent engine session name
-    env["AGENT_ENGINE_SESSION_NAME"] = "test-{{cookiecutter.project_name}}"
+    # Use in-memory session for local E2E tests instead of creating Agent Engine
+    env["USE_IN_MEMORY_SESSION"] = "true"
 {%- endif %}
     process = subprocess.Popen(
         command,
@@ -629,11 +631,8 @@ def test_collect_feedback(server_fixture: subprocess.Popen[str]) -> None:
     # Create sample feedback data
     feedback_data = {
         "score": 4,
-{%- if cookiecutter.is_adk %}
-        "invocation_id": str(uuid.uuid4()),
-{%- else %}
-        "run_id": str(uuid.uuid4()),
-{%- endif %}
+        "user_id": "test-user-456",
+        "session_id": "test-session-456",
         "text": "Great response!",
     }
 

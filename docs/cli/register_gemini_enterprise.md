@@ -1,6 +1,6 @@
 # `register-gemini-enterprise`
 
-Register a deployed agent to Gemini Enterprise, making it available as a tool within the Gemini Enterprise application.
+Register a deployed agent to Gemini Enterprise, making it available as a tool within Gemini Enterprise.
 
 Supports:
 - **ADK agents** deployed to Agent Engine
@@ -77,12 +77,10 @@ AGENT_CARD_URL="https://your-service.run.app/a2a/app/.well-known/agent-card.json
 - Authentication: `gcloud auth application-default login`
 
 **For A2A Agents:**
-- Deployed agent (Agent Engine or Cloud Run) with accessible agent card endpoint
+- Deployed agent with accessible agent card endpoint
 - Gemini Enterprise application configured in Google Cloud
 - **(Optional)** OAuth 2.0 authorization configured for accessing Google Cloud resources on behalf of users
-- Authentication:
-  - `gcloud auth login` - For Cloud Run (identity token)
-  - `gcloud auth application-default login` - For Agent Engine (access token)
+- Authentication: `gcloud auth login` (for identity token)
 
 ## Non-Interactive Mode
 
@@ -157,23 +155,16 @@ ID="projects/123456789/locations/global/collections/default_collection/engines/m
 
 ### A2A Agent Examples
 
-**Cloud Run A2A agent:**
+**Interactive mode (recommended):**
 ```bash
-# Interactive mode (recommended)
 make register-gemini-enterprise
-# Command auto-detects A2A agent or prompts for agent card URL
-# Provide: https://my-agent-abc123-uc.a.run.app/a2a/app/.well-known/agent-card.json
-# Follow remaining prompts for Gemini Enterprise configuration
-
-# Non-interactive mode
-AGENT_CARD_URL="https://my-agent-abc123-uc.a.run.app/a2a/app/.well-known/agent-card.json" \
-  ID="projects/123456789/locations/global/collections/default_collection/engines/my-engine" \
-  make register-gemini-enterprise
+# Makefile auto-constructs agent card URL from Cloud Run service
+# Follow prompts for Gemini Enterprise configuration
 ```
 
-**Agent Engine A2A agent:**
+**Non-interactive mode:**
 ```bash
-AGENT_CARD_URL="https://us-central1-aiplatform.googleapis.com/v1beta1/projects/123456/locations/us-central1/reasoningEngines/789/a2a/v1/card" \
+AGENT_CARD_URL="https://my-agent-abc123-uc.a.run.app/a2a/app/.well-known/agent-card.json" \
   ID="projects/123456789/locations/global/collections/default_collection/engines/my-engine" \
   make register-gemini-enterprise
 ```
@@ -203,23 +194,11 @@ AGENT_CARD_URL="https://us-central1-aiplatform.googleapis.com/v1beta1/projects/1
 
 **"Failed to fetch agent card"**
 - Verify the agent card URL is correct and accessible
-- For Cloud Run: Ensure the service is deployed and running
-- For Agent Engine: Verify the agent engine resource name is correct
-- For local: Ensure your agent is running (e.g., `make playground`)
+- Ensure the Cloud Run service is deployed and running
 
-**Authentication errors (A2A - Cloud Run)**
+**Authentication errors**
 - Run: `gcloud auth login`
 - Ensure you have permission to invoke the Cloud Run service
-- Check that the Cloud Run service allows your account
-
-**Authentication errors (A2A - Agent Engine)**
-- Run: `gcloud auth application-default login`
-- Ensure you have permission to access the Agent Engine
-
-**"Agent card URL not working"**
-- For Cloud Run: The correct path is `/a2a/app/.well-known/agent-card.json`
-- For Agent Engine: Use `/a2a/v1/card`
-- Ensure the URL scheme is `https://` for deployed services or `http://` for local
 
 ## See Also
 

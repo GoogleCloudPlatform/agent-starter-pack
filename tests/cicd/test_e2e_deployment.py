@@ -1085,11 +1085,15 @@ class TestE2EDeployment:
         """
         # Keep telemetry only for adk_base with basic agent_engine or cloud_run
         # Exclude GitHub Actions and Cloud SQL variants
+        norm_extra_params = extra_params.replace(" ", "")
+        is_github_actions = "--cicd-runner,github_actions" in norm_extra_params
+        is_cloud_sql = "--session-type,cloud_sql" in norm_extra_params
+
         should_keep_telemetry = (
             agent == "adk_base"
             and deployment_target in ["agent_engine", "cloud_run"]
-            and "--cicd-runner,github_actions" not in extra_params
-            and "--session-type,cloud_sql" not in extra_params
+            and not is_github_actions
+            and not is_cloud_sql
         )
 
         if should_keep_telemetry:
@@ -1208,7 +1212,10 @@ class TestE2EDeployment:
 
             # Remove telemetry for quota savings (keep only adk_base + agent_engine/cloud_run)
             self.remove_telemetry_for_quota_savings(
-                new_project_dir, config.agent, config.deployment_target, config.extra_params
+                new_project_dir,
+                config.agent,
+                config.deployment_target,
+                config.extra_params,
             )
 
             # Detect the CICD runner type from CLI params and generated project

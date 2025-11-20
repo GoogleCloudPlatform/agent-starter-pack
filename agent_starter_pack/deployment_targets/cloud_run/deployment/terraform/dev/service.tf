@@ -36,7 +36,7 @@ resource "google_sql_database_instance" "session_db" {
   deletion_protection = false
 
   settings {
-    tier = "db-f1-micro"
+    tier = "db-custom-1-3840"
 
     backup_configuration {
       enabled = false # No backups for dev

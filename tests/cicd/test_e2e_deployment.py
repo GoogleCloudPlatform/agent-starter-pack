@@ -1068,6 +1068,56 @@ class TestE2EDeployment:
 
             logger.info("✅ Updated datastore name in prod/staging env.tfvars")
 
+    def remove_telemetry_for_quota_savings(
+        self, project_dir: Path, agent: str, deployment_target: str, extra_params: str
+    ) -> None:
+        """Remove telemetry.tf files except for adk_base base variants.
+
+        Cloud Logging buckets have a 7-day soft delete period, so cleanup doesn't free
+        quota. We only test telemetry with two representative combinations:
+        - adk_base + agent_engine (Cloud Build)
+        - adk_base + cloud_run (Cloud Build)
+
+        This covers both deployment targets while avoiding quota limits.
+        Excluded variants: GitHub Actions, Cloud SQL session types, and non-adk_base agents.
+
+        TODO: Add telemetry testing for langgraph sample once it gets full telemetry support.
+        """
+        # Keep telemetry only for adk_base with basic agent_engine or cloud_run
+        # Exclude GitHub Actions and Cloud SQL variants
+        norm_extra_params = extra_params.replace(" ", "")
+        is_github_actions = "--cicd-runner,github_actions" in norm_extra_params
+        is_cloud_sql = "--session-type,cloud_sql" in norm_extra_params
+
+        should_keep_telemetry = (
+            agent == "adk_base"
+            and deployment_target in ["agent_engine", "cloud_run"]
+            and not is_github_actions
+            and not is_cloud_sql
+        )
+
+        if should_keep_telemetry:
+            logger.info(
+                f"✓ Keeping telemetry.tf for {agent} + {deployment_target} "
+                "(representative test case)"
+            )
+            return
+
+        logger.info(
+            f"🗑️  Removing telemetry.tf for {agent} + {deployment_target} "
+            "to reduce Cloud Logging bucket quota usage..."
+        )
+
+        telemetry_files = [
+            project_dir / "deployment" / "terraform" / "telemetry.tf",
+            project_dir / "deployment" / "terraform" / "dev" / "telemetry.tf",
+        ]
+
+        for tf_file in telemetry_files:
+            if tf_file.exists():
+                tf_file.unlink()
+                logger.info(f"  Removed {tf_file}")
+
     @pytest.mark.flaky(reruns=2)
     @pytest.mark.parametrize(
         "config",
@@ -1159,6 +1209,14 @@ class TestE2EDeployment:
             )
             # Update datastore name in terraform variables to avoid conflicts
             self.update_datastore_name(new_project_dir, unique_id)
+
+            # Remove telemetry for quota savings (keep only adk_base + agent_engine/cloud_run)
+            self.remove_telemetry_for_quota_savings(
+                new_project_dir,
+                config.agent,
+                config.deployment_target,
+                config.extra_params,
+            )
 
             # Detect the CICD runner type from CLI params and generated project
             actual_cicd_runner = self.detect_cicd_runner(

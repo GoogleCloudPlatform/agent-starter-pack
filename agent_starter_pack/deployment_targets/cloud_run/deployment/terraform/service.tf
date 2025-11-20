@@ -43,7 +43,7 @@ resource "google_sql_database_instance" "session_db" {
   deletion_protection = false # For easier teardown in starter packs
 
   settings {
-    tier = "db-custom-1-3840" # Use a custom machine type to avoid tier restrictions and ensure consistent provisioning times
+    tier = "db-custom-1-3840"
 
     backup_configuration {
       enabled = true

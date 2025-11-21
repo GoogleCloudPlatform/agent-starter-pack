@@ -36,7 +36,7 @@ Prompt-response logging is **privacy-preserving by default** - only metadata (to
 
 | Environment | Default State | How It's Configured |
 |-------------|---------------|---------------------|
-| **Local Development** (`make playground`) | ❌ **Disabled** | No `LOGS_BUCKET_NAME` set - see [Enabling in Local Dev](#enabling-telemetry-in-local-development) to enable |
+| **Local Development** (`make playground`) | ❌ **Disabled** | No `LOGS_BUCKET_NAME` set - see [Enabling in Local Dev](#enabling-prompt-response-logging-in-local-development) to enable |
 | **Dev (Terraform deployed)** | ✅ **Enabled** | Terraform sets `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` |
 | **Staging (Terraform deployed)** | ✅ **Enabled** | Terraform sets `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` |
 | **Production (Terraform deployed)** | ✅ **Enabled** | Terraform sets `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` |

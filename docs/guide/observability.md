@@ -1,6 +1,6 @@
 # Monitoring and Observability
 
-![monitoring_flow](/docs/images/observability.png)
+![monitoring_flow](../images/observability.png)
 
 ## Overview
 

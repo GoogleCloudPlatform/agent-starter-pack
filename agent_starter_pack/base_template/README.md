@@ -51,6 +51,12 @@ Install required packages and launch the local development environment:
 make install && make playground
 ```
 
+{%- if cookiecutter.is_adk %}
+> **📊 Observability Note:** Agent telemetry (Cloud Trace) is always enabled. Prompt-response logging (GCS, BigQuery, Cloud Logging) is **disabled** locally, **enabled by default** in deployed environments (metadata only - no prompts/responses). See [Monitoring and Observability](#monitoring-and-observability) for details.
+{%- else %}
+> **📊 Observability Note:** Agent telemetry (Cloud Trace) is always enabled. Prompt-response logging is not available for LangGraph agents due to SDK limitations with streaming.
+{%- endif %}
+
 ## Commands
 
 | Command              | Description                                                                                 |
@@ -246,22 +252,31 @@ See [deployment/README.md](deployment/README.md) for instructions.
 
 The repository includes a Terraform configuration for the setup of a production Google Cloud project. Refer to [deployment/README.md](deployment/README.md) for detailed instructions on how to deploy the infrastructure and application.
 
-{% if not cookiecutter.is_adk_live %}
 ## Monitoring and Observability
 
-The application uses [OpenTelemetry GenAI instrumentation](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for comprehensive observability. Telemetry data is automatically captured and exported to:
+The application provides two levels of observability:
 
-- **Google Cloud Storage**: GenAI telemetry in JSONL format for efficient querying
-- **BigQuery**: External tables and linked datasets provide immediate access to telemetry data via SQL queries
-- **Cloud Logging**: Dedicated logging bucket with 10-year retention for GenAI operation logs
+**1. Agent Telemetry Events (Always Enabled)**
+- OpenTelemetry traces and spans exported to **Cloud Trace**
+- Tracks agent execution, latency, and system metrics
 
-**Query your telemetry data:**
+{%- if cookiecutter.is_adk %}
 
-```bash
-# Example: Query recent completions
-bq query --use_legacy_sql=false \
-  "SELECT * FROM \`{{cookiecutter.project_name}}_telemetry.completions\` LIMIT 10"
-```
+**2. Prompt-Response Logging (Configurable)**
+- GenAI instrumentation captures LLM interactions (tokens, model, timing)
+- Exported to **Google Cloud Storage** (JSONL), **BigQuery** (external tables), and **Cloud Logging** (dedicated bucket)
 
-For detailed setup instructions, example queries, testing in dev, and optional dashboard visualization, see the [starter pack observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html).
+| Environment | Prompt-Response Logging |
+|-------------|-------------------------|
+| **Local Development** (`make playground`) | ❌ Disabled by default |
+| **Deployed Environments** (via Terraform) | ✅ **Enabled by default** (privacy-preserving: metadata only, no prompts/responses) |
+
+**To enable locally:** Set `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT`.
+
+**To disable in deployments:** Edit Terraform config to set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false`.
+{%- else %}
+
+**Note:** Prompt-response logging is not available for LangGraph agents due to SDK limitations with streaming responses.
 {%- endif %}
+
+See the [observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html) for detailed instructions, example queries, and visualization options.

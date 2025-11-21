@@ -1,27 +1,55 @@
 # Monitoring and Observability
 
-![monitoring_flow](https://storage.googleapis.com/github-repo/generative-ai/sample-apps/e2e-gen-ai-app-starter-pack/monitoring_flow.png)
+![monitoring_flow](/docs/images/observability.png)
 
 ## Overview
 
-Templated agents utilize [OpenTelemetry GenAI instrumentation](https://opentelemetry.io/docs/specs/semconv/gen-ai/) for comprehensive observability. The framework automatically captures and exports GenAI telemetry data to Google Cloud Storage in JSONL format, making it available for analysis via BigQuery.
+The Agent Starter Pack provides two levels of observability:
+
+1. **Agent Telemetry Events** (Always Enabled): OpenTelemetry traces and spans for agent operations, exported to **Cloud Trace**. This tracks agent execution, latency, and system metrics.
+
+2. **Prompt-Response Logging** (Configurable): GenAI instrumentation that captures LLM interactions (prompts, responses, tokens) and exports them to **Google Cloud Storage** (JSONL), **BigQuery** (external tables), and **Cloud Logging** (dedicated bucket). This is **disabled by default in local development** and **enabled by default in deployed environments**.
+
+**Note for LangGraph users**: The LangGraph template only supports agent telemetry events (Cloud Trace). Prompt-response logging is not available due to SDK limitations with streaming responses.
 
 ## How It Works
 
-The telemetry setup (`app/app_utils/telemetry.py`) configures environment variables that enable:
+### Agent Telemetry Events (Always Enabled)
+
+All agent templates automatically export OpenTelemetry traces and spans to **Cloud Trace** for distributed tracing, request flows, and latency analysis.
+
+This level of telemetry is always active and requires no configuration.
+
+### Prompt-Response Logging (Configurable)
+
+For **ADK-based agents only**, the telemetry setup (`app/app_utils/telemetry.py`) can be configured to capture:
 
 - **GenAI Event Capture**: Records model interactions, token usage, and performance metrics
 - **GCS Upload**: Automatically uploads telemetry data to a dedicated GCS bucket in JSONL format
+- **BigQuery Integration**: External tables provide SQL access to telemetry data
+- **Cloud Logging**: Dedicated logging bucket with 10-year retention for GenAI operation logs
 - **Resource Attribution**: Tags events with service namespace and version for filtering
 
-**Telemetry is opt-in and configured automatically:**
-- **Cloud Run deployments**: Enabled by default with `NO_CONTENT` (privacy-preserving, no prompt/response content)
-- **Agent Engine deployments**: Enabled by default with full message content for UI visibility
-- **Local development**: Disabled by default (no `LOGS_BUCKET_NAME` set)
+Prompt-response logging is **privacy-preserving by default** - only metadata (tokens, model name, timing) is logged. Prompts and responses are NOT included (`NO_CONTENT` mode).
 
-## Testing in Development
+### Prompt-Response Logging Behavior by Environment
 
-After deploying to your development environment, verify that telemetry is working correctly:
+| Environment | Default State | How It's Configured |
+|-------------|---------------|---------------------|
+| **Local Development** (`make playground`) | ❌ **Disabled** | No `LOGS_BUCKET_NAME` set - see [Enabling in Local Dev](#enabling-prompt-response-logging-in-local-development) to enable |
+| **Dev (Terraform deployed)** | ✅ **Enabled** | Terraform sets `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` |
+| **Staging (Terraform deployed)** | ✅ **Enabled** | Terraform sets `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` |
+| **Production (Terraform deployed)** | ✅ **Enabled** | Terraform sets `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT` |
+
+**Key Points:**
+- Telemetry is **automatically enabled** in all Terraform-deployed environments (dev, staging, prod)
+- Local development with `make playground` has telemetry **disabled by default**
+- All environments use privacy-preserving `NO_CONTENT` mode - only metadata is captured
+- For Agent Engine deployments, the platform requires `true` during deployment, but the app overrides to `NO_CONTENT` at runtime for privacy
+
+## Testing Prompt-Response Logging in Development
+
+After deploying to your development environment, verify that prompt-response logging is working correctly:
 
 ### 1. Deploy and Generate Test Traffic
 
@@ -77,7 +105,7 @@ bq query --use_legacy_sql=false \
 
 ### Troubleshooting
 
-If telemetry is not appearing:
+If prompt-response logging data is not appearing:
 
 1. **Check bucket permissions**: Ensure the service account has `storage.objectCreator` role on the logs bucket
 2. **Verify environment variables**: Check that `LOGS_BUCKET_NAME` is set in your deployment
@@ -174,40 +202,99 @@ For teams that want visual dashboards, you can connect your BigQuery telemetry d
 
 ## Configuration
 
-Telemetry behavior can be customized via environment variables:
+Prompt-response logging behavior is controlled via environment variables. The sections below explain how to enable prompt-response logging locally and how to disable it in deployed environments.
 
-### Customization Options
+**Note**: Agent telemetry events (Cloud Trace, Cloud Logging) are always enabled and do not require configuration.
 
-- `LOGS_BUCKET_NAME`: GCS bucket for telemetry upload (automatically set by CI/CD and Terraform)
-  - If not set, telemetry is disabled
-- `GENAI_TELEMETRY_PATH`: Override default path within bucket (default: `completions`)
-- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`: Control telemetry enablement and message content capture
-  - `false`: Telemetry disabled (default for local development)
-  - `NO_CONTENT`: Telemetry enabled without prompt/response content (default for Cloud Run)
-  - `true`: Telemetry enabled with full message content (default for Agent Engine)
+### Enabling Prompt-Response Logging in Local Development
 
-### Disabling Telemetry
+By default, `make playground` runs **without prompt-response logging** since no GCS bucket is configured. To enable it during local development (ADK agents only):
 
-To disable telemetry collection, set the following environment variable in your deployment:
+**Option 1: Set Environment Variables Manually**
 
 ```bash
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false
-```
+# Set the GCS bucket (must exist and be accessible)
+export LOGS_BUCKET_NAME="gs://your-dev-project-id-your-project-name-logs"
 
-**For Cloud Run deployments**, add this to your service configuration:
-```bash
-gcloud run services update YOUR_SERVICE_NAME \
-  --set-env-vars OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false \
-  --region=YOUR_REGION
-```
+# Enable telemetry with NO_CONTENT mode (metadata only)
+export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT="NO_CONTENT"
 
-**For Agent Engine deployments**, add this to your environment variables in `app_utils/deploy.py` or set it in your deployment environment.
-
-**For local development**, add this to your `.env` file or export it before running:
-```bash
-export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false
+# Run playground
 make playground
 ```
+
+**Option 2: Deploy Dev Infrastructure with Terraform**
+
+Deploy the dev environment infrastructure, which automatically creates the logs bucket and sets up all required resources:
+
+```bash
+cd deployment/terraform
+terraform init
+terraform apply -var-file=vars/dev.tfvars
+```
+
+Then run `make deploy` to deploy to your dev project with telemetry enabled.
+
+**Note:** Prompt-response logging requires:
+1. ADK-based agent template (not available for LangGraph)
+2. A valid GCS bucket (`LOGS_BUCKET_NAME`)
+3. Proper permissions for the service account to write to the bucket
+4. `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` set to `NO_CONTENT` or `true`
+
+### Disabling Prompt-Response Logging in Deployed Environments
+
+Prompt-response logging is **enabled by default** when deployed via Terraform (dev, staging, prod). To disable it:
+
+**For Cloud Run Deployments**
+
+Update the Terraform configuration to set the environment variable to `false`:
+
+1. Edit your deployment's `deployment/terraform/[dev/]service.tf`:
+   ```hcl
+   env {
+     name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
+     value = "false"  # Changed from "NO_CONTENT"
+   }
+   ```
+
+2. Apply the change:
+   ```bash
+   cd deployment/terraform
+   terraform apply -var-file=vars/[dev/staging/prod].tfvars
+   ```
+
+**Alternatively**, update directly via gcloud (temporary change, reverted on next Terraform apply):
+```bash
+gcloud run services update YOUR_SERVICE_NAME \
+  --update-env-vars OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false \
+  --region=YOUR_REGION \
+  --project=YOUR_PROJECT_ID
+```
+
+**For Agent Engine Deployments**
+
+Modify the deployment script or environment variables:
+
+1. Edit `app_utils/deploy.py` to remove or modify the telemetry environment variable:
+   ```python
+   # Remove or set to "false"
+   env_vars["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "false"
+   ```
+
+2. Redeploy:
+   ```bash
+   make deploy
+   ```
+
+### Environment Variable Reference
+
+These variables control **prompt-response logging only** (ADK agents). Agent telemetry events are always enabled.
+
+| Variable | Values | Purpose |
+|----------|--------|---------|
+| `LOGS_BUCKET_NAME` | GCS bucket path (e.g., `gs://project-logs`) | Required for prompt-response logging. If not set, logging is disabled. Automatically set by Terraform. |
+| `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` | `false`, `NO_CONTENT`, `true` | Controls prompt-response logging state and content capture:<br>• `false`: Logging disabled<br>• `NO_CONTENT`: Enabled, metadata only (default)<br>• `true`: Enabled with full content (not recommended) |
+| `GENAI_TELEMETRY_PATH` | Path within bucket (default: `completions`) | Optional: Override upload path for prompt-response logs |
 
 ### Automatically Set Variables
 

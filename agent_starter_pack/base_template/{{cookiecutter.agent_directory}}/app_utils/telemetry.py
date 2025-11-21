@@ -35,7 +35,9 @@ def setup_telemetry() -> str | None:
         "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "false"
     )
     if bucket and capture_content != "false":
-        logging.info("Setting up GenAI telemetry with GCS upload...")
+        logging.info(
+            "Prompt-response logging enabled - mode: NO_CONTENT (metadata only, no prompts/responses)"
+        )
         os.environ["OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"] = "NO_CONTENT"
         os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_UPLOAD_FORMAT", "jsonl")
         os.environ.setdefault("OTEL_INSTRUMENTATION_GENAI_COMPLETION_HOOK", "upload")
@@ -51,6 +53,10 @@ def setup_telemetry() -> str | None:
         os.environ.setdefault(
             "OTEL_INSTRUMENTATION_GENAI_UPLOAD_BASE_PATH",
             f"gs://{bucket}/{path}",
+        )
+    else:
+        logging.info(
+            "Prompt-response logging disabled (set LOGS_BUCKET_NAME=gs://your-bucket and OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT to enable)"
         )
 {%- if cookiecutter.is_adk and cookiecutter.is_a2a %}
 

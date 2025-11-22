@@ -34,10 +34,12 @@ make register-gemini-enterprise  # Interactive prompts guide you
 
 The command automatically:
 - Detects Agent Engine ID from `deployment_metadata.json`
-- Prompts for Gemini Enterprise app details step-by-step
+- Uses your current authenticated project ID
+- Lists available Gemini Enterprise apps for easy selection
 - Fetches display name and description from the deployed Agent Engine
 - Constructs the full Gemini Enterprise resource name
 - Creates or updates the registration in Gemini Enterprise
+- Provides a direct console link to view your registered agent
 
 ### For A2A Agents
 
@@ -61,13 +63,15 @@ AGENT_CARD_URL="https://your-service.run.app/a2a/app/.well-known/agent-card.json
 
 #### For ADK Agents:
 1. **Agent Engine ID** - Auto-detected from `deployment_metadata.json`
-2. **Project number** - Defaults to the project from Agent Engine ID
-3. **Location** - Defaults to `global` (options: global, us, eu)
-4. **Gemini Enterprise ID** - The short ID from the Gemini Enterprise Apps table
+2. **Project ID** - Uses your current authenticated project (from `gcloud auth`)
+   - Automatically converts to project number behind the scenes
+3. **Gemini Enterprise apps** - Lists all available apps across regions (global, us, eu)
+   - Select from the list or enter a custom ID
 
 #### For A2A Agents:
 1. **Agent card URL** - Auto-constructed from your Cloud Run service URL
-2. **Gemini Enterprise app details** - Same as ADK agents
+2. **Project ID** - Same as ADK agents (uses current authenticated project)
+3. **Gemini Enterprise apps** - Lists all available apps for selection
 
 ## Prerequisites
 
@@ -102,13 +106,13 @@ GEMINI_ENTERPRISE_APP_ID="projects/123456/locations/global/collections/default_c
 
 **`--gemini-enterprise-app-id`** (env: `ID`, `GEMINI_ENTERPRISE_APP_ID`)
 
-Gemini Enterprise app resource name. If not provided, the command runs in interactive mode.
+Gemini Enterprise app resource name. If not provided, the command runs in interactive mode and lists available apps.
 
 Format: `projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}`
 
-Note: Use project **number** (numeric), not project ID (string).
+Note: The interactive mode uses your current authenticated **project ID** and automatically converts it to the required project number.
 
-Find the Gemini Enterprise ID: Cloud Console > Gemini Enterprise > Apps > ID column
+Find available apps: Cloud Console > Gemini Enterprise > Apps, or use the interactive listing feature
 
 ### Other Options
 
@@ -116,7 +120,7 @@ Find the Gemini Enterprise ID: Cloud Console > Gemini Enterprise > Apps > ID col
 |-----------|---------------------|---------|-------------|
 | `--agent-card-url` | `AGENT_CARD_URL` | None | Agent card URL for A2A agents. If provided, registers as A2A agent |
 | `--deployment-target` | `DEPLOYMENT_TARGET` | Auto-detected | Deployment target: `agent_engine` or `cloud_run` |
-| `--project-number` | `PROJECT_NUMBER` | Auto-detected | GCP project number (for smart defaults) |
+| `--project-number` | `PROJECT_NUMBER` | Auto-detected | GCP project number (for non-interactive mode). Interactive mode uses current authenticated project ID |
 | `--agent-engine-id` | `AGENT_ENGINE_ID` | From `deployment_metadata.json` | Agent Engine resource name (ADK agents only) |
 | `--metadata-file` | - | `deployment_metadata.json` | Path to deployment metadata file |
 | `--display-name` | `GEMINI_DISPLAY_NAME` | From agent or "My Agent" | Display name in Gemini Enterprise |
@@ -132,11 +136,12 @@ Find the Gemini Enterprise ID: Cloud Console > Gemini Enterprise > Apps > ID col
 **Interactive mode (recommended):**
 ```bash
 make register-gemini-enterprise
-# Follow the prompts to provide:
-# - Agent Engine ID (auto-detected)
-# - Project number (auto-filled)
-# - Location (defaults to 'global')
-# - Gemini Enterprise ID
+# The command will:
+# 1. Auto-detect your Agent Engine ID
+# 2. Use your current authenticated project ID
+# 3. Search and list all Gemini Enterprise apps across all regions (global, us, eu)
+# 4. Let you select from the list or enter a custom ID
+# 5. Provide a direct link to view your agent in the Google Cloud Console
 ```
 
 **Non-interactive with environment variables:**

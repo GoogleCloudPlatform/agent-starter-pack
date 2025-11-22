@@ -360,13 +360,129 @@ def prompt_for_agent_engine_id(default_from_metadata: str | None) -> str:
             )
 
 
+def get_current_project_id() -> str | None:
+    """Get current GCP project ID from auth defaults.
+
+    Returns:
+        Project ID string, or None if not configured
+    """
+    try:
+        _, project_id = default()
+        return project_id
+    except Exception:
+        return None
+
+
+def get_project_number(project_id: str) -> str | None:
+    """Get project number from project ID.
+
+    Args:
+        project_id: GCP project ID (e.g., 'my-project')
+
+    Returns:
+        Project number as string, or None if lookup fails
+    """
+    try:
+        result = subprocess.run(
+            [
+                "gcloud",
+                "projects",
+                "describe",
+                project_id,
+                "--format=value(projectNumber)",
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        # Maybe it's already a project number, return as-is
+        if project_id.isdigit():
+            return project_id
+        return None
+    except FileNotFoundError:
+        console_err.print("Warning: gcloud command not found")
+        # Maybe it's already a project number, return as-is
+        if project_id.isdigit():
+            return project_id
+        return None
+    except Exception:
+        # Fallback for any other errors
+        if project_id.isdigit():
+            return project_id
+        return None
+
+
+def list_gemini_enterprise_apps(
+    project_number: str,
+    location: str = "global",
+) -> list[dict] | None:
+    """List available Gemini Enterprise apps in a project.
+
+    Args:
+        project_number: GCP project number
+        location: Location (global, us, or eu)
+
+    Returns:
+        List of engine dictionaries with 'name' and 'displayName' keys, or None on error
+    """
+    try:
+        access_token = get_access_token()
+        base_endpoint = get_discovery_engine_endpoint(location)
+        url = (
+            f"{base_endpoint}/v1alpha/projects/{project_number}/"
+            f"locations/{location}/collections/default_collection/engines"
+        )
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "x-goog-user-project": project_number,
+        }
+
+        response = requests.get(url, headers=headers, timeout=30)
+        response.raise_for_status()
+
+        data = response.json()
+        engines = data.get("engines", [])
+
+        return engines
+
+    except requests.exceptions.HTTPError as e:
+        if (
+            hasattr(e, "response")
+            and e.response is not None
+            and e.response.status_code == 404
+        ):
+            # No engines found or collection doesn't exist
+            return []
+        error_code = (
+            e.response.status_code
+            if hasattr(e, "response") and e.response is not None
+            else "unknown"
+        )
+        console_err.print(
+            f"⚠️  Could not list Gemini Enterprise apps: HTTP {error_code}",
+            style="yellow",
+        )
+        return None
+    except Exception as e:
+        console_err.print(
+            f"⚠️  Could not list Gemini Enterprise apps: {e}",
+            style="yellow",
+        )
+        return None
+
+
 def prompt_for_gemini_enterprise_components(
     default_project: str | None = None,
 ) -> str:
     """Prompt user for Gemini Enterprise resource components and construct full ID.
 
+    Attempts to list available apps across all common locations in the project.
+    Falls back to manual entry if listing fails or user chooses custom entry.
+
     Args:
-        default_project: Default project number from Agent Engine ID
+        default_project: Default project number from Agent Engine ID (unused, kept for compatibility)
 
     Returns:
         Full Gemini Enterprise app resource name
@@ -375,48 +491,157 @@ def prompt_for_gemini_enterprise_components(
     console.print("[blue]GEMINI ENTERPRISE CONFIGURATION[/]")
     console.print("[blue]" + "=" * 70 + "[/]")
 
+    # Get current project ID from auth defaults
+    current_project_id = get_current_project_id()
+    project_id = None
+    project_number = None
+
+    if current_project_id:
+        console.print(f"\n✓ Current project: {current_project_id}")
+        console.print("  (from your authentication defaults)")
+        use_current = click.confirm(
+            "\nUse this project for Gemini Enterprise?", default=True
+        )
+        if use_current:
+            project_id = current_project_id
+        else:
+            project_id = click.prompt("Enter project ID", type=str).strip()
+    else:
+        console.print(
+            "\nYou need to provide the Gemini Enterprise app details."
+            "\nFind these in: Google Cloud Console → Gemini Enterprise → Apps"
+        )
+        project_id = click.prompt("Project ID", type=str).strip()
+
+    # Convert project ID to project number
+    console.print(f"[dim]Looking up project number for '{project_id}'...[/]")
+    project_number = get_project_number(project_id)
+    if not project_number:
+        console_err.print(
+            f"⚠️  Could not find project number for '{project_id}'",
+            style="yellow",
+        )
+        console.print("Please enter the project number directly:")
+        project_number = click.prompt("Project number", type=str).strip()
+    else:
+        console.print(f"✓ Project number: {project_number}")
+
+    # Search across all common locations
+    console.print(f"\n[dim]Searching for Gemini Enterprise apps in {project_id}...[/]")
+    all_engines = []
+    common_locations = ["global", "us", "eu"]
+
+    for location in common_locations:
+        engines = list_gemini_enterprise_apps(project_number, location)
+        if engines:
+            # Add location info to each engine for display
+            for engine in engines:
+                engine["_location"] = location
+            all_engines.extend(engines)
+
+    # Show results if any apps found
+    if len(all_engines) > 0:
+        console.print(f"\n✓ Found {len(all_engines)} Gemini Enterprise app(s):\n")
+
+        # Display available apps with numbers
+        for idx, engine in enumerate(all_engines, 1):
+            display_name = engine.get("displayName", "N/A")
+            location = engine.get("_location", "N/A")
+            # Extract short ID from full name
+            full_name = engine.get("name", "")
+            parts = full_name.split("/")
+            short_id = parts[-1] if parts else "N/A"
+
+            console.print(f"  [{idx}] {display_name} [dim]({location})[/]")
+            console.print(f"      ID: {short_id}")
+
+        # Add option for custom entry
+        console.print("\n  [0] Enter a custom Gemini Enterprise ID\n")
+
+        # Prompt for selection
+        while True:
+            try:
+                selection = click.prompt(
+                    f"Select an app (0-{len(all_engines)})",
+                    type=int,
+                    default=1 if len(all_engines) == 1 else None,
+                )
+
+                if 0 <= selection <= len(all_engines):
+                    break
+                else:
+                    console_err.print(
+                        f"Please enter a number between 0 and {len(all_engines)}"
+                    )
+            except (ValueError, click.exceptions.Abort):
+                console_err.print("Invalid input. Please enter a number.")
+                raise
+
+        # If user selected an existing app
+        if selection > 0:
+            selected_engine = all_engines[selection - 1]
+            full_id = selected_engine.get("name")
+
+            console.print("\n✓ Selected Gemini Enterprise App:")
+            console.print(f"  [bold]{full_id}[/]")
+            confirmed = click.confirm("Use this app?", default=True)
+
+            if confirmed:
+                return full_id
+
+            # If not confirmed, restart the whole process
+            console.print("\nLet's try again...")
+            return prompt_for_gemini_enterprise_components(default_project)
+
+        # If user selected custom entry (0), fall through to manual entry
+
+    else:
+        console.print(
+            f"\n⚠️  No Gemini Enterprise apps found in project {project_number}"
+        )
+        console.print(
+            "You can enter the details manually or try a different project.\n"
+        )
+        retry = click.confirm("Try a different project?", default=False)
+        if retry:
+            return prompt_for_gemini_enterprise_components(None)
+
+    # Manual entry flow
+    console.print("\n[blue]Manual Configuration[/]")
     console.print(
-        "\nYou need to provide the Gemini Enterprise app details."
+        "\nEnter your Gemini Enterprise app details."
         "\nFind these in: Google Cloud Console → Gemini Enterprise → Apps"
-        "\nCopy the ID from the 'ID' column for your Gemini Enterprise instance."
     )
 
-    while True:
-        # Project number
-        if default_project:
-            console.print(f"\n[dim]Default: {default_project}[/]")
-        project_number = click.prompt(
-            "Project number", type=str, default=default_project or ""
-        ).strip()
+    # Get location for manual entry
+    console.print("\nGemini Enterprise apps are typically in: global, us, or eu")
+    location = click.prompt(
+        "Location/Region",
+        type=str,
+        default="global",
+        show_default=True,
+    ).strip()
 
-        # Location - GE apps are typically in 'global', 'us', or 'eu'
-        console.print("\nGemini Enterprise apps are in: global, us, or eu")
-        location = click.prompt(
-            "Location/Region",
-            type=str,
-            default="global",
-            show_default=True,
-        ).strip()
+    # Get short ID
+    console.print(
+        "\nEnter your Gemini Enterprise ID (from the 'ID' column in the Apps table)."
+        "\n[blue]Example: gemini-enterprise-123456_1234567890[/]"
+    )
+    ge_short_id = click.prompt("Gemini Enterprise ID", type=str).strip()
 
-        # Gemini Enterprise short ID
-        console.print(
-            "\nEnter your Gemini Enterprise ID (from the 'ID' column in the Apps table)."
-            "\n[blue]Example: gemini-enterprise-123456_1234567890[/]"
-        )
-        ge_short_id = click.prompt("Gemini Enterprise ID", type=str).strip()
+    # Construct full resource name
+    full_id = f"projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_short_id}"
 
-        # Construct full resource name
-        # Format: projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_id}
-        full_id = f"projects/{project_number}/locations/{location}/collections/default_collection/engines/{ge_short_id}"
+    console.print("\nConstructed Gemini Enterprise App ID:")
+    console.print(f"  [bold]{full_id}[/]")
+    confirmed = click.confirm("Is this correct?", default=True)
 
-        console.print("\nConstructed Gemini Enterprise App ID:")
-        console.print(f"  [bold]{full_id}[/]")
-        confirmed = click.confirm("Is this correct?", default=True)
+    if confirmed:
+        return full_id
 
-        if confirmed:
-            return full_id
-
-        click.echo("Let's try again...")
+    # If not confirmed, restart
+    console.print("\nLet's try again...")
+    return prompt_for_gemini_enterprise_components(default_project)
 
 
 def ensure_discovery_engine_invoker_role(
@@ -465,6 +690,31 @@ def ensure_discovery_engine_invoker_role(
 
     except Exception:
         pass
+
+
+def get_gemini_enterprise_console_url(
+    gemini_enterprise_app_id: str, project_id: str
+) -> str | None:
+    """Construct Gemini Enterprise console URL.
+
+    Args:
+        gemini_enterprise_app_id: Full Gemini Enterprise app resource name
+        project_id: GCP project ID (not number)
+
+    Returns:
+        Console URL string, or None if parsing fails
+    """
+    parsed = parse_gemini_enterprise_app_id(gemini_enterprise_app_id)
+    if not parsed:
+        return None
+
+    location = parsed["location"]
+    engine_id = parsed["engine_id"]
+
+    return (
+        f"https://console.cloud.google.com/gemini-enterprise/locations/{location}/"
+        f"engines/{engine_id}/overview/dashboard?project={project_id}"
+    )
 
 
 def register_a2a_agent(
@@ -1008,6 +1258,18 @@ def register_gemini_enterprise(
                 project_id=project_id,
                 authorization_id=authorization_id,
             )
+
+            # Show console URL
+            # Need to get project ID for the console URL
+            console_project_id = project_id or get_current_project_id()
+            if console_project_id:
+                console_url = get_gemini_enterprise_console_url(
+                    resolved_gemini_enterprise_app_id, console_project_id
+                )
+                if console_url:
+                    console.print(
+                        f"\n🔗 View in Console:\n   [link={console_url}]{console_url}[/link]"
+                    )
         except Exception as e:
             raise click.ClickException(f"Error during A2A registration: {e}") from e
 
@@ -1066,5 +1328,16 @@ def register_gemini_enterprise(
                 project_id=project_id,
                 authorization_id=authorization_id,
             )
+
+            # Show console URL
+            console_project_id = project_id or get_current_project_id()
+            if console_project_id:
+                console_url = get_gemini_enterprise_console_url(
+                    resolved_gemini_enterprise_app_id, console_project_id
+                )
+                if console_url:
+                    console.print(
+                        f"\n🔗 View in Console:\n   [link={console_url}]{console_url}[/link]"
+                    )
         except Exception as e:
             raise click.ClickException(f"Error during ADK registration: {e}") from e

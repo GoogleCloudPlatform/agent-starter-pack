@@ -448,10 +448,18 @@ def list_gemini_enterprise_apps(
         return engines
 
     except requests.exceptions.HTTPError as e:
-        if hasattr(e, 'response') and e.response is not None and e.response.status_code == 404:
+        if (
+            hasattr(e, "response")
+            and e.response is not None
+            and e.response.status_code == 404
+        ):
             # No engines found or collection doesn't exist
             return []
-        error_code = e.response.status_code if hasattr(e, 'response') and e.response is not None else "unknown"
+        error_code = (
+            e.response.status_code
+            if hasattr(e, "response") and e.response is not None
+            else "unknown"
+        )
         console_err.print(
             f"⚠️  Could not list Gemini Enterprise apps: HTTP {error_code}",
             style="yellow",
@@ -519,9 +527,7 @@ def prompt_for_gemini_enterprise_components(
         console.print(f"✓ Project number: {project_number}")
 
     # Search across all common locations
-    console.print(
-        f"\n[dim]Searching for Gemini Enterprise apps in {project_id}...[/]"
-    )
+    console.print(f"\n[dim]Searching for Gemini Enterprise apps in {project_id}...[/]")
     all_engines = []
     common_locations = ["global", "us", "eu"]
 
@@ -550,7 +556,7 @@ def prompt_for_gemini_enterprise_components(
             console.print(f"      ID: {short_id}")
 
         # Add option for custom entry
-        console.print(f"\n  [0] Enter a custom Gemini Enterprise ID\n")
+        console.print("\n  [0] Enter a custom Gemini Enterprise ID\n")
 
         # Prompt for selection
         while True:

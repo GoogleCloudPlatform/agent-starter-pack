@@ -201,7 +201,9 @@ class TestParseAgentEngineId:
 class TestListGeminiEnterpriseApps:
     """Tests for list_gemini_enterprise_apps function."""
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token")
+    @patch(
+        "agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token"
+    )
     @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.requests.get")
     def test_list_apps_success(
         self, mock_get: MagicMock, mock_get_token: MagicMock
@@ -231,7 +233,9 @@ class TestListGeminiEnterpriseApps:
         assert result[0]["displayName"] == "Test App 1"
         assert result[1]["displayName"] == "Test App 2"
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token")
+    @patch(
+        "agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token"
+    )
     @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.requests.get")
     def test_list_apps_empty(
         self, mock_get: MagicMock, mock_get_token: MagicMock
@@ -248,7 +252,9 @@ class TestListGeminiEnterpriseApps:
         assert result is not None
         assert len(result) == 0
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token")
+    @patch(
+        "agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token"
+    )
     @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.requests.get")
     def test_list_apps_404_returns_empty(
         self, mock_get: MagicMock, mock_get_token: MagicMock
@@ -268,7 +274,9 @@ class TestListGeminiEnterpriseApps:
 
         assert result == []
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token")
+    @patch(
+        "agent_starter_pack.cli.commands.register_gemini_enterprise.get_access_token"
+    )
     @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.requests.get")
     def test_list_apps_other_error_returns_none(
         self, mock_get: MagicMock, mock_get_token: MagicMock

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import pathlib
 import re
 import sys
@@ -272,6 +273,12 @@ def enhance(
 
     # Display welcome banner for enhance command
     display_welcome_banner(enhance_mode=True)
+
+    # Setup debug logging if enabled
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, force=True)
+        console.print("> Debug mode enabled")
+        logging.debug("Starting enhance command in debug mode")
 
     # Handle --adk shortcut
     if adk:

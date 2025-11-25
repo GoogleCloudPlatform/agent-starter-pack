@@ -1384,7 +1384,13 @@ def copy_files(
 
     if src.is_dir():
         if not dst.exists():
-            dst.mkdir(parents=True)
+            try:
+                dst.mkdir(parents=True)
+                logging.debug(f"Created directory: {dst}")
+            except OSError as e:
+                logging.error(f"Failed to create directory: {dst}")
+                logging.error(f"Error: {e}")
+                raise
         for item in src.iterdir():
             if should_skip(item):
                 logging.debug(f"Skipping file/directory: {item}")
@@ -1395,14 +1401,35 @@ def copy_files(
                 copy_files(item, d, agent_name, overwrite, agent_directory)
             else:
                 if overwrite or not d.exists():
-                    logging.debug(f"Copying file: {item} -> {d}")
-                    shutil.copy2(item, d)
+                    try:
+                        # Ensure parent directory exists before copying
+                        d.parent.mkdir(parents=True, exist_ok=True)
+                        logging.debug(f"Copying file: {item} -> {d}")
+                        shutil.copy2(item, d)
+                    except OSError:
+                        logging.error(f"Failed to copy: {item} -> {d}")
+                        if sys.platform == "win32" and len(str(d.resolve())) >= 260:
+                            logging.error(
+                                f"Path length ({len(str(d.resolve()))} chars) may exceed Windows limit. Try using a shorter output directory."
+                            )
+                        raise
                 else:
                     logging.debug(f"Skipping existing file: {d}")
     else:
         if not should_skip(src):
             if overwrite or not dst.exists():
-                shutil.copy2(src, dst)
+                try:
+                    # Ensure parent directory exists before copying
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    logging.debug(f"Copying file: {src} -> {dst}")
+                    shutil.copy2(src, dst)
+                except OSError:
+                    logging.error(f"Failed to copy: {src} -> {dst}")
+                    if sys.platform == "win32" and len(str(dst.resolve())) >= 260:
+                        logging.error(
+                            f"Path length ({len(str(dst.resolve()))} chars) may exceed Windows limit. Try using a shorter output directory."
+                        )
+                    raise
 
 
 def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> None:

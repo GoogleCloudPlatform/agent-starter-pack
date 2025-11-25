@@ -1382,6 +1382,15 @@ def copy_files(
             return True
         return False
 
+    def log_windows_path_warning(path: pathlib.Path) -> None:
+        """Log a warning if path exceeds Windows MAX_PATH limit."""
+        if sys.platform == "win32":
+            path_str = str(path.absolute())
+            if len(path_str) >= 260:
+                logging.error(
+                    f"Path length ({len(path_str)} chars) may exceed Windows limit. Try using a shorter output directory."
+                )
+
     if src.is_dir():
         if not dst.exists():
             try:
@@ -1408,10 +1417,7 @@ def copy_files(
                         shutil.copy2(item, d)
                     except OSError:
                         logging.error(f"Failed to copy: {item} -> {d}")
-                        if sys.platform == "win32" and len(str(d.resolve())) >= 260:
-                            logging.error(
-                                f"Path length ({len(str(d.resolve()))} chars) may exceed Windows limit. Try using a shorter output directory."
-                            )
+                        log_windows_path_warning(d)
                         raise
                 else:
                     logging.debug(f"Skipping existing file: {d}")
@@ -1425,10 +1431,7 @@ def copy_files(
                     shutil.copy2(src, dst)
                 except OSError:
                     logging.error(f"Failed to copy: {src} -> {dst}")
-                    if sys.platform == "win32" and len(str(dst.resolve())) >= 260:
-                        logging.error(
-                            f"Path length ({len(str(dst.resolve()))} chars) may exceed Windows limit. Try using a shorter output directory."
-                        )
+                    log_windows_path_warning(dst)
                     raise
 
 

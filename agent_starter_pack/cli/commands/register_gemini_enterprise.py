@@ -1291,6 +1291,22 @@ def register_agent(
     envvar="PROJECT_NUMBER",
     help="GCP project number. Used as default when prompting for Gemini Enterprise configuration.",
 )
+@click.option(
+    "--registration-type",
+    envvar="REGISTRATION_TYPE",
+    type=click.Choice(["a2a", "adk"], case_sensitive=False),
+    help="Registration type: 'a2a' for A2A agents (requires agent card URL), "
+    "'adk' for ADK agents on Agent Engine (requires agent engine ID). "
+    "If not provided, auto-detected from metadata or prompted.",
+)
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help="Auto-approve all prompts (non-interactive mode). "
+    "Uses defaults from metadata and environment variables.",
+)
 def register_gemini_enterprise(
     agent_engine_id: str | None,
     metadata_file: str,
@@ -1303,6 +1319,8 @@ def register_gemini_enterprise(
     agent_card_url: str | None,
     deployment_target: str | None,
     project_number: str | None,
+    registration_type: str | None,
+    yes: bool,
 ) -> None:
     """Register an agent to Gemini Enterprise.
 
@@ -1323,33 +1341,80 @@ def register_gemini_enterprise(
 
     provided_agent_card_url = agent_card_url or os.getenv("AGENT_CARD_URL")
 
-    if not provided_agent_card_url:
-        if metadata:
+    # Determine registration type (a2a vs adk)
+    resolved_registration_type = registration_type
+    if not resolved_registration_type:
+        if provided_agent_card_url:
+            # Agent card URL provided -> A2A
+            resolved_registration_type = "a2a"
+        elif metadata:
+            # Use metadata to determine type
             is_a2a = metadata.get("is_a2a", False)
-            if is_a2a:
-                console.print("[blue]→ Detected A2A agent[/]")
+            resolved_registration_type = "a2a" if is_a2a else "adk"
+        else:
+            # No metadata, no agent card URL - prompt user to choose
+            console.print("[blue]No deployment metadata found.[/]")
+            console.print(
+                "\nSelect registration type:\n"
+                "  [1] A2A - Agent-to-Agent protocol (requires agent card URL)\n"
+                "  [2] ADK - Agent Development Kit on Agent Engine (requires agent engine ID)\n"
+            )
+            choice = click.prompt(
+                "Registration type (1 or 2)",
+                type=click.Choice(["1", "2"]),
+                default="1",
+            )
+            resolved_registration_type = "a2a" if choice == "1" else "adk"
+
+    # Log the registration type
+    if resolved_registration_type == "a2a":
+        console.print("[blue]→ A2A registration mode[/]")
+    else:
+        console.print("[blue]→ ADK registration mode[/]")
+
+    # Set up agent_card_url for A2A mode
+    if resolved_registration_type == "a2a":
+        if yes:
+            # In --yes mode, use provided URL directly or auto-construct from metadata
+            if provided_agent_card_url:
+                agent_card_url = provided_agent_card_url
+                console.print(f"Using agent card URL: {agent_card_url}")
+            elif metadata:
+                # Try to auto-construct from metadata
+                auto_url = construct_agent_card_url_from_metadata(metadata)
+                if auto_url:
+                    agent_card_url = auto_url
+                    console.print(
+                        f"Using auto-constructed agent card URL: {agent_card_url}"
+                    )
+                else:
+                    raise click.ClickException(
+                        "Agent card URL is required in --yes mode for A2A registration. "
+                        "Set the AGENT_CARD_URL environment variable."
+                    )
+            else:
+                raise click.ClickException(
+                    "Agent card URL is required in --yes mode for A2A registration. "
+                    "Set the AGENT_CARD_URL environment variable."
+                )
+        else:
+            if not provided_agent_card_url:
                 agent_card_url = prompt_for_agent_card_url_with_auto_construct(
                     metadata, None
                 )
-                if not deployment_target:
-                    deployment_target = metadata.get("deployment_target", "cloud_run")
             else:
-                console.print("[blue]→ Detected ADK agent[/]")
-                agent_card_url = None
-        else:
-            agent_card_url = prompt_for_agent_card_url_with_auto_construct(None, None)
-            if not deployment_target:
-                deployment_target = "cloud_run"
-    else:
-        agent_card_url = prompt_for_agent_card_url_with_auto_construct(
-            metadata, provided_agent_card_url
-        )
+                agent_card_url = prompt_for_agent_card_url_with_auto_construct(
+                    metadata, provided_agent_card_url
+                )
         if not deployment_target:
             deployment_target = (
                 metadata.get("deployment_target", "cloud_run")
                 if metadata
                 else "cloud_run"
             )
+    else:
+        # ADK mode - no agent_card_url needed
+        agent_card_url = None
 
     # A2A registration
     if agent_card_url:
@@ -1373,6 +1438,11 @@ def register_gemini_enterprise(
         )
 
         if not resolved_gemini_enterprise_app_id:
+            if yes:
+                raise click.ClickException(
+                    "Gemini Enterprise App ID is required in --yes mode. "
+                    "Set the ID or GEMINI_ENTERPRISE_APP_ID environment variable."
+                )
             default_project = project_number
             if (
                 not default_project
@@ -1392,17 +1462,23 @@ def register_gemini_enterprise(
         # Get display name and description with smart defaults from agent card
         if not display_name:
             default_display_name = agent_card.get("name") or "My A2A Agent"
-            resolved_display_name = click.prompt(
-                "Display name", default=default_display_name
-            )
+            if yes:
+                resolved_display_name = default_display_name
+            else:
+                resolved_display_name = click.prompt(
+                    "Display name", default=default_display_name
+                )
         else:
             resolved_display_name = display_name
 
         if not description:
             default_description = agent_card.get("description") or "AI Agent"
-            resolved_description = click.prompt(
-                "Description", default=default_description
-            )
+            if yes:
+                resolved_description = default_description
+            else:
+                resolved_description = click.prompt(
+                    "Description", default=default_description
+                )
         else:
             resolved_description = description
 
@@ -1447,7 +1523,8 @@ def register_gemini_enterprise(
     else:
         # Check SDK version compatibility for Agent Engine deployments
         # See: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495
-        if not check_and_upgrade_sdk_for_agent_engine():
+        # Skip interactive prompts in --yes mode
+        if not yes and not check_and_upgrade_sdk_for_agent_engine():
             console.print("\n[yellow]Registration aborted.[/yellow]")
             return
 
@@ -1462,7 +1539,12 @@ def register_gemini_enterprise(
                 metadata_id = (
                     metadata.get("remote_agent_engine_id") if metadata else None
                 )
-                resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
+                if yes and metadata_id:
+                    # In --yes mode, use metadata value directly without prompting
+                    resolved_agent_engine_id = metadata_id
+                    console.print(f"Using Agent Engine ID from metadata: {metadata_id}")
+                else:
+                    resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
 
         # Validate and parse Agent Engine ID
         parsed_ae = parse_agent_engine_id(resolved_agent_engine_id)
@@ -1480,6 +1562,11 @@ def register_gemini_enterprise(
         )
 
         if not resolved_gemini_enterprise_app_id:
+            if yes:
+                raise click.ClickException(
+                    "Gemini Enterprise App ID is required in --yes mode. "
+                    "Set the ID or GEMINI_ENTERPRISE_APP_ID environment variable."
+                )
             resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
                 default_project=parsed_ae["project"]
             )

@@ -25,10 +25,180 @@ import requests
 import vertexai
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
+from packaging import version
 from rich.console import Console
 
 console = Console(highlight=False)
 console_err = Console(stderr=True, highlight=False)
+
+# SDK version that contains the fix for Gemini Enterprise session bug
+# See: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495
+SDK_MIN_VERSION_FOR_GEMINI_ENTERPRISE = "1.128.0"
+
+
+def get_sdk_version_from_lock_file() -> tuple[str | None, bool]:
+    """Get google-cloud-aiplatform version and source from uv.lock file.
+
+    Returns:
+        Tuple of (version string or None, is_from_git boolean).
+        If from git, the fix is assumed to be applied regardless of version.
+    """
+    lock_path = Path("uv.lock")
+    if not lock_path.exists():
+        return None, False
+
+    try:
+        content = lock_path.read_text(encoding="utf-8")
+
+        # Parse TOML-like format to find google-cloud-aiplatform version and source
+        # Format:
+        # [[package]]
+        # name = "google-cloud-aiplatform"
+        # version = "1.xx.x"
+        # source = { registry = "..." } OR source = { git = "..." }
+        in_aiplatform_block = False
+        found_version = None
+        is_from_git = False
+
+        for line in content.splitlines():
+            line = line.strip()
+            if line == "[[package]]":
+                # If we already found what we need, stop
+                if found_version is not None:
+                    break
+                in_aiplatform_block = False
+            elif 'name = "google-cloud-aiplatform"' in line:
+                in_aiplatform_block = True
+            elif in_aiplatform_block:
+                if line.startswith("version = "):
+                    # Extract version from: version = "1.xx.x"
+                    found_version = line.split("=", 1)[1].strip().strip('"')
+                elif line.startswith("source = "):
+                    # Check if source is git
+                    if "git = " in line or "{ git" in line:
+                        is_from_git = True
+
+        return found_version, is_from_git
+    except Exception:
+        return None, False
+
+
+def check_and_upgrade_sdk_for_agent_engine() -> bool:
+    """Check if SDK version is compatible with Gemini Enterprise and offer to upgrade.
+
+    For Agent Engine deployments, there's a known issue with SDK versions <= 1.128.0
+    that causes 'Session not found' errors. The fix is available in the git repo.
+
+    Returns:
+        True if SDK is compatible or user upgraded, False if user chose to abort.
+    """
+    try:
+        current_version, is_from_git = get_sdk_version_from_lock_file()
+
+        if not current_version:
+            # No lock file or couldn't parse - skip check
+            return True
+
+        if is_from_git:
+            # Installed from git - assume fix is applied
+            return True
+
+        # Check if version is affected (<=1.128.0)
+        if version.parse(current_version) <= version.parse(
+            SDK_MIN_VERSION_FOR_GEMINI_ENTERPRISE
+        ):
+            console.print("\n" + "=" * 70)
+            console.print(
+                "[yellow]⚠️  Agent Engine SDK Compatibility Issue Detected[/yellow]"
+            )
+            console.print("=" * 70)
+            console.print(
+                f"\nYour current google-cloud-aiplatform version ({current_version}) has a known"
+            )
+            console.print(
+                "issue with Agent Engine that causes 'Session not found' errors when"
+            )
+            console.print("registering to Gemini Enterprise.")
+            console.print(
+                "\nSee: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495"
+            )
+            console.print(
+                "\n[bold]The fix is available in the SDK git repository (will be in PyPI >1.128.0).[/bold]"
+            )
+
+            upgrade = click.confirm(
+                "\nWould you like to upgrade to the fixed version from git now?",
+                default=True,
+            )
+
+            if upgrade:
+                console.print(
+                    "\n[blue]Upgrading SDK from git (this may take a minute)...[/blue]"
+                )
+                try:
+                    result = subprocess.run(
+                        [
+                            "uv",
+                            "add",
+                            "google-cloud-aiplatform[adk,agent_engines] @ git+https://github.com/googleapis/python-aiplatform.git",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,  # 5 minute timeout
+                    )
+
+                    if result.returncode == 0:
+                        console.print("\n[green]✅ SDK upgraded successfully![/green]")
+                        console.print("\n[bold]Next steps:[/bold]")
+                        console.print(
+                            "  1. Redeploy your agent to pick up the fix: [cyan]make deploy[/cyan]"
+                        )
+                        console.print(
+                            "  2. Re-run this command to register with Gemini Enterprise"
+                        )
+                        return False  # User needs to redeploy and restart
+                    else:
+                        console_err.print(
+                            f"\n[red]❌ Failed to upgrade SDK:[/red]\n{result.stderr}"
+                        )
+                        console.print("\nYou can manually run:")
+                        console.print(
+                            '  uv add "google-cloud-aiplatform[adk,agent_engines] @ git+https://github.com/googleapis/python-aiplatform.git"'
+                        )
+                        return click.confirm(
+                            "\nContinue anyway (may encounter errors)?", default=False
+                        )
+
+                except FileNotFoundError:
+                    console_err.print(
+                        "\n[yellow]⚠️  'uv' command not found. Please run manually:[/yellow]"
+                    )
+                    console.print(
+                        '  uv add "google-cloud-aiplatform[adk,agent_engines] @ git+https://github.com/googleapis/python-aiplatform.git"'
+                    )
+                    return click.confirm(
+                        "\nContinue anyway (may encounter errors)?", default=False
+                    )
+                except subprocess.TimeoutExpired:
+                    console_err.print("\n[red]❌ Upgrade timed out.[/red]")
+                    return click.confirm(
+                        "\nContinue anyway (may encounter errors)?", default=False
+                    )
+            else:
+                console.print("\nYou can manually upgrade later by running:")
+                console.print(
+                    '  uv add "google-cloud-aiplatform[adk,agent_engines] @ git+https://github.com/googleapis/python-aiplatform.git"'
+                )
+                return click.confirm(
+                    "\nContinue anyway (may encounter errors)?", default=False
+                )
+
+        return True  # Version is OK
+
+    except Exception as e:
+        # If we can't check the version, just continue
+        console_err.print(f"[dim]Warning: Could not check SDK version: {e}[/dim]")
+        return True
 
 
 def get_discovery_engine_endpoint(location: str) -> str:
@@ -944,23 +1114,21 @@ def register_agent(
     }
 
     # Request body
-    adk_agent_definition: dict = {
-        "tool_settings": {"tool_description": tool_description},
-        "provisioned_reasoning_engine": {"reasoningEngine": agent_engine_id},
-    }
-
-    # Add OAuth authorization if provided
-    if authorization_id:
-        adk_agent_definition["authorizations"] = [authorization_id]
-
-    payload = {
+    payload: dict = {
         "displayName": display_name,
         "description": description,
         "icon": {
             "uri": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/smart_toy/default/24px.svg"
         },
-        "adk_agent_definition": adk_agent_definition,
+        "adk_agent_definition": {
+            "tool_settings": {"tool_description": tool_description},
+            "provisioned_reasoning_engine": {"reasoning_engine": agent_engine_id},
+        },
     }
+
+    # Add OAuth authorization if provided (at top level, not inside adk_agent_definition)
+    if authorization_id:
+        payload["authorization_config"] = {"tool_authorizations": [authorization_id]}
 
     console.print("\n[blue]Registering agent to Gemini Enterprise...[/]")
     console.print(f"  Agent Engine: {agent_engine_id}")
@@ -1005,10 +1173,12 @@ def register_agent(
                     # Find the agent that matches our reasoning engine
                     existing_agent = None
                     for agent in agents_list:
-                        re_name = (
-                            agent.get("adk_agent_definition", {})
-                            .get("provisioned_reasoning_engine", {})
-                            .get("reasoningEngine", "")
+                        prov_re = agent.get("adk_agent_definition", {}).get(
+                            "provisioned_reasoning_engine", {}
+                        )
+                        # Check both snake_case and camelCase as API response format may vary
+                        re_name = prov_re.get(
+                            "reasoning_engine", prov_re.get("reasoningEngine", "")
                         )
                         if re_name == agent_engine_id:
                             existing_agent = agent
@@ -1275,6 +1445,12 @@ def register_gemini_enterprise(
 
     # ADK
     else:
+        # Check SDK version compatibility for Agent Engine deployments
+        # See: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495
+        if not check_and_upgrade_sdk_for_agent_engine():
+            console.print("\n[yellow]Registration aborted.[/yellow]")
+            return
+
         # Step 1: Get Agent Engine ID
         resolved_agent_engine_id = agent_engine_id
 

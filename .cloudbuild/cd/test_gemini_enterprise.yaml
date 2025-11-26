@@ -31,6 +31,15 @@ steps:
       - |
         gcloud config set project ${_E2E_DEV_PROJECT}
 
+  # Fetch identity token for Cloud Run authentication
+  - name: gcr.io/cloud-builders/gcloud
+    id: fetch-id-token
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud auth print-identity-token -q > /workspace/id_token.txt
+
   # Run Gemini Enterprise registration test
   - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: gemini-enterprise-test
@@ -38,6 +47,7 @@ steps:
     args:
       - "-c"
       - |
+        export ID_TOKEN=$(cat /workspace/id_token.txt)
         uv run pytest tests/cicd/test_gemini_enterprise_registration.py -v
     secretEnv: ['GEMINI_ENTERPRISE_APP_ID']
 

@@ -68,3 +68,11 @@ resource "google_project_iam_member" "cicd_runner_cleanup_project_roles" {
   role    = "roles/owner"
   member  = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
 }
+
+# Grant the SA permission to create identity tokens for itself
+# Required for gcloud auth print-identity-token to work in Cloud Build
+resource "google_service_account_iam_member" "cicd_runner_self_token_creator" {
+  service_account_id = google_service_account.cicd_runner_sa.name
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
+}

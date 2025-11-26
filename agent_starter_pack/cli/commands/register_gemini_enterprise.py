@@ -38,6 +38,14 @@ else:
 console = Console(highlight=False)
 console_err = Console(stderr=True, highlight=False)
 
+
+def _strip_callback(
+    _ctx: click.Context, _param: click.Parameter, value: str | None
+) -> str | None:
+    """Click callback to strip whitespace/newlines from option values."""
+    return value.strip() if value else value
+
+
 # SDK version that contains the fix for Gemini Enterprise session bug
 # See: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495
 SDK_MIN_VERSION_FOR_GEMINI_ENTERPRISE = "1.128.0"
@@ -1221,6 +1229,7 @@ def register_agent(
 @click.option(
     "--agent-engine-id",
     envvar="AGENT_ENGINE_ID",
+    callback=_strip_callback,
     help="Agent Engine resource name (e.g., projects/.../reasoningEngines/...). "
     "If not provided, reads from deployment_metadata.json.",
 )
@@ -1231,6 +1240,7 @@ def register_agent(
 )
 @click.option(
     "--gemini-enterprise-app-id",
+    callback=_strip_callback,
     help="Gemini Enterprise app full resource name "
     "(e.g., projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}). "
     "If not provided, the command will prompt you interactively. "
@@ -1239,32 +1249,38 @@ def register_agent(
 @click.option(
     "--display-name",
     envvar="GEMINI_DISPLAY_NAME",
+    callback=_strip_callback,
     help="Display name for the agent.",
 )
 @click.option(
     "--description",
     envvar="GEMINI_DESCRIPTION",
+    callback=_strip_callback,
     help="Description of the agent.",
 )
 @click.option(
     "--tool-description",
     envvar="GEMINI_TOOL_DESCRIPTION",
+    callback=_strip_callback,
     help="Description of what the tool does.",
 )
 @click.option(
     "--project-id",
     envvar="GOOGLE_CLOUD_PROJECT",
+    callback=_strip_callback,
     help="GCP project ID (extracted from agent-engine-id if not provided).",
 )
 @click.option(
     "--authorization-id",
     envvar="GEMINI_AUTHORIZATION_ID",
+    callback=_strip_callback,
     help="OAuth authorization resource name "
     "(e.g., projects/{project_number}/locations/global/authorizations/{auth_id}).",
 )
 @click.option(
     "--agent-card-url",
     envvar="AGENT_CARD_URL",
+    callback=_strip_callback,
     help="URL to fetch the agent card for A2A agents "
     "(e.g., https://your-service.run.app/a2a/app/.well-known/agent-card.json). "
     "If provided, registers as an A2A agent instead of ADK agent.",
@@ -1278,6 +1294,7 @@ def register_agent(
 @click.option(
     "--project-number",
     envvar="PROJECT_NUMBER",
+    callback=_strip_callback,
     help="GCP project number. Used as default when prompting for Gemini Enterprise configuration.",
 )
 @click.option(
@@ -1328,7 +1345,9 @@ def register_gemini_enterprise(
     except (json.JSONDecodeError, KeyError, FileNotFoundError):
         pass
 
-    provided_agent_card_url = agent_card_url or os.getenv("AGENT_CARD_URL")
+    provided_agent_card_url = agent_card_url or (
+        os.getenv("AGENT_CARD_URL", "").strip() or None
+    )
 
     # Determine registration type (a2a vs adk)
     resolved_registration_type = registration_type
@@ -1422,8 +1441,8 @@ def register_gemini_enterprise(
 
         resolved_gemini_enterprise_app_id = (
             gemini_enterprise_app_id
-            or os.getenv("ID")
-            or os.getenv("GEMINI_ENTERPRISE_APP_ID")
+            or (os.getenv("ID", "").strip() or None)
+            or (os.getenv("GEMINI_ENTERPRISE_APP_ID", "").strip() or None)
         )
 
         if not resolved_gemini_enterprise_app_id:
@@ -1521,7 +1540,7 @@ def register_gemini_enterprise(
         resolved_agent_engine_id = agent_engine_id
 
         if not resolved_agent_engine_id:
-            env_id = os.getenv("AGENT_ENGINE_ID")
+            env_id = os.getenv("AGENT_ENGINE_ID", "").strip() or None
             if env_id:
                 resolved_agent_engine_id = env_id
             else:
@@ -1546,8 +1565,8 @@ def register_gemini_enterprise(
         # Step 2: Get Gemini Enterprise App ID
         resolved_gemini_enterprise_app_id = (
             gemini_enterprise_app_id
-            or os.getenv("ID")
-            or os.getenv("GEMINI_ENTERPRISE_APP_ID")
+            or (os.getenv("ID", "").strip() or None)
+            or (os.getenv("GEMINI_ENTERPRISE_APP_ID", "").strip() or None)
         )
 
         if not resolved_gemini_enterprise_app_id:

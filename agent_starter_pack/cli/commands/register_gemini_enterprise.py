@@ -299,12 +299,21 @@ def get_access_token() -> str:
 def get_identity_token() -> str:
     """Get Google Cloud identity token.
 
+    First checks for ID_TOKEN environment variable (useful in CI/CD environments
+    like Cloud Build where the token is fetched in a separate step).
+    Falls back to gcloud CLI.
+
     Returns:
         Identity token string
 
     Raises:
         RuntimeError: If authentication fails
     """
+    # Check for pre-fetched token in environment variable (e.g., from Cloud Build)
+    env_token = os.getenv("ID_TOKEN", "").strip()
+    if env_token:
+        return env_token
+
     try:
         result = subprocess.run(
             ["gcloud", "auth", "print-identity-token"],

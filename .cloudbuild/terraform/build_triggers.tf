@@ -22,6 +22,13 @@ locals {
     "**/Makefile",
   ]
 
+  # Gemini Enterprise related files - these have their own dedicated trigger
+  gemini_enterprise_files = [
+    "agent_starter_pack/cli/commands/register_gemini_enterprise.py",
+    "tests/cicd/test_gemini_enterprise_registration.py",
+    ".cloudbuild/cd/test_gemini_enterprise.yaml",
+  ]
+
   common_included_files = [
     "agent_starter_pack/agents/**",
     "agent_starter_pack/cli/**",
@@ -359,7 +366,7 @@ resource "google_cloudbuild_trigger" "main_e2e_deployment_test" {
 
   filename       = ".cloudbuild/cd/test_e2e.yaml"
   included_files = local.e2e_agent_deployment_included_files[each.key]
-  ignored_files  = local.common_ignored_files
+  ignored_files  = concat(local.common_ignored_files, local.gemini_enterprise_files)
   include_build_logs = "INCLUDE_BUILD_LOGS_UNSPECIFIED"
 
   substitutions = {

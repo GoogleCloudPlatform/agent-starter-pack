@@ -18,6 +18,7 @@
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import click
@@ -25,10 +26,168 @@ import requests
 import vertexai
 from google.auth import default
 from google.auth.transport.requests import Request as GoogleAuthRequest
+from packaging import version
 from rich.console import Console
+
+# TOML parser - use standard library for Python 3.11+, fallback to tomli
+if sys.version_info >= (3, 11):
+    import tomllib
+else:
+    import tomli as tomllib
 
 console = Console(highlight=False)
 console_err = Console(stderr=True, highlight=False)
+
+# SDK version that contains the fix for Gemini Enterprise session bug
+# See: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495
+SDK_MIN_VERSION_FOR_GEMINI_ENTERPRISE = "1.128.0"
+
+# SDK upgrade command constants
+_SDK_UPGRADE_PACKAGE = (
+    "google-cloud-aiplatform[adk,agent_engines] "
+    "@ git+https://github.com/googleapis/python-aiplatform.git"
+)
+_SDK_UPGRADE_COMMAND = f'uv add "{_SDK_UPGRADE_PACKAGE}"'
+
+
+def get_sdk_version_from_lock_file() -> tuple[str | None, bool]:
+    """Get google-cloud-aiplatform version and source from uv.lock file.
+
+    Returns:
+        Tuple of (version string or None, is_from_git boolean).
+        If from git, the fix is assumed to be applied regardless of version.
+    """
+    lock_path = Path("uv.lock")
+    if not lock_path.exists():
+        return None, False
+
+    try:
+        with open(lock_path, "rb") as f:
+            lock_data = tomllib.load(f)
+
+        for package in lock_data.get("package", []):
+            if package.get("name") == "google-cloud-aiplatform":
+                found_version = package.get("version")
+                source = package.get("source")
+                is_from_git = isinstance(source, dict) and "git" in source
+                return found_version, is_from_git
+
+        return None, False
+    except (tomllib.TOMLDecodeError, OSError):
+        return None, False
+
+
+def _is_sdk_version_affected(current_version: str) -> bool:
+    """Check if the SDK version is affected by the Gemini Enterprise bug."""
+    return version.parse(current_version) <= version.parse(
+        SDK_MIN_VERSION_FOR_GEMINI_ENTERPRISE
+    )
+
+
+def _print_sdk_compatibility_warning(current_version: str) -> None:
+    """Print warning message about SDK compatibility issue."""
+    console.print("\n" + "=" * 70)
+    console.print("[yellow]⚠️  Agent Engine SDK Compatibility Issue Detected[/yellow]")
+    console.print("=" * 70)
+    console.print(
+        f"\nYour current google-cloud-aiplatform version ({current_version}) has a known"
+    )
+    console.print("issue with Agent Engine that causes 'Session not found' errors when")
+    console.print("registering to Gemini Enterprise.")
+    console.print(
+        "\nSee: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495"
+    )
+    console.print(
+        "\n[bold]The fix is available in the SDK git repository "
+        "(will be in PyPI >1.128.0).[/bold]"
+    )
+
+
+def _run_sdk_upgrade() -> bool:
+    """Execute the SDK upgrade command.
+
+    Returns:
+        True if upgrade succeeded, False otherwise.
+    """
+    console.print("\n[blue]Upgrading SDK from git (this may take a minute)...[/blue]")
+    try:
+        result = subprocess.run(
+            ["uv", "add", _SDK_UPGRADE_PACKAGE],
+            capture_output=True,
+            text=True,
+            timeout=300,  # 5 minute timeout
+        )
+
+        if result.returncode == 0:
+            console.print("\n[green]✅ SDK upgraded successfully![/green]")
+            console.print("\n[bold]Next steps:[/bold]")
+            console.print(
+                "  1. Redeploy your agent to pick up the fix: [cyan]make deploy[/cyan]"
+            )
+            console.print("  2. Re-run this command to register with Gemini Enterprise")
+            return True
+
+        console_err.print(f"\n[red]❌ Failed to upgrade SDK:[/red]\n{result.stderr}")
+        console.print(f"\nYou can manually run:\n  {_SDK_UPGRADE_COMMAND}")
+        return False
+
+    except FileNotFoundError:
+        console_err.print(
+            "\n[yellow]⚠️  'uv' command not found. Please run manually:[/yellow]"
+        )
+        console.print(f"  {_SDK_UPGRADE_COMMAND}")
+        return False
+    except subprocess.TimeoutExpired:
+        console_err.print("\n[red]❌ Upgrade timed out.[/red]")
+        return False
+
+
+def check_and_upgrade_sdk_for_agent_engine() -> bool:
+    """Check if SDK version is compatible with Gemini Enterprise and offer to upgrade.
+
+    For Agent Engine deployments, there's a known issue with SDK versions <= 1.128.0
+    that causes 'Session not found' errors. The fix is available in the git repo.
+
+    Returns:
+        True if SDK is compatible or user upgraded, False if user chose to abort.
+    """
+    try:
+        current_version, is_from_git = get_sdk_version_from_lock_file()
+
+        if not current_version:
+            # No lock file or couldn't parse - skip check
+            return True
+
+        if is_from_git:
+            # Installed from git - assume fix is applied
+            return True
+
+        if not _is_sdk_version_affected(current_version):
+            return True  # Version is OK
+
+        # Version is affected - warn user and offer upgrade
+        _print_sdk_compatibility_warning(current_version)
+
+        if click.confirm(
+            "\nWould you like to upgrade to the fixed version from git now?",
+            default=True,
+        ):
+            if _run_sdk_upgrade():
+                return False  # User needs to redeploy and restart
+            return click.confirm(
+                "\nContinue anyway (may encounter errors)?", default=False
+            )
+
+        # User declined upgrade
+        console.print(
+            f"\nYou can manually upgrade later by running:\n  {_SDK_UPGRADE_COMMAND}"
+        )
+        return click.confirm("\nContinue anyway (may encounter errors)?", default=False)
+
+    except Exception as e:
+        # If we can't check the version, just continue
+        console_err.print(f"[dim]Warning: Could not check SDK version: {e}[/dim]")
+        return True
 
 
 def get_discovery_engine_endpoint(location: str) -> str:
@@ -944,23 +1103,21 @@ def register_agent(
     }
 
     # Request body
-    adk_agent_definition: dict = {
-        "tool_settings": {"tool_description": tool_description},
-        "provisioned_reasoning_engine": {"reasoningEngine": agent_engine_id},
-    }
-
-    # Add OAuth authorization if provided
-    if authorization_id:
-        adk_agent_definition["authorizations"] = [authorization_id]
-
-    payload = {
+    payload: dict = {
         "displayName": display_name,
         "description": description,
         "icon": {
             "uri": "https://fonts.gstatic.com/s/i/short-term/release/googlesymbols/smart_toy/default/24px.svg"
         },
-        "adk_agent_definition": adk_agent_definition,
+        "adk_agent_definition": {
+            "tool_settings": {"tool_description": tool_description},
+            "provisioned_reasoning_engine": {"reasoning_engine": agent_engine_id},
+        },
     }
+
+    # Add OAuth authorization if provided (at top level, not inside adk_agent_definition)
+    if authorization_id:
+        payload["authorization_config"] = {"tool_authorizations": [authorization_id]}
 
     console.print("\n[blue]Registering agent to Gemini Enterprise...[/]")
     console.print(f"  Agent Engine: {agent_engine_id}")
@@ -1005,10 +1162,12 @@ def register_agent(
                     # Find the agent that matches our reasoning engine
                     existing_agent = None
                     for agent in agents_list:
-                        re_name = (
-                            agent.get("adk_agent_definition", {})
-                            .get("provisioned_reasoning_engine", {})
-                            .get("reasoningEngine", "")
+                        prov_re = agent.get("adk_agent_definition", {}).get(
+                            "provisioned_reasoning_engine", {}
+                        )
+                        # Check both snake_case and camelCase as API response format may vary
+                        re_name = prov_re.get(
+                            "reasoning_engine", prov_re.get("reasoningEngine", "")
                         )
                         if re_name == agent_engine_id:
                             existing_agent = agent
@@ -1121,6 +1280,22 @@ def register_agent(
     envvar="PROJECT_NUMBER",
     help="GCP project number. Used as default when prompting for Gemini Enterprise configuration.",
 )
+@click.option(
+    "--registration-type",
+    envvar="REGISTRATION_TYPE",
+    type=click.Choice(["a2a", "adk"], case_sensitive=False),
+    help="Registration type: 'a2a' for A2A agents (requires agent card URL), "
+    "'adk' for ADK agents on Agent Engine (requires agent engine ID). "
+    "If not provided, auto-detected from metadata or prompted.",
+)
+@click.option(
+    "--yes",
+    "-y",
+    is_flag=True,
+    default=False,
+    help="Auto-approve all prompts (non-interactive mode). "
+    "Uses defaults from metadata and environment variables.",
+)
 def register_gemini_enterprise(
     agent_engine_id: str | None,
     metadata_file: str,
@@ -1133,6 +1308,8 @@ def register_gemini_enterprise(
     agent_card_url: str | None,
     deployment_target: str | None,
     project_number: str | None,
+    registration_type: str | None,
+    yes: bool,
 ) -> None:
     """Register an agent to Gemini Enterprise.
 
@@ -1153,33 +1330,80 @@ def register_gemini_enterprise(
 
     provided_agent_card_url = agent_card_url or os.getenv("AGENT_CARD_URL")
 
-    if not provided_agent_card_url:
-        if metadata:
+    # Determine registration type (a2a vs adk)
+    resolved_registration_type = registration_type
+    if not resolved_registration_type:
+        if provided_agent_card_url:
+            # Agent card URL provided -> A2A
+            resolved_registration_type = "a2a"
+        elif metadata:
+            # Use metadata to determine type
             is_a2a = metadata.get("is_a2a", False)
-            if is_a2a:
-                console.print("[blue]→ Detected A2A agent[/]")
+            resolved_registration_type = "a2a" if is_a2a else "adk"
+        else:
+            # No metadata, no agent card URL - prompt user to choose
+            console.print("[blue]No deployment metadata found.[/]")
+            console.print(
+                "\nSelect registration type:\n"
+                "  [1] A2A - Agent-to-Agent protocol (requires agent card URL)\n"
+                "  [2] ADK - Agent Development Kit on Agent Engine (requires agent engine ID)\n"
+            )
+            choice = click.prompt(
+                "Registration type (1 or 2)",
+                type=click.Choice(["1", "2"]),
+                default="1",
+            )
+            resolved_registration_type = "a2a" if choice == "1" else "adk"
+
+    # Log the registration type
+    if resolved_registration_type == "a2a":
+        console.print("[blue]→ A2A registration mode[/]")
+    else:
+        console.print("[blue]→ ADK registration mode[/]")
+
+    # Set up agent_card_url for A2A mode
+    if resolved_registration_type == "a2a":
+        if yes:
+            # In --yes mode, use provided URL directly or auto-construct from metadata
+            if provided_agent_card_url:
+                agent_card_url = provided_agent_card_url
+                console.print(f"Using agent card URL: {agent_card_url}")
+            elif metadata:
+                # Try to auto-construct from metadata
+                auto_url = construct_agent_card_url_from_metadata(metadata)
+                if auto_url:
+                    agent_card_url = auto_url
+                    console.print(
+                        f"Using auto-constructed agent card URL: {agent_card_url}"
+                    )
+                else:
+                    raise click.ClickException(
+                        "Agent card URL is required in --yes mode for A2A registration. "
+                        "Set the AGENT_CARD_URL environment variable."
+                    )
+            else:
+                raise click.ClickException(
+                    "Agent card URL is required in --yes mode for A2A registration. "
+                    "Set the AGENT_CARD_URL environment variable."
+                )
+        else:
+            if not provided_agent_card_url:
                 agent_card_url = prompt_for_agent_card_url_with_auto_construct(
                     metadata, None
                 )
-                if not deployment_target:
-                    deployment_target = metadata.get("deployment_target", "cloud_run")
             else:
-                console.print("[blue]→ Detected ADK agent[/]")
-                agent_card_url = None
-        else:
-            agent_card_url = prompt_for_agent_card_url_with_auto_construct(None, None)
-            if not deployment_target:
-                deployment_target = "cloud_run"
-    else:
-        agent_card_url = prompt_for_agent_card_url_with_auto_construct(
-            metadata, provided_agent_card_url
-        )
+                agent_card_url = prompt_for_agent_card_url_with_auto_construct(
+                    metadata, provided_agent_card_url
+                )
         if not deployment_target:
             deployment_target = (
                 metadata.get("deployment_target", "cloud_run")
                 if metadata
                 else "cloud_run"
             )
+    else:
+        # ADK mode - no agent_card_url needed
+        agent_card_url = None
 
     # A2A registration
     if agent_card_url:
@@ -1203,6 +1427,11 @@ def register_gemini_enterprise(
         )
 
         if not resolved_gemini_enterprise_app_id:
+            if yes:
+                raise click.ClickException(
+                    "Gemini Enterprise App ID is required in --yes mode. "
+                    "Set the ID or GEMINI_ENTERPRISE_APP_ID environment variable."
+                )
             default_project = project_number
             if (
                 not default_project
@@ -1222,17 +1451,23 @@ def register_gemini_enterprise(
         # Get display name and description with smart defaults from agent card
         if not display_name:
             default_display_name = agent_card.get("name") or "My A2A Agent"
-            resolved_display_name = click.prompt(
-                "Display name", default=default_display_name
-            )
+            if yes:
+                resolved_display_name = default_display_name
+            else:
+                resolved_display_name = click.prompt(
+                    "Display name", default=default_display_name
+                )
         else:
             resolved_display_name = display_name
 
         if not description:
             default_description = agent_card.get("description") or "AI Agent"
-            resolved_description = click.prompt(
-                "Description", default=default_description
-            )
+            if yes:
+                resolved_description = default_description
+            else:
+                resolved_description = click.prompt(
+                    "Description", default=default_description
+                )
         else:
             resolved_description = description
 
@@ -1275,6 +1510,13 @@ def register_gemini_enterprise(
 
     # ADK
     else:
+        # Check SDK version compatibility for Agent Engine deployments
+        # See: https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/495
+        # Skip interactive prompts in --yes mode
+        if not yes and not check_and_upgrade_sdk_for_agent_engine():
+            console.print("\n[yellow]Registration aborted.[/yellow]")
+            return
+
         # Step 1: Get Agent Engine ID
         resolved_agent_engine_id = agent_engine_id
 
@@ -1286,7 +1528,12 @@ def register_gemini_enterprise(
                 metadata_id = (
                     metadata.get("remote_agent_engine_id") if metadata else None
                 )
-                resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
+                if yes and metadata_id:
+                    # In --yes mode, use metadata value directly without prompting
+                    resolved_agent_engine_id = metadata_id
+                    console.print(f"Using Agent Engine ID from metadata: {metadata_id}")
+                else:
+                    resolved_agent_engine_id = prompt_for_agent_engine_id(metadata_id)
 
         # Validate and parse Agent Engine ID
         parsed_ae = parse_agent_engine_id(resolved_agent_engine_id)
@@ -1304,6 +1551,11 @@ def register_gemini_enterprise(
         )
 
         if not resolved_gemini_enterprise_app_id:
+            if yes:
+                raise click.ClickException(
+                    "Gemini Enterprise App ID is required in --yes mode. "
+                    "Set the ID or GEMINI_ENTERPRISE_APP_ID environment variable."
+                )
             resolved_gemini_enterprise_app_id = prompt_for_gemini_enterprise_components(
                 default_project=parsed_ae["project"]
             )

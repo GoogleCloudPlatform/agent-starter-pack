@@ -34,6 +34,8 @@ This project is organized as follows:
 └── pyproject.toml       # Project dependencies and configuration
 ```
 
+> 💡 **Tip:** Use [Gemini CLI](https://github.com/google-gemini/gemini-cli) for AI-assisted development - project context is pre-configured in `GEMINI.md`.
+
 ## Requirements
 
 Before you begin, ensure you have:

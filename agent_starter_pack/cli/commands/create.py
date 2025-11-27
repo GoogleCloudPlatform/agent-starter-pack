@@ -797,8 +797,6 @@ def create(
                 f"   See data_ingestion/README.md for more info\n"
                 f"[bold white]=================================[/bold white]\n"
             )
-        console.print("\n> 👍 Done. Execute the following command to get started:")
-
         console.print("\n> Success! Your agent project is ready.")
         console.print(
             f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"

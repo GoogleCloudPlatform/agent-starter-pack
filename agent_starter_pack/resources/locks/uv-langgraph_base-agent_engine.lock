@@ -2197,7 +2197,7 @@ requires-dist = [
     { name = "nest-asyncio", specifier = ">=1.6.0,<2.0.0" },
     { name = "opentelemetry-exporter-gcp-trace", specifier = ">=1.9.0,<2.0.0" },
     { name = "protobuf", specifier = ">=6.31.1,<7.0.0" },
-    { name = "python-dotenv" },
+    { name = "python-dotenv", specifier = ">=1.0.0,<2.0.0" },
     { name = "ruff", marker = "extra == 'lint'", specifier = ">=0.4.6,<1.0.0" },
     { name = "traceloop-sdk", specifier = ">=0.10.0,<1.0.0" },
     { name = "types-pyyaml", marker = "extra == 'lint'", specifier = ">=6.0.12.20240917,<7.0.0" },

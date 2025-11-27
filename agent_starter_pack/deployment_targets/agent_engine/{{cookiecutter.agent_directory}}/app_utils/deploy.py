@@ -71,15 +71,7 @@ def parse_key_value_pairs(kv_string: str | None) -> dict[str, str]:
 
 
 def load_env_file(env_file_path: str | None, app_directory: str) -> dict[str, str]:
-    """Load environment variables from a .env file.
-
-    Args:
-        env_file_path: Path to the .env file. If None, looks for .env in app directory.
-        app_directory: The application directory where the agent code resides.
-
-    Returns:
-        Dictionary of environment variables from the file.
-    """
+    """Load environment variables from a .env file and return as dictionary."""
     # Determine which .env file to use
     if env_file_path:
         target_file = env_file_path

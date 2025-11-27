@@ -157,7 +157,7 @@ class AgentSession:
             # Create session if needed
             if not self.session_id:
                 session = await session_service.create_session(
-                    app_name="live-app",
+                    app_name=adk_app.name,
                     user_id=self.user_id,
                 )
                 self.session_id = session.id

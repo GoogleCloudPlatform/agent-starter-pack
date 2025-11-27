@@ -246,7 +246,7 @@ deploy:
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \
 {%- endif %}
 	ENV_VARS_BASE="COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.is_a2a %},APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" && \
-	ENV_VARS_FROM_DOTENV=$$(if [ -f .env ]; then grep -v '^#' .env | grep -v '^$$' | grep '=' | tr '\n' ',' | sed 's/,$$//'; else echo ""; fi) && \
+	ENV_VARS_FROM_DOTENV=$$(if [ -f .env ]; then awk '/^\s*($|#)/{next}{sub(/^\s*export\s+/, ""); printf "%s,", $$0}' .env | sed 's/,$//'; else echo ""; fi) && \
 	ENV_VARS_FULL=$$(if [ -n "$$ENV_VARS_FROM_DOTENV" ]; then echo "$$ENV_VARS_BASE,$$ENV_VARS_FROM_DOTENV"; else echo "$$ENV_VARS_BASE"; fi) && \
 	gcloud beta run deploy {{cookiecutter.project_name}} \
 		--source . \

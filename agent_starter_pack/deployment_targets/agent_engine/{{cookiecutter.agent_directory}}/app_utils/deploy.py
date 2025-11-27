@@ -93,24 +93,29 @@ def load_env_file(env_file_path: str | Path = ".env") -> dict[str, str]:
                 line = line.strip()
                 if not line or line.startswith("#"):
                     continue
-                
+
+                # Handle `export` keyword by removing it
+                if line.lstrip().startswith("export "):
+                    line = line.lstrip()[len("export "):].lstrip()
+
                 # Parse KEY=VALUE pairs
                 if "=" in line:
-                    # Handle quoted values
-                    if line.count("=") == 1:
-                        key, value = line.split("=", 1)
-                        key = key.strip()
-                        value = value.strip()
-                        
-                        # Remove quotes if present
-                        if value.startswith('"') and value.endswith('"'):
-                            value = value[1:-1]
-                        elif value.startswith("'") and value.endswith("'"):
-                            value = value[1:-1]
-                        
-                        env_vars[key] = value
-                    else:
+                    key, value = line.split("=", 1)
+                    key = key.strip()
+
+                    # Skip if key is invalid
+                    if not key or ' ' in key or '=' in key:
                         logging.warning(f"Skipping malformed line in .env: {line}")
+                        continue
+
+                    value = value.strip()
+
+                    # Remove surrounding quotes
+                    if (value.startswith('"') and value.endswith('"')) or \
+                       (value.startswith("'") and value.endswith("'")):
+                        value = value[1:-1]
+
+                    env_vars[key] = value
     except Exception as e:
         logging.warning(f"Error reading .env file: {e}")
     

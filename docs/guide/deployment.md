@@ -48,6 +48,8 @@ If you want to deploy a standalone development environment without setting up th
    make deploy
    ```
    
+   **Environment Variables:** The `make deploy` command automatically loads environment variables from a `.env` file in your project root (if present) and passes them to the deployment. This is useful for configuring secrets, API keys, and other environment-specific settings. Variables from `.env` are merged with the default deployment variables, and any variables specified via CLI flags take precedence.
+   
 ## Automated Deployment with `setup-cicd`
 
 For a streamlined, one-command deployment of the entire CI/CD pipeline and infrastructure, use the `setup-cicd` command from the root of your generated project.

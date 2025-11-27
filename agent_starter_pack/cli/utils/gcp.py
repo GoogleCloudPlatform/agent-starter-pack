@@ -13,30 +13,39 @@
 # limitations under the License.
 
 # ruff: noqa: E722
+from __future__ import annotations
+
 import os
 import subprocess
 import time
+from typing import TYPE_CHECKING
 
 # Suppress gRPC verbose logging
 os.environ["GRPC_VERBOSITY"] = "NONE"
 
-import google.auth
-from google.api_core.client_options import ClientOptions
-from google.api_core.exceptions import PermissionDenied
-from google.api_core.gapic_v1.client_info import ClientInfo
-from google.cloud.aiplatform import initializer
-from google.cloud.aiplatform_v1beta1.services.prediction_service import (
-    PredictionServiceClient,
-)
-from google.cloud.aiplatform_v1beta1.types.prediction_service import (
-    CountTokensRequest,
-)
-from rich.console import Console
-from rich.prompt import Confirm
+# Type hints only - no runtime import cost
+if TYPE_CHECKING:
+    from google.api_core.gapic_v1.client_info import ClientInfo
+    from google.cloud.aiplatform_v1beta1.types.prediction_service import (
+        CountTokensRequest,
+    )
+    from rich.console import Console
 
 from agent_starter_pack.cli.utils.version import PACKAGE_NAME, get_current_version
 
-console = Console()
+# Lazy console - only create when needed
+_console = None
+
+
+def _get_console() -> Console:
+    """Lazily initialize rich Console."""
+    from rich.console import Console
+
+    global _console
+    if _console is None:
+        _console = Console()
+    return _console
+
 
 _AUTH_ERROR_MESSAGE = (
     "Looks like you are not authenticated with Google Cloud.\n"
@@ -49,6 +58,9 @@ def enable_vertex_ai_api(
     project_id: str, auto_approve: bool = False, context: str | None = None
 ) -> bool:
     """Enable Vertex AI API with user confirmation and propagation waiting."""
+    from rich.prompt import Confirm
+
+    console = _get_console()
     api_name = "aiplatform.googleapis.com"
 
     # First test if API is already working with a direct connection
@@ -114,37 +126,49 @@ def _test_vertex_ai_connection(
 ) -> bool:
     """Test Vertex AI connection without raising exceptions."""
     try:
+        # Lazy imports - only load when actually testing connection
+        import google.auth
+        from google.api_core.client_options import ClientOptions
+        from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+            PredictionServiceClient,
+        )
+
         credentials, _ = google.auth.default()
         client = PredictionServiceClient(
             credentials=credentials,
             client_options=ClientOptions(
                 api_endpoint=f"{location}-aiplatform.googleapis.com"
             ),
-            client_info=get_client_info(context),
-            transport=initializer.global_config._api_transport,
+            client_info=_get_client_info(context),
         )
-        request = get_dummy_request(project_id=project_id)
+        request = _get_dummy_request(project_id=project_id)
         client.count_tokens(request=request)
         return True
     except Exception:
         return False
 
 
-def get_user_agent(context: str | None = None) -> str:
+def _get_user_agent(context: str | None = None) -> str:
     """Returns a custom user agent string."""
     version = get_current_version()
     prefix = "ag" if context == "agent-garden" else ""
     return f"{prefix}{version}-{PACKAGE_NAME}/{prefix}{version}-{PACKAGE_NAME}"
 
 
-def get_client_info(context: str | None = None) -> ClientInfo:
+def _get_client_info(context: str | None = None) -> ClientInfo:
     """Returns ClientInfo with custom user agent."""
-    user_agent = get_user_agent(context)
+    from google.api_core.gapic_v1.client_info import ClientInfo
+
+    user_agent = _get_user_agent(context)
     return ClientInfo(client_library_version=user_agent, user_agent=user_agent)
 
 
-def get_dummy_request(project_id: str) -> CountTokensRequest:
+def _get_dummy_request(project_id: str) -> CountTokensRequest:
     """Creates a simple test request for Gemini."""
+    from google.cloud.aiplatform_v1beta1.types.prediction_service import (
+        CountTokensRequest,
+    )
+
     return CountTokensRequest(
         contents=[{"role": "user", "parts": [{"text": "Hi"}]}],
         endpoint=f"projects/{project_id}/locations/global/publishers/google/models/gemini-2.5-flash",
@@ -166,6 +190,16 @@ def verify_vertex_connection(
     if not enable_vertex_ai_api(project_id, auto_approve, context):
         raise Exception("Vertex AI API is not enabled and user declined to enable it")
 
+    # Lazy imports for retry after enabling API
+    import google.auth
+    from google.api_core.client_options import ClientOptions
+    from google.api_core.exceptions import PermissionDenied
+    from google.cloud.aiplatform_v1beta1.services.prediction_service import (
+        PredictionServiceClient,
+    )
+
+    console = _get_console()
+
     # After enabling, test again with proper error handling
     credentials, _ = google.auth.default()
     client = PredictionServiceClient(
@@ -173,10 +207,9 @@ def verify_vertex_connection(
         client_options=ClientOptions(
             api_endpoint=f"{location}-aiplatform.googleapis.com"
         ),
-        client_info=get_client_info(context),
-        transport=initializer.global_config._api_transport,
+        client_info=_get_client_info(context),
     )
-    request = get_dummy_request(project_id=project_id)
+    request = _get_dummy_request(project_id=project_id)
 
     try:
         client.count_tokens(request=request)
@@ -206,6 +239,10 @@ def verify_vertex_connection(
 
 def verify_credentials() -> dict:
     """Verify GCP credentials and return current project and account."""
+    # Lazy import google.auth only when verifying credentials
+    import google.auth
+    import google.auth.exceptions
+
     try:
         # Get credentials and project
         credentials, project = google.auth.default()

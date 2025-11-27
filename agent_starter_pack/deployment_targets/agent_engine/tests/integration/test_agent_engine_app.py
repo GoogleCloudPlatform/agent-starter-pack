@@ -187,6 +187,12 @@ async def test_websocket_audio_input(server_fixture: subprocess.Popen[str]) -> N
                 # Verify we got responses
                 assert len(responses) > 0, "No responses received"
 
+                # Verify no error responses
+                for idx, response in enumerate(responses):
+                    assert "error" not in response, (
+                        f"Response {idx} contains error: {response.get('error')}"
+                    )
+
                 logger.info(f"Audio test passed. Received {len(responses)} responses")
 
             finally:

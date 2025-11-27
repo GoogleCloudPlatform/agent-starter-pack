@@ -231,13 +231,23 @@ build-inspector-if-needed:
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 # Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+# Environment variables from .env file (if present) will be automatically loaded and passed to the deployment
 {%- endif %}
 deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
+	@# Load environment variables from .env file if it exists
+	@if [ -f .env ]; then \
+		echo "Loading environment variables from .env file..."; \
+	else \
+		echo "No .env file found. Skipping environment variable loading."; \
+	fi
 	PROJECT_ID=$$(gcloud config get-value project) && \
 {%- if cookiecutter.is_a2a %}
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \
 {%- endif %}
+	ENV_VARS_BASE="COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.is_a2a %},APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" && \
+	ENV_VARS_FROM_DOTENV=$$(if [ -f .env ]; then grep -v '^#' .env | grep -v '^$$' | grep '=' | tr '\n' ',' | sed 's/,$$//'; else echo ""; fi) && \
+	ENV_VARS_FULL=$$(if [ -n "$$ENV_VARS_FROM_DOTENV" ]; then echo "$$ENV_VARS_BASE,$$ENV_VARS_FROM_DOTENV"; else echo "$$ENV_VARS_BASE"; fi) && \
 	gcloud beta run deploy {{cookiecutter.project_name}} \
 		--source . \
 		--memory "4Gi" \
@@ -247,8 +257,7 @@ deploy:
 		--no-cpu-throttling \
 		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
-		--set-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.is_a2a %},APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
+		--set-env-vars "$$ENV_VARS_FULL" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}

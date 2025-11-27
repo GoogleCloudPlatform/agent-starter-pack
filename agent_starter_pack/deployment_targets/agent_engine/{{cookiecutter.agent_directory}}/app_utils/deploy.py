@@ -18,7 +18,9 @@ import importlib
 import inspect
 import json
 import logging
+import os
 import warnings
+from pathlib import Path
 from typing import Any
 
 import click
@@ -66,6 +68,53 @@ def parse_key_value_pairs(kv_string: str | None) -> dict[str, str]:
             else:
                 logging.warning(f"Skipping malformed key-value pair: {pair}")
     return result
+
+
+def load_env_file(env_file_path: str | Path = ".env") -> dict[str, str]:
+    """Load environment variables from a .env file.
+    
+    Args:
+        env_file_path: Path to the .env file (default: .env in current directory)
+        
+    Returns:
+        Dictionary of environment variables loaded from the file
+    """
+    env_vars = {}
+    env_path = Path(env_file_path)
+    
+    if not env_path.exists():
+        logging.debug(f"No .env file found at {env_path}")
+        return env_vars
+    
+    try:
+        with open(env_path, "r", encoding="utf-8") as f:
+            for line in f:
+                # Strip whitespace and skip empty lines and comments
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                
+                # Parse KEY=VALUE pairs
+                if "=" in line:
+                    # Handle quoted values
+                    if line.count("=") == 1:
+                        key, value = line.split("=", 1)
+                        key = key.strip()
+                        value = value.strip()
+                        
+                        # Remove quotes if present
+                        if value.startswith('"') and value.endswith('"'):
+                            value = value[1:-1]
+                        elif value.startswith("'") and value.endswith("'"):
+                            value = value[1:-1]
+                        
+                        env_vars[key] = value
+                    else:
+                        logging.warning(f"Skipping malformed line in .env: {line}")
+    except Exception as e:
+        logging.warning(f"Error reading .env file: {e}")
+    
+    return env_vars
 
 
 def write_deployment_metadata(
@@ -242,8 +291,15 @@ def deploy_agent_engine_app(
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    # Parse environment variables and labels if provided
-    env_vars = parse_key_value_pairs(set_env_vars)
+    # Load environment variables from .env file if it exists
+    env_vars = load_env_file()
+    if env_vars:
+        logging.info(f"Loaded {len(env_vars)} environment variable(s) from .env file")
+    
+    # Parse environment variables from CLI (these will override .env file values)
+    cli_env_vars = parse_key_value_pairs(set_env_vars)
+    env_vars.update(cli_env_vars)  # CLI vars take precedence
+    
     labels_dict = parse_key_value_pairs(labels)
 
     # Set GOOGLE_CLOUD_REGION to match deployment location

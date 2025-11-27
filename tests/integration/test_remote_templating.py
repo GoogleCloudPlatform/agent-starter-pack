@@ -22,21 +22,30 @@ from tests.integration.utils import run_command
 
 console = Console()
 TARGET_DIR = "target"
+REMOTE_URL = "adk@academic-research"
 
 
-def test_remote_templating() -> None:
-    """Test creating an agent from a remote template."""
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    project_name = f"myagent-{timestamp}"
+def _run_remote_templating_test(
+    project_name: str,
+    skip_version_lock: bool = False,
+) -> None:
+    """Helper to run remote templating test with common logic.
+
+    Args:
+        project_name: Name for the generated project
+        skip_version_lock: If True, set ASP_SKIP_VERSION_LOCK=1 to use local ASP
+    """
     output_dir = pathlib.Path(TARGET_DIR)
     project_path = output_dir / project_name
-    remote_url = (
-        "https://github.com/eliasecchig/adk-samples-copy/python/agents/gemini-fullstack"
-    )
 
     try:
         # Create target directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
+
+        # Set up environment
+        env = os.environ.copy()
+        if skip_version_lock:
+            env["ASP_SKIP_VERSION_LOCK"] = "1"
 
         # Template the project from the remote URL
         cmd = [
@@ -46,29 +55,42 @@ def test_remote_templating() -> None:
             "create",
             project_name,
             "-a",
-            remote_url,
+            REMOTE_URL,
             "--deployment-target",
             "agent_engine",
             "--auto-approve",
             "--skip-checks",
         ]
 
+        suffix = " (using local ASP)" if skip_version_lock else ""
         run_command(
             cmd,
             output_dir,
-            f"Templating remote agent {project_name}",
+            f"Templating remote agent {project_name}{suffix}",
+            env=env,
         )
 
         # Verify essential files are created
         essential_files = [
             "pyproject.toml",
-            "app/agent.py",
-            "app/config.py",
             "README.md",
         ]
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
+        # Find the agent directory (could be 'app' or the agent name like 'academic_research')
+        agent_dirs = [
+            d
+            for d in project_path.iterdir()
+            if d.is_dir() and (d / "agent.py").exists()
+        ]
+        assert len(agent_dirs) == 1, (
+            f"Expected exactly one agent directory, found: {agent_dirs}"
+        )
+        agent_dir = agent_dirs[0]
+        assert (agent_dir / "agent.py").exists(), "Missing agent.py in agent directory"
+
+        # Install dependencies
         run_command(
             [
                 "uv",
@@ -86,20 +108,40 @@ def test_remote_templating() -> None:
         test_dirs = ["tests/unit", "tests/integration"]
         for test_dir in test_dirs:
             # Set environment variable for integration tests
-            env = os.environ.copy()
-            env["INTEGRATION_TEST"] = "TRUE"
+            test_env = os.environ.copy()
+            test_env["INTEGRATION_TEST"] = "TRUE"
 
             run_command(
                 ["uv", "run", "pytest", test_dir],
                 project_path,
                 f"Running {test_dir} tests",
-                env=env,
+                env=test_env,
             )
 
+        test_type = "with local ASP " if skip_version_lock else ""
         console.print(
-            f"[bold green]✓[/] Remote templating test passed for {project_name}"
+            f"[bold green]✓[/] Remote templating {test_type}test passed for {project_name}"
         )
 
     except Exception as e:
         console.print(f"[bold red]Error:[/] {e!s}")
         raise
+
+
+def test_remote_templating() -> None:
+    """Test creating an agent from a remote template."""
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    project_name = f"myagent-{timestamp}"
+    _run_remote_templating_test(project_name, skip_version_lock=False)
+
+
+def test_remote_templating_with_local_asp() -> None:
+    """Test creating an agent from a remote template using local ASP version.
+
+    Uses ASP_SKIP_VERSION_LOCK to bypass the uv.lock version constraint,
+    allowing testing of remote templates with the current development version.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    # Use shorter name prefix to stay within 26 char limit
+    project_name = f"agent-l-{timestamp}"
+    _run_remote_templating_test(project_name, skip_version_lock=True)

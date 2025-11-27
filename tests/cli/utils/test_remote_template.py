@@ -60,10 +60,10 @@ class TestRemoteTemplateSpec:
 class TestParseAgentSpec:
     def test_parse_adk_shortcut(self) -> None:
         """Test parsing ADK shortcut format"""
-        spec = parse_agent_spec("adk@data-science")
+        spec = parse_agent_spec("adk@academic-research")
         assert spec is not None
         assert spec.repo_url == "https://github.com/google/adk-samples"
-        assert spec.template_path == "python/agents/data-science"
+        assert spec.template_path == "python/agents/academic-research"
         assert spec.git_ref == "main"
         assert spec.is_adk_samples is True
 
@@ -390,8 +390,8 @@ class TestRemoteTemplateIntegration:
                 "builtins.open",
                 mock_open(
                     read_data="""
-name: data-science
-description: Data Science Agent
+name: academic-research
+description: Academic Research Agent
 base_template: adk_base
 settings:
   requires_data_ingestion: true
@@ -401,7 +401,7 @@ settings:
             ),
         ):
             # Parse ADK samples spec
-            spec = parse_agent_spec("adk@data-science")
+            spec = parse_agent_spec("adk@academic-research")
             assert spec is not None
             assert spec.is_adk_samples is True
 
@@ -412,7 +412,7 @@ settings:
         """Test various template validation scenarios"""
         test_cases = [
             # ADK samples
-            ("adk@data-science", True),
+            ("adk@academic-research", True),
             ("adk@custom-agent", True),
             # GitHub URLs
             ("https://github.com/org/repo", True),
@@ -488,10 +488,10 @@ class TestParseAgentSpecWithGitSuffix:
 
     def test_parse_adk_shortcut_not_affected(self) -> None:
         """Ensure the adk@ shortcut remains unaffected."""
-        spec = parse_agent_spec("adk@data-science")
+        spec = parse_agent_spec("adk@academic-research")
         assert spec is not None
         assert spec.repo_url == "https://github.com/google/adk-samples"
-        assert spec.template_path == "python/agents/data-science"
+        assert spec.template_path == "python/agents/academic-research"
         assert spec.git_ref == "main"
         assert spec.is_adk_samples is True
 

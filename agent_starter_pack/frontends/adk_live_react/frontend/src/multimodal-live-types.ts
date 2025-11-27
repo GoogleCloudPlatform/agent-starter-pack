@@ -244,8 +244,7 @@ export const isToolCallCancellation = (
 
 // ADK Event types
 export interface AdkEvent {
-  user_id: string;
-  session_id: string;
+  invocation_id: string;
   author: string;
   actions: {
     state_delta: any;
@@ -262,14 +261,18 @@ export interface AdkEvent {
   interrupted?: boolean;
   turn_complete?: boolean;
   partial?: boolean;
+  usage_metadata?: {
+    prompt_token_count: number;
+    total_token_count: number;
+    prompt_tokens_details?: any[];
+  };
 }
 
 // ADK Event type guards
 export const isAdkEvent = (a: unknown): a is AdkEvent =>
   typeof a === "object" &&
   a !== null &&
-  typeof (a as any).user_id === "string" &&
-  typeof (a as any).session_id === "string" &&
+  typeof (a as any).invocation_id === "string" &&
   typeof (a as any).author === "string" &&
   typeof (a as any).actions === "object";
 

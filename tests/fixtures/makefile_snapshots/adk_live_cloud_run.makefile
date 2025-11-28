@@ -67,7 +67,7 @@ deploy:
 		--no-cpu-throttling \
 		--labels "" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
-		--set-env-vars \
+		--update-env-vars \
 		"COMMIT_SHA=$(shell git rev-parse HEAD)" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))

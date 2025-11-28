@@ -40,7 +40,7 @@ Name of the agent directory (overrides template default, usually `app`). This de
 - `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
 - `--include-data-ingestion, -i` - Include data ingestion pipeline
 - `--session-type` - Session storage type
-- `--auto-approve` - Skip confirmation prompts
+- `--auto-approve, --yes, -y` - Skip confirmation prompts and use defaults
 - And all other `create` command options
 
 ## Examples
@@ -179,15 +179,15 @@ The `enhance` command automatically creates a complete backup of your project be
 ## Best Practices
 
 1. **Review Backup:** Check that the backup was created successfully
-2. **Follow Structure:** Organize your agent code in `/app/agent.py` for best compatibility  
-3. **Test Locally:** Use `--auto-approve` in CI/CD but test interactively first
+2. **Follow Structure:** Organize your agent code in `/app/agent.py` for best compatibility
+3. **Test Locally:** Use `-y` in CI/CD but test interactively first
 4. **Review Changes:** After enhancement, review the generated files and configuration
 
 ## Troubleshooting
 
 **"Project structure warning"**
 - Organize your agent code in an `/app` folder (or specify custom directory with `--agent-directory`)
-- Use `--auto-approve` to skip the confirmation prompt
+- Use `-y` to skip the confirmation prompt
 
 **"Enhancement cancelled"**
 - Create an `/app` folder with your `agent.py` file

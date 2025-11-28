@@ -448,3 +448,86 @@ class TestCreateCommand:
         result = normalize_project_name("test-project")
         assert result == "test-project"
         mock_console.print.assert_not_called()
+
+    def test_create_auto_approve_defaults_project_name(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_subprocess: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_verify_vertex_connection: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command defaults project name to 'my-agent' in auto-approve mode"""
+        runner = CliRunner()
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(create, ["--agent", "1", "-y"])
+
+        assert result.exit_code == 0, result.output
+        assert "Defaulting to 'my-agent'" in result.output
+        mock_process_template.assert_called_once()
+
+    def test_create_auto_approve_defaults_agent(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_subprocess: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_verify_vertex_connection: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command defaults agent to first available in auto-approve mode"""
+        runner = CliRunner()
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(create, ["test-project", "-y"])
+
+        assert result.exit_code == 0, result.output
+        assert "--agent not specified. Defaulting to 'langgraph_base'" in result.output
+        mock_process_template.assert_called_once()
+
+    def test_create_interactive_prompts_for_project_name(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_prompt_deployment_target: MagicMock,
+        mock_subprocess: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_verify_vertex_connection: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command prompts for project name when not provided"""
+        runner = CliRunner()
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch("rich.prompt.IntPrompt.ask") as mock_int_prompt,
+            patch("rich.prompt.Prompt.ask") as mock_prompt,
+        ):
+            mock_int_prompt.return_value = 1  # Select first agent
+            # First call for project name, second for credential confirmation
+            mock_prompt.side_effect = ["my-custom-project", "Y"]
+
+            result = runner.invoke(create, [])
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()

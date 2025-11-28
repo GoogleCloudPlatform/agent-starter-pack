@@ -5,12 +5,13 @@ Create new GCP-based AI agent projects from built-in agents or remote templates.
 ## Usage
 
 ```bash
-uvx agent-starter-pack create PROJECT_NAME [OPTIONS]
+uvx agent-starter-pack create [PROJECT_NAME] [OPTIONS]
 ```
 
 ## Arguments
 
-- `PROJECT_NAME`: Name for your new agent project directory and base for resource naming.
+- `PROJECT_NAME` (optional): Name for your new agent project directory and base for resource naming.
+  If omitted, you'll be prompted interactively (or defaults to `my-agent` with `--auto-approve`).
   *Note: This name will be converted to lowercase and must be 26 characters or less.*
 
 ## Template Selection
@@ -130,8 +131,12 @@ uvx agent-starter-pack create my-agent -a template --in-folder
 
 ## Automation Options
 
-### `--auto-approve`
-Skip interactive confirmation prompts for GCP credentials and region.
+### `--auto-approve`, `--yes`, `-y`
+Skip interactive confirmation prompts and use sensible defaults:
+- Project name defaults to `my-agent`
+- Agent defaults to first available (typically `adk_base`)
+- Deployment target defaults to `agent_engine`
+- CI/CD runner defaults to `google_cloud_build`
 
 ### `--skip-checks`
 Skip verification checks for GCP authentication and Vertex AI connection.
@@ -141,10 +146,20 @@ Enable debug logging for troubleshooting.
 
 ## Examples
 
+### Quick Start
+
+```bash
+# Create with all defaults (project: my-agent, agent: adk_base, target: agent_engine)
+uvx agent-starter-pack create -y
+
+# Fully interactive mode
+uvx agent-starter-pack create
+```
+
 ### Basic Usage
 
 ```bash
-# Create a new project interactively
+# Create a new project with specific name
 uvx agent-starter-pack create my-agent-project
 
 # Create with specific built-in agent
@@ -186,7 +201,7 @@ uvx agent-starter-pack create my-agent -a adk@data-science --in-folder
 uvx agent-starter-pack create my-agent -a adk_base --agent-directory chatbot
 
 # Skip all prompts for automation
-uvx agent-starter-pack create my-agent -a template-url --auto-approve --skip-checks
+uvx agent-starter-pack create my-agent -a template-url -y --skip-checks
 ```
 
 ### Output Directory

@@ -413,7 +413,7 @@ if instance_connection_name and db_pass:
     encoded_instance = instance_connection_name.replace(":", "%3A")
 
     session_service_uri = (
-        f"postgresql+psycopg2://{encoded_user}:{encoded_pass}@"
+        f"postgresql+asyncpg://{encoded_user}:{encoded_pass}@"
         f"/{db_name}"
         f"?host=/cloudsql/{encoded_instance}"
     )

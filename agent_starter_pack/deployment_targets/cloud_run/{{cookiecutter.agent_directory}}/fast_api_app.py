@@ -451,10 +451,12 @@ else:
 session_service_uri = None
 {%- endif %}
 
+artifact_service_uri = f"gs://{logs_bucket_name}" if logs_bucket_name else None
+
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
     web=True,
-    artifact_service_uri=logs_bucket_name,
+    artifact_service_uri=artifact_service_uri,
     allow_origins=allow_origins,
     session_service_uri=session_service_uri,
     otel_to_cloud=True,

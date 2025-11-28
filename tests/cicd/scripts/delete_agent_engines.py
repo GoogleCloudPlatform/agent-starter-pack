@@ -252,7 +252,11 @@ def delete_single_cloud_run_service(
             )
             time.sleep(RETRY_DELAY)
             return delete_single_cloud_run_service(project_id, region, service_name, retry_count + 1)
-        return False
+        else:
+            logger.error(
+                f"❌ Failed to delete {service_name} after {MAX_RETRIES} retries due to timeout"
+            )
+            return False
 
     except Exception as e:
         if retry_count < MAX_RETRIES:
@@ -348,58 +352,46 @@ def main():
         logger.error(f"❌ Configuration error: {e}")
         sys.exit(1)
 
-    # Agent Engine cleanup
-    total_ae_deleted = 0
-    total_ae_found = 0
-    failed_locations = []
+    # Define cleanup tasks: (name, prefix, icon, function)
+    cleanup_tasks = [
+        ("Agent Engine", "ae", "🤖", delete_agent_engines_in_project),
+        ("Cloud Run", "cr", "☁️", delete_cloud_run_services_in_project),
+    ]
 
-    logger.info("\n" + "=" * 60)
-    logger.info("🤖 AGENT ENGINE CLEANUP")
-    logger.info("=" * 60)
+    failed_locations: list[str] = []
+    stats: dict[str, dict[str, int]] = {}
 
-    for project_id in project_ids:
-        for region in REGIONS:
-            try:
-                deleted_count, found_count = delete_agent_engines_in_project(
-                    project_id, region
-                )
-                total_ae_deleted += deleted_count
-                total_ae_found += found_count
-            except Exception as e:
-                logger.error(f"❌ Failed to process Agent Engines in {project_id} ({region}): {e}")
-                failed_locations.append(f"ae:{project_id}/{region}")
+    for name, prefix, icon, cleanup_func in cleanup_tasks:
+        logger.info("\n" + "=" * 60)
+        logger.info(f"{icon} {name.upper()} CLEANUP")
+        logger.info("=" * 60)
 
-    # Cloud Run cleanup
-    total_cr_deleted = 0
-    total_cr_found = 0
+        total_deleted = 0
+        total_found = 0
 
-    logger.info("\n" + "=" * 60)
-    logger.info("☁️ CLOUD RUN CLEANUP")
-    logger.info("=" * 60)
+        for project_id in project_ids:
+            for region in REGIONS:
+                try:
+                    deleted_count, found_count = cleanup_func(project_id, region)
+                    total_deleted += deleted_count
+                    total_found += found_count
+                except Exception as e:
+                    logger.error(f"❌ Failed to process {name} in {project_id} ({region}): {e}")
+                    failed_locations.append(f"{prefix}:{project_id}/{region}")
 
-    for project_id in project_ids:
-        for region in REGIONS:
-            try:
-                deleted_count, found_count = delete_cloud_run_services_in_project(
-                    project_id, region
-                )
-                total_cr_deleted += deleted_count
-                total_cr_found += found_count
-            except Exception as e:
-                logger.error(f"❌ Failed to process Cloud Run in {project_id} ({region}): {e}")
-                failed_locations.append(f"cr:{project_id}/{region}")
+        stats[prefix] = {"deleted": total_deleted, "found": total_found}
 
     # Summary
     logger.info("\n" + "=" * 60)
     logger.info("📊 CLEANUP SUMMARY")
     logger.info("=" * 60)
-    logger.info(f"🤖 Agent Engine services found: {total_ae_found}")
-    logger.info(f"✅ Agent Engine services deleted: {total_ae_deleted}")
-    logger.info(f"☁️ Cloud Run services found: {total_cr_found}")
-    logger.info(f"✅ Cloud Run services deleted: {total_cr_deleted}")
-    total_failed = (total_ae_found - total_ae_deleted) + (total_cr_found - total_cr_deleted)
+    logger.info(f"🤖 Agent Engine services found: {stats['ae']['found']}")
+    logger.info(f"✅ Agent Engine services deleted: {stats['ae']['deleted']}")
+    logger.info(f"☁️ Cloud Run services found: {stats['cr']['found']}")
+    logger.info(f"✅ Cloud Run services deleted: {stats['cr']['deleted']}")
+    total_failed = sum(s["found"] - s["deleted"] for s in stats.values())
     logger.info(f"❌ Total failed deletions: {total_failed}")
-    total_locations = len(project_ids) * len(REGIONS) * 2  # x2 for both AE and CR
+    total_locations = len(project_ids) * len(REGIONS) * len(cleanup_tasks)
     logger.info(
         f"📁 Locations processed: {total_locations - len(failed_locations)}/{total_locations}"
     )

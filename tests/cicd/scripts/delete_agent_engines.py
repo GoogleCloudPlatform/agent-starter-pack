@@ -2,9 +2,10 @@
 
 # mypy: ignore-errors
 """
-Script to delete all Agent Engine services from specified projects.
+Script to delete all Agent Engine services and Cloud Run services from specified projects.
 
-This script deletes all Agent Engine services from projects specified via environment variables.
+This script deletes all Agent Engine services and Cloud Run services (with test-/myagent prefix)
+from projects specified via environment variables.
 
 Environment Variables:
 - PROJECT_IDS: Comma-separated list of project IDs (e.g., "proj1,proj2,proj3")
@@ -17,8 +18,10 @@ Example usage:
 Based on the cleanup logic from tests/cicd/test_e2e_deployment.py
 """
 
+import json
 import logging
 import os
+import subprocess
 import sys
 import time
 
@@ -193,9 +196,149 @@ def delete_agent_engines_in_project(
         return 0, 0
 
 
+def delete_single_cloud_run_service(
+    project_id: str, region: str, service_name: str, retry_count: int = 0
+) -> bool:
+    """
+    Delete a single Cloud Run service with retry logic.
+
+    Args:
+        project_id: The GCP project ID
+        region: The GCP region
+        service_name: Name of the Cloud Run service
+        retry_count: Current retry attempt number
+
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    try:
+        logger.info(f"🗑️ Deleting Cloud Run service: {service_name}")
+
+        result = subprocess.run(
+            [
+                "gcloud", "run", "services", "delete", service_name,
+                "--region", region,
+                "--project", project_id,
+                "--quiet"
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode == 0:
+            logger.info(f"✅ Successfully deleted Cloud Run service: {service_name}")
+            return True
+        elif "could not be found" in result.stderr or "NOT_FOUND" in result.stderr:
+            logger.info(f"✅ Cloud Run service {service_name} not found (already deleted)")
+            return True
+        else:
+            logger.error(f"❌ Failed to delete {service_name}: {result.stderr}")
+
+            if retry_count < MAX_RETRIES and ("RESOURCE_EXHAUSTED" in result.stderr or "quota" in result.stderr.lower()):
+                logger.warning(
+                    f"⏱️ Rate limit hit for {service_name}, waiting {RATE_LIMIT_DELAY} seconds before retry {retry_count + 1}/{MAX_RETRIES}..."
+                )
+                time.sleep(RATE_LIMIT_DELAY)
+                return delete_single_cloud_run_service(project_id, region, service_name, retry_count + 1)
+
+            return False
+
+    except subprocess.TimeoutExpired:
+        logger.error(f"❌ Timeout deleting Cloud Run service: {service_name}")
+        if retry_count < MAX_RETRIES:
+            logger.warning(
+                f"⏱️ Retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})"
+            )
+            time.sleep(RETRY_DELAY)
+            return delete_single_cloud_run_service(project_id, region, service_name, retry_count + 1)
+        return False
+
+    except Exception as e:
+        if retry_count < MAX_RETRIES:
+            logger.warning(
+                f"⏱️ Error deleting {service_name}, retrying in {RETRY_DELAY} seconds... (attempt {retry_count + 1}/{MAX_RETRIES})"
+            )
+            time.sleep(RETRY_DELAY)
+            return delete_single_cloud_run_service(project_id, region, service_name, retry_count + 1)
+        else:
+            logger.error(
+                f"❌ Failed to delete {service_name} after {MAX_RETRIES} retries: {e}"
+            )
+            return False
+
+
+def delete_cloud_run_services_in_project(
+    project_id: str, region: str
+) -> tuple[int, int]:
+    """
+    Delete Cloud Run services with test-/myagent prefix in a specific project and region.
+
+    Args:
+        project_id: The GCP project ID
+        region: The GCP region
+
+    Returns:
+        Tuple of (successful_deletions, total_services_found)
+    """
+    logger.info(f"🔍 Checking for Cloud Run services in {project_id} ({region})...")
+
+    try:
+        # List all Cloud Run services in the project/region
+        result = subprocess.run(
+            [
+                "gcloud", "run", "services", "list",
+                "--region", region,
+                "--project", project_id,
+                "--format", "json"
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode != 0:
+            logger.error(f"❌ Failed to list Cloud Run services in {project_id} ({region}): {result.stderr}")
+            return 0, 0
+
+        all_services = json.loads(result.stdout) if result.stdout.strip() else []
+
+        # Filter services that start with 'test-' or 'myagent'
+        services = [
+            svc for svc in all_services
+            if svc.get("metadata", {}).get("name", "").startswith(("test-", "myagent"))
+        ]
+
+        if not services:
+            logger.info(f"✅ No Cloud Run services with test-/myagent prefix found in {project_id} ({region})")
+            return 0, 0
+
+        logger.info(f"🎯 Found {len(services)} Cloud Run service(s) with test-/myagent prefix in {project_id} ({region})")
+
+        deleted_count = 0
+        for i, svc in enumerate(services, 1):
+            service_name = svc.get("metadata", {}).get("name", "")
+            logger.info(f"📋 Processing Cloud Run service {i}/{len(services)} in {project_id} ({region})")
+
+            if delete_single_cloud_run_service(project_id, region, service_name):
+                deleted_count += 1
+
+            if i < len(services):
+                time.sleep(1)
+
+        logger.info(
+            f"🎉 Deleted {deleted_count}/{len(services)} Cloud Run service(s) in {project_id} ({region})"
+        )
+        return deleted_count, len(services)
+
+    except Exception as e:
+        logger.error(f"❌ Error processing Cloud Run in {project_id} ({region}): {e}")
+        return 0, 0
+
+
 def main():
-    """Main function to delete Agent Engine services from all specified projects."""
-    logger.info("🚀 Starting Agent Engine cleanup across multiple projects and regions...")
+    """Main function to delete Agent Engine and Cloud Run services from all specified projects."""
+    logger.info("🚀 Starting Agent Engine and Cloud Run cleanup across multiple projects and regions...")
 
     try:
         project_ids = get_project_ids()
@@ -205,9 +348,14 @@ def main():
         logger.error(f"❌ Configuration error: {e}")
         sys.exit(1)
 
-    total_deleted = 0
-    total_found = 0
+    # Agent Engine cleanup
+    total_ae_deleted = 0
+    total_ae_found = 0
     failed_locations = []
+
+    logger.info("\n" + "=" * 60)
+    logger.info("🤖 AGENT ENGINE CLEANUP")
+    logger.info("=" * 60)
 
     for project_id in project_ids:
         for region in REGIONS:
@@ -215,20 +363,43 @@ def main():
                 deleted_count, found_count = delete_agent_engines_in_project(
                     project_id, region
                 )
-                total_deleted += deleted_count
-                total_found += found_count
+                total_ae_deleted += deleted_count
+                total_ae_found += found_count
             except Exception as e:
-                logger.error(f"❌ Failed to process {project_id} ({region}): {e}")
-                failed_locations.append(f"{project_id}/{region}")
+                logger.error(f"❌ Failed to process Agent Engines in {project_id} ({region}): {e}")
+                failed_locations.append(f"ae:{project_id}/{region}")
+
+    # Cloud Run cleanup
+    total_cr_deleted = 0
+    total_cr_found = 0
+
+    logger.info("\n" + "=" * 60)
+    logger.info("☁️ CLOUD RUN CLEANUP")
+    logger.info("=" * 60)
+
+    for project_id in project_ids:
+        for region in REGIONS:
+            try:
+                deleted_count, found_count = delete_cloud_run_services_in_project(
+                    project_id, region
+                )
+                total_cr_deleted += deleted_count
+                total_cr_found += found_count
+            except Exception as e:
+                logger.error(f"❌ Failed to process Cloud Run in {project_id} ({region}): {e}")
+                failed_locations.append(f"cr:{project_id}/{region}")
 
     # Summary
     logger.info("\n" + "=" * 60)
     logger.info("📊 CLEANUP SUMMARY")
     logger.info("=" * 60)
-    logger.info(f"🎯 Total Agent Engine services found: {total_found}")
-    logger.info(f"✅ Total Agent Engine services deleted: {total_deleted}")
-    logger.info(f"❌ Failed deletions: {total_found - total_deleted}")
-    total_locations = len(project_ids) * len(REGIONS)
+    logger.info(f"🤖 Agent Engine services found: {total_ae_found}")
+    logger.info(f"✅ Agent Engine services deleted: {total_ae_deleted}")
+    logger.info(f"☁️ Cloud Run services found: {total_cr_found}")
+    logger.info(f"✅ Cloud Run services deleted: {total_cr_deleted}")
+    total_failed = (total_ae_found - total_ae_deleted) + (total_cr_found - total_cr_deleted)
+    logger.info(f"❌ Total failed deletions: {total_failed}")
+    total_locations = len(project_ids) * len(REGIONS) * 2  # x2 for both AE and CR
     logger.info(
         f"📁 Locations processed: {total_locations - len(failed_locations)}/{total_locations}"
     )
@@ -236,9 +407,9 @@ def main():
     if failed_locations:
         logger.warning(f"⚠️ Failed to process locations: {', '.join(failed_locations)}")
         sys.exit(1)
-    elif total_found > total_deleted:
+    elif total_failed > 0:
         logger.warning(
-            f"⚠️ Some Agent Engine services could not be deleted ({total_found - total_deleted} failures)"
+            f"⚠️ Some services could not be deleted ({total_failed} failures)"
         )
         sys.exit(1)
     else:

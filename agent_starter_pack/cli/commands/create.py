@@ -77,7 +77,11 @@ def shared_template_options(f: Callable) -> Callable:
         default="us-central1",
     )(f)
     f = click.option(
-        "--auto-approve", is_flag=True, help="Skip credential confirmation prompts"
+        "--auto-approve",
+        "--yes",
+        "-y",
+        is_flag=True,
+        help="Skip credential confirmation prompts",
     )(f)
     f = click.option("--debug", is_flag=True, help="Enable debug logging")(f)
     f = click.option(
@@ -213,7 +217,7 @@ def normalize_project_name(project_name: str) -> str:
 
 @click.command()
 @click.pass_context
-@click.argument("project_name")
+@click.argument("project_name", required=False, default=None)
 @click.option(
     "--agent",
     "-a",
@@ -277,7 +281,31 @@ def create(
         # Display welcome banner (unless skipped)
         if not skip_welcome:
             display_welcome_banner(agent, agent_garden=agent_garden)
-        # Validate project name
+
+        # Handle missing project name
+        if not project_name:
+            if auto_approve:
+                project_name = "my-agent"
+                console.print(
+                    f"Info: Project name not specified. Defaulting to '{project_name}' in auto-approve mode.",
+                    style="yellow",
+                )
+            else:
+                while True:
+                    project_name = Prompt.ask(
+                        "\n> Enter a name for your project",
+                        default="my-agent",
+                        show_default=True,
+                    )
+                    if len(project_name) > 26:
+                        console.print(
+                            f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
+                            style="bold red",
+                        )
+                        continue
+                    break
+
+        # Validate project name (for CLI-provided names)
         if len(project_name) > 26:
             console.print(
                 f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
@@ -430,10 +458,19 @@ def create(
         final_agent = selected_agent
         if not final_agent:
             if auto_approve:
-                raise click.ClickException(
-                    "Error: --agent is required when running with --auto-approve."
+                # Default to first available agent in auto-approve mode
+                agents = get_available_agents(deployment_target=deployment_target)
+                if not agents:
+                    raise click.ClickException(
+                        "Error: No agents available for the selected deployment target."
+                    )
+                final_agent = next(iter(agents.values()))["name"]
+                console.print(
+                    f"Info: --agent not specified. Defaulting to '{final_agent}' in auto-approve mode.",
+                    style="yellow",
                 )
-            final_agent = display_agent_selection(deployment_target)
+            else:
+                final_agent = display_agent_selection(deployment_target)
 
             # If browse functionality returned a remote agent spec, process it like CLI input
             if final_agent and final_agent.startswith("adk@"):

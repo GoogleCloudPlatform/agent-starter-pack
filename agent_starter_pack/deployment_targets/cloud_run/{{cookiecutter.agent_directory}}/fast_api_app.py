@@ -15,6 +15,7 @@
 import asyncio
 import json
 import logging
+import os
 from collections.abc import Callable
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from google.adk.agents.live_request_queue import LiveRequest, LiveRequestQueue
-from google.adk.artifacts.in_memory_artifact_service import InMemoryArtifactService
+from google.adk.artifacts import GcsArtifactService, InMemoryArtifactService
 from google.adk.memory.in_memory_memory_service import InMemoryMemoryService
 from google.adk.runners import Runner
 from google.adk.sessions.in_memory_session_service import InMemorySessionService
@@ -66,7 +67,12 @@ _, project_id = google.auth.default()
 
 # Initialize ADK services
 session_service = InMemorySessionService()
-artifact_service = InMemoryArtifactService()
+logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
+artifact_service = (
+    GcsArtifactService(bucket_name=logs_bucket_name)
+    if logs_bucket_name
+    else InMemoryArtifactService()
+)
 memory_service = InMemoryMemoryService()
 
 # Initialize ADK runner
@@ -306,7 +312,7 @@ from fastapi import FastAPI
 {%- if cookiecutter.is_a2a %}
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
-from google.adk.artifacts.gcs_artifact_service import GcsArtifactService
+from google.adk.artifacts import GcsArtifactService, InMemoryArtifactService
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 {%- else %}
@@ -320,7 +326,6 @@ from vertexai import agent_engines
 {%- if cookiecutter.is_a2a %}
 from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- endif %}
-from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
 from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
 
@@ -334,17 +339,18 @@ allow_origins = (
 )
 {%- endif %}
 
-# Artifact bucket for ADK
-bucket_name = f"gs://{project_id}-{{cookiecutter.project_name}}-logs"
-create_bucket_if_not_exists(
-    bucket_name=bucket_name, project=project_id, location="us-central1"
-)
-
+# Artifact bucket for ADK (created by Terraform, passed via env var)
+logs_bucket_name = os.environ.get("LOGS_BUCKET_NAME")
 {%- if cookiecutter.is_a2a %}
+artifact_service = (
+    GcsArtifactService(bucket_name=logs_bucket_name)
+    if logs_bucket_name
+    else InMemoryArtifactService()
+)
 
 runner = Runner(
     app=adk_app,
-    artifact_service=GcsArtifactService(bucket_name=bucket_name),
+    artifact_service=artifact_service,
     session_service=InMemorySessionService(),
 )
 
@@ -448,7 +454,7 @@ session_service_uri = None
 app: FastAPI = get_fast_api_app(
     agents_dir=AGENT_DIR,
     web=True,
-    artifact_service_uri=bucket_name,
+    artifact_service_uri=logs_bucket_name,
     allow_origins=allow_origins,
     session_service_uri=session_service_uri,
     otel_to_cloud=True,

@@ -30,7 +30,7 @@ os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
 @dataclass
 class ResearchConfiguration:
     critic_model: str = "gemini-2.5-pro"
-    worker_model: str = "gemini-2.5-flash"
+    worker_model: str = "gemini-3-pro-preview"
     max_search_iterations: int = 5
 
 

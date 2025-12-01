@@ -17,7 +17,7 @@ from langchain_google_vertexai import ChatVertexAI
 from langgraph.graph.state import CompiledStateGraph
 
 LOCATION = "global"
-LLM = "gemini-2.5-flash"
+LLM = "gemini-3-pro-preview"
 
 llm = ChatVertexAI(model=LLM, location=LOCATION, temperature=0)
 

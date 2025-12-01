@@ -316,7 +316,7 @@ Before finalizing any `new_string` for a `replace` operation, meticulously verif
     ```python
     root_agent = Agent(
         name="root_agent",
-        model="gemini-2.5-flash",
+        model="gemini-3-pro-preview",
         instruction="You are a helpful AI assistant."
     )
     ```
@@ -332,7 +332,7 @@ Before finalizing any `new_string` for a `replace` operation, meticulously verif
     ```python
     root_agent = Agent(
         name="recipe_suggester", # OK, related to new purpose
-        model="gemini-2.5-flash", # MUST be preserved
+        model="gemini-3-pro-preview", # MUST be preserved
         instruction="You are a recipe suggester." # OK, the direct target
     )
     ```
@@ -350,7 +350,7 @@ Before finalizing any `new_string` for a `replace` operation, meticulously verif
     *   **Avoid `make playground`** unless specifically instructed; it is designed for human interaction. Focus on programmatic testing.
 
 *   **Model Selection:**
-    *   **When using Gemini, prefer the 2.5 model family** for optimal performance and capabilities: "gemini-2.5-pro" and "gemini-2.5-flash"
+    *   **When using Gemini, prefer the 2.5 model family** for optimal performance and capabilities: "gemini-2.5-pro" and "gemini-3-pro-preview"
 
 *   **Running Python Commands:**
     *   Always use `uv` to execute Python commands within this repository (e.g., `uv run run_agent.py`).

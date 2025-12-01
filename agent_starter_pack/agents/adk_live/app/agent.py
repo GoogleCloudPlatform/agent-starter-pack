@@ -20,9 +20,9 @@ from google.adk.agents import Agent
 from google.adk.apps.app import App
 
 _, project_id = google.auth.default()
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
+os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location="us-central1")
 

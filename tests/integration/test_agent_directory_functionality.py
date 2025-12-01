@@ -71,7 +71,7 @@ def greet(name: str = "World") -> str:
 
 root_agent = Agent(
     name="test_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     instruction="You are a helpful assistant.",
     tools=[greet],
 )

@@ -27,7 +27,7 @@ from {{cookiecutter.agent_directory}}.templates import format_docs
 EMBEDDING_MODEL = "text-embedding-005"
 LLM_LOCATION = "global"
 LOCATION = "us-central1"
-LLM = "gemini-2.5-flash"
+LLM = "gemini-3-pro-preview"
 
 credentials, project_id = google.auth.default()
 os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)

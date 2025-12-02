@@ -66,4 +66,4 @@ root_agent = Agent(
     tools=[get_weather, get_current_time],
 )
 
-app = App(root_agent=root_agent, name="app")
+app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")

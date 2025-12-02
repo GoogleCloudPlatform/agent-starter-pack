@@ -728,3 +728,256 @@ app = App(root_agent=root_agent, name="app")
             assert preserved_agent_content == expected_content, (
                 f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
             )
+
+
+class TestEnhanceYamlAgentShim:
+    """Test that enhance properly generates agent.py shim for YAML config agents."""
+
+    def test_yaml_agent_shim_generated_for_agent_engine(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent.py shim is generated when root_agent.yaml exists."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml (no agent.py)
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+
+            yaml_content = """name: test_agent
+model: gemini-2.0-flash-001
+instruction: You are a helpful assistant.
+"""
+            yaml_file.write_text(yaml_content)
+
+            # Run enhance with agent_engine deployment target
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py shim was generated
+            agent_file = agent_dir / "agent.py"
+            assert agent_file.exists(), "agent.py shim was not created"
+
+            content = agent_file.read_text()
+
+            # Verify the shim loads from YAML config
+            assert "config_agent_utils" in content, (
+                f"Expected config_agent_utils import in agent.py but got:\n{content}"
+            )
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
+                f"Expected from_config call in agent.py but got:\n{content}"
+            )
+            assert "root_agent = " in content, (
+                f"Expected root_agent assignment in agent.py but got:\n{content}"
+            )
+            assert "app = App(" in content, (
+                f"Expected app assignment in agent.py but got:\n{content}"
+            )
+            assert 'name="app"' in content, (
+                f"Expected App name='app' (matching agent directory) but got:\n{content}"
+            )
+
+            # Verify root_agent.yaml was preserved
+            preserved_yaml = yaml_file.read_text()
+            assert preserved_yaml == yaml_content, (
+                f"root_agent.yaml was modified! Expected:\n{yaml_content}\n\nGot:\n{preserved_yaml}"
+            )
+
+            # Verify the generated shim is valid Python syntax
+            compile(content, agent_file, "exec")
+
+    def test_yaml_agent_shim_generated_for_cloud_run(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent.py shim is generated for Cloud Run deployment."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+
+            yaml_content = """name: test_agent
+model: gemini-2.0-flash-001
+instruction: You are a helpful assistant.
+"""
+            yaml_file.write_text(yaml_content)
+
+            # Run enhance with cloud_run deployment target
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py shim was generated
+            agent_file = agent_dir / "agent.py"
+            assert agent_file.exists(), "agent.py shim was not created for cloud_run"
+
+            content = agent_file.read_text()
+
+            # Verify the shim loads from YAML config
+            assert "config_agent_utils" in content, (
+                f"Expected config_agent_utils import in agent.py but got:\n{content}"
+            )
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
+                f"Expected from_config call in agent.py but got:\n{content}"
+            )
+
+    def test_yaml_agent_shim_in_custom_directory(self, tmp_path: pathlib.Path) -> None:
+        """Test that agent.py shim is generated in custom agent directory."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create custom agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("my_agent")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+
+            yaml_content = """name: custom_agent
+model: gemini-2.0-flash-001
+"""
+            yaml_file.write_text(yaml_content)
+
+            # Run enhance with custom agent directory
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--agent-directory",
+                    "my_agent",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py shim was generated in custom directory
+            agent_file = agent_dir / "agent.py"
+            assert agent_file.exists(), f"agent.py shim was not created in {agent_dir}"
+
+            content = agent_file.read_text()
+            assert "config_agent_utils" in content
+            # Verify app name matches the custom agent directory
+            assert 'name="my_agent"' in content, (
+                f"Expected app name to match agent directory 'my_agent' but got:\n{content}"
+            )
+
+    def test_yaml_agent_detection_message_shown(self, tmp_path: pathlib.Path) -> None:
+        """Test that enhance shows YAML config agent detection message."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+            yaml_file.write_text("name: test_agent\n")
+
+            # Run enhance
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Verify the YAML detection message was shown
+            assert "root_agent.yaml" in result.output, (
+                f"Expected YAML detection message in output:\n{result.output}"
+            )
+            assert "YAML config agent" in result.output, (
+                f"Expected 'YAML config agent' in output:\n{result.output}"
+            )
+
+    def test_yaml_agent_shim_overwrites_template_agent_py(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that YAML shim overwrites the base template's agent.py."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+            yaml_file.write_text("name: yaml_agent\nmodel: gemini-2.0-flash-001\n")
+
+            # Run enhance - base template will copy its agent.py first,
+            # but YAML shim should overwrite it
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py contains the shim, not the base template content
+            agent_file = agent_dir / "agent.py"
+            content = agent_file.read_text()
+
+            # Should have the YAML loader, not the base template's Agent definition
+            assert "config_agent_utils" in content, (
+                "agent.py should contain YAML shim, not base template content"
+            )
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
+                "agent.py should load from root_agent.yaml"
+            )
+
+            # Should NOT have the base template's get_weather function
+            assert "get_weather" not in content, (
+                "agent.py should not contain base template's get_weather function"
+            )

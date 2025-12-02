@@ -359,7 +359,7 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
     message = Message(
         message_id=f"msg-user-{uuid.uuid4()}",
         role=Role.user,
-        parts=[Part(root=TextPart(text="What's the weather in San Francisco?"))],
+        parts=[Part(root=TextPart(text="Hi!"))],
     )
 
     request = SendStreamingMessageRequest(
@@ -453,7 +453,7 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
         "session_id": session_id,
         "new_message": {
             "role": "user",
-            "parts": [{"text": "What's the weather in San Francisco?"}],
+            "parts": [{"text": "Hi!"}],
         },
         "streaming": True,
     }
@@ -535,7 +535,7 @@ def test_chat_non_streaming(server_fixture: subprocess.Popen[str]) -> None:
     message = Message(
         message_id=f"msg-user-{uuid.uuid4()}",
         role=Role.user,
-        parts=[Part(root=TextPart(text="What's the weather in San Francisco?"))],
+        parts=[Part(root=TextPart(text="Hi!"))],
     )
 
     request = SendMessageRequest(

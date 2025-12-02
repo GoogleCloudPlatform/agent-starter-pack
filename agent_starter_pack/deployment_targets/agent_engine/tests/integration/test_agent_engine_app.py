@@ -344,7 +344,7 @@ async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     Tests that the agent returns valid streaming responses.
     """
     # Create message and events for the async_stream_query
-    message = "What's the weather in San Francisco?"
+    message = "Hi!"
     events = []
     async for event in agent_app.async_stream_query(message=message, user_id="test"):
         events.append(event)

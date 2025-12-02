@@ -330,7 +330,7 @@ class ChatStreamUser(HttpUser):
             "class_method": "async_stream_query",
             "input": {
                 "user_id": "test",
-                "message": "What's the weather in San Francisco?",
+                "message": "Hi!",
             },
         }
 {% else %}

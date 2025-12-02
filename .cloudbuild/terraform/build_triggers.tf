@@ -452,7 +452,34 @@ resource "google_cloudbuild_trigger" "pr_test_pipeline_parity" {
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
 
-# i. Create E2E Gemini Enterprise Registration Test trigger for main branch commits (runs on merge to main)
+# i. Create Agent Directory Functionality Test trigger for PR requests
+resource "google_cloudbuild_trigger" "pr_test_agent_directory" {
+  name            = "pr-test-agent-directory"
+  project         = var.cicd_runner_project_id
+  location        = var.region
+  description     = "Trigger for PR checks on agent directory functionality (YAML agents, custom directories)"
+  service_account = resource.google_service_account.cicd_runner_sa.id
+
+  repository_event_config {
+    repository = local.repository_path
+    pull_request {
+      branch          = "main"
+      comment_control = "COMMENTS_ENABLED_FOR_EXTERNAL_CONTRIBUTORS_ONLY"
+    }
+  }
+
+  filename       = ".cloudbuild/ci/test_agent_directory.yaml"
+  included_files = [
+    "pyproject.toml",
+    "uv.lock",
+    "tests/integration/test_agent_directory_functionality.py",
+    ".cloudbuild/ci/test_agent_directory.yaml",
+  ]
+  ignored_files      = local.common_ignored_files
+  include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
+}
+
+# j. Create E2E Gemini Enterprise Registration Test trigger for main branch commits (runs on merge to main)
 resource "google_cloudbuild_trigger" "main_e2e_gemini_enterprise_test" {
   name            = "e2e-gemini-enterprise-registration"
   project         = var.cicd_runner_project_id

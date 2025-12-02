@@ -66,6 +66,7 @@ def shared_template_options(f: Callable) -> Callable:
         default=False,
     )(f)
     f = click.option(
+        "-s",
         "--skip-checks",
         is_flag=True,
         help="Skip verification checks for GCP and Vertex AI",

@@ -40,6 +40,7 @@ Name of the agent directory (overrides template default, usually `app`). This de
 - `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
 - `--include-data-ingestion, -i` - Include data ingestion pipeline
 - `--session-type` - Session storage type
+- `--google-api-key, --api-key, -k` - Use Google AI Studio API key (or placeholder if no value provided)
 - `--auto-approve, --yes, -y` - Skip confirmation prompts and use defaults
 - And all other `create` command options
 

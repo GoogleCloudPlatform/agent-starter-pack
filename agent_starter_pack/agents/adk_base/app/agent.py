@@ -1,3 +1,4 @@
+# ruff: noqa
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,17 +14,20 @@
 # limitations under the License.
 
 import datetime
-import os
 from zoneinfo import ZoneInfo
 
-import google.auth
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+{%- if not cookiecutter.use_google_api_key %}
+
+import os
+import google.auth
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
 os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+{%- endif %}
 
 
 def get_weather(query: str) -> str:

@@ -1,3 +1,4 @@
+# ruff: noqa
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,12 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-import google.auth
-import vertexai
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+{%- if not cookiecutter.use_google_api_key %}
+
+import os
+import google.auth
+import vertexai
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -25,6 +27,7 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location="us-central1")
+{%- endif %}
 
 
 def get_weather(query: str) -> str:

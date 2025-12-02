@@ -59,6 +59,12 @@ def shared_template_options(f: Callable) -> Callable:
     """Decorator to add shared options for template-based commands."""
     # Apply options in reverse order since decorators are applied bottom-up
     f = click.option(
+        "--google-api-key",
+        type=str,
+        help="Use Google AI Studio API key instead of Vertex AI. Generates a .env file with the provided API key.",
+        default=None,
+    )(f)
+    f = click.option(
         "-ag",
         "--agent-garden",
         is_flag=True,
@@ -274,6 +280,7 @@ def create(
     skip_welcome: bool = False,
     locked: bool = False,
     cli_overrides: dict | None = None,
+    google_api_key: str | None = None,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
@@ -715,11 +722,19 @@ def create(
         if debug:
             logging.debug(f"Selected region: {region}")
 
+        # Validate google_api_key is not used with langgraph agents
+        if google_api_key and "langgraph" in final_agent.lower():
+            raise click.ClickException(
+                "--google-api-key is not supported for LangGraph agents. "
+                "You can modify the generated template to use ChatGoogleGenerativeAI class instead. "
+                "See https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai"
+            )
+
         # GCP Setup
         logging.debug("Setting up GCP...")
 
         creds_info = {}
-        if not skip_checks:
+        if not skip_checks and not google_api_key:
             # Set up GCP environment
             try:
                 creds_info = setup_gcp_environment(
@@ -778,6 +793,7 @@ def create(
                 cli_overrides=final_cli_overrides,
                 agent_garden=agent_garden,
                 remote_spec=remote_spec,
+                google_api_key=google_api_key,
             )
 
             # Replace region in all files if a different region was specified

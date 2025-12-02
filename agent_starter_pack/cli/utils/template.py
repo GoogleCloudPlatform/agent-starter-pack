@@ -750,6 +750,7 @@ def process_template(
     cli_overrides: dict[str, Any] | None = None,
     agent_garden: bool = False,
     remote_spec: Any | None = None,
+    google_api_key: str | None = None,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -768,6 +769,7 @@ def process_template(
         in_folder: Whether to template directly into the output directory instead of creating a subdirectory
         cli_overrides: Optional CLI override values that should take precedence over template config
         agent_garden: Whether this deployment is from Agent Garden
+        google_api_key: Optional Google AI Studio API key to generate .env file
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
@@ -1040,6 +1042,7 @@ def process_template(
                 "agent_garden": agent_garden,
                 "agent_sample_id": agent_sample_id or "",
                 "agent_sample_publisher": agent_sample_publisher or "",
+                "use_google_api_key": bool(google_api_key),
                 "adk_cheatsheet": adk_cheatsheet_content,
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [
@@ -1421,6 +1424,19 @@ def process_template(
                     )
                     lock_file.truncate()
                 logging.debug(f"Updated project name in lock file at {lock_file_path}")
+
+            # Generate .env file for Google API Key if provided
+            if google_api_key:
+                env_file_path = final_destination / agent_directory / ".env"
+                env_content = f"""# AI Studio Configuration
+GOOGLE_API_KEY={google_api_key}
+"""
+                env_file_path.write_text(env_content)
+                logging.debug(f"Generated .env file at {env_file_path}")
+                console.print(
+                    f"📝 Generated .env file at [cyan]{agent_directory}/.env[/cyan] "
+                    "for Google AI Studio"
+                )
 
         except Exception as e:
             logging.error(f"Failed to process template: {e!s}")

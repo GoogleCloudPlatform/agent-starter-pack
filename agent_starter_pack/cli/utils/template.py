@@ -1044,10 +1044,6 @@ def process_template(
                     ".venv/*",
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
-                    # Don't render agent.py unless it's agentic_rag
-                    f"{get_agent_directory(template_config, cli_overrides)}/agent.py"
-                    if agent_name != "agentic_rag"
-                    else "",
                 ],
             }
 

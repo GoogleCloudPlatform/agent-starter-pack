@@ -395,9 +395,7 @@ instruction: You are a helpful assistant.
         assert (agent_dir / "__init__.py").exists(), (
             f"__init__.py not found in {agent_dir}"
         )
-        assert (agent_dir / "agent.py").exists(), (
-            f"agent.py not found in {agent_dir}"
-        )
+        assert (agent_dir / "agent.py").exists(), f"agent.py not found in {agent_dir}"
 
         # Install dependencies
         run_command(

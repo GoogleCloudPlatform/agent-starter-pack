@@ -221,7 +221,7 @@ class AgentEngineApp(A2aAgent):
             name="get_weather",
             description="Simulates a web search. Use it get information on weather.",
             tags=["llm", "tools"],
-            examples=["What's the weather in San Francisco?"],
+            examples=["Hi!"],
         )
         agent_card = AgentCard(
             name="root_agent",

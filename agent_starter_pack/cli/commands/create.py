@@ -59,10 +59,13 @@ def shared_template_options(f: Callable) -> Callable:
     """Decorator to add shared options for template-based commands."""
     # Apply options in reverse order since decorators are applied bottom-up
     f = click.option(
+        "-k",
         "--google-api-key",
-        type=str,
-        help="Use Google AI Studio API key instead of Vertex AI. Generates a .env file with the provided API key.",
+        "--api-key",
+        is_flag=False,
+        flag_value="YOUR_API_KEY",
         default=None,
+        help="Use Google AI Studio API key instead of Vertex AI. If provided without a value, generates a .env file with a placeholder.",
     )(f)
     f = click.option(
         "-ag",

@@ -138,6 +138,9 @@ Skip interactive confirmation prompts and use sensible defaults:
 - Deployment target defaults to `agent_engine`
 - CI/CD runner defaults to `google_cloud_build`
 
+### `--google-api-key`, `--api-key`, `-k` [KEY]
+Use Google AI Studio API key instead of Vertex AI. If provided without a value, generates a `.env` file with a `YOUR_API_KEY` placeholder.
+
 ### `--skip-checks`
 Skip verification checks for GCP authentication and Vertex AI connection.
 

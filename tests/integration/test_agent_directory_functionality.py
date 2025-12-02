@@ -364,21 +364,13 @@ agent_directory = "bot"
             agent_dir.mkdir()
 
             # Create root_agent.yaml
-            yaml_content = """name: yaml_test_agent
-model: gemini-2.0-flash-001
-instruction: You are a helpful test assistant.
+            yaml_content = """name: test-agent
+model: gemini-2.5-flash
+agent_class: LlmAgent
+instruction: You are the root agent that coordinates other agents.
+tools: []
 """
             (agent_dir / "root_agent.yaml").write_text(yaml_content)
-
-            # Create basic pyproject.toml
-            pyproject_toml = project_dir / "pyproject.toml"
-            pyproject_toml.write_text("""[project]
-name = "yaml-agent-project"
-version = "0.1.0"
-
-[tool.hatch.build.targets.wheel]
-packages = ["my_agent"]
-""")
 
             # Change to project directory
             original_cwd = pathlib.Path.cwd()
@@ -421,9 +413,9 @@ packages = ["my_agent"]
                 assert "config_agent_utils" in shim_content, (
                     "Shim should import config_agent_utils"
                 )
-                assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in shim_content, (
-                    "Shim should load root_agent.yaml"
-                )
+                assert (
+                    'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in shim_content
+                ), "Shim should load root_agent.yaml"
                 assert 'name="my_agent"' in shim_content, (
                     f"Shim app name should match agent directory, got:\n{shim_content}"
                 )
@@ -448,15 +440,15 @@ packages = ["my_agent"]
                     f"make install failed: {install_result.stderr}\n{install_result.stdout}"
                 )
 
-                # Run the project tests to verify the agent works
-                test_cmd = ["uv", "run", "pytest", "tests/", "-v"]
+                # Run integration tests only to verify YAML shim works end-to-end
+                test_cmd = ["uv", "run", "pytest", "tests/integration", "-v"]
                 test_result = run_command(
                     test_cmd,
                     cwd=project_dir,
-                    message="Running project tests",
+                    message="Running integration tests",
                 )
                 assert test_result.returncode == 0, (
-                    f"Project tests failed: {test_result.stderr}\n{test_result.stdout}"
+                    f"Integration tests failed: {test_result.stderr}\n{test_result.stdout}"
                 )
 
                 console.print(

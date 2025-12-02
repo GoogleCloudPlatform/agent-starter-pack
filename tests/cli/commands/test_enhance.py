@@ -973,7 +973,7 @@ model: gemini-2.0-flash-001
             assert "config_agent_utils" in content, (
                 "agent.py should contain YAML shim, not base template content"
             )
-            assert 'from_config("root_agent.yaml")' in content, (
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
                 "agent.py should load from root_agent.yaml"
             )
 

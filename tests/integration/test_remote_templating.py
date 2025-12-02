@@ -28,12 +28,14 @@ REMOTE_URL = "adk@academic-research"
 def _run_remote_templating_test(
     project_name: str,
     skip_version_lock: bool = False,
+    deployment_target: str = "agent_engine",
 ) -> None:
     """Helper to run remote templating test with common logic.
 
     Args:
         project_name: Name for the generated project
         skip_version_lock: If True, set ASP_SKIP_VERSION_LOCK=1 to use local ASP
+        deployment_target: Deployment target (agent_engine or cloud_run)
     """
     output_dir = pathlib.Path(TARGET_DIR)
     project_path = output_dir / project_name
@@ -57,7 +59,7 @@ def _run_remote_templating_test(
             "-a",
             REMOTE_URL,
             "--deployment-target",
-            "agent_engine",
+            deployment_target,
             "--auto-approve",
             "--skip-checks",
         ]
@@ -145,3 +147,12 @@ def test_remote_templating_with_local_asp() -> None:
     # Use shorter name prefix to stay within 26 char limit
     project_name = f"agent-l-{timestamp}"
     _run_remote_templating_test(project_name, skip_version_lock=True)
+
+
+def test_remote_templating_cloud_run() -> None:
+    """Test creating an agent from a remote template with Cloud Run deployment."""
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    project_name = f"agent-cr-{timestamp}"
+    _run_remote_templating_test(
+        project_name, skip_version_lock=True, deployment_target="cloud_run"
+    )

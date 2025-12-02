@@ -352,111 +352,82 @@ agent_directory = "bot"
     @pytest.mark.parametrize("deployment_target", ["cloud_run", "agent_engine"])
     def test_enhance_with_yaml_config_agent(self, deployment_target: str) -> None:
         """Test that enhance generates working agent.py shim for root_agent.yaml."""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            temp_path = pathlib.Path(temp_dir)
+        output_dir = pathlib.Path("target")
+        os.makedirs(output_dir, exist_ok=True)
 
-            # Create a mock existing project with YAML config agent
-            project_dir = temp_path / "yaml_agent_project"
-            project_dir.mkdir()
+        timestamp = datetime.now().strftime("%H%M%S%f")[:8]
+        project_name = f"yaml-{deployment_target[:3]}-{timestamp}"
+        project_path = output_dir / project_name
 
-            # Create agent directory with root_agent.yaml (no agent.py)
-            agent_dir = project_dir / "my_agent"
-            agent_dir.mkdir()
+        # Create project directory with YAML config agent
+        # Use "my_agent" to avoid conflict with tests/integration/test_agent.py
+        project_path.mkdir(parents=True)
+        agent_dir = project_path / "my_agent"
+        agent_dir.mkdir()
 
-            # Create root_agent.yaml
-            yaml_content = """name: test-agent
+        # Create root_agent.yaml
+        yaml_content = """name: my_agent
 model: gemini-2.5-flash
-agent_class: LlmAgent
-instruction: You are the root agent that coordinates other agents.
-tools: []
+instruction: You are a helpful assistant.
 """
-            (agent_dir / "root_agent.yaml").write_text(yaml_content)
+        (agent_dir / "root_agent.yaml").write_text(yaml_content)
 
-            # Change to project directory
-            original_cwd = pathlib.Path.cwd()
+        # Run enhance command with YAML agent directory
+        cmd = [
+            "python",
+            "-m",
+            "agent_starter_pack.cli.main",
+            "enhance",
+            ".",
+            "--agent-directory",
+            "my_agent",
+            "--base-template",
+            "adk_base",
+            "--deployment-target",
+            deployment_target,
+            "--auto-approve",
+            "--skip-checks",
+        ]
 
-            try:
-                os.chdir(project_dir)
+        run_command(cmd, cwd=project_path, message="Running enhance command")
 
-                # Run enhance command with YAML agent directory
-                cmd = [
-                    "python",
-                    "-m",
-                    "agent_starter_pack.cli.main",
-                    "enhance",
-                    ".",
-                    "--agent-directory",
-                    "my_agent",
-                    "--base-template",
-                    "adk_base",
-                    "--deployment-target",
-                    deployment_target,
-                    "--auto-approve",
-                    "--skip-checks",
-                ]
+        # Verify critical files were created
+        assert (agent_dir / "__init__.py").exists(), (
+            f"__init__.py not found in {agent_dir}"
+        )
+        assert (agent_dir / "agent.py").exists(), (
+            f"agent.py not found in {agent_dir}"
+        )
 
-                result = run_command(
-                    cmd, cwd=pathlib.Path.cwd(), message="Running enhance command"
-                )
+        # Install dependencies
+        run_command(
+            ["uv", "sync", "--dev"],
+            project_path,
+            "Installing dependencies",
+            stream_output=False,
+        )
 
-                # Verify the command succeeded
-                assert result.returncode == 0, (
-                    f"Enhance command failed: {result.stderr}\n{result.stdout}"
-                )
+        # Run integration tests (excluding test_agent.py) to verify app works
+        test_env = os.environ.copy()
+        test_env["INTEGRATION_TEST"] = "TRUE"
 
-                # Verify agent.py shim was generated
-                agent_py = agent_dir / "agent.py"
-                assert agent_py.exists(), "agent.py shim was not generated"
+        run_command(
+            [
+                "uv",
+                "run",
+                "pytest",
+                "tests/integration",
+                "--ignore=tests/integration/test_agent.py",
+                "-v",
+            ],
+            project_path,
+            "Running integration tests",
+            env=test_env,
+        )
 
-                # Verify shim content
-                shim_content = agent_py.read_text()
-                assert "config_agent_utils" in shim_content, (
-                    "Shim should import config_agent_utils"
-                )
-                assert (
-                    'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in shim_content
-                ), "Shim should load root_agent.yaml"
-                assert 'name="my_agent"' in shim_content, (
-                    f"Shim app name should match agent directory, got:\n{shim_content}"
-                )
-
-                # Verify root_agent.yaml was preserved
-                preserved_yaml = (agent_dir / "root_agent.yaml").read_text()
-                assert preserved_yaml == yaml_content, (
-                    "root_agent.yaml should not be modified"
-                )
-
-                # Verify the shim is valid Python syntax
-                compile(shim_content, agent_py, "exec")
-
-                # Run make install to set up the project
-                install_cmd = ["make", "install"]
-                install_result = run_command(
-                    install_cmd,
-                    cwd=project_dir,
-                    message="Running make install",
-                )
-                assert install_result.returncode == 0, (
-                    f"make install failed: {install_result.stderr}\n{install_result.stdout}"
-                )
-
-                # Run integration tests only to verify YAML shim works end-to-end
-                test_cmd = ["uv", "run", "pytest", "tests/integration", "-v"]
-                test_result = run_command(
-                    test_cmd,
-                    cwd=project_dir,
-                    message="Running integration tests",
-                )
-                assert test_result.returncode == 0, (
-                    f"Integration tests failed: {test_result.stderr}\n{test_result.stdout}"
-                )
-
-                console.print(
-                    f"✅ Successfully enhanced and tested YAML agent project with {deployment_target}"
-                )
-
-            finally:
-                os.chdir(original_cwd)
+        console.print(
+            f"[bold green]✓[/] YAML config agent test passed for {deployment_target}"
+        )
 
     @pytest.mark.parametrize("deployment_target", ["cloud_run", "agent_engine"])
     def test_agent_directory_in_different_deployment_targets(

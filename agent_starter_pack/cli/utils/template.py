@@ -808,6 +808,13 @@ def process_template(
             pathlib.Path(__file__).parent.parent.parent / "agents" / base_template_name
         )
         logging.debug(f"Remote template using base: {base_template_name}")
+    elif cli_overrides and cli_overrides.get("base_template"):
+        # For in-folder mode with base_template override, use the agent template
+        base_template_name = cli_overrides["base_template"]
+        agent_path = (
+            pathlib.Path(__file__).parent.parent.parent / "agents" / base_template_name
+        )
+        logging.debug(f"Using base template override: {base_template_name}")
     else:
         # For local templates, use the existing logic
         agent_path = template_dir.parent  # Get parent of template dir
@@ -936,13 +943,21 @@ def process_template(
             if agent_path.exists():
                 agent_directory = get_agent_directory(template_config, cli_overrides)
 
-                # Get the template's default agent directory (usually "app")
-                template_agent_directory = template_config.get("settings", {}).get(
-                    "agent_directory", "app"
-                )
+                # For remote/local templates with base_template override, always use "app"
+                # as the source directory since base templates store agent code in "app/"
+                if is_remote or (cli_overrides and cli_overrides.get("base_template")):
+                    template_agent_directory = "app"
+                else:
+                    # Get the template's default agent directory (usually "app")
+                    template_agent_directory = template_config.get("settings", {}).get(
+                        "agent_directory", "app"
+                    )
 
                 # Copy agent directory (always from "app" to target directory)
                 source_agent_folder = agent_path / template_agent_directory
+                logging.debug(
+                    f"6. Source agent folder: {source_agent_folder}, exists: {source_agent_folder.exists()}"
+                )
                 target_agent_folder = project_template / agent_directory
                 if source_agent_folder.exists():
                     logging.debug(

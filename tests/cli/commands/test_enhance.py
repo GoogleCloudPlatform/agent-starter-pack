@@ -790,7 +790,7 @@ instruction: You are a helpful assistant.
                 f"Expected app assignment in agent.py but got:\n{content}"
             )
             assert 'name="app"' in content, (
-                f"Expected app name to match agent directory 'app' but got:\n{content}"
+                f"Expected App name='app' (matching agent directory) but got:\n{content}"
             )
 
             # Verify root_agent.yaml was preserved

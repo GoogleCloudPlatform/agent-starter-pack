@@ -131,8 +131,9 @@ root_agent = Agent(
 
                 # Verify the content is correct
                 agent_content_generated = agent_py.read_text()
-                assert "my_chatbot" not in agent_content_generated, (
-                    "Agent content should not contain hardcoded directory references"
+                # The App name should match the agent directory
+                assert 'name="my_chatbot"' in agent_content_generated, (
+                    "App name should match the custom agent directory"
                 )
 
                 # Verify pyproject.toml uses custom directory

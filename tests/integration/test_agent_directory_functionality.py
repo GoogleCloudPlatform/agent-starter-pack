@@ -421,7 +421,7 @@ packages = ["my_agent"]
                 assert "config_agent_utils" in shim_content, (
                     "Shim should import config_agent_utils"
                 )
-                assert 'from_config("root_agent.yaml")' in shim_content, (
+                assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in shim_content, (
                     "Shim should load root_agent.yaml"
                 )
                 assert 'name="my_agent"' in shim_content, (

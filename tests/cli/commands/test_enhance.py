@@ -780,7 +780,7 @@ instruction: You are a helpful assistant.
             assert "config_agent_utils" in content, (
                 f"Expected config_agent_utils import in agent.py but got:\n{content}"
             )
-            assert 'from_config("root_agent.yaml")' in content, (
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
                 f"Expected from_config call in agent.py but got:\n{content}"
             )
             assert "root_agent = " in content, (
@@ -849,7 +849,7 @@ instruction: You are a helpful assistant.
             assert "config_agent_utils" in content, (
                 f"Expected config_agent_utils import in agent.py but got:\n{content}"
             )
-            assert 'from_config("root_agent.yaml")' in content, (
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
                 f"Expected from_config call in agent.py but got:\n{content}"
             )
 

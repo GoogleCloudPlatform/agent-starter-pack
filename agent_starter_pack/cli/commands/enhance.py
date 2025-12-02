@@ -107,10 +107,16 @@ def display_agent_directory_selection(
         console.print("📁 [bold]Agent Directory Selection[/bold]")
         console.print()
         console.print("Your project needs an agent directory containing:")
-        console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
-        console.print(
-            f"  • [cyan]{required_object}[/cyan] variable defined in agent.py"
-        )
+        if is_adk:
+            console.print(
+                "  • [cyan]agent.py[/cyan] with [cyan]root_agent[/cyan] variable, or"
+            )
+            console.print("  • [cyan]root_agent.yaml[/cyan] (YAML config agent)")
+        else:
+            console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
+            console.print(
+                f"  • [cyan]{required_object}[/cyan] variable defined in agent.py"
+            )
         console.print()
         console.print("Choose where your agent code is located:")
 
@@ -151,7 +157,15 @@ def display_agent_directory_selection(
             directory_choices[choice_num] = dir_name
             # Check if this directory might contain agent code
             agent_py_exists = (current_dir / dir_name / "agent.py").exists()
-            hint = " (has agent.py)" if agent_py_exists else ""
+            root_agent_yaml_exists = (
+                current_dir / dir_name / "root_agent.yaml"
+            ).exists()
+            if root_agent_yaml_exists:
+                hint = " (has root_agent.yaml)"
+            elif agent_py_exists:
+                hint = " (has agent.py)"
+            else:
+                hint = ""
             console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
             if (
                 default_choice is None
@@ -504,14 +518,27 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for agent.py and validate required object
+            # Check for YAML config agent (root_agent.yaml) or agent.py
+            root_agent_yaml = agent_folder / "root_agent.yaml"
             agent_py = agent_folder / "agent.py"
 
             # Determine required object outside of if/else blocks to avoid NameError
             is_adk = base_template and "adk" in base_template.lower()
             required_object = "root_agent" if is_adk else "agent"
 
-            if agent_py.exists():
+            if root_agent_yaml.exists():
+                # YAML config agent detected
+                console.print(
+                    f"✅ Found [cyan]/{final_agent_directory}/root_agent.yaml[/cyan] (YAML config agent)"
+                )
+                console.print(
+                    "   An agent.py shim will be generated automatically for deployment compatibility."
+                )
+                if is_adk:
+                    console.print(
+                        "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/agents/agent-config/]ADK Agent Config guide[/link][/cyan]"
+                    )
+            elif agent_py.exists():
                 console.print(
                     f"✅ Found [cyan]/{final_agent_directory}/agent.py[/cyan]"
                 )

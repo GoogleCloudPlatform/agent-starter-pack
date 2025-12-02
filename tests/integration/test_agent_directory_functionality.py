@@ -350,6 +350,123 @@ agent_directory = "bot"
                 os.chdir(original_cwd)
 
     @pytest.mark.parametrize("deployment_target", ["cloud_run", "agent_engine"])
+    def test_enhance_with_yaml_config_agent(self, deployment_target: str) -> None:
+        """Test that enhance generates working agent.py shim for root_agent.yaml."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+
+            # Create a mock existing project with YAML config agent
+            project_dir = temp_path / "yaml_agent_project"
+            project_dir.mkdir()
+
+            # Create agent directory with root_agent.yaml (no agent.py)
+            agent_dir = project_dir / "my_agent"
+            agent_dir.mkdir()
+
+            # Create root_agent.yaml
+            yaml_content = """name: yaml_test_agent
+model: gemini-2.0-flash-001
+instruction: You are a helpful test assistant.
+"""
+            (agent_dir / "root_agent.yaml").write_text(yaml_content)
+
+            # Create basic pyproject.toml
+            pyproject_toml = project_dir / "pyproject.toml"
+            pyproject_toml.write_text("""[project]
+name = "yaml-agent-project"
+version = "0.1.0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["my_agent"]
+""")
+
+            # Change to project directory
+            original_cwd = pathlib.Path.cwd()
+
+            try:
+                os.chdir(project_dir)
+
+                # Run enhance command with YAML agent directory
+                cmd = [
+                    "python",
+                    "-m",
+                    "agent_starter_pack.cli.main",
+                    "enhance",
+                    ".",
+                    "--agent-directory",
+                    "my_agent",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    deployment_target,
+                    "--auto-approve",
+                    "--skip-checks",
+                ]
+
+                result = run_command(
+                    cmd, cwd=pathlib.Path.cwd(), message="Running enhance command"
+                )
+
+                # Verify the command succeeded
+                assert result.returncode == 0, (
+                    f"Enhance command failed: {result.stderr}\n{result.stdout}"
+                )
+
+                # Verify agent.py shim was generated
+                agent_py = agent_dir / "agent.py"
+                assert agent_py.exists(), "agent.py shim was not generated"
+
+                # Verify shim content
+                shim_content = agent_py.read_text()
+                assert "config_agent_utils" in shim_content, (
+                    "Shim should import config_agent_utils"
+                )
+                assert 'from_config("root_agent.yaml")' in shim_content, (
+                    "Shim should load root_agent.yaml"
+                )
+                assert 'name="my_agent"' in shim_content, (
+                    f"Shim app name should match agent directory, got:\n{shim_content}"
+                )
+
+                # Verify root_agent.yaml was preserved
+                preserved_yaml = (agent_dir / "root_agent.yaml").read_text()
+                assert preserved_yaml == yaml_content, (
+                    "root_agent.yaml should not be modified"
+                )
+
+                # Verify the shim is valid Python syntax
+                compile(shim_content, agent_py, "exec")
+
+                # Run make install to set up the project
+                install_cmd = ["make", "install"]
+                install_result = run_command(
+                    install_cmd,
+                    cwd=project_dir,
+                    message="Running make install",
+                )
+                assert install_result.returncode == 0, (
+                    f"make install failed: {install_result.stderr}\n{install_result.stdout}"
+                )
+
+                # Run the project tests to verify the agent works
+                test_cmd = ["uv", "run", "pytest", "tests/", "-v"]
+                test_result = run_command(
+                    test_cmd,
+                    cwd=project_dir,
+                    message="Running project tests",
+                )
+                assert test_result.returncode == 0, (
+                    f"Project tests failed: {test_result.stderr}\n{test_result.stdout}"
+                )
+
+                console.print(
+                    f"✅ Successfully enhanced and tested YAML agent project with {deployment_target}"
+                )
+
+            finally:
+                os.chdir(original_cwd)
+
+    @pytest.mark.parametrize("deployment_target", ["cloud_run", "agent_engine"])
     def test_agent_directory_in_different_deployment_targets(
         self, deployment_target: str
     ) -> None:

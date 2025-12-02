@@ -92,10 +92,13 @@ The enhance command validates your project structure and provides guidance:
 ```
 your-project/
 ├── app/
-│   └── agent.py    # Your agent code
+│   └── agent.py         # Python agent with root_agent
+│   └── root_agent.yaml  # OR YAML config agent (auto-detected)
 ├── tests/
 └── README.md
 ```
+
+**Note:** YAML config agents (`root_agent.yaml`) are automatically detected. An `agent.py` shim is generated to load the YAML config for deployment compatibility.
 
 **⚠️ Missing Agent Folder:**
 If your project doesn't have an agent directory (default: `/app`), the command will:

@@ -658,13 +658,79 @@ def _inject_app_object_if_missing(
             content = content.rstrip()
             if "from google.adk.apps.app import App" not in content:
                 content += "\n\nfrom google.adk.apps.app import App\n"
-            content += '\napp = App(root_agent=root_agent, name="app")\n'
+            content += f'\napp = App(root_agent=root_agent, name="{agent_directory}")\n'
 
             # Write the modified content back
             agent_py_path.write_text(content, encoding="utf-8")
     except Exception as e:
         logging.warning(
             f"Could not inject app object into {agent_directory}/agent.py: {type(e).__name__}: {e}"
+        )
+
+
+def _generate_yaml_agent_shim(
+    agent_py_path: pathlib.Path,
+    agent_directory: str,
+    console: Console,
+    force: bool = False,
+) -> None:
+    """Generate agent.py shim for YAML config agents.
+
+    When a root_agent.yaml is detected, this function generates an agent.py
+    that loads the YAML config and exposes the root_agent and app objects
+    required by the deployment pipeline.
+
+    Args:
+        agent_py_path: Path where agent.py should be created/updated
+        agent_directory: Name of the agent directory for logging
+        console: Rich console for user feedback
+        force: If True, overwrite existing agent.py even if it has root_agent defined.
+               Used when the user explicitly has a root_agent.yaml.
+    """
+    root_agent_yaml = agent_py_path.parent / "root_agent.yaml"
+
+    if not root_agent_yaml.exists():
+        return
+
+    # Check if agent.py already exists and has root_agent defined
+    if agent_py_path.exists() and not force:
+        try:
+            content = agent_py_path.read_text(encoding="utf-8")
+            if re.search(r"^\s*root_agent\s*=", content, re.MULTILINE):
+                logging.debug(
+                    f"{agent_directory}/agent.py already has root_agent defined"
+                )
+                return
+        except Exception as e:
+            logging.warning(f"Could not read existing agent.py: {e}")
+
+    console.print(
+        f"ℹ️  Generating [cyan]{agent_directory}/agent.py[/cyan] shim for YAML config agent",
+        style="dim",
+    )
+
+    shim_content = f'''"""Agent module that loads the YAML config agent.
+
+This file is auto-generated to provide compatibility with the deployment pipeline.
+Edit root_agent.yaml to modify your agent configuration.
+"""
+
+from pathlib import Path
+
+from google.adk.agents import config_agent_utils
+from google.adk.apps.app import App
+
+_AGENT_DIR = Path(__file__).parent
+root_agent = config_agent_utils.from_config(str(_AGENT_DIR / "root_agent.yaml"))
+app = App(root_agent=root_agent, name="{agent_directory}")
+'''
+
+    try:
+        agent_py_path.write_text(shim_content, encoding="utf-8")
+        logging.debug(f"Generated YAML agent shim at {agent_py_path}")
+    except Exception as e:
+        logging.warning(
+            f"Could not generate YAML agent shim at {agent_py_path}: {type(e).__name__}: {e}"
         )
 
 
@@ -1069,18 +1135,24 @@ def process_template(
                 )
                 logging.debug("Remote template files copied successfully")
 
-                # Inject app object if missing (backward compatibility for ADK remote templates)
-                # Only inject for ADK agents with agent_engine deployment
+                # Handle ADK agent compatibility
                 is_adk = "adk" in tags
                 agent_py_path = generated_project_dir / agent_directory / "agent.py"
-                if (
-                    is_adk
-                    and agent_py_path.exists()
-                    and deployment_target == "agent_engine"
-                ):
-                    _inject_app_object_if_missing(
-                        agent_py_path, agent_directory, console
-                    )
+                root_agent_yaml = (
+                    generated_project_dir / agent_directory / "root_agent.yaml"
+                )
+
+                if is_adk:
+                    # Check for YAML config agent first
+                    if root_agent_yaml.exists():
+                        _generate_yaml_agent_shim(
+                            agent_py_path, agent_directory, console
+                        )
+                    elif agent_py_path.exists():
+                        # Inject app object if missing (backward compatibility)
+                        _inject_app_object_if_missing(
+                            agent_py_path, agent_directory, console
+                        )
 
             # Move the generated project to the final destination
             generated_project_dir = temp_path / project_name
@@ -1263,6 +1335,20 @@ def process_template(
 
             # Delete appropriate files based on ADK tag
             agent_directory = get_agent_directory(template_config, cli_overrides)
+
+            # Handle YAML config agents for in-folder mode
+            # This runs after all files have been copied to the final destination
+            # Use force=True because the user's root_agent.yaml takes precedence
+            # over the base template's agent.py
+            if in_folder:
+                final_agent_py_path = final_destination / agent_directory / "agent.py"
+                final_root_agent_yaml = (
+                    final_destination / agent_directory / "root_agent.yaml"
+                )
+                if final_root_agent_yaml.exists():
+                    _generate_yaml_agent_shim(
+                        final_agent_py_path, agent_directory, console, force=True
+                    )
 
             # Clean up unused_* files and directories created by conditional templates
             import glob

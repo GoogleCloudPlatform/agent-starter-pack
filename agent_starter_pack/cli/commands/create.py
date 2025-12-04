@@ -707,6 +707,11 @@ def create(
         # CI/CD runner selection
         # --prototype flag or agent_garden mode defaults to "none" (minimal project)
         if prototype or agent_garden:
+            if cicd_runner and cicd_runner != "none":
+                console.print(
+                    f"Info: --cicd-runner '{cicd_runner}' ignored due to {'--prototype' if prototype else '--agent-garden'} flag.",
+                    style="yellow",
+                )
             final_cicd_runner = "none"
             if debug:
                 logging.debug("Prototype mode: setting cicd_runner to 'none'")

@@ -126,6 +126,18 @@ It automatically:
 - Validates the project structure for compatibility
 - Applies the same file merging logic as the `create` command
 
+### Version Locking
+
+When enhancing a project that was created with agent-starter-pack, the command automatically uses the same version that generated the project:
+
+1. Reads `asp_version` from `[tool.agent-starter-pack]` in `pyproject.toml`
+2. If the version differs from the current CLI, re-executes with the locked version via `uvx agent-starter-pack@{version}`
+3. Uses stored `create_params` to ensure identical configuration
+
+This ensures compatibility and consistent behavior when adding features to existing projects.
+
+**Skip version lock:** Set `ASP_SKIP_VERSION_LOCK=1` to use the current CLI version instead.
+
 ### Base Template Inheritance
 
 When enhancing your existing project (using `local@.` or `local@/path/to/project`), the enhance command will:
@@ -147,7 +159,10 @@ Core Infrastructure & Capabilities
 
 **Prototype to Production:**
 ```bash
-# You have a prototype agent in /app/agent.py
+# Created with --prototype, now ready to add CI/CD
+uvx agent-starter-pack enhance --cicd-runner google_cloud_build
+
+# Or add a specific template
 uvx agent-starter-pack enhance adk@production-ready
 ```
 

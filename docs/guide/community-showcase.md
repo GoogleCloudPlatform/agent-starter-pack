@@ -28,7 +28,7 @@ An intelligent learning platform that adapts to individual learning styles and p
 
 An AI-powered production monitoring assistant built for the Agentic Era Hackathon. This agent helps DevOps teams monitor system health, detect anomalies, and provide intelligent insights for maintaining production environments.
 
-### Bob's Brain - Production ADK Agent Department
+### Bob's Brain
 **Repository:** [jeremylongshore/bobs-brain](https://github.com/jeremylongshore/bobs-brain)
 
 A production-grade multi-agent system built entirely with Google's Agent Development Kit (ADK) and Vertex AI Agent Engine. Bob's Brain demonstrates advanced ADK patterns including agent-to-agent (A2A) protocol, comprehensive CI/CD with ARV gates, and Terraform-first infrastructure.

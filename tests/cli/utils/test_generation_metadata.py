@@ -468,6 +468,8 @@ class TestMetadataEnablesIdenticalRecreation:
     ) -> list[str]:
         """Compare scaffolding files between two project directories.
 
+        Iterates through all SCAFFOLDING_PATTERNS and compares file contents.
+
         Args:
             path1: First project path
             path2: Second project path
@@ -477,55 +479,72 @@ class TestMetadataEnablesIdenticalRecreation:
         """
         differences: list[str] = []
 
-        # Compare pyproject.toml (key file)
-        pyproject1 = path1 / "pyproject.toml"
-        pyproject2 = path2 / "pyproject.toml"
+        for pattern in self.SCAFFOLDING_PATTERNS:
+            files1 = sorted(path1.glob(pattern))
+            files2 = sorted(path2.glob(pattern))
 
-        if pyproject1.exists() and pyproject2.exists():
-            content1 = pyproject1.read_text()
-            content2 = pyproject2.read_text()
+            rel_files1 = {f.relative_to(path1) for f in files1}
+            rel_files2 = {f.relative_to(path2) for f in files2}
 
-            # Compare line by line, ignoring generated_at
-            lines1 = content1.splitlines()
-            lines2 = content2.splitlines()
+            if rel_files1 != rel_files2:
+                mismatch = rel_files1.symmetric_difference(rel_files2)
+                differences.append(
+                    f"File list mismatch for pattern '{pattern}': {mismatch}"
+                )
+                continue
 
-            for i, (line1, line2) in enumerate(zip(lines1, lines2, strict=False)):
-                # Skip generated_at comparison (timestamp will differ)
-                if "generated_at" in line1 or "generated_at" in line2:
-                    continue
-                if line1 != line2:
+            for file1 in files1:
+                file2 = path2 / file1.relative_to(path1)
+                content1 = file1.read_text()
+                content2 = file2.read_text()
+
+                # Special handling for pyproject.toml to ignore dynamic fields
+                if file1.name == "pyproject.toml":
+                    differences.extend(
+                        self._compare_pyproject_toml(file1, file2, path1)
+                    )
+                elif content1 != content2:
                     differences.append(
-                        f"pyproject.toml line {i + 1}: '{line1}' != '{line2}'"
+                        f"File content differs for {file1.relative_to(path1)}"
                     )
 
-            if len(lines1) != len(lines2):
-                differences.append(
-                    f"pyproject.toml line count: {len(lines1)} != {len(lines2)}"
-                )
-        elif pyproject1.exists() != pyproject2.exists():
-            differences.append("pyproject.toml exists in one project but not the other")
+        return differences
 
-        # Compare Makefile
-        makefile1 = path1 / "Makefile"
-        makefile2 = path2 / "Makefile"
+    def _compare_pyproject_toml(
+        self,
+        file1: pathlib.Path,
+        file2: pathlib.Path,
+        base_path: pathlib.Path,
+    ) -> list[str]:
+        """Compare pyproject.toml files using TOML parsing.
 
-        if makefile1.exists() and makefile2.exists():
-            if makefile1.read_text() != makefile2.read_text():
-                differences.append("Makefile content differs")
-        elif makefile1.exists() != makefile2.exists():
-            differences.append("Makefile exists in one project but not the other")
+        Ignores dynamic fields like generated_at and asp_version.
 
-        # Compare deployment directory structure
-        deploy1 = path1 / "deployment"
-        deploy2 = path2 / "deployment"
+        Args:
+            file1: First pyproject.toml path
+            file2: Second pyproject.toml path
+            base_path: Base path for relative path display
 
-        if deploy1.exists() and deploy2.exists():
-            tf_files1 = {f.name for f in deploy1.rglob("*.tf")}
-            tf_files2 = {f.name for f in deploy2.rglob("*.tf")}
-            if tf_files1 != tf_files2:
-                differences.append(
-                    f"Terraform files differ: {tf_files1} != {tf_files2}"
-                )
+        Returns:
+            List of differences found
+        """
+        differences: list[str] = []
+
+        with open(file1, "rb") as f1, open(file2, "rb") as f2:
+            data1 = tomllib.load(f1)
+            data2 = tomllib.load(f2)
+
+        # Pop keys that are expected to differ before comparison
+        for data in [data1, data2]:
+            if asp_metadata := data.get("tool", {}).get("agent-starter-pack"):
+                asp_metadata.pop("generated_at", None)
+                asp_metadata.pop("asp_version", None)
+
+        if data1 != data2:
+            differences.append(
+                f"pyproject.toml content differs (ignoring dynamic fields): "
+                f"{file1.relative_to(base_path)}"
+            )
 
         return differences
 

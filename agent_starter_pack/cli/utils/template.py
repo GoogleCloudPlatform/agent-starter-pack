@@ -22,8 +22,15 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any
+
+if sys.version_info >= (3, 11):
+    from datetime import UTC
+else:
+    from datetime import timezone
+
+    UTC = timezone.utc  # noqa: UP017 - Required for Python 3.10 compatibility
 
 import yaml
 from cookiecutter.main import cookiecutter
@@ -1023,7 +1030,7 @@ def process_template(
                 "project_name": project_name,
                 "agent_name": agent_name,
                 "package_version": get_current_version(),
-                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
+                "generated_at": datetime.now(tz=UTC).isoformat(),
                 "agent_description": template_config.get("description", ""),
                 "example_question": template_config.get("example_question", "").ljust(
                     61

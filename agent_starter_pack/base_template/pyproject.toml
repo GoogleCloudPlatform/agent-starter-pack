@@ -120,10 +120,8 @@ deployment_target = "{{cookiecutter.deployment_target}}"
 session_type = "{{cookiecutter.session_type}}"
 {%- endif %}
 cicd_runner = "{{cookiecutter.cicd_runner}}"
+include_data_ingestion = {{ cookiecutter.data_ingestion | lower }}
 {%- if cookiecutter.data_ingestion %}
-include_data_ingestion = true
 datastore = "{{cookiecutter.datastore_type}}"
-{%- else %}
-include_data_ingestion = false
 {%- endif %}
 frontend_type = "{{cookiecutter.frontend_type}}"

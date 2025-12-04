@@ -48,6 +48,7 @@ from ..utils.template import (
     prompt_deployment_target,
     prompt_session_type_selection,
 )
+from ..utils.version import get_current_version
 
 console = Console()
 
@@ -871,6 +872,12 @@ def create(
             f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"
             "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
+        # Show enhance hint for prototype mode
+        if final_cicd_runner == "none":
+            version = get_current_version()
+            console.print(
+                f"\n💡 Once ready for production, run: [cyan]uvx agent-starter-pack@{version} enhance[/]"
+            )
         # Determine the correct path to display based on whether output_dir was specified
         console.print("\n🚀 To get started, run the following command:")
 

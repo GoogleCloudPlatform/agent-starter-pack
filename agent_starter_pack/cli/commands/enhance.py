@@ -13,8 +13,10 @@
 # limitations under the License.
 
 import logging
+import os
 import pathlib
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -29,6 +31,7 @@ else:
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.template import get_available_agents, validate_agent_directory_name
+from ..utils.version import get_current_version
 from .create import (
     create,
     get_available_base_templates,
@@ -50,6 +53,137 @@ _EXCLUDED_DIRS = {
     "dist",
     ".terraform",
 }
+
+
+def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
+    """Read agent-starter-pack config from project's pyproject.toml.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        The [tool.agent-starter-pack] config dict if found, None otherwise
+    """
+    pyproject_path = project_dir / "pyproject.toml"
+    if not pyproject_path.exists():
+        return None
+
+    try:
+        with open(pyproject_path, "rb") as f:
+            pyproject_data = tomllib.load(f)
+
+        # Config is stored under [tool.agent-starter-pack]
+        return pyproject_data.get("tool", {}).get("agent-starter-pack")
+    except Exception as e:
+        logging.debug(f"Could not read config from pyproject.toml: {e}")
+        return None
+
+
+def check_and_execute_with_project_version_lock(project_dir: pathlib.Path) -> bool:
+    """Check if project has asp_version and execute with that version if different.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        True if version lock was found and executed, False otherwise
+    """
+    # Skip version locking if ASP_SKIP_VERSION_LOCK env var is set
+    if os.environ.get("ASP_SKIP_VERSION_LOCK") == "1":
+        return False
+
+    project_config = get_project_asp_config(project_dir)
+    if not project_config:
+        return False
+
+    project_version = project_config.get("asp_version")
+    if not project_version:
+        return False
+
+    current_version = get_current_version()
+
+    # Check if versions match (ignoring dev versions like 0.0.0)
+    if current_version == "0.0.0":
+        # Development mode, skip version lock
+        return False
+
+    if project_version == current_version:
+        # Already running the correct version
+        return False
+
+    # Versions differ, need to re-execute with locked version
+    console.print(
+        f"🔒 Project was generated with agent-starter-pack version {project_version}",
+        style="bold blue",
+    )
+    console.print(
+        f"📦 Switching from {current_version} to {project_version}...",
+        style="dim",
+    )
+
+    # Build args from project config instead of forwarding sys.argv
+    # This ensures we use the same settings the project was generated with
+    args = ["enhance", "--auto-approve", "--skip-checks"]
+
+    # Add base template from metadata
+    base_template = project_config.get("base_template")
+    if base_template:
+        args.extend(["--base-template", base_template])
+
+    # Add all create_params dynamically
+    create_params = project_config.get("create_params", {})
+    for key, value in create_params.items():
+        # Skip None, "none", "None", False, and empty values
+        if (
+            value is None
+            or value is False
+            or str(value).lower() == "none"
+            or value == ""
+        ):
+            continue
+
+        arg_name = f"--{key.replace('_', '-')}"
+        if value is True:
+            args.append(arg_name)
+        else:
+            args.extend([arg_name, str(value)])
+
+    try:
+        # Check if uvx is available
+        subprocess.run(["uvx", "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        console.print(
+            f"❌ Project requires agent-starter-pack version {project_version}, but 'uvx' is not installed",
+            style="bold red",
+        )
+        console.print(
+            "💡 Install uv to use version-locked projects:",
+            style="bold blue",
+        )
+        console.print("   curl -LsSf https://astral.sh/uv/install.sh | sh")
+        console.print(
+            "   OR visit: https://docs.astral.sh/uv/getting-started/installation/"
+        )
+        sys.exit(1)
+
+    try:
+        # Execute uvx with the locked version
+        cmd = ["uvx", f"agent-starter-pack@{project_version}", *args]
+        logging.debug(f"Executing nested command: {' '.join(cmd)}")
+        subprocess.run(cmd, check=True)
+        return True
+
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"❌ Failed to execute with locked version {project_version}: {e}",
+            style="bold red",
+        )
+        console.print(
+            "⚠️  Continuing with current version, but compatibility is not guaranteed",
+            style="yellow",
+        )
+
+    return False
 
 
 def display_base_template_selection(current_base: str) -> str:
@@ -285,6 +419,13 @@ def enhance(
 
     The command will validate your project structure and provide guidance if needed.
     """
+
+    # Check for version lock early (before showing any output)
+    # This ensures we use the same ASP version that generated the project
+    current_dir = pathlib.Path.cwd()
+    if check_and_execute_with_project_version_lock(current_dir):
+        # Successfully re-executed with locked version, exit this process
+        return
 
     # Display welcome banner for enhance command
     display_welcome_banner(enhance_mode=True)

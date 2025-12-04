@@ -87,7 +87,7 @@ select = [
     "RUF", # ruff specific rules
     "PLW1514", # unspecified-encoding (require encoding in open calls)
 ]
-ignore = ["E501", "C901", "RUF001", "UP036"]
+ignore = ["E501", "C901", "RUF001", "UP036", "UP017"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app", "frontend"]

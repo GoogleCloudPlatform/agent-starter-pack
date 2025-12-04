@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 import yaml
@@ -1022,6 +1023,7 @@ def process_template(
                 "project_name": project_name,
                 "agent_name": agent_name,
                 "package_version": get_current_version(),
+                "generated_at": datetime.now(tz=timezone.utc).isoformat(),
                 "agent_description": template_config.get("description", ""),
                 "example_question": template_config.get("example_question", "").ljust(
                     61

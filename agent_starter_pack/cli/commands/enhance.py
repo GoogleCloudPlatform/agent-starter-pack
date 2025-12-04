@@ -372,11 +372,6 @@ def display_agent_directory_selection(
     help="Project name for templating (defaults to current directory name)",
 )
 @click.option(
-    "--base-template",
-    "-b",
-    help="Base template to inherit from (e.g., adk_base, langgraph_base, agentic_rag)",
-)
-@click.option(
     "--adk",
     is_flag=True,
     help="Shortcut for --base-template adk_base",
@@ -389,6 +384,7 @@ def enhance(
     name: str | None,
     deployment_target: str | None,
     cicd_runner: str | None,
+    prototype: bool,
     include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
@@ -768,6 +764,7 @@ def enhance(
         agent=agent_spec,
         deployment_target=deployment_target,
         cicd_runner=cicd_runner,
+        prototype=prototype,
         include_data_ingestion=include_data_ingestion,
         datastore=datastore,
         session_type=session_type,

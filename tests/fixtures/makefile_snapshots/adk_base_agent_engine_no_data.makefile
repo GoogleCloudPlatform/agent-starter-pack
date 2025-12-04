@@ -40,7 +40,6 @@ deploy:
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
 
-
 # ==============================================================================
 # Infrastructure Setup
 # ==============================================================================

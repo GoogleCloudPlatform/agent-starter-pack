@@ -42,6 +42,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-adk-base",
         "agent_directory": "test_adk_base",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": True,
         "is_adk_live": False,
         "is_a2a": False,
@@ -55,6 +56,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-adk-base",
         "agent_directory": "test_adk_base",
         "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
         "is_adk": True,
         "is_adk_live": False,
         "is_a2a": False,
@@ -68,6 +70,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-adk-live",
         "agent_directory": "test_adk_live",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": True,
         "is_a2a": False,
@@ -81,6 +84,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-adk-live",
         "agent_directory": "test_adk_live",
         "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": True,
         "is_a2a": False,
@@ -94,6 +98,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-rag",
         "agent_directory": "test_rag",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
         "is_a2a": False,
@@ -108,6 +113,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-rag",
         "agent_directory": "test_rag",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
         "is_a2a": False,
@@ -123,6 +129,7 @@ TEST_CONFIGURATIONS = {
         "agent_directory": "test_langgraph",
         "agent_name": "langgraph_base",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
         "is_a2a": True,
@@ -137,6 +144,7 @@ TEST_CONFIGURATIONS = {
         "agent_directory": "test_langgraph",
         "agent_name": "langgraph_base",
         "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
         "is_a2a": True,
@@ -150,6 +158,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-custom",
         "agent_directory": "test_custom",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
         "is_a2a": False,
@@ -183,6 +192,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-garden",
         "agent_directory": "test_garden",
         "deployment_target": "cloud_run",
+        "cicd_runner": "none",
         "is_adk": True,
         "is_adk_live": False,
         "is_a2a": False,
@@ -198,6 +208,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-a2a",
         "agent_directory": "test_a2a",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": True,
         "is_adk_live": False,
         "is_a2a": True,
@@ -211,6 +222,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-a2a",
         "agent_directory": "test_a2a",
         "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
         "is_adk": True,
         "is_adk_live": False,
         "is_a2a": True,
@@ -435,7 +447,6 @@ class TestMakefileGeneration:
             "install:",
             "playground:",
             "backend:",
-            "setup-dev-env:",
             "test:",
             "lint:",
         ]
@@ -446,6 +457,16 @@ class TestMakefileGeneration:
             for target in required_targets:
                 assert target in output, (
                     f"Required target '{target}' missing in {config_name}"
+                )
+
+            # setup-dev-env is only present when cicd_runner != 'none'
+            if config.get("cicd_runner") != "none":
+                assert "setup-dev-env:" in output, (
+                    f"setup-dev-env target missing in {config_name}"
+                )
+            else:
+                assert "setup-dev-env:" not in output, (
+                    f"setup-dev-env should not be present in prototype mode ({config_name})"
                 )
 
 

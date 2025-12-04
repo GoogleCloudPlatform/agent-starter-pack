@@ -115,6 +115,9 @@ agent_directory = "{{cookiecutter.agent_directory}}"
 # Generation context
 generated_at = "{{cookiecutter.generated_at}}"
 asp_version = "{{cookiecutter.package_version}}"
+
+[tool.agent-starter-pack.create_params]
+# Parameters used during project creation
 deployment_target = "{{cookiecutter.deployment_target}}"
 session_type = "{{cookiecutter.session_type or 'none'}}"
 cicd_runner = "{{cookiecutter.cicd_runner}}"

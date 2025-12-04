@@ -48,6 +48,7 @@ from ..utils.template import (
     prompt_deployment_target,
     prompt_session_type_selection,
 )
+from ..utils.version import get_current_version
 
 console = Console()
 
@@ -112,8 +113,15 @@ def shared_template_options(f: Callable) -> Callable:
         help="Include data ingestion pipeline in the project",
     )(f)
     f = click.option(
+        "--prototype",
+        "-p",
+        is_flag=True,
+        help="Create minimal project without CI/CD or Terraform infrastructure",
+        default=False,
+    )(f)
+    f = click.option(
         "--cicd-runner",
-        type=click.Choice(["google_cloud_build", "github_actions"]),
+        type=click.Choice(["google_cloud_build", "github_actions", "none"]),
         help="CI/CD runner to use",
     )(f)
     f = click.option(
@@ -268,6 +276,7 @@ def create(
     agent: str | None,
     deployment_target: str | None,
     cicd_runner: str | None,
+    prototype: bool,
     include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
@@ -696,17 +705,26 @@ def create(
             logging.debug(f"Selected session type: {final_session_type}")
 
         # CI/CD runner selection
-        final_cicd_runner = cicd_runner
-        if not final_cicd_runner:
-            if auto_approve or agent_garden:
-                final_cicd_runner = "google_cloud_build"
-                if not agent_garden:
-                    console.print(
-                        "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
-                        style="yellow",
-                    )
-            else:
-                final_cicd_runner = prompt_cicd_runner_selection()
+        # --prototype flag or agent_garden mode defaults to "none" (minimal project)
+        if prototype or agent_garden:
+            if cicd_runner and cicd_runner != "none":
+                console.print(
+                    f"Info: --cicd-runner '{cicd_runner}' ignored due to {'--prototype' if prototype else '--agent-garden'} flag.",
+                    style="yellow",
+                )
+            final_cicd_runner = "none"
+            if debug:
+                logging.debug("Prototype mode: setting cicd_runner to 'none'")
+        elif cicd_runner:
+            final_cicd_runner = cicd_runner
+        elif auto_approve:
+            final_cicd_runner = "google_cloud_build"
+            console.print(
+                "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
+                style="yellow",
+            )
+        else:
+            final_cicd_runner = prompt_cicd_runner_selection()
         if debug:
             logging.debug(f"Selected CI/CD runner: {final_cicd_runner}")
 
@@ -859,6 +877,12 @@ def create(
             f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"
             "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
+        # Show enhance hint for prototype mode
+        if final_cicd_runner == "none":
+            version = get_current_version()
+            console.print(
+                f"\n💡 Once ready for production, run: [cyan]uvx agent-starter-pack@{version} enhance[/]"
+            )
         # Determine the correct path to display based on whether output_dir was specified
         console.print("\n🚀 To get started, run the following command:")
 

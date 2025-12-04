@@ -49,10 +49,25 @@ Deployment target for your agent:
 - `cloud_run` - Deploy to Google Cloud Run
 - `agent_engine` - Deploy to Google Cloud Agent Engine
 
-### `--cicd-runner` RUNNER  
+### `--cicd-runner` RUNNER
 CI/CD runner to use:
 - `google_cloud_build` - Use Google Cloud Build
 - `github_actions` - Use GitHub Actions
+- `none` - No CI/CD (minimal project, same as `--prototype`)
+
+### `--prototype`, `-p`
+Create a minimal project without CI/CD or Terraform infrastructure. Ideal for:
+- Quick prototyping and experimentation
+- Learning and tutorials
+- Teams with custom deployment pipelines
+
+**What gets skipped:**
+- `.github/workflows/` or `.cloudbuild/`
+- `deployment/` (Terraform)
+- `tests/load_test/`
+- Makefile `setup-dev-env` target
+
+**Upgrade path:** Run `uvx agent-starter-pack enhance` later to add CI/CD scaffolding.
 
 ### `--region` REGION
 GCP region for deployment (default: `us-central1`)
@@ -157,6 +172,9 @@ uvx agent-starter-pack create -y
 
 # Fully interactive mode
 uvx agent-starter-pack create
+
+# Quick prototype (no CI/CD, no Terraform)
+uvx agent-starter-pack create my-prototype -p -d agent_engine
 ```
 
 ### Basic Usage

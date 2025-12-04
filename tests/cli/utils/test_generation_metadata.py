@@ -68,6 +68,8 @@ base_template = "adk_base"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "cloud_run"
 session_type = "in_memory"
 cicd_runner = "google_cloud_build"
@@ -88,10 +90,14 @@ frontend_type = "None"
         # Generation context fields
         assert "generated_at" in metadata
         assert "asp_version" in metadata
-        assert "deployment_target" in metadata
-        assert "cicd_runner" in metadata
-        assert "include_data_ingestion" in metadata
-        assert "frontend_type" in metadata
+
+        # create_params section
+        assert "create_params" in metadata
+        create_params = metadata["create_params"]
+        assert "deployment_target" in create_params
+        assert "cicd_runner" in create_params
+        assert "include_data_ingestion" in create_params
+        assert "frontend_type" in create_params
 
     def test_metadata_types_are_correct(self, tmp_path: pathlib.Path) -> None:
         """Test that metadata values have correct types."""
@@ -107,6 +113,8 @@ base_template = "adk_base"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "cloud_run"
 session_type = "cloud_sql"
 cicd_runner = "google_cloud_build"
@@ -118,24 +126,27 @@ frontend_type = "streamlit"
         pyproject_path.write_text(pyproject_content)
 
         metadata = load_asp_metadata(pyproject_path)
+        create_params = metadata["create_params"]
 
-        # String fields
+        # String fields in metadata
         assert isinstance(metadata["name"], str)
         assert isinstance(metadata["description"], str)
         assert isinstance(metadata["base_template"], str)
         assert isinstance(metadata["agent_directory"], str)
         assert isinstance(metadata["generated_at"], str)
         assert isinstance(metadata["asp_version"], str)
-        assert isinstance(metadata["deployment_target"], str)
-        assert isinstance(metadata["cicd_runner"], str)
-        assert isinstance(metadata["frontend_type"], str)
+
+        # String fields in create_params
+        assert isinstance(create_params["deployment_target"], str)
+        assert isinstance(create_params["cicd_runner"], str)
+        assert isinstance(create_params["frontend_type"], str)
 
         # Boolean field
-        assert isinstance(metadata["include_data_ingestion"], bool)
+        assert isinstance(create_params["include_data_ingestion"], bool)
 
         # Optional string fields when present
-        assert isinstance(metadata["session_type"], str)
-        assert isinstance(metadata["datastore"], str)
+        assert isinstance(create_params["session_type"], str)
+        assert isinstance(create_params["datastore"], str)
 
     def test_metadata_session_type_none_when_not_specified(
         self, tmp_path: pathlib.Path
@@ -154,6 +165,8 @@ base_template = "adk_base"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "agent_engine"
 session_type = "none"
 cicd_runner = "google_cloud_build"
@@ -165,9 +178,10 @@ frontend_type = "None"
         pyproject_path.write_text(pyproject_content)
 
         metadata = load_asp_metadata(pyproject_path)
+        create_params = metadata["create_params"]
 
         # session_type should be "none" for agent_engine
-        assert metadata["session_type"] == "none"
+        assert create_params["session_type"] == "none"
 
     def test_metadata_datastore_none_when_data_ingestion_disabled(
         self, tmp_path: pathlib.Path
@@ -186,6 +200,8 @@ base_template = "adk_base"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "cloud_run"
 session_type = "in_memory"
 cicd_runner = "google_cloud_build"
@@ -197,9 +213,10 @@ frontend_type = "None"
         pyproject_path.write_text(pyproject_content_no_ingestion)
 
         metadata = load_asp_metadata(pyproject_path)
+        create_params = metadata["create_params"]
 
-        assert metadata["include_data_ingestion"] is False
-        assert metadata["datastore"] == "none"
+        assert create_params["include_data_ingestion"] is False
+        assert create_params["datastore"] == "none"
 
         # With data ingestion - datastore has actual value
         pyproject_content_with_ingestion = """
@@ -214,6 +231,8 @@ base_template = "agentic_rag"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "cloud_run"
 session_type = "cloud_sql"
 cicd_runner = "google_cloud_build"
@@ -224,9 +243,10 @@ frontend_type = "None"
         pyproject_path.write_text(pyproject_content_with_ingestion)
 
         metadata = load_asp_metadata(pyproject_path)
+        create_params = metadata["create_params"]
 
-        assert metadata["include_data_ingestion"] is True
-        assert metadata["datastore"] == "vertex_ai_search"
+        assert create_params["include_data_ingestion"] is True
+        assert create_params["datastore"] == "vertex_ai_search"
 
 
 class TestMetadataEnablesRecreation:
@@ -246,6 +266,8 @@ base_template = "agentic_rag"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "cloud_run"
 session_type = "cloud_sql"
 cicd_runner = "github_actions"
@@ -288,6 +310,8 @@ base_template = "adk_base"
 agent_directory = "custom_app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "agent_engine"
 cicd_runner = "google_cloud_build"
 include_data_ingestion = false
@@ -297,14 +321,15 @@ frontend_type = "None"
         pyproject_path.write_text(pyproject_content)
 
         metadata = load_asp_metadata(pyproject_path)
+        create_params = metadata["create_params"]
 
         # Verify metadata can be used to determine original settings
         assert metadata["base_template"] == "adk_base"
-        assert metadata["deployment_target"] == "agent_engine"
         assert metadata["agent_directory"] == "custom_app"
-        assert metadata["cicd_runner"] == "google_cloud_build"
-        assert metadata["include_data_ingestion"] is False
-        assert metadata["frontend_type"] == "None"
+        assert create_params["deployment_target"] == "agent_engine"
+        assert create_params["cicd_runner"] == "google_cloud_build"
+        assert create_params["include_data_ingestion"] is False
+        assert create_params["frontend_type"] == "None"
 
 
 class TestMetadataRemoteTemplateCompatibility:
@@ -324,6 +349,8 @@ base_template = "adk_base"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
 deployment_target = "cloud_run"
 cicd_runner = "google_cloud_build"
 include_data_ingestion = false
@@ -431,8 +458,12 @@ class TestMetadataEnablesIdenticalRecreation:
 
         # Verify metadata has required fields
         assert "base_template" in metadata, "Missing base_template in metadata"
-        assert "deployment_target" in metadata, "Missing deployment_target in metadata"
-        assert "cicd_runner" in metadata, "Missing cicd_runner in metadata"
+        assert "create_params" in metadata, "Missing create_params in metadata"
+        create_params = metadata["create_params"]
+        assert "deployment_target" in create_params, (
+            "Missing deployment_target in create_params"
+        )
+        assert "cicd_runner" in create_params, "Missing cicd_runner in create_params"
 
         # 3. Re-create project using only metadata
         project2_dir = tmp_path / "project2"
@@ -568,29 +599,32 @@ def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
     """
     args: list[str] = []
 
-    # Required mappings
+    # Required mappings from metadata
     if "base_template" in metadata:
         args.extend(["--agent", metadata["base_template"]])
 
-    if "deployment_target" in metadata:
-        args.extend(["--deployment-target", metadata["deployment_target"]])
-
-    if "cicd_runner" in metadata:
-        args.extend(["--cicd-runner", metadata["cicd_runner"]])
-
-    # Optional mappings - "none" means not specified
-    session_type = metadata.get("session_type")
-    if session_type and session_type != "none":
-        args.extend(["--session-type", session_type])
-
-    if metadata.get("include_data_ingestion"):
-        args.append("--include-data-ingestion")
-        datastore = metadata.get("datastore")
-        if datastore and datastore != "none":
-            args.extend(["--datastore", datastore])
-
     if "agent_directory" in metadata and metadata["agent_directory"] != "app":
         args.extend(["--agent-directory", metadata["agent_directory"]])
+
+    # Get create_params for the rest
+    create_params = metadata.get("create_params", {})
+
+    # Add all create_params dynamically
+    for key, value in create_params.items():
+        # Skip None, "none", "None", False, and empty values
+        if (
+            value is None
+            or value is False
+            or str(value).lower() == "none"
+            or value == ""
+        ):
+            continue
+
+        arg_name = f"--{key.replace('_', '-')}"
+        if value is True:
+            args.append(arg_name)
+        else:
+            args.extend([arg_name, str(value)])
 
     return args
 

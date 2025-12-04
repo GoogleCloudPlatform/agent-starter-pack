@@ -495,3 +495,64 @@ before creating the connection.
 ### Key Tooling
 
 -   **`uv` for Python:** Primary tool for dependency management and CLI execution
+
+## Quick Testing Commands
+
+When developing or testing CLI changes, use these shortcuts for fast iteration:
+
+### Fast Project Creation
+
+```bash
+# Quick prototype project (no CI/CD, no Terraform, no prompts)
+uv run agent-starter-pack create mytest -p -s -y -d agent_engine --output-dir target
+
+# Flags explained:
+# -p / --prototype  : Minimal project (no CI/CD or Terraform)
+# -s / --skip-checks: Skip GCP/Vertex AI verification
+# -y / --auto-approve: Skip all confirmation prompts
+# -d : Deployment target
+# --output-dir target: Output to target/ (gitignored)
+```
+
+### Common Test Combinations
+
+```bash
+# Agent Engine + prototype (fastest)
+uv run agent-starter-pack create test-$(date +%s) -p -s -y -d agent_engine --output-dir target
+
+# Cloud Run with session type
+uv run agent-starter-pack create test-$(date +%s) -p -s -y -d cloud_run --session-type in_memory --output-dir target
+
+# Full project with CI/CD
+uv run agent-starter-pack create test-$(date +%s) -s -y -d agent_engine --cicd-runner google_cloud_build --output-dir target
+```
+
+## Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `agent_starter_pack/cli/commands/create.py` | Main create command, CLI flags, shared options |
+| `agent_starter_pack/cli/utils/template.py` | Template processing, `process_template()`, CI/CD runner prompt |
+| `agent_starter_pack/base_template/pyproject.toml` | Generated project metadata, `[tool.agent-starter-pack]` section |
+| `agent_starter_pack/base_template/Makefile` | Generated project Makefile targets |
+
+## Project Metadata Structure
+
+Generated projects store creation context in `pyproject.toml`:
+
+```toml
+[tool.agent-starter-pack]
+# Metadata
+name = "my-project"
+base_template = "adk_base"
+asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
+# CLI params used during creation - used by enhance command
+deployment_target = "cloud_run"
+session_type = "in_memory"
+cicd_runner = "none"
+include_data_ingestion = false
+```
+
+The `create_params` section enables the `enhance` command to recreate identical scaffolding with the locked ASP version.

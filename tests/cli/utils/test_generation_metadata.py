@@ -137,11 +137,11 @@ frontend_type = "streamlit"
         assert isinstance(metadata["session_type"], str)
         assert isinstance(metadata["datastore"], str)
 
-    def test_metadata_session_type_only_when_needed(
+    def test_metadata_session_type_none_when_not_specified(
         self, tmp_path: pathlib.Path
     ) -> None:
-        """Test that session_type is only included when specified."""
-        # agent_engine deployment - no session_type
+        """Test that session_type is 'none' when not specified."""
+        # agent_engine deployment - session_type is "none"
         pyproject_content = """
 [project]
 name = "test-project"
@@ -155,8 +155,10 @@ agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
 deployment_target = "agent_engine"
+session_type = "none"
 cicd_runner = "google_cloud_build"
 include_data_ingestion = false
+datastore = "none"
 frontend_type = "None"
 """
         pyproject_path = tmp_path / "pyproject.toml"
@@ -164,14 +166,14 @@ frontend_type = "None"
 
         metadata = load_asp_metadata(pyproject_path)
 
-        # session_type should not be present for agent_engine
-        assert "session_type" not in metadata
+        # session_type should be "none" for agent_engine
+        assert metadata["session_type"] == "none"
 
-    def test_metadata_datastore_only_when_data_ingestion_enabled(
+    def test_metadata_datastore_none_when_data_ingestion_disabled(
         self, tmp_path: pathlib.Path
     ) -> None:
-        """Test that datastore is only included when data ingestion is enabled."""
-        # Without data ingestion
+        """Test that datastore is 'none' when data ingestion is disabled."""
+        # Without data ingestion - datastore is "none"
         pyproject_content_no_ingestion = """
 [project]
 name = "test-project"
@@ -185,8 +187,10 @@ agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
 deployment_target = "cloud_run"
+session_type = "in_memory"
 cicd_runner = "google_cloud_build"
 include_data_ingestion = false
+datastore = "none"
 frontend_type = "None"
 """
         pyproject_path = tmp_path / "pyproject.toml"
@@ -195,9 +199,9 @@ frontend_type = "None"
         metadata = load_asp_metadata(pyproject_path)
 
         assert metadata["include_data_ingestion"] is False
-        assert "datastore" not in metadata
+        assert metadata["datastore"] == "none"
 
-        # With data ingestion
+        # With data ingestion - datastore has actual value
         pyproject_content_with_ingestion = """
 [project]
 name = "test-project"
@@ -211,6 +215,7 @@ agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
 deployment_target = "cloud_run"
+session_type = "cloud_sql"
 cicd_runner = "google_cloud_build"
 include_data_ingestion = true
 datastore = "vertex_ai_search"
@@ -573,14 +578,16 @@ def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
     if "cicd_runner" in metadata:
         args.extend(["--cicd-runner", metadata["cicd_runner"]])
 
-    # Optional mappings
-    if metadata.get("session_type"):
-        args.extend(["--session-type", metadata["session_type"]])
+    # Optional mappings - "none" means not specified
+    session_type = metadata.get("session_type")
+    if session_type and session_type != "none":
+        args.extend(["--session-type", session_type])
 
     if metadata.get("include_data_ingestion"):
         args.append("--include-data-ingestion")
-        if "datastore" in metadata:
-            args.extend(["--datastore", metadata["datastore"]])
+        datastore = metadata.get("datastore")
+        if datastore and datastore != "none":
+            args.extend(["--datastore", datastore])
 
     if "agent_directory" in metadata and metadata["agent_directory"] != "app":
         args.extend(["--agent-directory", metadata["agent_directory"]])

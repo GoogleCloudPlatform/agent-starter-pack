@@ -116,12 +116,8 @@ agent_directory = "{{cookiecutter.agent_directory}}"
 generated_at = "{{cookiecutter.generated_at}}"
 asp_version = "{{cookiecutter.package_version}}"
 deployment_target = "{{cookiecutter.deployment_target}}"
-{%- if cookiecutter.session_type %}
-session_type = "{{cookiecutter.session_type}}"
-{%- endif %}
+session_type = "{{cookiecutter.session_type or 'none'}}"
 cicd_runner = "{{cookiecutter.cicd_runner}}"
 include_data_ingestion = {{ cookiecutter.data_ingestion | lower }}
-{%- if cookiecutter.data_ingestion %}
-datastore = "{{cookiecutter.datastore_type}}"
-{%- endif %}
+datastore = "{{cookiecutter.datastore_type or 'none'}}"
 frontend_type = "{{cookiecutter.frontend_type}}"

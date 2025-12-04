@@ -103,3 +103,21 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.hatch.build.targets.wheel]
 packages = ["{{cookiecutter.agent_directory}}","frontend"]
+
+[tool.agent-starter-pack]
+# Generation metadata - enables CLI commands to understand project context
+# These fields allow any generated project to work as a remote template
+name = "{{cookiecutter.project_name}}"
+description = "{{cookiecutter.agent_description}}"
+base_template = "{{cookiecutter.agent_name}}"
+agent_directory = "{{cookiecutter.agent_directory}}"
+
+# Generation context
+generated_at = "{{cookiecutter.generated_at}}"
+asp_version = "{{cookiecutter.package_version}}"
+deployment_target = "{{cookiecutter.deployment_target}}"
+session_type = "{{cookiecutter.session_type or 'none'}}"
+cicd_runner = "{{cookiecutter.cicd_runner}}"
+include_data_ingestion = {{ cookiecutter.data_ingestion | lower }}
+datastore = "{{cookiecutter.datastore_type or 'none'}}"
+frontend_type = "{{cookiecutter.frontend_type}}"

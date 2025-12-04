@@ -510,6 +510,10 @@ def prompt_cicd_runner_selection() -> str:
             "display_name": "GitHub Actions",
             "description": "GitHub Actions: CI/CD with secure workload identity federation directly in GitHub.",
         },
+        "none": {
+            "display_name": "None",
+            "description": "Minimal - no CI/CD or Terraform, add later with 'enhance'",
+        },
     }
 
     console.print("\n> Please select a CI/CD runner:")
@@ -1391,6 +1395,20 @@ def process_template(
                         else:
                             unused_path.unlink()
                             logging.debug(f"Deleted unused file: {unused_path}")
+
+            # Clean up additional files for prototype/minimal mode (cicd_runner == "none")
+            if cicd_runner == "none":
+                # Remove deployment folder
+                deployment_dir = final_destination / "deployment"
+                if deployment_dir.exists():
+                    shutil.rmtree(deployment_dir)
+                    logging.debug(f"Prototype mode: deleted {deployment_dir}")
+
+                # Remove load_test folder
+                load_test_dir = final_destination / "tests" / "load_test"
+                if load_test_dir.exists():
+                    shutil.rmtree(load_test_dir)
+                    logging.debug(f"Prototype mode: deleted {load_test_dir}")
 
             # Handle pyproject.toml and uv.lock files
             if is_remote and remote_template_path:

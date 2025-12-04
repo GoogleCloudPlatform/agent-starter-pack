@@ -265,6 +265,7 @@ deploy:
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
 
+{%- if cookiecutter.cicd_runner != 'none' %}
 
 # ==============================================================================
 # Infrastructure Setup
@@ -274,6 +275,7 @@ backend: deploy
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
+{%- endif %}
 {%- if cookiecutter.data_ingestion %}
 
 # ==============================================================================

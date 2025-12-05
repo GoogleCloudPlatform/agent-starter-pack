@@ -85,11 +85,7 @@ def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
 
 def _should_skip_config_value(value: Any) -> bool:
     """Check if a config value should be skipped (empty, none, skip, etc.)."""
-    return (
-        value is None
-        or value is False
-        or str(value).lower() in ("none", "skip", "")
-    )
+    return value is None or value is False or str(value).lower() in ("none", "skip", "")
 
 
 def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
@@ -174,9 +170,7 @@ def _display_saved_config(
 ) -> None:
     """Display detected saved configuration to the user."""
     console.print()
-    console.print(
-        "📋 [bold]Detected saved configuration from previous setup:[/bold]"
-    )
+    console.print("📋 [bold]Detected saved configuration from previous setup:[/bold]")
     console.print()
     for key, value in display_params.items():
         display_key = key.replace("_", " ").title()

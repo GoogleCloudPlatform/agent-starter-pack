@@ -76,6 +76,13 @@ def shared_template_options(f: Callable) -> Callable:
         default=False,
     )(f)
     f = click.option(
+        "--skip-deps",
+        is_flag=True,
+        help="Skip base template dependency installation (used when reusing saved config)",
+        default=False,
+        hidden=True,
+    )(f)
+    f = click.option(
         "-s",
         "--skip-checks",
         is_flag=True,
@@ -292,6 +299,7 @@ def create(
     auto_approve: bool,
     region: str,
     skip_checks: bool,
+    skip_deps: bool,
     in_folder: bool,
     agent_directory: str | None,
     agent_garden: bool = False,
@@ -859,7 +867,13 @@ def create(
                 replace_region_in_files(project_path, region, debug=debug)
 
             # Handle base template dependencies if override was used
-            if base_template and template_source_path and remote_config:
+            # Skip if --skip-deps is set (used when reusing saved config)
+            if (
+                base_template
+                and template_source_path
+                and remote_config
+                and not skip_deps
+            ):
                 # Load base template config to get extra_dependencies
                 base_template_path = get_template_path(base_template, debug=debug)
                 base_config = load_template_config(base_template_path)

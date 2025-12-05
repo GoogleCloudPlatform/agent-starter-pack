@@ -53,7 +53,7 @@ Deployment target for your agent:
 CI/CD runner to use:
 - `google_cloud_build` - Use Google Cloud Build
 - `github_actions` - Use GitHub Actions
-- `none` - No CI/CD (minimal project, same as `--prototype`)
+- `skip` - No CI/CD (minimal project, same as `--prototype`)
 
 ### `--prototype`, `-p`
 Create a minimal project without CI/CD or Terraform infrastructure. Ideal for:

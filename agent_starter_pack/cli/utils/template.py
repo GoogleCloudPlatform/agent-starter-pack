@@ -1410,6 +1410,12 @@ def process_template(
                     shutil.rmtree(load_test_dir)
                     logging.debug(f"Prototype mode: deleted {load_test_dir}")
 
+                # Remove notebooks folder
+                notebooks_dir = final_destination / "notebooks"
+                if notebooks_dir.exists():
+                    shutil.rmtree(notebooks_dir)
+                    logging.debug(f"Prototype mode: deleted {notebooks_dir}")
+
             # Handle pyproject.toml and uv.lock files
             if is_remote and remote_template_path:
                 # For remote templates, use their pyproject.toml and uv.lock if they exist

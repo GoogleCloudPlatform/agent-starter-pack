@@ -269,6 +269,12 @@ def normalize_project_name(project_name: str) -> str:
     default=False,
 )
 @shared_template_options
+@click.option(
+    "--adk",
+    is_flag=True,
+    help="Quickstart mode: adk_base + agent_engine + prototype, skips prompts",
+    default=False,
+)
 @handle_cli_error
 def create(
     ctx: click.Context,
@@ -276,6 +282,7 @@ def create(
     agent: str | None,
     deployment_target: str | None,
     cicd_runner: str | None,
+    adk: bool,
     prototype: bool,
     include_data_ingestion: bool,
     datastore: str | None,
@@ -340,6 +347,36 @@ def create(
             logging.basicConfig(level=logging.DEBUG)
             console.print("> Debug mode enabled")
             logging.debug("Starting CLI in debug mode")
+
+        # Handle --adk quickstart flag
+        if adk:
+            console.print(
+                "⚡ ADK quickstart: adk_base + Agent Engine + prototype mode\n",
+                style="cyan",
+            )
+
+            if agent and agent != "adk_base":
+                console.print(
+                    f"Info: --agent '{agent}' ignored due to --adk flag (using adk_base).",
+                    style="yellow",
+                )
+            agent = "adk_base"
+
+            if deployment_target and deployment_target != "agent_engine":
+                console.print(
+                    f"Info: --deployment-target '{deployment_target}' ignored due to --adk flag (using agent_engine).",
+                    style="yellow",
+                )
+            deployment_target = "agent_engine"
+
+            # Enable prototype mode and auto-approve
+            prototype = True
+            auto_approve = True
+
+            if debug:
+                logging.debug(
+                    "ADK quickstart mode: agent=adk_base, deployment_target=agent_engine, prototype=True, auto_approve=True"
+                )
 
         # Convert output_dir to Path if provided, otherwise use current directory
         destination_dir = pathlib.Path(output_dir) if output_dir else pathlib.Path.cwd()

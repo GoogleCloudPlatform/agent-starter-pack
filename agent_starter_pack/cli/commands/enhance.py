@@ -371,12 +371,13 @@ def display_agent_directory_selection(
     "-n",
     help="Project name for templating (defaults to current directory name)",
 )
+@shared_template_options
 @click.option(
     "--adk",
     is_flag=True,
     help="Shortcut for --base-template adk_base",
+    default=False,
 )
-@shared_template_options
 @handle_cli_error
 def enhance(
     ctx: click.Context,

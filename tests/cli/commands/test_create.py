@@ -531,3 +531,43 @@ class TestCreateCommand:
 
         assert result.exit_code == 0, result.output
         mock_process_template.assert_called_once()
+
+    def test_create_with_adk_flag(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_subprocess: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_verify_vertex_connection: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test --adk flag sets adk_base, agent_engine, prototype mode, and skips prompts"""
+        runner = CliRunner()
+
+        with (
+            patch("pathlib.Path.exists", return_value=False),
+            patch(
+                "agent_starter_pack.cli.commands.create.get_available_agents"
+            ) as mock_agents,
+        ):
+            # Include adk_base in available agents
+            mock_agents.return_value = {
+                1: {"name": "adk_base", "description": "ADK Base Agent"},
+                2: {"name": "langgraph_base", "description": "LangGraph Agent"},
+            }
+            # Only --adk flag needed - no -s or -y required
+            result = runner.invoke(create, ["test-project", "--adk"])
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+
+        # Verify process_template was called with correct arguments
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["agent_name"] == "adk_base"
+        assert call_kwargs["deployment_target"] == "agent_engine"
+        assert call_kwargs["cicd_runner"] == "none"  # prototype mode

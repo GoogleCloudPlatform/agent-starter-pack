@@ -1150,7 +1150,7 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
     # First, get credentials to show to user
     console.print("> Verifying GCP credentials...")
     try:
-        creds_info = verify_credentials_and_vertex(context=context, auto_approve=True)
+        creds_info = verify_credentials_and_vertex(context=context, auto_approve=False)
     except Exception:
         # If verification fails, we still want to show what we can and let user fix it
         import google.auth

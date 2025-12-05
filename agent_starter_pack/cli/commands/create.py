@@ -576,11 +576,23 @@ def create(
             logging.debug(f"Selected agent: {final_agent}")
 
         # Load template configuration based on whether it's remote or local
+        # Track original base template to detect actual overrides (not just selection)
+        original_base_template: str | None = None
         if template_source_path:
             # Prepare CLI overrides for remote template config
             # Initialize cli_overrides if not provided (e.g., from enhance command)
             if cli_overrides is None:
                 cli_overrides = {}
+
+            # First, get the original base template BEFORE applying cli_overrides
+            # This allows us to detect if user is actually overriding vs selecting same
+            original_config = load_remote_template_config(
+                template_source_path,
+                None,  # No CLI overrides to get original value
+                is_adk_sample=remote_spec.is_adk_samples if remote_spec else False,
+            )
+            original_base_template = get_base_template_name(original_config)
+
             if base_template:
                 # Validate that the base template exists
                 if not validate_base_template(base_template):
@@ -596,7 +608,7 @@ def create(
                     raise click.Abort()
                 cli_overrides["base_template"] = base_template
 
-            # Load remote template config
+            # Load remote template config with CLI overrides
             source_config = load_remote_template_config(
                 template_source_path,
                 cli_overrides,
@@ -868,8 +880,16 @@ def create(
 
             # Handle base template dependencies if override was used
             # Skip if --skip-deps is set (used when reusing saved config)
-            if (
+            # Only trigger if the base template is ACTUALLY different from the original
+            # (not just selected from interactive menu but same as default)
+            is_actual_override = (
                 base_template
+                and original_base_template
+                and base_template != original_base_template
+            )
+            if (
+                is_actual_override
+                and base_template
                 and template_source_path
                 and remote_config
                 and not skip_deps

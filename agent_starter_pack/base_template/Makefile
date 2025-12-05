@@ -265,7 +265,7 @@ deploy:
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
 
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 
 # ==============================================================================
 # Infrastructure Setup

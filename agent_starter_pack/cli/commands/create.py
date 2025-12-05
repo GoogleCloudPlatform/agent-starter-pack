@@ -27,7 +27,7 @@ from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
 from ..utils.datastores import DATASTORE_TYPES, DATASTORES
-from ..utils.gcp import verify_credentials, verify_vertex_connection
+from ..utils.gcp import verify_credentials_and_vertex
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.remote_template import (
     fetch_remote_template,
@@ -121,7 +121,7 @@ def shared_template_options(f: Callable) -> Callable:
     )(f)
     f = click.option(
         "--cicd-runner",
-        type=click.Choice(["google_cloud_build", "github_actions", "none"]),
+        type=click.Choice(["google_cloud_build", "github_actions", "skip"]),
         help="CI/CD runner to use",
     )(f)
     f = click.option(
@@ -269,6 +269,12 @@ def normalize_project_name(project_name: str) -> str:
     default=False,
 )
 @shared_template_options
+@click.option(
+    "--adk",
+    is_flag=True,
+    help="Quickstart mode: adk_base + agent_engine + prototype, skips prompts",
+    default=False,
+)
 @handle_cli_error
 def create(
     ctx: click.Context,
@@ -276,6 +282,7 @@ def create(
     agent: str | None,
     deployment_target: str | None,
     cicd_runner: str | None,
+    adk: bool,
     prototype: bool,
     include_data_ingestion: bool,
     datastore: str | None,
@@ -340,6 +347,36 @@ def create(
             logging.basicConfig(level=logging.DEBUG)
             console.print("> Debug mode enabled")
             logging.debug("Starting CLI in debug mode")
+
+        # Handle --adk quickstart flag
+        if adk:
+            console.print(
+                "⚡ ADK quickstart: adk_base + Agent Engine + prototype mode\n",
+                style="cyan",
+            )
+
+            if agent and agent != "adk_base":
+                console.print(
+                    f"Info: --agent '{agent}' ignored due to --adk flag (using adk_base).",
+                    style="yellow",
+                )
+            agent = "adk_base"
+
+            if deployment_target and deployment_target != "agent_engine":
+                console.print(
+                    f"Info: --deployment-target '{deployment_target}' ignored due to --adk flag (using agent_engine).",
+                    style="yellow",
+                )
+            deployment_target = "agent_engine"
+
+            # Enable prototype mode and auto-approve
+            prototype = True
+            auto_approve = True
+
+            if debug:
+                logging.debug(
+                    "ADK quickstart mode: agent=adk_base, deployment_target=agent_engine, prototype=True, auto_approve=True"
+                )
 
         # Convert output_dir to Path if provided, otherwise use current directory
         destination_dir = pathlib.Path(output_dir) if output_dir else pathlib.Path.cwd()
@@ -705,16 +742,16 @@ def create(
             logging.debug(f"Selected session type: {final_session_type}")
 
         # CI/CD runner selection
-        # --prototype flag or agent_garden mode defaults to "none" (minimal project)
+        # --prototype flag or agent_garden mode defaults to "skip" (minimal project)
         if prototype or agent_garden:
-            if cicd_runner and cicd_runner != "none":
+            if cicd_runner and cicd_runner != "skip":
                 console.print(
                     f"Info: --cicd-runner '{cicd_runner}' ignored due to {'--prototype' if prototype else '--agent-garden'} flag.",
                     style="yellow",
                 )
-            final_cicd_runner = "none"
+            final_cicd_runner = "skip"
             if debug:
-                logging.debug("Prototype mode: setting cicd_runner to 'none'")
+                logging.debug("Prototype mode: setting cicd_runner to 'skip'")
         elif cicd_runner:
             final_cicd_runner = cicd_runner
         elif auto_approve:
@@ -878,7 +915,7 @@ def create(
             "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
         # Show enhance hint for prototype mode
-        if final_cicd_runner == "none":
+        if final_cicd_runner == "skip":
             version = get_current_version()
             console.print(
                 f"\n💡 Once ready for production, run: [cyan]uvx agent-starter-pack@{version} enhance[/]"
@@ -1084,63 +1121,76 @@ def setup_gcp_environment(
         console.print("> Skipping verification checks", style="yellow")
         return {"project": "unknown"}
 
-    # Verify current GCP credentials
     if debug:
         logging.debug("Verifying GCP credentials...")
-    creds_info = verify_credentials()
-    # Handle credential verification and project selection
-    # Skip interactive prompts if auto_approve or agent_garden is set
+
+    context = "agent-garden" if agent_garden else None
+
+    # Interactive mode: show prompts and allow user to change credentials
     if not auto_approve and not agent_garden:
-        creds_info = _handle_credential_verification(creds_info)
-        # If user chose to skip verification, don't test Vertex AI connection
-        if creds_info.get("skip_vertex_test", False):
-            console.print("> Skipping Vertex AI connection test", style="yellow")
-        else:
-            # Test Vertex AI connection
-            _test_vertex_ai_connection(
-                creds_info["project"], region, agent_garden=agent_garden
-            )
+        creds_info = _handle_interactive_credentials(context)
     else:
-        # Even with auto_approve or agent_garden, we should still set the GCP project
-        set_gcp_project(creds_info["project"], set_quota_project=True)
-        # Test Vertex AI connection
-        _test_vertex_ai_connection(
-            creds_info["project"], region, agent_garden=agent_garden
-        )
+        # Non-interactive mode
+        console.print("> Verifying GCP credentials...")
+        creds_info = verify_credentials_and_vertex(context=context, auto_approve=True)
+        console.print(f"> ✓ Connected to project: {creds_info['project']}")
 
     return creds_info
 
 
-def _handle_credential_verification(creds_info: dict) -> dict:
-    """Handle verification of credentials and project selection.
+def _handle_interactive_credentials(context: str | None = None) -> dict:
+    """Handle interactive credential verification and project selection.
 
     Args:
-        creds_info: Current credential information
+        context: Optional context for user agent
 
     Returns:
-        Updated credential information
+        Dictionary with credential information
     """
-    # Check if running in Cloud Shell
-    if os.environ.get("CLOUD_SHELL") == "true":
-        if creds_info["project"] == "":
-            console.print(
-                "> It looks like you are running in Cloud Shell.", style="bold blue"
+    # First, get credentials to show to user
+    console.print("> Verifying GCP credentials...")
+    try:
+        creds_info = verify_credentials_and_vertex(context=context, auto_approve=True)
+    except Exception:
+        # If verification fails, we still want to show what we can and let user fix it
+        import google.auth
+
+        try:
+            credentials, project = google.auth.default()
+            account = getattr(credentials, "service_account_email", None) or getattr(
+                credentials, "_account", None
             )
+            if not account:
+                result = subprocess.run(
+                    ["gcloud", "config", "get-value", "account"],
+                    capture_output=True,
+                    text=True,
+                )
+                account = result.stdout.strip() or "Unknown"
+            creds_info = {"project": project or "Unknown", "account": account}
+        except Exception:
+            creds_info = {"project": "Unknown", "account": "Unknown"}
+
+    # Check if running in Cloud Shell with no project
+    if os.environ.get("CLOUD_SHELL") == "true" and not creds_info.get("project"):
+        console.print(
+            "> It looks like you are running in Cloud Shell.", style="bold blue"
+        )
+        console.print(
+            "> You need to set up a project ID to continue.",
+            style="bold blue",
+        )
+        new_project = Prompt.ask("\n> Enter a project ID", default=None)
+        while not new_project:
             console.print(
-                "> You need to set up a project ID to continue, but you haven't setup a project yet.",
-                style="bold blue",
+                "> Project ID cannot be empty. Please try again.", style="bold red"
             )
             new_project = Prompt.ask("\n> Enter a project ID", default=None)
-            while not new_project:
-                console.print(
-                    "> Project ID cannot be empty. Please try again.", style="bold red"
-                )
-                new_project = Prompt.ask("\n> Enter a project ID", default=None)
-            creds_info["project"] = new_project
-            set_gcp_project(creds_info["project"], set_quota_project=False)
-        return creds_info
+        set_gcp_project(new_project, set_quota_project=False)
+        # Re-verify with new project
+        return verify_credentials_and_vertex(context=context, auto_approve=False)
 
-    # Ask user if current credentials are correct or if they want to skip
+    # Show current credentials and ask user
     console.print(f"\n> You are logged in with account: '{creds_info['account']}'")
     console.print(f"> You are using project: '{creds_info['project']}'")
 
@@ -1152,78 +1202,21 @@ def _handle_credential_verification(creds_info: dict) -> dict:
     ).lower()
 
     if response == "skip":
-        console.print("> Skipping credential verification", style="yellow")
-        creds_info["skip_vertex_test"] = True
+        console.print("> Skipping verification", style="yellow")
         return creds_info
 
-    change_creds = response == "edit"
-
-    if change_creds:
+    if response == "edit":
         # Handle credential change
         console.print("\n> Initiating new login...")
         subprocess.run(["gcloud", "auth", "login", "--update-adc"], check=True)
-        console.print("> Login successful. Verifying new credentials...")
+        console.print("> Login successful.")
 
-        # Re-verify credentials after login
-        creds_info = verify_credentials()
+    # Verify credentials and Vertex AI (with interactive API enablement prompt)
+    console.print("> Testing Vertex AI connection...")
+    creds_info = verify_credentials_and_vertex(context=context, auto_approve=False)
+    console.print(f"> ✓ Connected to project: {creds_info['project']}")
 
-        # Prompt for project change
-        console.print(
-            f"\n> You are now logged in with account: '{creds_info['account']}'."
-        )
-        console.print(f"> Current project is: '{creds_info['project']}'.")
-        choices = ["y", "skip", "edit"]
-        response = Prompt.ask(
-            "> Do you want to continue? (The CLI will verify Vertex AI access in this project)",
-            choices=choices,
-            default="y",
-        ).lower()
-
-        if response == "skip":
-            console.print("> Skipping project verification", style="yellow")
-            creds_info["skip_vertex_test"] = True
-            return creds_info
-
-        if response == "edit":
-            # Prompt for new project ID
-            new_project = Prompt.ask("\n> Enter the new project ID")
-            creds_info["project"] = new_project
-
-    set_gcp_project(creds_info["project"], set_quota_project=True)
     return creds_info
-
-
-def _test_vertex_ai_connection(
-    project_id: str, region: str, auto_approve: bool = False, agent_garden: bool = False
-) -> None:
-    """Test connection to Vertex AI.
-
-    Args:
-        project_id: GCP project ID
-        region: GCP region for deployment
-        auto_approve: Whether to auto-approve API enablement
-        agent_garden: Whether this deployment is from Agent Garden
-    """
-    console.print("> Testing GCP and Vertex AI Connection...")
-    try:
-        context = "agent-garden" if agent_garden else None
-        verify_vertex_connection(
-            project_id=project_id,
-            location=region,
-            auto_approve=auto_approve,
-            context=context,
-        )
-        console.print(
-            f"> ✓ Successfully verified connection to Vertex AI in project {project_id}"
-        )
-    except Exception as e:
-        console.print(
-            f"> ✗ Failed to connect to Vertex AI: {e!s}\n"
-            f"> Please check your authentication settings and permissions. "
-            f"Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
-            style="bold red",
-        )
-        raise
 
 
 def replace_region_in_files(

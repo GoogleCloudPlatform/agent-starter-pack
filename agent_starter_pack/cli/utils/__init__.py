@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .datastores import DATASTORE_TYPES, get_datastore_info
-from .gcp import verify_credentials
+from .gcp import verify_credentials_and_vertex
 from .logging import handle_cli_error
 from .template import (
     get_available_agents,
@@ -38,5 +38,5 @@ __all__ = [
     "process_template",
     "prompt_datastore_selection",
     "prompt_deployment_target",
-    "verify_credentials",
+    "verify_credentials_and_vertex",
 ]

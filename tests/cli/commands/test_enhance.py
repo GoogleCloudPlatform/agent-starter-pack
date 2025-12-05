@@ -284,6 +284,44 @@ packages = ["detected_agent", "frontend"]
                 assert cli_overrides["base_template"] == "langgraph_base"
                 assert cli_overrides["settings"]["agent_directory"] == "my_chatbot"
 
+    def test_enhance_with_adk_flag_sets_base_template(self) -> None:
+        """Test that --adk flag sets base_template to adk_base."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create app directory structure
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").touch()
+
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [".", "--adk", "--auto-approve"],
+                )
+
+                # Should call create with base_template set to adk_base
+                mock_create.assert_called_once()
+                call_args = mock_create.call_args
+                assert call_args[1]["base_template"] == "adk_base"
+
+    def test_enhance_adk_flag_conflicts_with_base_template(self) -> None:
+        """Test that --adk and --base-template cannot be used together."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create app directory structure
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").touch()
+
+            result = runner.invoke(
+                enhance,
+                [".", "--adk", "--base-template", "langgraph_base", "--auto-approve"],
+            )
+
+            # Should fail with an error about conflicting options
+            assert result.exit_code != 0
+            assert "Cannot use --adk with --base-template" in result.output
+
 
 class TestEnhanceAgentEngineAppGeneration:
     """Test that enhance properly generates agent_engine_app.py with correct imports."""

@@ -41,6 +41,10 @@ from .create import (
 
 console = Console()
 
+# Environment variable names for saved config handling
+_ENV_USING_SAVED_CONFIG = "_ASP_USING_SAVED_CONFIG"
+_ENV_SKIP_VERSION_LOCK = "ASP_SKIP_VERSION_LOCK"
+
 # Directories to exclude when scanning for agent directories
 _EXCLUDED_DIRS = {
     ".git",
@@ -79,6 +83,15 @@ def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
         return None
 
 
+def _should_skip_config_value(value: Any) -> bool:
+    """Check if a config value should be skipped (empty, none, skip, etc.)."""
+    return (
+        value is None
+        or value is False
+        or str(value).lower() in ("none", "skip", "")
+    )
+
+
 def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
     """Build CLI arguments from project config.
 
@@ -104,15 +117,10 @@ def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
         args.extend(["--agent-directory", agent_directory])
 
     # Add all create_params dynamically
+    # "skip" is filtered out so enhance can prompt for CI/CD on prototype projects
     create_params = project_config.get("create_params", {})
     for key, value in create_params.items():
-        # Skip None, "none", "skip", False, and empty values
-        # "skip" is filtered out so enhance can prompt for CI/CD on prototype projects
-        if (
-            value is None
-            or value is False
-            or str(value).lower() in ("none", "skip", "")
-        ):
+        if _should_skip_config_value(value):
             continue
 
         arg_name = f"--{key.replace('_', '-')}"
@@ -151,58 +159,20 @@ def get_display_params_from_config(project_config: dict[str, Any]) -> dict[str, 
     # Add create_params
     create_params = project_config.get("create_params", {})
     for key, value in create_params.items():
-        # Skip None, "none", "None", "skip", False, and empty values
-        if (
-            value is None
-            or value is False
-            or str(value).lower() in ("none", "skip", "")
-        ):
+        if _should_skip_config_value(value):
             continue
         display_params[key] = value
 
     return display_params
 
 
-def check_and_execute_with_saved_config(
-    project_dir: pathlib.Path, auto_approve: bool = False
-) -> bool:
-    """Check for saved config and offer to reuse it.
-
-    If config is found, displays it to the user and asks whether to use it.
-    If yes, executes enhance with the saved parameters.
-
-    Args:
-        project_dir: Path to the project directory
-        auto_approve: If True, skip confirmation prompt and use saved config
-
-    Returns:
-        True if config was used and executed, False otherwise
-    """
-    # Skip if already executing with saved config (prevents infinite loop)
-    if os.environ.get("_ASP_USING_SAVED_CONFIG") == "1":
-        return False
-
-    project_config = get_project_asp_config(project_dir)
-    if not project_config:
-        return False
-
-    display_params = get_display_params_from_config(project_config)
-    if not display_params:
-        return False
-
-    current_version = get_current_version()
-    project_version = project_config.get("asp_version")
-
-    # Determine which version to use (can be skipped via env var)
-    skip_version_lock = os.environ.get("ASP_SKIP_VERSION_LOCK") == "1"
-    use_different_version = (
-        not skip_version_lock
-        and project_version
-        and current_version != "0.0.0"
-        and project_version != current_version
-    )
-
-    # Show detected configuration
+def _display_saved_config(
+    display_params: dict[str, Any],
+    project_version: str | None,
+    current_version: str,
+    use_different_version: bool,
+) -> None:
+    """Display detected saved configuration to the user."""
     console.print()
     console.print(
         "📋 [bold]Detected saved configuration from previous setup:[/bold]"
@@ -212,49 +182,62 @@ def check_and_execute_with_saved_config(
         display_key = key.replace("_", " ").title()
         console.print(f"   • {display_key}: [cyan]{value}[/cyan]")
 
-    if use_different_version:
+    if use_different_version and project_version:
         console.print()
         console.print(
             f"   • Version: [cyan]{project_version}[/cyan] (current: {current_version})"
         )
     console.print()
 
-    # Ask user whether to use saved config
-    if not auto_approve:
-        use_saved = Prompt.ask(
-            "Use these settings?",
-            choices=["y", "customize"],
-            default="y",
+
+def _should_use_different_version(
+    project_version: str | None, current_version: str
+) -> bool:
+    """Determine if we need to switch to a different ASP version."""
+    skip_version_lock = os.environ.get(_ENV_SKIP_VERSION_LOCK) == "1"
+    return (
+        not skip_version_lock
+        and project_version is not None
+        and current_version != "0.0.0"
+        and project_version != current_version
+    )
+
+
+def _ensure_uvx_available(project_version: str) -> None:
+    """Ensure uvx is installed, exit with instructions if not."""
+    try:
+        subprocess.run(["uvx", "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        console.print(
+            f"❌ Project requires agent-starter-pack version {project_version}, "
+            "but 'uvx' is not installed",
+            style="bold red",
         )
-        if use_saved != "y":
-            return False
+        console.print(
+            "💡 Install uv to use version-locked projects:",
+            style="bold blue",
+        )
+        console.print("   curl -LsSf https://astral.sh/uv/install.sh | sh")
+        console.print(
+            "   OR visit: https://docs.astral.sh/uv/getting-started/installation/"
+        )
+        sys.exit(1)
 
-    # Build and execute the command
-    args = build_args_from_config(project_config)
 
-    if use_different_version:
+def _execute_with_saved_config(
+    args: list[str], project_version: str | None, use_different_version: bool
+) -> bool:
+    """Execute enhance command with saved config args.
+
+    Returns:
+        True if execution succeeded, False otherwise
+    """
+    if use_different_version and project_version:
         console.print(
             f"📦 Using agent-starter-pack version {project_version}...",
             style="dim",
         )
-        try:
-            subprocess.run(["uvx", "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            console.print(
-                f"❌ Project requires agent-starter-pack version {project_version}, "
-                "but 'uvx' is not installed",
-                style="bold red",
-            )
-            console.print(
-                "💡 Install uv to use version-locked projects:",
-                style="bold blue",
-            )
-            console.print("   curl -LsSf https://astral.sh/uv/install.sh | sh")
-            console.print(
-                "   OR visit: https://docs.astral.sh/uv/getting-started/installation/"
-            )
-            sys.exit(1)
-
+        _ensure_uvx_available(project_version)
         cmd = ["uvx", f"agent-starter-pack@{project_version}", *args]
     else:
         console.print("✅ Using saved configuration", style="dim")
@@ -264,7 +247,7 @@ def check_and_execute_with_saved_config(
 
     # Set env var to prevent infinite loop in nested execution
     env = os.environ.copy()
-    env["_ASP_USING_SAVED_CONFIG"] = "1"
+    env[_ENV_USING_SAVED_CONFIG] = "1"
 
     try:
         subprocess.run(cmd, check=True, env=env)
@@ -285,6 +268,58 @@ def check_and_execute_with_saved_config(
                 style="bold red",
             )
         return False
+
+
+def check_and_execute_with_saved_config(
+    project_dir: pathlib.Path, auto_approve: bool = False
+) -> bool:
+    """Check for saved config and offer to reuse it.
+
+    If config is found, displays it to the user and asks whether to use it.
+    If yes, executes enhance with the saved parameters.
+
+    Args:
+        project_dir: Path to the project directory
+        auto_approve: If True, skip confirmation prompt and use saved config
+
+    Returns:
+        True if config was used and executed, False otherwise
+    """
+    # Skip if already executing with saved config (prevents infinite loop)
+    if os.environ.get(_ENV_USING_SAVED_CONFIG) == "1":
+        return False
+
+    project_config = get_project_asp_config(project_dir)
+    if not project_config:
+        return False
+
+    display_params = get_display_params_from_config(project_config)
+    if not display_params:
+        return False
+
+    current_version = get_current_version()
+    project_version = project_config.get("asp_version")
+    use_different_version = _should_use_different_version(
+        project_version, current_version
+    )
+
+    # Show detected configuration and ask user
+    _display_saved_config(
+        display_params, project_version, current_version, use_different_version
+    )
+
+    if not auto_approve:
+        use_saved = Prompt.ask(
+            "Use these settings?",
+            choices=["y", "customize"],
+            default="y",
+        )
+        if use_saved != "y":
+            return False
+
+    # Build and execute the command
+    args = build_args_from_config(project_config)
+    return _execute_with_saved_config(args, project_version, use_different_version)
 
 
 def display_base_template_selection(current_base: str) -> str:

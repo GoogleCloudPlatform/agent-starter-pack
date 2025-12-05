@@ -551,7 +551,7 @@ asp_version = "0.25.0"
 # CLI params used during creation - used by enhance command
 deployment_target = "cloud_run"
 session_type = "in_memory"
-cicd_runner = "none"
+cicd_runner = "skip"
 include_data_ingestion = false
 ```
 

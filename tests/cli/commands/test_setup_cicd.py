@@ -43,9 +43,11 @@ def mock_cwd() -> MagicMock:
 
 
 @pytest.fixture
-def mock_verify_credentials() -> MagicMock:
+def mock_verify_credentials_and_vertex() -> MagicMock:
     """Mock credentials verification"""
-    with patch("agent_starter_pack.cli.commands.setup_cicd.verify_credentials") as mock:
+    with patch(
+        "agent_starter_pack.cli.commands.setup_cicd.verify_credentials_and_vertex"
+    ) as mock:
         mock.return_value = {"account": "test@example.com", "project": "test-project"}
         yield mock
 
@@ -370,7 +372,7 @@ class TestSetupCICD:
             patch("click.confirm", return_value=True),
             patch("pathlib.Path.glob") as mock_glob,
             patch(
-                "agent_starter_pack.cli.utils.gcp.verify_credentials",
+                "agent_starter_pack.cli.utils.gcp.verify_credentials_and_vertex",
                 return_value={"account": "test@example.com", "project": "test-project"},
             ),
         ):

@@ -192,7 +192,7 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-garden",
         "agent_directory": "test_garden",
         "deployment_target": "cloud_run",
-        "cicd_runner": "none",
+        "cicd_runner": "skip",
         "is_adk": True,
         "is_adk_live": False,
         "is_a2a": False,
@@ -459,8 +459,8 @@ class TestMakefileGeneration:
                     f"Required target '{target}' missing in {config_name}"
                 )
 
-            # setup-dev-env is only present when cicd_runner != 'none'
-            if config.get("cicd_runner") != "none":
+            # setup-dev-env is only present when cicd_runner != 'skip'
+            if config.get("cicd_runner") != "skip":
                 assert "setup-dev-env:" in output, (
                     f"setup-dev-env target missing in {config_name}"
                 )

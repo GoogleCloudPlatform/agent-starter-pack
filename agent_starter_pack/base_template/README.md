@@ -26,7 +26,7 @@ This project is organized as follows:
 {%- elif cookiecutter.cicd_runner == 'github_actions' %}
 ├── .github/             # CI/CD pipeline configurations for GitHub Actions
 {%- endif %}
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 ├── deployment/          # Infrastructure and deployment scripts
 ├── notebooks/           # Jupyter notebooks for prototyping and evaluation
 {%- endif %}
@@ -43,7 +43,7 @@ This project is organized as follows:
 Before you begin, ensure you have:
 - **uv**: Python package manager (used for all dependency management in this project) - [Install](https://docs.astral.sh/uv/getting-started/installation/) ([add packages](https://docs.astral.sh/uv/concepts/dependencies/) with `uv add <package>`)
 - **Google Cloud SDK**: For GCP services - [Install](https://cloud.google.com/sdk/docs/install)
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 - **Terraform**: For infrastructure deployment - [Install](https://developer.hashicorp.com/terraform/downloads)
 {%- endif %}
 - **make**: Build automation tool - [Install](https://www.gnu.org/software/make/) (pre-installed on most Unix-based systems)
@@ -96,7 +96,7 @@ make install && make playground
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 | `make setup-dev-env` | Set up development environment resources using Terraform                         |
 {%- endif %}
 {%- if cookiecutter.data_ingestion %}
@@ -228,7 +228,7 @@ Here’s the recommended workflow for local development:
 
 This template follows a "bring your own agent" approach - you focus on your business logic, and the template handles everything else (UI, infrastructure, deployment, monitoring).
 
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 1. **Prototype:** Build your Generative AI Agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
 2. **Integrate:** Import your agent into the app by editing `{{cookiecutter.agent_directory}}/agent.py`.
 3. **Test:** Explore your agent functionality using the local playground with `make playground`. The playground automatically reloads your agent on code changes.
@@ -244,7 +244,7 @@ The project includes a `GEMINI.md` file that provides context for AI tools like 
 {% endif %}
 
 ## Deployment
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 
 > **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
 
@@ -298,12 +298,12 @@ The application provides two levels of observability:
 | Environment | Prompt-Response Logging |
 |-------------|-------------------------|
 | **Local Development** (`make playground`) | ❌ Disabled by default |
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 | **Deployed Environments** (via Terraform) | ✅ **Enabled by default** (privacy-preserving: metadata only, no prompts/responses) |
 {%- endif %}
 
 **To enable locally:** Set `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT`.
-{%- if cookiecutter.cicd_runner != 'none' %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 
 **To disable in deployments:** Edit Terraform config to set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false`.
 {%- endif %}

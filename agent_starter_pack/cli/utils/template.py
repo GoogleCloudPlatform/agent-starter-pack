@@ -510,8 +510,8 @@ def prompt_cicd_runner_selection() -> str:
             "display_name": "GitHub Actions",
             "description": "GitHub Actions: CI/CD with secure workload identity federation directly in GitHub.",
         },
-        "none": {
-            "display_name": "None",
+        "skip": {
+            "display_name": "Skip",
             "description": "Minimal - no CI/CD or Terraform, add later with 'enhance'",
         },
     }
@@ -1396,8 +1396,8 @@ def process_template(
                             unused_path.unlink()
                             logging.debug(f"Deleted unused file: {unused_path}")
 
-            # Clean up additional files for prototype/minimal mode (cicd_runner == "none")
-            if cicd_runner == "none":
+            # Clean up additional files for prototype/minimal mode (cicd_runner == "skip")
+            if cicd_runner == "skip":
                 # Remove deployment folder
                 deployment_dir = final_destination / "deployment"
                 if deployment_dir.exists():

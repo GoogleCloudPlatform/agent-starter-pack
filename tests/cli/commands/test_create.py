@@ -14,7 +14,7 @@
 
 from collections.abc import Generator
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from click.testing import CliRunner
@@ -57,13 +57,6 @@ def mock_console() -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def mock_verify_credentials() -> Generator[MagicMock, None, None]:
-    with patch("agent_starter_pack.cli.commands.create.verify_credentials") as mock:
-        mock.return_value = {"account": "test@example.com", "project": "test-project"}
-        yield mock
-
-
-@pytest.fixture
 def mock_process_template() -> Generator[MagicMock, None, None]:
     with patch("agent_starter_pack.cli.commands.create.process_template") as mock:
         yield mock
@@ -82,15 +75,6 @@ def mock_prompt_deployment_target() -> Generator[MagicMock, None, None]:
         "agent_starter_pack.cli.commands.create.prompt_deployment_target"
     ) as mock:
         mock.return_value = "cloud_run"
-        yield mock
-
-
-@pytest.fixture
-def mock_verify_vertex_connection() -> Generator[MagicMock, None, None]:
-    with patch(
-        "agent_starter_pack.cli.commands.create.verify_vertex_connection"
-    ) as mock:
-        mock.return_value = None  # Success
         yield mock
 
 
@@ -140,19 +124,27 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
         yield mock
 
 
+@pytest.fixture
+def mock_verify_credentials_and_vertex() -> Generator[MagicMock, None, None]:
+    """Mock for fast credentials and vertex verification."""
+    with patch(
+        "agent_starter_pack.cli.commands.create.verify_credentials_and_vertex"
+    ) as mock:
+        mock.return_value = {"account": "test@example.com", "project": "test-project"}
+        yield mock
+
+
 class TestCreateCommand:
     def test_create_with_all_options(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
-        mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -179,43 +171,22 @@ class TestCreateCommand:
             )
 
         assert result.exit_code == 0, result.output
-        expected_calls = [
-            call(
-                ["gcloud", "config", "set", "project", "test-project"],
-                check=True,
-                capture_output=True,
-                text=True,
-            ),
-            call(
-                [
-                    "gcloud",
-                    "auth",
-                    "application-default",
-                    "set-quota-project",
-                    "test-project",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            ),
-        ]
-        mock_subprocess.assert_has_calls(expected_calls, any_order=True)
+        # Auto-approve uses fast verification path
+        mock_verify_credentials_and_vertex.assert_called_once()
         mock_process_template.assert_called_once()
         mock_load_template_config.assert_called_once()
 
     def test_create_with_auto_approve(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
         mock_prompt_deployment_target: MagicMock,
-        mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -228,36 +199,15 @@ class TestCreateCommand:
             )
 
         assert result.exit_code == 0, result.output
-
-        # Verify the expected subprocess calls
-        expected_calls = [
-            call(
-                ["gcloud", "config", "set", "project", "test-project"],
-                check=True,
-                capture_output=True,
-                text=True,
-            ),
-            call(
-                [
-                    "gcloud",
-                    "auth",
-                    "application-default",
-                    "set-quota-project",
-                    "test-project",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            ),
-        ]
-        mock_subprocess.assert_has_calls(expected_calls, any_order=True)
+        # Auto-approve uses fast verification path
+        mock_verify_credentials_and_vertex.assert_called_once()
         mock_process_template.assert_called_once()
         mock_load_template_config.assert_called_once()
 
     def test_create_interactive(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
@@ -266,7 +216,6 @@ class TestCreateCommand:
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -279,8 +228,8 @@ class TestCreateCommand:
             patch("rich.prompt.Prompt.ask") as mock_prompt,
         ):
             mock_int_prompt.return_value = 1  # Select first agent
-            # FIX: Respond with a valid choice ("Y")
-            mock_prompt.return_value = "Y"  # Use current credentials
+            # Respond with a valid choice ("Y") for credential confirmation
+            mock_prompt.return_value = "Y"
 
             result = runner.invoke(create, ["test-project"])
 
@@ -308,7 +257,7 @@ class TestCreateCommand:
         self,
         mock_subprocess: MagicMock,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
@@ -316,17 +265,11 @@ class TestCreateCommand:
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
         """Test create command with GCP credential change"""
         runner = CliRunner()
-
-        mock_verify_credentials.side_effect = [
-            {"account": "test@example.com", "project": "test-project"},
-            {"account": "new@example.com", "project": "new-project"},
-        ]
 
         with (
             patch("pathlib.Path.exists", return_value=False),
@@ -452,15 +395,13 @@ class TestCreateCommand:
     def test_create_auto_approve_defaults_project_name(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
-        mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -477,15 +418,13 @@ class TestCreateCommand:
     def test_create_auto_approve_defaults_agent(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
-        mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -502,7 +441,7 @@ class TestCreateCommand:
     def test_create_interactive_prompts_for_project_name(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
         mock_get_available_agents: MagicMock,
@@ -511,7 +450,6 @@ class TestCreateCommand:
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -535,14 +473,12 @@ class TestCreateCommand:
     def test_create_with_adk_flag(
         self,
         mock_console: MagicMock,
-        mock_verify_credentials: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
         mock_process_template: MagicMock,
         mock_get_template_path: MagicMock,
-        mock_subprocess: MagicMock,
         mock_cwd: MagicMock,
         mock_mkdir: MagicMock,
         mock_resolve: MagicMock,
-        mock_verify_vertex_connection: MagicMock,
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
@@ -570,4 +506,4 @@ class TestCreateCommand:
         call_kwargs = mock_process_template.call_args[1]
         assert call_kwargs["agent_name"] == "adk_base"
         assert call_kwargs["deployment_target"] == "agent_engine"
-        assert call_kwargs["cicd_runner"] == "none"  # prototype mode
+        assert call_kwargs["cicd_runner"] == "skip"  # prototype mode

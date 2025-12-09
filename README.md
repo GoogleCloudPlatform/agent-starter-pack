@@ -30,7 +30,7 @@ Focus on your agent logic—the starter pack provides everything else: infrastru
 **From zero to production-ready agent in 60 seconds using [`uv`](https://docs.astral.sh/uv/getting-started/installation/):**
 
 ```bash
-uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create
 ```
 
 <details>
@@ -45,7 +45,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install --upgrade agent-starter-pack
 
 # Create a new agent project
-agent-starter-pack create my-awesome-agent
+agent-starter-pack create
 ```
 </details>
 

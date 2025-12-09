@@ -19,12 +19,12 @@ source .venv/bin/activate
 pip install agent-starter-pack
 
 # 3. Run the create command
-agent-starter-pack create my-awesome-agent
+agent-starter-pack create
 ```
 
 ```bash [⚡ uvx]
 # This single command downloads and runs the latest version
-uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create
 ```
 :::
 
@@ -33,7 +33,7 @@ uvx agent-starter-pack create my-awesome-agent
 Navigate into your new project to begin development.
 
 ```bash
-cd my-awesome-agent
+cd <your-project>
 ```
 
 Inside, you'll find a complete project structure:
@@ -68,7 +68,7 @@ Add new dependencies with `uv add <package>` and remove them with `uv remove <pa
 
 Once you're satisfied with local testing, you are ready to deploy your agent to Google Cloud. The process involves two main stages: first, deploying to a hands-on development environment for quick iteration, and second, setting up a formal CI/CD pipeline for staging and production.
 
-*All `make` commands should be run from the root of your agent project (`my-awesome-agent`).*
+*All `make` commands should be run from the root of your agent project.*
 
 ### Stage 1: Deploy to a Cloud Development Environment
 
@@ -107,7 +107,7 @@ Once you've refined your agent in the development environment, the next stage is
 
 #### Option 1: Automated CI/CD Setup
 
-From the root of your agent project (`my-awesome-agent`), run:
+From the root of your agent project, run:
 ```bash
 agent-starter-pack setup-cicd
 ```

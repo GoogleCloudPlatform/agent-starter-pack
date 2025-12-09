@@ -23,12 +23,12 @@ source .venv/bin/activate
 pip install agent-starter-pack
 
 # 3. Run the create command
-agent-starter-pack create my-awesome-agent
+agent-starter-pack create
 ```
 
 ```bash [⚡ uvx]
 # This single command downloads and runs the latest version
-uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create
 ```
 
 :::
@@ -50,10 +50,10 @@ agent-starter-pack create my-adk-agent -a adk_base -d agent_engine
 Now, navigate into your new project and run its setup commands.
 
 ```bash
-cd my-awesome-agent && make install && make playground
+cd <your-project> && make install && make playground
 ```
 
-Inside your new project directory (`my-awesome-agent`), you'll find:
+Inside your new project directory, you'll find:
 
 *   `app/`: Backend agent code (or custom directory name if configured).
 *   `deployment/`: Terraform infrastructure code.

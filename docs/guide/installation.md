@@ -8,7 +8,7 @@ There are several ways to install the Agent Starter Pack. Choose the method that
 
 If you have [uv](https://astral.sh/uv) installed, you can create projects without a permanent installation:
 ```bash
-uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create
 ```
 
 ## Virtual Environment Installation
@@ -46,7 +46,7 @@ uv tool install agent-starter-pack
 
 If you installed via `pipx`, `uv tool install`, or in a virtual environment:
 ```bash
-agent-starter-pack create my-awesome-agent
+agent-starter-pack create
 ```
 
 ## Managing Installation

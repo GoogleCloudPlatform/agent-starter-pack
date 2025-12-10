@@ -69,6 +69,15 @@ def generate_pyproject(
             "is_adk": "adk" in tags,
             "is_adk_live": "adk_live" in tags,
             "agent_directory": config.get("agent_directory", "app"),
+            "agent_name": config.get("agent_name", ""),
+            "agent_description": config.get("description", ""),
+            "generated_at": "",
+            "package_version": "",
+            "session_type": "",
+            "cicd_runner": "skip",
+            "data_ingestion": "false",
+            "datastore_type": "",
+            "frontend_type": "",
         }
     }
 

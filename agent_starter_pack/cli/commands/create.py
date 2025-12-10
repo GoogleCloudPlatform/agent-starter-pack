@@ -325,6 +325,11 @@ def create(
                     style="yellow",
                 )
             else:
+                # Convert output_dir to Path for directory existence check
+                check_dir = (
+                    pathlib.Path(output_dir) if output_dir else pathlib.Path.cwd()
+                ).resolve()
+
                 while True:
                     project_name = Prompt.ask(
                         "\n> Enter a name for your project",
@@ -334,6 +339,14 @@ def create(
                     if len(project_name) > 26:
                         console.print(
                             f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
+                            style="bold red",
+                        )
+                        continue
+                    # Check if directory already exists
+                    normalized_name = normalize_project_name(project_name)
+                    if (check_dir / normalized_name).exists():
+                        console.print(
+                            f"Error: Project directory '{check_dir / normalized_name}' already exists. Please choose a different name.",
                             style="bold red",
                         )
                         continue
@@ -798,14 +811,6 @@ def create(
             region = prompt_region_confirmation(region, agent_garden=agent_garden)
         if debug:
             logging.debug(f"Selected region: {region}")
-
-        # Validate google_api_key is not used with langgraph agents
-        if google_api_key and "langgraph" in final_agent.lower():
-            raise click.ClickException(
-                "--google-api-key is not supported for LangGraph agents. "
-                "You can modify the generated template to use ChatGoogleGenerativeAI class instead. "
-                "See https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai"
-            )
 
         # GCP Setup
         logging.debug("Setting up GCP...")

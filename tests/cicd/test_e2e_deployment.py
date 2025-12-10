@@ -1080,8 +1080,6 @@ class TestE2EDeployment:
 
         This covers both deployment targets while avoiding quota limits.
         Excluded variants: GitHub Actions, Cloud SQL session types, and non-adk_base agents.
-
-        TODO: Add telemetry testing for langgraph sample once it gets full telemetry support.
         """
         # Keep telemetry only for adk_base with basic agent_engine or cloud_run
         # Exclude GitHub Actions and Cloud SQL variants

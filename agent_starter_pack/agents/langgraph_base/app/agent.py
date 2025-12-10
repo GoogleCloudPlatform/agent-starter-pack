@@ -1,3 +1,4 @@
+# ruff: noqa
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,13 +14,23 @@
 # limitations under the License.
 
 from langchain.agents import create_agent
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph.state import CompiledStateGraph
+{%- if not cookiecutter.use_google_api_key %}
 
-LOCATION = "global"
+import os
+
+import google.auth
+
+_, project_id = google.auth.default()
+os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
+{%- endif %}
+
 LLM = "gemini-3-pro-preview"
 
-llm = ChatVertexAI(model=LLM, location=LOCATION, temperature=0)
+llm = ChatGoogleGenerativeAI(model=LLM, temperature=0)
 
 
 def get_weather(query: str) -> str:

@@ -799,14 +799,6 @@ def create(
         if debug:
             logging.debug(f"Selected region: {region}")
 
-        # Validate google_api_key is not used with langgraph agents
-        if google_api_key and "langgraph" in final_agent.lower():
-            raise click.ClickException(
-                "--google-api-key is not supported for LangGraph agents. "
-                "You can modify the generated template to use ChatGoogleGenerativeAI class instead. "
-                "See https://docs.langchain.com/oss/python/integrations/chat/google_generative_ai"
-            )
-
         # GCP Setup
         logging.debug("Setting up GCP...")
 

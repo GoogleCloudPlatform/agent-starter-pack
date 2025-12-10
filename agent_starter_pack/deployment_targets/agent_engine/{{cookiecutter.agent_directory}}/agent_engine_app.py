@@ -175,10 +175,12 @@ agent_engine = AgentEngineApp(
 {% else %}
 
 import asyncio
+import logging
 import os
 from typing import Any
 
 import nest_asyncio
+import vertexai
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
 from google.cloud import logging as google_cloud_logging
 from vertexai.preview.reasoning_engines import A2aAgent
@@ -187,7 +189,11 @@ from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor import (
     LangGraphAgentExecutor,
 )
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+# Capture the location before vertexai.init() might change it
+gemini_location = os.environ.get("GOOGLE_CLOUD_LOCATION")
 
 
 class AgentEngineApp(A2aAgent):
@@ -241,12 +247,22 @@ class AgentEngineApp(A2aAgent):
 
         return agent_card
 
+    def set_up(self) -> None:
+        """Initialize the agent engine app with logging and telemetry."""
+        vertexai.init()
+        setup_telemetry()
+        super().set_up()
+        logging.basicConfig(level=logging.INFO)
+        logging_client = google_cloud_logging.Client()
+        self.logger = logging_client.logger(__name__)
+        # Restore the original location after set_up() may have changed it
+        if gemini_location:
+            os.environ["GOOGLE_CLOUD_LOCATION"] = gemini_location
+
     def register_feedback(self, feedback: dict[str, Any]) -> None:
         """Collect and log feedback."""
         feedback_obj = Feedback.model_validate(feedback)
-        logging_client = google_cloud_logging.Client()
-        logger = logging_client.logger(__name__)
-        logger.log_struct(feedback_obj.model_dump(), severity="INFO")
+        self.logger.log_struct(feedback_obj.model_dump(), severity="INFO")
 
     def register_operations(self) -> dict[str, list[str]]:
         """Registers the operations of the Agent."""

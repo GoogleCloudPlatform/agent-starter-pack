@@ -223,14 +223,36 @@ export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT="NO_CONTENT"
 make playground
 ```
 
-**Option 2: Deploy Dev Infrastructure with Terraform**
+**Option 2: Deploy Directly with Environment Variables**
+
+Deploy directly without Terraform by creating a logs bucket and passing environment variables:
+
+```bash
+# First, create a GCS bucket for logs (if not exists)
+PROJECT_ID=$(gcloud config get-value project)
+gsutil mb -l us-central1 gs://${PROJECT_ID}-logs 2>/dev/null || true
+```
+
+Then deploy with the telemetry environment variables:
+
+**For Agent Engine:**
+```bash
+uv run -m app.app_utils.deploy \
+    --set-env-vars "LOGS_BUCKET_NAME=${PROJECT_ID}-logs,OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT"
+```
+
+**For Cloud Run:**
+```bash
+gcloud run deploy <service-name> --source . \
+    --set-env-vars "LOGS_BUCKET_NAME=${PROJECT_ID}-logs,OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT"
+```
+
+**Option 3: Deploy Dev Infrastructure with Terraform**
 
 Deploy the dev environment infrastructure, which automatically creates the logs bucket and sets up all required resources:
 
 ```bash
-cd deployment/terraform
-terraform init
-terraform apply -var-file=vars/dev.tfvars
+make setup-dev-env
 ```
 
 Then run `make deploy` to deploy to your dev project with telemetry enabled.

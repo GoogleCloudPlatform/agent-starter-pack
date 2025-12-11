@@ -113,5 +113,5 @@ resource "google_vertex_ai_reasoning_engine" "app" {
   }
 
   # Make dependencies conditional to avoid errors.
-  depends_on = [resource.google_project_service.services]
+  depends_on = [google_project_service.services]
 }

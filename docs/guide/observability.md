@@ -238,13 +238,13 @@ Then deploy with the telemetry environment variables:
 **For Agent Engine:**
 ```bash
 uv run -m app.app_utils.deploy \
-    --set-env-vars "LOGS_BUCKET_NAME=gs://${PROJECT_ID}-logs,OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT"
+    --set-env-vars "LOGS_BUCKET_NAME=${PROJECT_ID}-logs,OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT"
 ```
 
 **For Cloud Run:**
 ```bash
 gcloud run deploy <service-name> --source . \
-    --set-env-vars "LOGS_BUCKET_NAME=gs://${PROJECT_ID}-logs,OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT"
+    --set-env-vars "LOGS_BUCKET_NAME=${PROJECT_ID}-logs,OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT"
 ```
 
 **Option 3: Deploy Dev Infrastructure with Terraform**

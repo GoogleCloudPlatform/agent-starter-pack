@@ -20,7 +20,6 @@ data "google_project" "project" {
 }
 
 
-
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
 
 # Generate a random password for the database user
@@ -49,7 +48,7 @@ resource "google_sql_database_instance" "session_db" {
       enabled = true
       start_time = "03:00"
     }
-    
+
     # Enable IAM authentication
     database_flags {
       name  = "cloudsql.iam_authentication"
@@ -82,7 +81,7 @@ resource "google_sql_user" "db_user" {
 # Store the password in Secret Manager
 resource "google_secret_manager_secret" "db_password" {
   for_each = local.deploy_project_ids
-  
+
   project   = local.deploy_project_ids[each.key]
   secret_id = "${var.project_name}-db-password"
 
@@ -95,174 +94,42 @@ resource "google_secret_manager_secret" "db_password" {
 
 resource "google_secret_manager_secret_version" "db_password" {
   for_each = local.deploy_project_ids
-  
+
   secret      = google_secret_manager_secret.db_password[each.key].id
   secret_data = random_password.db_password[each.key].result
 }
 
 {%- endif %}
-
-resource "google_cloud_run_v2_service" "app_staging" {
-  name                = var.project_name
-  location            = var.region
-  project             = var.staging_project_id
-  deletion_protection = false
-  ingress             = "INGRESS_TRAFFIC_ALL"
-  labels = {
-{%- if cookiecutter.is_adk %}
-    "created-by"                  = "adk"
-{%- endif %}
-{%- if cookiecutter.agent_garden %}
-    "deployed-with"               = "agent-garden"
-{%- if cookiecutter.agent_sample_id %}
-    "vertex-agent-sample-id"      = "{{cookiecutter.agent_sample_id}}"
-    "vertex-agent-sample-publisher" = "{{cookiecutter.agent_sample_publisher}}"
-{%- endif %}
-{%- endif %}
-  }
-
-  template {
-    containers {
-      # Placeholder, will be replaced by the CI/CD pipeline
-      image = "us-docker.pkg.dev/cloudrun/container/hello"
-
-{%- if cookiecutter.is_a2a %}
-      env {
-        name  = "APP_URL"
-        value = "https://${var.project_name}-${data.google_project.project["staging"].number}.${var.region}.run.app"
-      }
-
-{%- endif %}
-      resources {
-        limits = {
-          cpu    = "4"
-          memory = "8Gi"
-        }
-        cpu_idle = false
-      }
 {%- if cookiecutter.data_ingestion %}
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
 
-      env {
-        name  = "DATA_STORE_ID"
-        value = resource.google_discovery_engine_data_store.data_store_staging.data_store_id
-      }
-
-      env {
-        name  = "DATA_STORE_REGION"
-        value = var.data_store_region
-      }
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-      env {
-        name  = "VECTOR_SEARCH_INDEX"
-        value = resource.google_vertex_ai_index.vector_search_index_staging.id
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_INDEX_ENDPOINT"
-        value = resource.google_vertex_ai_index_endpoint.vector_search_index_endpoint_staging.id
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_BUCKET"
-        value = resource.google_storage_bucket.vector_search_data_bucket["staging"].url
-      }
-{%- endif %}
-{%- endif %}
-
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
-      # Mount the volume
-      volume_mounts {
-        name       = "cloudsql"
-        mount_path = "/cloudsql"
-      }
-
-      # Environment variables
-      env {
-        name  = "INSTANCE_CONNECTION_NAME"
-        value = google_sql_database_instance.session_db["staging"].connection_name
-      }
-
-      env {
-        name = "DB_PASS"
-        value_source {
-          secret_key_ref {
-            secret  = google_secret_manager_secret.db_password["staging"].secret_id
-            version = "latest"
-          }
-        }
-      }
-
-      env {
-        name  = "DB_NAME"
-        value = "${var.project_name}"
-      }
-
-      env {
-        name  = "DB_USER"
-        value = "${var.project_name}"
-      }
-{%- endif %}
-
-      env {
-        name  = "LOGS_BUCKET_NAME"
-        value = google_storage_bucket.logs_data_bucket[var.staging_project_id].name
-      }
-
-      env {
-        name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
-        value = "NO_CONTENT"
-      }
-    }
-
-    service_account                = google_service_account.app_sa["staging"].email
-    max_instance_request_concurrency = 40
-
-    scaling {
-      min_instance_count = 1
-      max_instance_count = 10
-    }
-
-    session_affinity = true
-
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
-    # Cloud SQL volume
-    volumes {
-      name = "cloudsql"
-      cloud_sql_instance {
-        instances = [google_sql_database_instance.session_db["staging"].connection_name]
-      }
-    }
-{%- endif %}
+locals {
+  data_store_ids = {
+    staging = google_discovery_engine_data_store.data_store_staging.data_store_id
+    prod    = google_discovery_engine_data_store.data_store_prod.data_store_id
   }
-
-  traffic {
-    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
-    percent = 100
-  }
-
-  # This lifecycle block prevents Terraform from overwriting the container image when it's
-  # updated by Cloud Run deployments outside of Terraform (e.g., via CI/CD pipelines)
-  lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image,
-    ]
-  }
-
-  # Make dependencies conditional to avoid errors.
-  depends_on = [
-    google_project_service.deploy_project_services,
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
-    google_sql_user.db_user,
-    google_secret_manager_secret_version.db_password,
-{%- endif %}
-  ]
 }
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
-resource "google_cloud_run_v2_service" "app_prod" {
+locals {
+  vector_search_indexes = {
+    staging = google_vertex_ai_index.vector_search_index_staging.id
+    prod    = google_vertex_ai_index.vector_search_index_prod.id
+  }
+  vector_search_index_endpoints = {
+    staging = google_vertex_ai_index_endpoint.vector_search_index_endpoint_staging.id
+    prod    = google_vertex_ai_index_endpoint.vector_search_index_endpoint_prod.id
+  }
+}
+{%- endif %}
+{%- endif %}
+
+resource "google_cloud_run_v2_service" "app" {
+  for_each = local.deploy_project_ids
+
   name                = var.project_name
   location            = var.region
-  project             = var.prod_project_id
+  project             = each.value
   deletion_protection = false
   ingress             = "INGRESS_TRAFFIC_ALL"
   labels = {
@@ -286,7 +153,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
 {%- if cookiecutter.is_a2a %}
       env {
         name  = "APP_URL"
-        value = "https://${var.project_name}-${data.google_project.project["prod"].number}.${var.region}.run.app"
+        value = "https://${var.project_name}-${data.google_project.project[each.key].number}.${var.region}.run.app"
       }
 
 {%- endif %}
@@ -302,7 +169,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
 
       env {
         name  = "DATA_STORE_ID"
-        value = resource.google_discovery_engine_data_store.data_store_prod.data_store_id
+        value = local.data_store_ids[each.key]
       }
 
       env {
@@ -312,17 +179,17 @@ resource "google_cloud_run_v2_service" "app_prod" {
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
       env {
         name  = "VECTOR_SEARCH_INDEX"
-        value = resource.google_vertex_ai_index.vector_search_index_prod.id
+        value = local.vector_search_indexes[each.key]
       }
 
       env {
         name  = "VECTOR_SEARCH_INDEX_ENDPOINT"
-        value = resource.google_vertex_ai_index_endpoint.vector_search_index_endpoint_prod.id
+        value = local.vector_search_index_endpoints[each.key]
       }
 
       env {
         name  = "VECTOR_SEARCH_BUCKET"
-        value = resource.google_storage_bucket.vector_search_data_bucket["prod"].url
+        value = google_storage_bucket.vector_search_data_bucket[each.key].url
       }
 {%- endif %}
 {%- endif %}
@@ -337,14 +204,14 @@ resource "google_cloud_run_v2_service" "app_prod" {
       # Environment variables
       env {
         name  = "INSTANCE_CONNECTION_NAME"
-        value = google_sql_database_instance.session_db["prod"].connection_name
+        value = google_sql_database_instance.session_db[each.key].connection_name
       }
 
       env {
         name = "DB_PASS"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.db_password["prod"].secret_id
+            secret  = google_secret_manager_secret.db_password[each.key].secret_id
             version = "latest"
           }
         }
@@ -363,7 +230,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
 
       env {
         name  = "LOGS_BUCKET_NAME"
-        value = google_storage_bucket.logs_data_bucket[var.prod_project_id].name
+        value = google_storage_bucket.logs_data_bucket[each.value].name
       }
 
       env {
@@ -372,7 +239,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
       }
     }
 
-    service_account                = google_service_account.app_sa["prod"].email
+    service_account                = google_service_account.app_sa[each.key].email
     max_instance_request_concurrency = 40
 
     scaling {
@@ -387,7 +254,7 @@ resource "google_cloud_run_v2_service" "app_prod" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [google_sql_database_instance.session_db["prod"].connection_name]
+        instances = [google_sql_database_instance.session_db[each.key].connection_name]
       }
     }
 {%- endif %}

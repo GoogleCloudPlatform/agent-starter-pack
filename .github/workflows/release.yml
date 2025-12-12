@@ -102,21 +102,10 @@ jobs:
             --label "release" \
             --head "$BRANCH")
 
-  # Job 2: Auto-merge when tests pass (triggered by PR label)
-  auto-merge:
-    if: github.event_name == 'pull_request' && github.event.pull_request.merged == false && contains(github.event.pull_request.labels.*.name, 'release')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Enable auto-merge
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh pr merge ${{ github.event.pull_request.number }} \
-            --auto \
-            --squash \
-            --repo ${{ github.repository }}
+          # Enable auto-merge
+          gh pr merge "$PR_URL" --auto --squash
 
-  # Job 3: Publish release (triggered when release PR is merged)
+  # Job 2: Publish release (triggered when release PR is merged)
   publish:
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
     runs-on: ubuntu-latest

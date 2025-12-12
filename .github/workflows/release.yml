@@ -74,6 +74,7 @@ jobs:
         run: uv lock
 
       - name: Create release branch and PR
+        id: create_pr
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
@@ -87,7 +88,7 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
           git push -u origin "$BRANCH"
 
-          # Create PR
+          # Create PR using PAT (author is the PAT owner, CLA will pass)
           PR_URL=$(gh pr create \
             --title "chore: release v${{ steps.bump.outputs.new_version }}" \
             --body "## Release v${{ steps.bump.outputs.new_version }}
@@ -102,10 +103,16 @@ jobs:
             --label "release" \
             --head "$BRANCH")
 
-          # Approve and enable auto-merge
-          gh pr review "$PR_URL" --approve
+          echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
+
+      - name: Approve and enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Approve with GITHUB_TOKEN (github-actions[bot] approves the PAT owner's PR)
+          gh pr review "${{ steps.create_pr.outputs.pr_url }}" --approve
           # Enable auto-merge
-          gh pr merge "$PR_URL" --auto --squash
+          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --auto --squash
 
   # Job 2: Publish release (triggered when release PR is merged)
   publish:

@@ -65,6 +65,9 @@ jobs:
 
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Update lock file
+        run: uv lock
+
       - name: Create release branch and PR
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
@@ -75,7 +78,7 @@ jobs:
           git push origin --delete "$BRANCH" 2>/dev/null || true
 
           git checkout -b "$BRANCH"
-          git add pyproject.toml
+          git add pyproject.toml uv.lock
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
           git push -u origin "$BRANCH"
 

@@ -71,3 +71,4 @@ You're ready to go! See the [Development Guide](/guide/development-guide) for de
 - **Add Data (RAG):** Configure [Data Ingestion](/guide/data-ingestion) for knowledge-based agents.
 - **Monitor Performance:** Explore [Observability](/guide/observability) features for production monitoring.
 - **Deploy to Production:** Follow the [Deployment Guide](/guide/deployment) to deploy your agent to Google Cloud.
+- **Explore the Code:** Use [CodeWiki](https://codewiki.google/github.com/googlecloudplatform/agent-starter-pack) for AI-powered code navigation and understanding.

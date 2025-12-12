@@ -407,7 +407,7 @@ def deploy_agent_engine_app(
         max_instances=max_instances,
         resource_limits={"cpu": cpu, "memory": memory},
         container_concurrency=container_concurrency,
-{%- if cookiecutter.is_adk %}
+{%- if cookiecutter.is_adk and not cookiecutter.is_a2a and not cookiecutter.is_adk_live %}
         agent_framework="google-adk",
 {%- endif %}
     )

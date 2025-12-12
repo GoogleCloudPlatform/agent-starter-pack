@@ -52,3 +52,4 @@ Help us spread the word by giving us a star on GitHub!
 - **Explore Templates:** [Agent Templates Overview](/agents/overview)
 - **Community:** [Community Showcase](/guide/community-showcase)
 - **Command Line:** [CLI Reference](/cli/)
+- **Explore the Code:** [CodeWiki](https://codewiki.google/github.com/googlecloudplatform/agent-starter-pack) - AI-powered code understanding

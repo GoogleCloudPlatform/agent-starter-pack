@@ -85,10 +85,11 @@ jobs:
       - name: Build package
         run: uv build
 
-      - name: Publish to PyPI
-        run: uv publish
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      # TODO: Uncomment after testing
+      # - name: Publish to PyPI
+      #   run: uv publish
+      #   env:
+      #     UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Create and push tag
         run: |

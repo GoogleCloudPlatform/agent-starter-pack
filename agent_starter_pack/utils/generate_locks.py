@@ -99,7 +99,12 @@ def generate_lock_file(pyproject_content: str, output_path: pathlib.Path) -> Non
             f.write(pyproject_content)
 
         # Run uv pip compile to generate lock file
-        subprocess.run(["uv", "lock"], cwd=tmp_dir, check=True)
+        # Explicitly use PyPI to ensure consistent lock files
+        subprocess.run(
+            ["uv", "lock", "--default-index", "https://pypi.org/simple"],
+            cwd=tmp_dir,
+            check=True,
+        )
         # Replace locked-template with {{cookiecutter.project_name}} in generated lock file
         lock_file_path = tmp_dir / "uv.lock"
         with open(lock_file_path, "r+", encoding="utf-8") as f:

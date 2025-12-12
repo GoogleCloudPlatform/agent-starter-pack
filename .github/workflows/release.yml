@@ -66,7 +66,7 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Update lock file
-        run: uv lock
+        run: uv lock --package agent-starter-pack
 
       - name: Create release branch and PR
         env:

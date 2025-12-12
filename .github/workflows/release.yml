@@ -71,6 +71,9 @@ jobs:
         run: |
           BRANCH="release/v${{ steps.bump.outputs.new_version }}"
 
+          # Delete existing branch if it exists
+          git push origin --delete "$BRANCH" 2>/dev/null || true
+
           git checkout -b "$BRANCH"
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"

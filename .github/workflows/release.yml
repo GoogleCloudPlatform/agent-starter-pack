@@ -104,6 +104,7 @@ jobs:
 
           # Approve and enable auto-merge
           gh pr review "$PR_URL" --approve
+          # Enable auto-merge
           gh pr merge "$PR_URL" --auto --squash
 
   # Job 2: Publish release (triggered when release PR is merged)

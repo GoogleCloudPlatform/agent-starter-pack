@@ -105,13 +105,18 @@ jobs:
 
           echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
 
-      - name: Approve and enable auto-merge
+      - name: Approve PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.APPROVER_PAT }}
         run: |
-          # Approve with GITHUB_TOKEN (github-actions[bot] approves the PAT owner's PR)
+          # Approve with second account's PAT (different user than PR author)
           gh pr review "${{ steps.create_pr.outputs.pr_url }}" --approve
-          # Enable auto-merge
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          # Use PAT for auto-merge so the merge event triggers the publish workflow
           gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --auto --squash
 
   # Job 2: Publish release (triggered when release PR is merged)

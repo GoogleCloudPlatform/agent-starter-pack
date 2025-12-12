@@ -96,19 +96,19 @@ resource "google_vertex_ai_reasoning_engine" "app" {
       }
 
       python_spec {
-        entrypoint_module  = "{{cookiecutter.agent_directory}}.agent_engine_app"
+        entrypoint_module  = "app.agent_engine_app"
         entrypoint_object  = "agent_engine"
-        requirements_file  = "{{cookiecutter.agent_directory}}/app_utils/.requirements.txt"
+        requirements_file  = "app/app_utils/.requirements.txt"
         version            = "3.12"
       }
     }
   }
 
-  # This lifecycle block prevents Terraform from overwriting the spec when it's
+  # This lifecycle block prevents Terraform from overwriting the source code when it's
   # updated by Agent Engine deployments outside of Terraform (e.g., via CI/CD pipelines)
   lifecycle {
     ignore_changes = [
-      spec,
+      spec[0].source_code_spec,
     ]
   }
 

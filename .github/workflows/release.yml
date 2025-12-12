@@ -12,29 +12,25 @@ on:
           - minor
           - major
         default: 'patch'
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
   id-token: write
 
 jobs:
-  release:
+  # Job 1: Create version bump PR (triggered manually)
+  create-release-pr:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: release
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v4
-        with:
-          version: "latest"
-
-      - name: Set up Python
-        run: uv python install 3.11
 
       - name: Configure git
         run: |
@@ -74,13 +70,73 @@ jobs:
           sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" pyproject.toml
 
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          echo "tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
 
-      - name: Commit version bump
+      - name: Create release branch and PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          BRANCH="release/v${{ steps.bump.outputs.new_version }}"
+
+          git checkout -b "$BRANCH"
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
-          git push origin main
+          git push -u origin "$BRANCH"
+
+          gh pr create \
+            --title "chore: release v${{ steps.bump.outputs.new_version }}" \
+            --body "## Release v${{ steps.bump.outputs.new_version }}
+
+          This PR was automatically created by the release workflow.
+
+          ### Checklist
+          - [ ] Tests pass
+          - [ ] Ready to publish to PyPI
+
+          Once merged, the release will be published after manual approval." \
+            --label "release" \
+            --head "$BRANCH"
+
+  # Job 2: Auto-merge when tests pass (triggered by PR label)
+  auto-merge:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == false && contains(github.event.pull_request.labels.*.name, 'release')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ github.event.pull_request.number }} \
+            --auto \
+            --squash \
+            --repo ${{ github.repository }}
+
+  # Job 3: Publish release (triggered when release PR is merged)
+  publish:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    environment: release  # Requires manual approval
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Get version from branch name
+        id: version
+        run: |
+          # Extract version from branch name (release/v1.2.3 -> 1.2.3)
+          VERSION="${{ github.event.pull_request.head.ref }}"
+          VERSION="${VERSION#release/v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
       - name: Build package
         run: uv build
@@ -91,16 +147,21 @@ jobs:
       #   env:
       #     UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Create and push tag
         run: |
-          git tag ${{ steps.bump.outputs.tag }}
-          git push origin ${{ steps.bump.outputs.tag }}
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.bump.outputs.tag }}
-          name: ${{ steps.bump.outputs.tag }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -67,16 +67,20 @@ jobs:
 
       - name: Create release branch and PR
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           BRANCH="release/v${{ steps.bump.outputs.new_version }}"
+
+          # Delete existing branch if it exists
+          git push origin --delete "$BRANCH" 2>/dev/null || true
 
           git checkout -b "$BRANCH"
           git add pyproject.toml
           git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
           git push -u origin "$BRANCH"
 
-          gh pr create \
+          # Create PR
+          PR_URL=$(gh pr create \
             --title "chore: release v${{ steps.bump.outputs.new_version }}" \
             --body "## Release v${{ steps.bump.outputs.new_version }}
 
@@ -88,7 +92,10 @@ jobs:
 
           Once merged, the release will be published after manual approval." \
             --label "release" \
-            --head "$BRANCH"
+            --head "$BRANCH")
+
+          # Trigger Cloud Build tests
+          gh pr comment "$PR_URL" --body "/gcbrun"
 
   # Job 2: Auto-merge when tests pass (triggered by PR label)
   auto-merge:

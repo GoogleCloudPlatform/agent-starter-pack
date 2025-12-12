@@ -102,9 +102,6 @@ jobs:
             --label "release" \
             --head "$BRANCH")
 
-          # Trigger Cloud Build tests
-          gh pr comment "$PR_URL" --body "/gcbrun"
-
   # Job 2: Auto-merge when tests pass (triggered by PR label)
   auto-merge:
     if: github.event_name == 'pull_request' && github.event.pull_request.merged == false && contains(github.event.pull_request.labels.*.name, 'release')

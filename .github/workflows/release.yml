@@ -10,7 +10,6 @@ on:
         options:
           - patch
           - minor
-          - major
         default: 'patch'
   pull_request:
     types: [closed]
@@ -49,11 +48,6 @@ jobs:
 
           # Bump based on input
           case "${{ inputs.version_bump }}" in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              ;;
             minor)
               MINOR=$((MINOR + 1))
               PATCH=0

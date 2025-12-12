@@ -102,9 +102,6 @@ jobs:
             --label "release" \
             --head "$BRANCH")
 
-          # Trigger Cloud Build tests
-          gh pr comment "$PR_URL" --body "/gcbrun"
-
           # Enable auto-merge
           gh pr merge "$PR_URL" --auto --squash
 

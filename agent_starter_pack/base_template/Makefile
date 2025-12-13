@@ -182,14 +182,18 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 {%- endif %}
 	@echo "| 💡 Testing Remote Deployment:                                               |"
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	@echo "|    Connect to your deployed Cloud Run URL                                  |"
-	@echo "|    🔐 See README for authentication setup                                  |"
+	@echo "|    <SERVICE_URL>/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json"
+	@echo "|    (Get SERVICE_URL from 'make deploy' output or Cloud Console)            |"
+	@echo "|                                                                             |"
+	@echo "|    🔐 Auth: Expand 'Authentication & Headers', select 'Bearer Token',       |"
+	@echo "|       and paste output of: gcloud auth print-identity-token                |"
 {%- else %}
-	@echo "|    Connect to your deployed Agent Engine URL                               |"
-	@echo "|    🔐 See README for authentication setup                                  |"
+	@echo "|    Use the Agent Card URL from 'make deploy' output                        |"
+	@echo "|                                                                             |"
+	@echo "|    🔐 Auth: Expand 'Authentication & Headers', select 'Bearer Token',       |"
+	@echo "|       and paste output of: gcloud auth print-access-token                  |"
 	@echo "|                                                                             |"
 	@echo "| ℹ️  Note: Local testing requires deploying to Agent Engine first.          |"
-	@echo "|    Local 'make playground' uses ADK web interface (not A2A endpoints)      |"
 {%- endif %}
 	@echo "==============================================================================="
 	@echo ""

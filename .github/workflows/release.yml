@@ -112,6 +112,13 @@ jobs:
           # Approve with second account's PAT (different user than PR author)
           gh pr review "${{ steps.create_pr.outputs.pr_url }}" --approve
 
+      - name: Wait for all checks to pass
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+        run: |
+          echo "Waiting for all status checks to complete..."
+          gh pr checks "${{ steps.create_pr.outputs.pr_url }}" --watch --fail-fast
+
       - name: Enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}

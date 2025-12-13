@@ -46,8 +46,11 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "|    http://localhost:8000/a2a/test_a2a/.well-known/agent-card.json              |"
 	@echo "|                                                                             |"
 	@echo "| 💡 Testing Remote Deployment:                                               |"
-	@echo "|    Connect to your deployed Cloud Run URL                                  |"
-	@echo "|    🔐 See README for authentication setup                                  |"
+	@echo "|    <SERVICE_URL>/a2a/test_a2a/.well-known/agent-card.json"
+	@echo "|    (Get SERVICE_URL from 'make deploy' output or Cloud Console)            |"
+	@echo "|                                                                             |"
+	@echo "|    🔐 Auth: Expand 'Authentication & Headers', select 'Bearer Token',       |"
+	@echo "|       and paste output of: gcloud auth print-identity-token                |"
 	@echo "==============================================================================="
 	@echo ""
 	cd tools/a2a-inspector/backend && uv run app.py

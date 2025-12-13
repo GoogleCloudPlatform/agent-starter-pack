@@ -150,11 +150,10 @@ jobs:
       - name: Build package
         run: uv build
 
-      # TODO: Uncomment after testing
-      # - name: Publish to PyPI
-      #   run: uv publish
-      #   env:
-      #     UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Configure git
         run: |

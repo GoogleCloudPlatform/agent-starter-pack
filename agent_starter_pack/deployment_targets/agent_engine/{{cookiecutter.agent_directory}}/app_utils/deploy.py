@@ -138,6 +138,8 @@ def print_deployment_success(
     print(
         "\n✅ Deployment successful! Test your agent: notebooks/adk_a2a_app_testing.ipynb"
     )
+    agent_card_url = f"https://{location}-aiplatform.googleapis.com/v1beta1/projects/{project}/locations/{location}/reasoningEngines/{agent_engine_id}/a2a/v1/card"
+    print(f"🪪 Agent Card URL: {agent_card_url}")
 {%- else %}
     print("\n✅ Deployment successful!")
 {%- endif %}

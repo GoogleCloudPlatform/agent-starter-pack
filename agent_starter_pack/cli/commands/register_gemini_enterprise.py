@@ -17,6 +17,7 @@
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -315,11 +316,13 @@ def get_identity_token() -> str:
         return env_token
 
     try:
+        gcloud_cmd = shutil.which("gcloud") or "gcloud"
         result = subprocess.run(
-            ["gcloud", "auth", "print-identity-token"],
+            [gcloud_cmd, "auth", "print-identity-token"],
             capture_output=True,
             text=True,
             check=True,
+            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
@@ -559,9 +562,10 @@ def get_project_number(project_id: str) -> str | None:
         Project number as string, or None if lookup fails
     """
     try:
+        gcloud_cmd = shutil.which("gcloud") or "gcloud"
         result = subprocess.run(
             [
-                "gcloud",
+                gcloud_cmd,
                 "projects",
                 "describe",
                 project_id,
@@ -570,6 +574,7 @@ def get_project_number(project_id: str) -> str | None:
             capture_output=True,
             text=True,
             check=True,
+            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError:
@@ -839,9 +844,10 @@ def ensure_discovery_engine_invoker_role(
             f"service-{project_number}@gcp-sa-discoveryengine.iam.gserviceaccount.com"
         )
 
+        gcloud_cmd = shutil.which("gcloud") or "gcloud"
         result = subprocess.run(
             [
-                "gcloud",
+                gcloud_cmd,
                 "projects",
                 "add-iam-policy-binding",
                 project_id,
@@ -852,6 +858,7 @@ def ensure_discovery_engine_invoker_role(
             ],
             capture_output=True,
             text=True,
+            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
 
         if result.returncode != 0:

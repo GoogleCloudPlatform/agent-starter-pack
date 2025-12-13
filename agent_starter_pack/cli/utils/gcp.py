@@ -15,6 +15,7 @@
 # ruff: noqa: E722
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 import time
@@ -30,6 +31,70 @@ from agent_starter_pack.cli.utils.version import PACKAGE_NAME, get_current_versi
 
 # Lazy console - only create when needed
 _console = None
+
+# Cache for gcloud command path (resolved once for performance)
+_gcloud_cmd_cache: str | None = None
+
+
+def _get_gcloud_cmd() -> str:
+    """Get the gcloud command path, with caching for performance.
+
+    Uses shutil.which() to find the full path to gcloud on all platforms.
+    On Windows, also checks common installation paths if shutil.which() fails
+    (which can happen when PATH contains directories with spaces).
+    Falls back to "gcloud" if not found anywhere.
+
+    Returns:
+        Full path to gcloud executable, or "gcloud" as fallback
+    """
+    import os
+    from pathlib import Path
+
+    global _gcloud_cmd_cache
+    if _gcloud_cmd_cache is not None:
+        return _gcloud_cmd_cache
+
+    # Try shutil.which() first (works on most systems)
+    gcloud_cmd = shutil.which("gcloud")
+    if gcloud_cmd:
+        _gcloud_cmd_cache = gcloud_cmd
+        return _gcloud_cmd_cache
+
+    # On Windows, manually check common installation paths
+    # (shutil.which can fail when PATH has spaces in directory names)
+    if os.name == "nt":
+        possible_paths = [
+            Path.home()
+            / "AppData"
+            / "Local"
+            / "Google"
+            / "Cloud SDK"
+            / "google-cloud-sdk"
+            / "bin"
+            / "gcloud.cmd",
+            Path("C:/")
+            / "Program Files (x86)"
+            / "Google"
+            / "Cloud SDK"
+            / "google-cloud-sdk"
+            / "bin"
+            / "gcloud.cmd",
+            Path("C:/")
+            / "Program Files"
+            / "Google"
+            / "Cloud SDK"
+            / "google-cloud-sdk"
+            / "bin"
+            / "gcloud.cmd",
+        ]
+        for path in possible_paths:
+            if path.exists():
+                _gcloud_cmd_cache = str(path)
+                return _gcloud_cmd_cache
+
+    # Fallback to just "gcloud" and hope it works
+    _gcloud_cmd_cache = "gcloud"
+    return _gcloud_cmd_cache
 
 
 def _get_console() -> Console:
@@ -92,12 +157,16 @@ def _get_account_from_credentials(credentials: object) -> str | None:
 
 def _get_account_from_gcloud() -> str | None:
     """Try to get account from gcloud config."""
+    import os
+
     try:
+        gcloud_cmd = _get_gcloud_cmd()
         result = subprocess.run(
-            ["gcloud", "config", "get-value", "account"],
+            [gcloud_cmd, "config", "get-value", "account"],
             capture_output=True,
             text=True,
-            timeout=3,
+            timeout=10,
+            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         return result.stdout.strip() or None
     except:
@@ -144,13 +213,16 @@ def _test_vertex_connection(
 
 def enable_vertex_ai_api(project_id: str, context: str | None = None) -> bool:
     """Enable Vertex AI API and wait for propagation."""
+    import os
+
     console = _get_console()
 
     try:
         console.print("Enabling Vertex AI API...")
+        gcloud_cmd = _get_gcloud_cmd()
         subprocess.run(
             [
-                "gcloud",
+                gcloud_cmd,
                 "services",
                 "enable",
                 "aiplatform.googleapis.com",
@@ -160,6 +232,7 @@ def enable_vertex_ai_api(project_id: str, context: str | None = None) -> bool:
             check=True,
             capture_output=True,
             text=True,
+            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         console.print("✓ Vertex AI API enabled successfully")
 

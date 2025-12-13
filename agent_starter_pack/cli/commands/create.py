@@ -1198,10 +1198,12 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
                 credentials, "_account", None
             )
             if not account:
+                gcloud_cmd = shutil.which("gcloud") or "gcloud"
                 result = subprocess.run(
-                    ["gcloud", "config", "get-value", "account"],
+                    [gcloud_cmd, "config", "get-value", "account"],
                     capture_output=True,
                     text=True,
+                    shell=(os.name == "nt"),  # Required on Windows for .cmd files
                 )
                 account = result.stdout.strip() or "Unknown"
             creds_info = {"project": project or "Unknown", "account": account}
@@ -1245,8 +1247,17 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
     if response == "edit":
         # Handle credential change
         console.print("\n> Initiating new login...")
-        subprocess.run(["gcloud", "auth", "login", "--update-adc"], check=True)
-        console.print("> Login successful.")
+        try:
+            gcloud_cmd = shutil.which("gcloud") or "gcloud"
+            subprocess.run(
+                [gcloud_cmd, "auth", "login", "--update-adc"],
+                check=True,
+                shell=(os.name == "nt"),  # Required on Windows for .cmd files
+            )
+            console.print("> Login successful.")
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            console.print(f"> ⚠️  {e}", style="yellow")
+            console.print("> Continuing with template processing...")
 
     # Verify credentials and Vertex AI (with interactive API enablement prompt)
     console.print("> Testing Vertex AI connection...")

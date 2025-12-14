@@ -1100,12 +1100,14 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
         project_id: The GCP project ID to set.
         set_quota_project: Whether to set the application default quota project.
     """
+    gcloud_cmd = _get_gcloud_cmd()
     try:
         subprocess.run(
-            ["gcloud", "config", "set", "project", project_id],
+            [gcloud_cmd, "config", "set", "project", project_id],
             check=True,
             capture_output=True,
             text=True,
+            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
     except subprocess.CalledProcessError as e:
         console.print(f"\n> Error setting project to {project_id}:")
@@ -1116,7 +1118,7 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
         try:
             subprocess.run(
                 [
-                    "gcloud",
+                    gcloud_cmd,
                     "auth",
                     "application-default",
                     "set-quota-project",
@@ -1125,6 +1127,7 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
                 check=True,
                 capture_output=True,
                 text=True,
+                shell=(os.name == "nt"),  # Required on Windows for .cmd files
             )
         except subprocess.CalledProcessError as e:
             logging.debug(f"Setting quota project failed: {e.stderr}")

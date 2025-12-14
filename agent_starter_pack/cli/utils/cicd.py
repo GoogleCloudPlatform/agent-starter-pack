@@ -15,6 +15,7 @@
 """Utilities for CI/CD setup and management."""
 
 import json
+import os
 import re
 import subprocess
 import time
@@ -26,6 +27,8 @@ import backoff
 import click
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
+
+from agent_starter_pack.cli.utils.gcp import _get_gcloud_cmd
 
 console = Console()
 
@@ -225,8 +228,9 @@ def create_github_connection(
         )
 
     def try_create_connection() -> subprocess.CompletedProcess[str]:
+        gcloud_cmd = _get_gcloud_cmd()
         cmd = [
-            "gcloud",
+            gcloud_cmd,
             "builds",
             "connections",
             "create",
@@ -240,6 +244,7 @@ def create_github_connection(
         console.print(f"\n🔄 Running command: {' '.join(cmd)}")
 
         # Use Popen to get control over stdin
+        # On Windows, gcloud.cmd requires shell=True
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -247,6 +252,7 @@ def create_github_connection(
             stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
+            shell=(os.name == "nt"),
         )
 
         # Send 'y' followed by enter key to handle both the API enablement prompt and any other prompts
@@ -529,7 +535,23 @@ def run_command(
     input: str | None = None,
     env_vars: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess:
-    """Run a command and display it to the user"""
+    """Run a command and display it to the user.
+
+    Automatically handles Windows compatibility for gcloud commands by:
+    - Resolving the full path to gcloud executable
+    - Using shell=True on Windows for .cmd files
+
+    TODO: Consider moving this to a central utility module (e.g., gcp.py) and
+    using it to replace direct subprocess.run calls for gcloud across the
+    codebase to reduce duplication.
+    """
+    # Handle gcloud commands for Windows compatibility
+    if isinstance(cmd, list) and len(cmd) > 0 and cmd[0] == "gcloud":
+        cmd = [_get_gcloud_cmd(), *cmd[1:]]
+        # On Windows, gcloud.cmd requires shell=True
+        if os.name == "nt":
+            shell = True
+
     # Format command for display
     cmd_str = cmd if isinstance(cmd, str) else " ".join(cmd)
     print(f"\n🔄 Running command: {cmd_str}")
@@ -539,8 +561,6 @@ def run_command(
     # Prepare environment variables
     env = None
     if env_vars:
-        import os
-
         env = os.environ.copy()
         env.update(env_vars)
 

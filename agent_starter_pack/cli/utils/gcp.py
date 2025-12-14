@@ -169,7 +169,7 @@ def _get_account_from_gcloud() -> str | None:
             shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         return result.stdout.strip() or None
-    except:
+    except Exception:
         return None
 
 

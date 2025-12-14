@@ -30,6 +30,8 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from packaging import version
 from rich.console import Console
 
+from agent_starter_pack.cli.utils.gcp import _get_gcloud_cmd
+
 # TOML parser - use standard library for Python 3.11+, fallback to tomli
 if sys.version_info >= (3, 11):
     import tomllib
@@ -316,7 +318,7 @@ def get_identity_token() -> str:
         return env_token
 
     try:
-        gcloud_cmd = shutil.which("gcloud") or "gcloud"
+        gcloud_cmd = _get_gcloud_cmd()
         result = subprocess.run(
             [gcloud_cmd, "auth", "print-identity-token"],
             capture_output=True,
@@ -562,7 +564,7 @@ def get_project_number(project_id: str) -> str | None:
         Project number as string, or None if lookup fails
     """
     try:
-        gcloud_cmd = shutil.which("gcloud") or "gcloud"
+        gcloud_cmd = _get_gcloud_cmd()
         result = subprocess.run(
             [
                 gcloud_cmd,
@@ -844,7 +846,7 @@ def ensure_discovery_engine_invoker_role(
             f"service-{project_number}@gcp-sa-discoveryengine.iam.gserviceaccount.com"
         )
 
-        gcloud_cmd = shutil.which("gcloud") or "gcloud"
+        gcloud_cmd = _get_gcloud_cmd()
         result = subprocess.run(
             [
                 gcloud_cmd,

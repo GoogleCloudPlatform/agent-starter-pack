@@ -27,7 +27,7 @@ from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
 from ..utils.datastores import DATASTORE_TYPES, DATASTORES
-from ..utils.gcp import verify_credentials_and_vertex
+from ..utils.gcp import _get_gcloud_cmd, verify_credentials_and_vertex
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.remote_template import (
     fetch_remote_template,
@@ -1198,7 +1198,7 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
                 credentials, "_account", None
             )
             if not account:
-                gcloud_cmd = shutil.which("gcloud") or "gcloud"
+                gcloud_cmd = _get_gcloud_cmd()
                 result = subprocess.run(
                     [gcloud_cmd, "config", "get-value", "account"],
                     capture_output=True,
@@ -1248,7 +1248,7 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
         # Handle credential change
         console.print("\n> Initiating new login...")
         try:
-            gcloud_cmd = shutil.which("gcloud") or "gcloud"
+            gcloud_cmd = _get_gcloud_cmd()
             subprocess.run(
                 [gcloud_cmd, "auth", "login", "--update-adc"],
                 check=True,

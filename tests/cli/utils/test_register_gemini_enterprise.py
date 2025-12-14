@@ -67,7 +67,12 @@ class TestGetProjectNumber:
     """Tests for get_project_number function."""
 
     @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.subprocess.run")
-    def test_get_project_number_from_id(self, mock_run: MagicMock) -> None:
+    @patch(
+        "shutil.which", return_value="gcloud"
+    )  # Mock shutil.which for consistent test behavior
+    def test_get_project_number_from_id(
+        self, mock_which: MagicMock, mock_run: MagicMock
+    ) -> None:
         """Test getting project number from project ID."""
         mock_result = MagicMock()
         mock_result.stdout = "123456789\n"
@@ -76,6 +81,7 @@ class TestGetProjectNumber:
         result = get_project_number("my-project-id")
 
         assert result == "123456789"
+        # Updated to expect shell parameter added for Windows compatibility
         mock_run.assert_called_once_with(
             [
                 "gcloud",
@@ -87,6 +93,7 @@ class TestGetProjectNumber:
             capture_output=True,
             text=True,
             check=True,
+            shell=False,
         )
 
     @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.subprocess.run")

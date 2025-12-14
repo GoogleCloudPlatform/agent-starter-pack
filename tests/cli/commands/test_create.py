@@ -275,6 +275,9 @@ class TestCreateCommand:
             patch("pathlib.Path.exists", return_value=False),
             patch("rich.prompt.Prompt.ask") as mock_prompt,
             patch("builtins.input", return_value="1"),  # Mock CI/CD runner selection
+            patch(
+                "shutil.which", return_value="gcloud"
+            ),  # Mock shutil.which for consistent test behavior
         ):
             mock_prompt.side_effect = ["edit", "y"]
 
@@ -292,8 +295,9 @@ class TestCreateCommand:
                 catch_exceptions=False,
             )
         assert result.exit_code == 0, result.output
+        # Updated to expect shell parameter added for Windows compatibility
         mock_subprocess.assert_any_call(
-            ["gcloud", "auth", "login", "--update-adc"], check=True
+            ["gcloud", "auth", "login", "--update-adc"], check=True, shell=False
         )
         mock_load_template_config.assert_called_once()
 

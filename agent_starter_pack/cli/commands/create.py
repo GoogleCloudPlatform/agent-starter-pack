@@ -787,9 +787,9 @@ def create(
         elif cicd_runner:
             final_cicd_runner = cicd_runner
         elif auto_approve:
-            final_cicd_runner = "google_cloud_build"
+            final_cicd_runner = "skip"
             console.print(
-                "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
+                "Info: --cicd-runner not specified. Defaulting to 'skip' (simple mode) in auto-approve mode.",
                 style="yellow",
             )
         else:

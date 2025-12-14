@@ -29,7 +29,7 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from packaging import version
 from rich.console import Console
 
-from agent_starter_pack.cli.utils.gcp import _get_gcloud_cmd
+from agent_starter_pack.cli.utils.command import run_gcloud_command
 
 # TOML parser - use standard library for Python 3.11+, fallback to tomli
 if sys.version_info >= (3, 11):
@@ -317,13 +317,10 @@ def get_identity_token() -> str:
         return env_token
 
     try:
-        gcloud_cmd = _get_gcloud_cmd()
-        result = subprocess.run(
-            [gcloud_cmd, "auth", "print-identity-token"],
+        result = run_gcloud_command(
+            ["auth", "print-identity-token"],
             capture_output=True,
-            text=True,
             check=True,
-            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
@@ -563,19 +560,10 @@ def get_project_number(project_id: str) -> str | None:
         Project number as string, or None if lookup fails
     """
     try:
-        gcloud_cmd = _get_gcloud_cmd()
-        result = subprocess.run(
-            [
-                gcloud_cmd,
-                "projects",
-                "describe",
-                project_id,
-                "--format=value(projectNumber)",
-            ],
+        result = run_gcloud_command(
+            ["projects", "describe", project_id, "--format=value(projectNumber)"],
             capture_output=True,
-            text=True,
             check=True,
-            shell=(os.name == "nt"),  # Required on Windows for .cmd files
         )
         return result.stdout.strip()
     except subprocess.CalledProcessError:
@@ -845,10 +833,8 @@ def ensure_discovery_engine_invoker_role(
             f"service-{project_number}@gcp-sa-discoveryengine.iam.gserviceaccount.com"
         )
 
-        gcloud_cmd = _get_gcloud_cmd()
-        result = subprocess.run(
+        result = run_gcloud_command(
             [
-                gcloud_cmd,
                 "projects",
                 "add-iam-policy-binding",
                 project_id,
@@ -858,8 +844,7 @@ def ensure_discovery_engine_invoker_role(
                 "--quiet",
             ],
             capture_output=True,
-            text=True,
-            shell=(os.name == "nt"),  # Required on Windows for .cmd files
+            check=False,
         )
 
         if result.returncode != 0:

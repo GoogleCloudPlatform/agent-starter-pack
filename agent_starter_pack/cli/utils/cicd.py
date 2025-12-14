@@ -28,7 +28,7 @@ import click
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
-from agent_starter_pack.cli.utils.gcp import _get_gcloud_cmd
+from agent_starter_pack.cli.utils.command import get_gcloud_cmd
 
 console = Console()
 
@@ -228,7 +228,7 @@ def create_github_connection(
         )
 
     def try_create_connection() -> subprocess.CompletedProcess[str]:
-        gcloud_cmd = _get_gcloud_cmd()
+        gcloud_cmd = get_gcloud_cmd()
         cmd = [
             gcloud_cmd,
             "builds",
@@ -538,16 +538,12 @@ def run_command(
     """Run a command and display it to the user.
 
     Automatically handles Windows compatibility for gcloud commands by:
-    - Resolving the full path to gcloud executable
+    - Resolving the full path to gcloud executable (via command.py)
     - Using shell=True on Windows for .cmd files
-
-    TODO: Consider moving this to a central utility module (e.g., gcp.py) and
-    using it to replace direct subprocess.run calls for gcloud across the
-    codebase to reduce duplication.
     """
     # Handle gcloud commands for Windows compatibility
     if isinstance(cmd, list) and len(cmd) > 0 and cmd[0] == "gcloud":
-        cmd = [_get_gcloud_cmd(), *cmd[1:]]
+        cmd = [get_gcloud_cmd(), *cmd[1:]]
         # On Windows, gcloud.cmd requires shell=True
         if os.name == "nt":
             shell = True

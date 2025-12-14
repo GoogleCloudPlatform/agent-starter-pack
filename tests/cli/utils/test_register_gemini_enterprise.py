@@ -66,7 +66,7 @@ class TestGetCurrentProjectId:
 class TestGetProjectNumber:
     """Tests for get_project_number function."""
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.subprocess.run")
+    @patch("agent_starter_pack.cli.utils.command.subprocess.run")
     @patch(
         "shutil.which", return_value="gcloud"
     )  # Mock shutil.which for consistent test behavior
@@ -81,7 +81,7 @@ class TestGetProjectNumber:
         result = get_project_number("my-project-id")
 
         assert result == "123456789"
-        # Updated to expect shell parameter added for Windows compatibility
+        # gcloud command is called via centralized run_gcloud_command helper
         mock_run.assert_called_once_with(
             [
                 "gcloud",
@@ -90,13 +90,14 @@ class TestGetProjectNumber:
                 "my-project-id",
                 "--format=value(projectNumber)",
             ],
+            check=True,
             capture_output=True,
             text=True,
-            check=True,
+            timeout=None,
             shell=False,
         )
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.subprocess.run")
+    @patch("agent_starter_pack.cli.utils.command.subprocess.run")
     def test_get_project_number_already_number(self, mock_run: MagicMock) -> None:
         """Test that numeric input is returned as-is when lookup fails."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "gcloud")
@@ -105,7 +106,7 @@ class TestGetProjectNumber:
 
         assert result == "123456789"
 
-    @patch("agent_starter_pack.cli.commands.register_gemini_enterprise.subprocess.run")
+    @patch("agent_starter_pack.cli.utils.command.subprocess.run")
     def test_get_project_number_lookup_fails(self, mock_run: MagicMock) -> None:
         """Test that None is returned when lookup fails for non-numeric input."""
         mock_run.side_effect = subprocess.CalledProcessError(1, "gcloud")

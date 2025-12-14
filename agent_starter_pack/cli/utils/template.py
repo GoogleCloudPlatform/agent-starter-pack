@@ -502,6 +502,10 @@ def prompt_cicd_runner_selection() -> str:
     console = Console()
 
     cicd_runners = {
+        "skip": {
+            "display_name": "Simple",
+            "description": "Minimal - no CI/CD or Terraform, add later with 'enhance'",
+        },
         "google_cloud_build": {
             "display_name": "Google Cloud Build",
             "description": "Fully managed CI/CD, deeply integrated with GCP for fast, consistent builds and deployments.",
@@ -509,10 +513,6 @@ def prompt_cicd_runner_selection() -> str:
         "github_actions": {
             "display_name": "GitHub Actions",
             "description": "GitHub Actions: CI/CD with secure workload identity federation directly in GitHub.",
-        },
-        "skip": {
-            "display_name": "Skip",
-            "description": "Minimal - no CI/CD or Terraform, add later with 'enhance'",
         },
     }
 

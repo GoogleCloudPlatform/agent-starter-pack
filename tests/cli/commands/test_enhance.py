@@ -650,7 +650,8 @@ app = App(root_agent=root_agent, name="app")
 """
             agent_file.write_text(agent_content)
 
-            # Run enhance with cloud_run deployment target
+            # Run enhance with cloud_run deployment target and explicit cicd-runner
+            # (auto-approve defaults to 'skip' which doesn't generate Terraform)
             result = runner.invoke(
                 enhance,
                 [
@@ -659,6 +660,8 @@ app = App(root_agent=root_agent, name="app")
                     "adk_base",
                     "--deployment-target",
                     "cloud_run",
+                    "--cicd-runner",
+                    "google_cloud_build",
                     "--auto-approve",
                     "--skip-checks",
                 ],

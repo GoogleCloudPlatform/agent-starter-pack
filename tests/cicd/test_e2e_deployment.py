@@ -1190,6 +1190,11 @@ class TestE2EDeployment:
                 extra_params = config.extra_params.split(",")
                 cmd.extend(extra_params)
 
+            # Add default CICD runner (google_cloud_build) if not explicitly set in extra_params
+            # This is needed because the CLI default changed to "skip"
+            if "--cicd-runner" not in config.extra_params:
+                cmd.extend(["--cicd-runner", "google_cloud_build"])
+
             # Add default session type for cloud_run deployment if not explicitly set
             if config.deployment_target == "cloud_run":
                 # Check if session-type is already in extra_params

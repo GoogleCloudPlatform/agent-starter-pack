@@ -29,6 +29,8 @@ from google.auth.transport.requests import Request as GoogleAuthRequest
 from packaging import version
 from rich.console import Console
 
+from agent_starter_pack.cli.utils.command import run_gcloud_command
+
 # TOML parser - use standard library for Python 3.11+, fallback to tomli
 if sys.version_info >= (3, 11):
     import tomllib
@@ -315,10 +317,9 @@ def get_identity_token() -> str:
         return env_token
 
     try:
-        result = subprocess.run(
-            ["gcloud", "auth", "print-identity-token"],
+        result = run_gcloud_command(
+            ["auth", "print-identity-token"],
             capture_output=True,
-            text=True,
             check=True,
         )
         return result.stdout.strip()
@@ -559,16 +560,9 @@ def get_project_number(project_id: str) -> str | None:
         Project number as string, or None if lookup fails
     """
     try:
-        result = subprocess.run(
-            [
-                "gcloud",
-                "projects",
-                "describe",
-                project_id,
-                "--format=value(projectNumber)",
-            ],
+        result = run_gcloud_command(
+            ["projects", "describe", project_id, "--format=value(projectNumber)"],
             capture_output=True,
-            text=True,
             check=True,
         )
         return result.stdout.strip()
@@ -839,9 +833,8 @@ def ensure_discovery_engine_invoker_role(
             f"service-{project_number}@gcp-sa-discoveryengine.iam.gserviceaccount.com"
         )
 
-        result = subprocess.run(
+        result = run_gcloud_command(
             [
-                "gcloud",
                 "projects",
                 "add-iam-policy-binding",
                 project_id,
@@ -851,7 +844,7 @@ def ensure_discovery_engine_invoker_role(
                 "--quiet",
             ],
             capture_output=True,
-            text=True,
+            check=False,
         )
 
         if result.returncode != 0:

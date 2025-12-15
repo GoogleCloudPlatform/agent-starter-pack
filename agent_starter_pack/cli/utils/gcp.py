@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# ruff: noqa: E722
 from __future__ import annotations
 
 import subprocess
@@ -26,6 +25,7 @@ import requests
 if TYPE_CHECKING:
     from rich.console import Console
 
+from agent_starter_pack.cli.utils.command import run_gcloud_command
 from agent_starter_pack.cli.utils.version import PACKAGE_NAME, get_current_version
 
 # Lazy console - only create when needed
@@ -93,14 +93,14 @@ def _get_account_from_credentials(credentials: object) -> str | None:
 def _get_account_from_gcloud() -> str | None:
     """Try to get account from gcloud config."""
     try:
-        result = subprocess.run(
-            ["gcloud", "config", "get-value", "account"],
+        result = run_gcloud_command(
+            ["config", "get-value", "account"],
+            check=False,
             capture_output=True,
-            text=True,
-            timeout=3,
+            timeout=10,
         )
         return result.stdout.strip() or None
-    except:
+    except Exception:
         return None
 
 
@@ -148,9 +148,8 @@ def enable_vertex_ai_api(project_id: str, context: str | None = None) -> bool:
 
     try:
         console.print("Enabling Vertex AI API...")
-        subprocess.run(
+        run_gcloud_command(
             [
-                "gcloud",
                 "services",
                 "enable",
                 "aiplatform.googleapis.com",
@@ -159,7 +158,6 @@ def enable_vertex_ai_api(project_id: str, context: str | None = None) -> bool:
             ],
             check=True,
             capture_output=True,
-            text=True,
         )
         console.print("✓ Vertex AI API enabled successfully")
 

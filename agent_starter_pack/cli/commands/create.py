@@ -26,6 +26,7 @@ from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
+from ..utils.command import run_gcloud_command
 from ..utils.datastores import DATASTORE_TYPES, DATASTORES
 from ..utils.gcp import verify_credentials_and_vertex
 from ..utils.logging import display_welcome_banner, handle_cli_error
@@ -1101,11 +1102,10 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
         set_quota_project: Whether to set the application default quota project.
     """
     try:
-        subprocess.run(
-            ["gcloud", "config", "set", "project", project_id],
+        run_gcloud_command(
+            ["config", "set", "project", project_id],
             check=True,
             capture_output=True,
-            text=True,
         )
     except subprocess.CalledProcessError as e:
         console.print(f"\n> Error setting project to {project_id}:")
@@ -1114,17 +1114,10 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
 
     if set_quota_project:
         try:
-            subprocess.run(
-                [
-                    "gcloud",
-                    "auth",
-                    "application-default",
-                    "set-quota-project",
-                    project_id,
-                ],
+            run_gcloud_command(
+                ["auth", "application-default", "set-quota-project", project_id],
                 check=True,
                 capture_output=True,
-                text=True,
             )
         except subprocess.CalledProcessError as e:
             logging.debug(f"Setting quota project failed: {e.stderr}")
@@ -1198,10 +1191,10 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
                 credentials, "_account", None
             )
             if not account:
-                result = subprocess.run(
-                    ["gcloud", "config", "get-value", "account"],
+                result = run_gcloud_command(
+                    ["config", "get-value", "account"],
+                    check=False,
                     capture_output=True,
-                    text=True,
                 )
                 account = result.stdout.strip() or "Unknown"
             creds_info = {"project": project or "Unknown", "account": account}
@@ -1245,8 +1238,12 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
     if response == "edit":
         # Handle credential change
         console.print("\n> Initiating new login...")
-        subprocess.run(["gcloud", "auth", "login", "--update-adc"], check=True)
-        console.print("> Login successful.")
+        try:
+            run_gcloud_command(["auth", "login", "--update-adc"], check=True)
+            console.print("> Login successful.")
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            console.print(f"> ⚠️  {e}", style="yellow")
+            console.print("> Continuing with template processing...")
 
     # Verify credentials and Vertex AI (with interactive API enablement prompt)
     console.print("> Testing Vertex AI connection...")

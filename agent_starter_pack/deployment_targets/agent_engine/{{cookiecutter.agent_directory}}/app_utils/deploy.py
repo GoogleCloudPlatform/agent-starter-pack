@@ -115,7 +115,7 @@ def write_deployment_metadata(
         "deployment_timestamp": datetime.datetime.now().isoformat(),
     }
 
-    with open(metadata_file, "w") as f:
+    with open(metadata_file, "w", encoding="utf-8") as f:
         json.dump(metadata, f, indent=2)
 
     logging.info(f"Agent Engine ID written to {metadata_file}")

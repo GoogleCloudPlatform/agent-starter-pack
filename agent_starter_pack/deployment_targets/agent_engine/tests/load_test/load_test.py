@@ -155,7 +155,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Vertex AI and load agent config
-with open("deployment_metadata.json") as f:
+with open("deployment_metadata.json", encoding="utf-8") as f:
     remote_agent_engine_id = json.load(f)["remote_agent_engine_id"]
 
 parts = remote_agent_engine_id.split("/")
@@ -297,7 +297,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize Vertex AI and load agent config
-with open("deployment_metadata.json") as f:
+with open("deployment_metadata.json", encoding="utf-8") as f:
     remote_agent_engine_id = json.load(f)["remote_agent_engine_id"]
 
 parts = remote_agent_engine_id.split("/")

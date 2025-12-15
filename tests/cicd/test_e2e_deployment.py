@@ -574,18 +574,68 @@ class TestE2EDeployment:
                 f"No GitHub Actions PR check workflows found after waiting {max_wait_minutes} minutes"
             )
 
+    def trigger_recommit(
+        self,
+        repo_owner: str,
+        repo_name: str,
+        project_dir: Path,
+    ) -> None:
+        """Create a commit with file change to re-trigger GitHub Actions workflows.
+
+        Sometimes when a repo is created and pushed too quickly, GitHub Actions
+        workflows don't get triggered. This creates a file change in the app/
+        directory to ensure path-based workflow filters are triggered.
+        """
+        logger.info("\n🔄 Creating commit with file change to re-trigger workflows...")
+
+        try:
+            # Add a trigger file in app/ directory to match path filters
+            trigger_file = project_dir / "app" / "_ci_trigger.py"
+            with open(trigger_file, "w", encoding="utf-8") as f:
+                f.write(f'''"""CI trigger file - created at {time.time()}."""\n''')
+
+            run_command(["git", "add", "."], cwd=project_dir)
+            run_command(
+                ["git", "commit", "-m", "chore: trigger CI workflows"],
+                cwd=project_dir,
+            )
+            run_command(
+                ["git", "push", "origin", "main"],
+                cwd=project_dir,
+            )
+            logger.info("✅ Commit pushed to re-trigger workflows")
+            # Give GitHub a moment to process the push
+            time.sleep(10)
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to create recommit: {e}")
+
     def monitor_github_actions_deployment(
         self,
         repo_owner: str,
         repo_name: str,
         environment: str,
         max_wait_minutes: int = 10,
+        project_dir: Path | None = None,
+        retry_with_recommit: bool = True,
     ) -> None:
-        """Monitor GitHub Actions workflow runs for deployment"""
+        """Monitor GitHub Actions workflow runs for deployment.
+
+        Args:
+            repo_owner: GitHub repository owner
+            repo_name: GitHub repository name
+            environment: Deployment environment (staging/production)
+            max_wait_minutes: Maximum time to wait for deployment
+            project_dir: Path to project directory (needed for recommit)
+            retry_with_recommit: If True, create an empty commit to retry if no
+                workflow is found after initial waiting period
+        """
         logger.info(f"\n🔍 Monitoring GitHub Actions {environment} deployment...")
 
         start_time = time.time()
         deployment_found = False
+        recommit_triggered = False
+        # Time to wait before triggering a recommit (2 minutes)
+        recommit_threshold_seconds = 120
 
         while (time.time() - start_time) < (max_wait_minutes * 60):
             try:
@@ -694,6 +744,24 @@ class TestE2EDeployment:
                                     f"GitHub Actions deployment failed: {conclusion}"
                                 )
 
+                    # Check if we should trigger a recommit to retry
+                    elapsed_seconds = time.time() - start_time
+                    if (
+                        retry_with_recommit
+                        and not recommit_triggered
+                        and project_dir is not None
+                        and elapsed_seconds > recommit_threshold_seconds
+                    ):
+                        logger.info(
+                            f"⚠️ No deployment workflow found after {int(elapsed_seconds)}s, "
+                            "attempting to re-trigger with empty commit..."
+                        )
+                        self.trigger_recommit(repo_owner, repo_name, project_dir)
+                        recommit_triggered = True
+                        # Reset the start time to give the new workflow time to appear
+                        start_time = time.time()
+                        continue
+
                     logger.info("⏳ No active deployment workflows found, waiting...")
                     time.sleep(30)
 
@@ -704,6 +772,7 @@ class TestE2EDeployment:
         if not deployment_found:
             raise Exception(
                 f"No GitHub Actions {environment} deployment workflows found after waiting {max_wait_minutes} minutes"
+                + (" (recommit was attempted)" if recommit_triggered else "")
             )
 
     def monitor_github_workflow_run(
@@ -1444,13 +1513,15 @@ def dummy_function():
                     repo_owner=github_username,
                     repo_name=project_name,
                     environment="staging",
+                    project_dir=new_project_dir,
                 )
                 time.sleep(5)
-                # Monitor production deployment
+                # Monitor production deployment (no recommit needed, staging already ran)
                 self.monitor_github_actions_deployment(
                     repo_owner=github_username,
                     repo_name=project_name,
                     environment="production",
+                    retry_with_recommit=False,
                 )
 
             logger.info("\n✅ E2E deployment test completed successfully!")

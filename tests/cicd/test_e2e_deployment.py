@@ -576,8 +576,6 @@ class TestE2EDeployment:
 
     def trigger_recommit(
         self,
-        repo_owner: str,
-        repo_name: str,
         project_dir: Path,
     ) -> None:
         """Create a commit with file change to re-trigger GitHub Actions workflows.
@@ -626,18 +624,18 @@ class TestE2EDeployment:
             environment: Deployment environment (staging/production)
             max_wait_minutes: Maximum time to wait for deployment
             project_dir: Path to project directory (needed for recommit)
-            retry_with_recommit: If True, create an empty commit to retry if no
+            retry_with_recommit: If True, create a file change commit to retry if no
                 workflow is found after initial waiting period
         """
         logger.info(f"\n🔍 Monitoring GitHub Actions {environment} deployment...")
 
-        start_time = time.time()
+        overall_start_time = time.time()
         deployment_found = False
         recommit_triggered = False
         # Time to wait before triggering a recommit (2 minutes)
         recommit_threshold_seconds = 120
 
-        while (time.time() - start_time) < (max_wait_minutes * 60):
+        while (time.time() - overall_start_time) < (max_wait_minutes * 60):
             try:
                 # Get recent workflow runs
                 result = run_command(
@@ -745,7 +743,7 @@ class TestE2EDeployment:
                                 )
 
                     # Check if we should trigger a recommit to retry
-                    elapsed_seconds = time.time() - start_time
+                    elapsed_seconds = time.time() - overall_start_time
                     if (
                         retry_with_recommit
                         and not recommit_triggered
@@ -754,12 +752,10 @@ class TestE2EDeployment:
                     ):
                         logger.info(
                             f"⚠️ No deployment workflow found after {int(elapsed_seconds)}s, "
-                            "attempting to re-trigger with empty commit..."
+                            "attempting to re-trigger with file change commit..."
                         )
-                        self.trigger_recommit(repo_owner, repo_name, project_dir)
+                        self.trigger_recommit(project_dir)
                         recommit_triggered = True
-                        # Reset the start time to give the new workflow time to appear
-                        start_time = time.time()
                         continue
 
                     logger.info("⏳ No active deployment workflows found, waiting...")

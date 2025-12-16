@@ -261,11 +261,16 @@ export interface AdkEvent {
   interrupted?: boolean;
   turn_complete?: boolean;
   partial?: boolean;
+  usage_metadata?: {
+    prompt_token_count: number;
+    total_token_count: number;
+    prompt_tokens_details?: any[];
+  };
 }
 
 // ADK Event type guards
 export const isAdkEvent = (a: unknown): a is AdkEvent =>
-  typeof a === "object" && 
+  typeof a === "object" &&
   a !== null &&
   typeof (a as any).invocation_id === "string" &&
   typeof (a as any).author === "string" &&

@@ -98,13 +98,6 @@ resource "github_actions_variable" "cicd_project_id" {
   depends_on    = [github_repository.repo]
 }
 
-resource "github_actions_variable" "bucket_name_load_test_results" {
-  repository    = var.repository_name
-  variable_name = "BUCKET_NAME_LOAD_TEST_RESULTS"
-  value         = google_storage_bucket.bucket_load_test_results.name
-  depends_on    = [github_repository.repo]
-}
-
 resource "github_actions_variable" "app_sa_email_staging" {
   repository    = var.repository_name
   variable_name = "APP_SA_EMAIL_STAGING"
@@ -119,17 +112,31 @@ resource "github_actions_variable" "app_sa_email_prod" {
   depends_on    = [github_repository.repo]
 }
 
+resource "github_actions_variable" "app_service_account_staging" {
+  repository    = var.repository_name
+  variable_name = "APP_SERVICE_ACCOUNT_STAGING"
+  value         = google_service_account.app_sa["staging"].email
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "app_service_account_prod" {
+  repository    = var.repository_name
+  variable_name = "APP_SERVICE_ACCOUNT_PROD"
+  value         = google_service_account.app_sa["prod"].email
+  depends_on    = [github_repository.repo]
+}
+
 resource "github_actions_variable" "logs_bucket_name_staging" {
   repository    = var.repository_name
   variable_name = "LOGS_BUCKET_NAME_STAGING"
-  value         = google_storage_bucket.logs_data_bucket[var.staging_project_id].url
+  value         = google_storage_bucket.logs_data_bucket[var.staging_project_id].name
   depends_on    = [github_repository.repo]
 }
 
 resource "github_actions_variable" "logs_bucket_name_prod" {
   repository    = var.repository_name
   variable_name = "LOGS_BUCKET_NAME_PROD"
-  value         = google_storage_bucket.logs_data_bucket[var.prod_project_id].url
+  value         = google_storage_bucket.logs_data_bucket[var.prod_project_id].name
   depends_on    = [github_repository.repo]
 }
 
@@ -276,6 +283,20 @@ data "google_secret_manager_secret" "github_pat" {
   secret_id = var.github_pat_secret_id
 }
 
+# Get CICD project data for Cloud Build service account
+data "google_project" "cicd_project" {
+  project_id = var.cicd_runner_project_id
+}
+
+# Grant Cloud Build service account access to GitHub PAT secret
+resource "google_secret_manager_secret_iam_member" "cloudbuild_secret_accessor" {
+  project   = var.cicd_runner_project_id
+  secret_id = data.google_secret_manager_secret.github_pat.secret_id
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:service-${data.google_project.cicd_project.number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
+  depends_on = [resource.google_project_service.cicd_services]
+}
+
 # Create the GitHub connection (fallback for manual Terraform usage)
 resource "google_cloudbuildv2_connection" "github_connection" {
   count      = var.create_cb_connection ? 0 : 1
@@ -289,7 +310,11 @@ resource "google_cloudbuildv2_connection" "github_connection" {
       oauth_token_secret_version = "${data.google_secret_manager_secret.github_pat.id}/versions/latest"
     }
   }
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
+  depends_on = [
+    resource.google_project_service.cicd_services,
+    resource.google_project_service.deploy_project_services,
+    resource.google_secret_manager_secret_iam_member.cloudbuild_secret_accessor
+  ]
 }
 
 

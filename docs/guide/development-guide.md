@@ -19,12 +19,12 @@ source .venv/bin/activate
 pip install agent-starter-pack
 
 # 3. Run the create command
-agent-starter-pack create my-awesome-agent
+agent-starter-pack create
 ```
 
 ```bash [⚡ uvx]
 # This single command downloads and runs the latest version
-uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create
 ```
 :::
 
@@ -33,7 +33,7 @@ uvx agent-starter-pack create my-awesome-agent
 Navigate into your new project to begin development.
 
 ```bash
-cd my-awesome-agent
+cd <your-project>
 ```
 
 Inside, you'll find a complete project structure:
@@ -68,7 +68,7 @@ Add new dependencies with `uv add <package>` and remove them with `uv remove <pa
 
 Once you're satisfied with local testing, you are ready to deploy your agent to Google Cloud. The process involves two main stages: first, deploying to a hands-on development environment for quick iteration, and second, setting up a formal CI/CD pipeline for staging and production.
 
-*All `make` commands should be run from the root of your agent project (`my-awesome-agent`).*
+*All `make` commands should be run from the root of your agent project.*
 
 ### Stage 1: Deploy to a Cloud Development Environment
 
@@ -98,7 +98,7 @@ make setup-dev-env
 
 Build and deploy your agent's backend to the dev environment.
 ```bash
-make backend
+make deploy
 ```
 
 ### Stage 2: Set Up the Path to Production with CI/CD
@@ -107,7 +107,7 @@ Once you've refined your agent in the development environment, the next stage is
 
 #### Option 1: Automated CI/CD Setup
 
-From the root of your agent project (`my-awesome-agent`), run:
+From the root of your agent project, run:
 ```bash
 agent-starter-pack setup-cicd
 ```
@@ -137,16 +137,14 @@ git push --set-upstream origin main
 
 ## 3. Monitor Your Deployed Agent
 
-Track your agent's performance using integrated observability tools. OpenTelemetry events are automatically sent to Google Cloud services.
+Track your agent's performance using integrated observability tools. OpenTelemetry GenAI instrumentation automatically captures telemetry data and exports it to Google Cloud services.
 
-*   **Cloud Trace & Logging**: Inspect request flows, analyze latencies, and review prompts/outputs. Access traces at: `https://console.cloud.google.com/traces/list?project=YOUR_PROD_PROJECT_ID`
-*   **BigQuery**: Route trace and log data to BigQuery for long-term storage and advanced analytics.
-*   **Looker Studio Dashboards**: Visualize agent performance with pre-built templates:
-    *   ADK Agents: [Looker Studio ADK Dashboard](https://lookerstudio.google.com/c/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC)
-    *   Non-ADK Agents: [Looker Studio Non-ADK Dashboard](https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC)
-    *(Remember to follow the "Setup Instructions" within the dashboards to connect your data sources).*
+*   **BigQuery**: Query telemetry data including token usage, model interactions, and performance metrics. Data is automatically available via external tables and linked datasets.
+*   **Cloud Logging**: View GenAI operation logs and user feedback in dedicated Cloud Logging buckets with 10-year retention.
+*   **Cloud Trace**: Inspect request flows and analyze latencies for GenAI operations at: `https://console.cloud.google.com/traces/list?project=YOUR_PROJECT_ID`
+*   **Visualization** (Optional): Connect your BigQuery data to BI tools for custom dashboards.
 
-➡️ For details, see the [Observability Guide](./observability.md).
+➡️ For complete setup instructions, example queries, and testing in dev, see the [Observability Guide](./observability.md).
 
 ## 4. Advanced Customization
 

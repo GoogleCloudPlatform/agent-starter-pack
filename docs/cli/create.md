@@ -5,12 +5,13 @@ Create new GCP-based AI agent projects from built-in agents or remote templates.
 ## Usage
 
 ```bash
-uvx agent-starter-pack create PROJECT_NAME [OPTIONS]
+uvx agent-starter-pack create [PROJECT_NAME] [OPTIONS]
 ```
 
 ## Arguments
 
-- `PROJECT_NAME`: Name for your new agent project directory and base for resource naming.
+- `PROJECT_NAME` (optional): Name for your new agent project directory and base for resource naming.
+  If omitted, you'll be prompted interactively (or defaults to `my-agent` with `--auto-approve`).
   *Note: This name will be converted to lowercase and must be 26 characters or less.*
 
 ## Template Selection
@@ -48,10 +49,25 @@ Deployment target for your agent:
 - `cloud_run` - Deploy to Google Cloud Run
 - `agent_engine` - Deploy to Google Cloud Agent Engine
 
-### `--cicd-runner` RUNNER  
+### `--cicd-runner` RUNNER
 CI/CD runner to use:
 - `google_cloud_build` - Use Google Cloud Build
 - `github_actions` - Use GitHub Actions
+- `skip` - No CI/CD (minimal project, same as `--prototype`)
+
+### `--prototype`, `-p`
+Create a minimal project without CI/CD or Terraform infrastructure. Ideal for:
+- Quick prototyping and experimentation
+- Learning and tutorials
+- Teams with custom deployment pipelines
+
+**What gets skipped:**
+- `.github/workflows/` or `.cloudbuild/`
+- `deployment/` (Terraform)
+- `tests/load_test/`
+- Makefile `setup-dev-env` target
+
+**Upgrade path:** Run `uvx agent-starter-pack enhance` later to add CI/CD scaffolding.
 
 ### `--region` REGION
 GCP region for deployment (default: `us-central1`)
@@ -65,12 +81,13 @@ Include data ingestion pipeline components in the project.
 Type of datastore for data ingestion (requires `--include-data-ingestion`):
 - `vertex_ai_search`
 - `vertex_ai_vector_search` 
-- `alloydb`
+- `vertex_ai_vector_search` 
+- `cloud_sql`
 
 ### `--session-type` TYPE
 Session storage type (for Cloud Run deployment):
 - `in_memory` - Store sessions in memory
-- `alloydb` - Store sessions in AlloyDB
+- `cloud_sql` - Store sessions in Cloud SQL (PostgreSQL)
 - `agent_engine` - Use Agent Engine session management
 
 ## Project Creation Options
@@ -80,6 +97,30 @@ Output directory for the project (default: current directory)
 
 ### `--agent-directory`, `-dir` DIRECTORY
 Name of the agent directory (overrides template default, usually `app`). This determines where your agent code files will be located within the project structure.
+
+### `--base-template`, `-bt` TEMPLATE
+Override the base template specified in a remote template's configuration. Only applicable when using remote templates with the `--agent` flag. This allows you to use a different built-in agent as the foundation instead of the one specified in the remote template's `pyproject.toml`.
+
+**Interactive dependency management:**
+When overriding the base template, you'll be prompted to add required dependencies using `uv add`:
+
+```bash
+# Use adk_a2a_base as base instead of the remote template's default
+uvx agent-starter-pack create my-agent -a github.com/user/template --base-template adk_a2a_base
+
+✓ Base template override: Using 'adk_a2a_base' as foundation
+  This requires adding the following dependencies:
+    • google-adk>=1.16.0,<2.0.0
+    • a2a-sdk~=0.3.9
+
+? Add these dependencies automatically? [Y/n]
+```
+
+With `--auto-approve`, dependencies are added automatically without prompting:
+```bash
+uvx agent-starter-pack create my-agent -a template --base-template adk_a2a_base --auto-approve
+# Dependencies are added automatically
+```
 
 ### `--in-folder`
 Create agent files directly in the current directory instead of creating a new project subdirectory.
@@ -105,8 +146,15 @@ uvx agent-starter-pack create my-agent -a template --in-folder
 
 ## Automation Options
 
-### `--auto-approve`
-Skip interactive confirmation prompts for GCP credentials and region.
+### `--auto-approve`, `--yes`, `-y`
+Skip interactive confirmation prompts and use sensible defaults:
+- Project name defaults to `my-agent`
+- Agent defaults to first available (typically `adk_base`)
+- Deployment target defaults to `agent_engine`
+- CI/CD runner defaults to `google_cloud_build`
+
+### `--google-api-key`, `--api-key`, `-k` [KEY]
+Use Google AI Studio API key instead of Vertex AI. If provided without a value, generates a `.env` file with a `YOUR_API_KEY` placeholder.
 
 ### `--skip-checks`
 Skip verification checks for GCP authentication and Vertex AI connection.
@@ -116,10 +164,23 @@ Enable debug logging for troubleshooting.
 
 ## Examples
 
+### Quick Start
+
+```bash
+# Create with all defaults (project: my-agent, agent: adk_base, target: agent_engine)
+uvx agent-starter-pack create -y
+
+# Fully interactive mode
+uvx agent-starter-pack create
+
+# Quick prototype (no CI/CD, no Terraform)
+uvx agent-starter-pack create my-prototype -p -d agent_engine
+```
+
 ### Basic Usage
 
 ```bash
-# Create a new project interactively
+# Create a new project with specific name
 uvx agent-starter-pack create my-agent-project
 
 # Create with specific built-in agent
@@ -138,15 +199,18 @@ uvx agent-starter-pack create my-agent -a https://github.com/user/my-template
 # Use shorthand notation with branch
 uvx agent-starter-pack create my-agent -a github.com/user/template@develop
 
-# Use your existing project  
+# Use your existing project
 uvx agent-starter-pack create my-agent -a local@./my-project
+
+# Override the base template of a remote template
+uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_live
 ```
 
 ### Advanced Configuration
 
 ```bash
 # Include data ingestion with specific datastore
-uvx agent-starter-pack create my-rag-agent -a adk_base -i -ds alloydb -d cloud_run
+uvx agent-starter-pack create my-rag-agent -a adk_base -i -ds cloud_sql -d cloud_run
 
 # Create with custom region and CI/CD
 uvx agent-starter-pack create my-agent -a template-url --region europe-west1 --cicd-runner github_actions
@@ -158,7 +222,7 @@ uvx agent-starter-pack create my-agent -a adk@data-science --in-folder
 uvx agent-starter-pack create my-agent -a adk_base --agent-directory chatbot
 
 # Skip all prompts for automation
-uvx agent-starter-pack create my-agent -a template-url --auto-approve --skip-checks
+uvx agent-starter-pack create my-agent -a template-url -y --skip-checks
 ```
 
 ### Output Directory

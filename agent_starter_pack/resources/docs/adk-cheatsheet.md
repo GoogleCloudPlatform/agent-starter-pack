@@ -13,6 +13,7 @@ This document serves as a long-form, comprehensive reference for building, orche
     *   2.1 Basic `LlmAgent` Setup
     *   2.2 Advanced `LlmAgent` Configuration
     *   2.3 LLM Instruction Crafting
+    *   2.4 Production Wrapper (`App`)
 3.  [Orchestration with Workflow Agents](#3-orchestration-with-workflow-agents)
     *   3.1 `SequentialAgent`: Linear Execution
     *   3.2 `ParallelAgent`: Concurrent Execution
@@ -34,16 +35,18 @@ This document serves as a long-form, comprehensive reference for building, orche
     *   7.1 Defining Function Tools: Principles & Best Practices
     *   7.2 The `ToolContext` Object: Accessing Runtime Information
     *   7.3 All Tool Types & Their Usage
+    *   7.4 Tool Confirmation (Human-in-the-Loop)
 8.  [Context, State, and Memory Management](#8-context-state-and-memory-management)
     *   8.1 The `Session` Object & `SessionService`
     *   8.2 `State`: The Conversational Scratchpad
     *   8.3 `Memory`: Long-Term Knowledge & Retrieval
     *   8.4 `Artifacts`: Binary Data Management
 9.  [Runtime, Events, and Execution Flow](#9-runtime-events-and-execution-flow)
-    *   9.1 The `Runner`: The Orchestrator
-    *   9.2 The Event Loop: Core Execution Flow
-    *   9.3 `Event` Object: The Communication Backbone
-    *   9.4 Asynchronous Programming (Python Specific)
+    *   9.1 Runtime Configuration (`RunConfig`)
+    *   9.2 The `Runner`: The Orchestrator
+    *   9.3 The Event Loop: Core Execution Flow
+    *   9.4 `Event` Object: The Communication Backbone
+    *   9.5 Asynchronous Programming (Python Specific)
 10. [Control Flow with Callbacks](#10-control-flow-with-callbacks)
     *   10.1 Callback Mechanism: Interception & Control
     *   10.2 Types of Callbacks
@@ -230,7 +233,7 @@ Agent Config agents can be deployed using:
 *   **Model Support**: Only Gemini models currently supported
 *   **Language Support**: Custom tools must be written in Python
 *   **Unsupported Agent Types**: `LangGraphAgent`, `A2aAgent`
-*   **Unsupported Tools**: `AgentTool`, `LongRunningFunctionTool`, `VertexAiSearchTool`, `MCPToolset`, `CrewaiTool`, `LangchainTool`, `ExampleTool`
+*   **Unsupported Tools**: `AgentTool`, `LongRunningFunctionTool`, `VertexAiSearchTool`, `MCPToolset`, `LangchainTool`, `ExampleTool`
 
 For complete examples and reference, see the [ADK samples repository](https://github.com/search?q=repo%3Agoogle%2Fadk-python+path%3A%2F%5Econtributing%5C%2Fsamples%5C%2F%2F+.yaml&type=code).
 
@@ -254,7 +257,7 @@ def get_current_time(city: str) -> dict:
 
 my_first_llm_agent = Agent(
     name="time_teller_agent",
-    model="gemini-2.5-flash", # Essential: The LLM powering the agent
+    model="gemini-3-pro-preview", # Essential: The LLM powering the agent
     instruction="You are a helpful assistant that tells the current time in cities. Use the 'get_current_time' tool for this purpose.",
     description="Tells the current time in a specified city.", # Crucial for multi-agent delegation
     tools=[get_current_time] # List of callable functions/tool instances
@@ -354,7 +357,7 @@ This is the most reliable way to make an LLM produce predictable, parseable JSON
         from google.genai.types import ThinkingConfig
 
         agent = Agent(
-            model="gemini-2.5-flash",
+            model="gemini-3-pro-preview",
             planner=BuiltInPlanner(
                 thinking_config=ThinkingConfig(include_thoughts=True)
             ),
@@ -369,7 +372,7 @@ This is the most reliable way to make an LLM produce predictable, parseable JSON
         from google.adk.code_executors import BuiltInCodeExecutor
         agent = Agent(
             name="code_agent",
-            model="gemini-2.5-flash",
+            model="gemini-3-pro-preview",
             instruction="Write and execute Python code to solve math problems.",
             code_executor=BuiltInCodeExecutor() # Corrected from a list to an instance
         )
@@ -385,7 +388,7 @@ The `instruction` is critical. It guides the LLM's behavior, persona, and tool u
 
 *   **Be Specific & Concise**: Avoid ambiguity.
 *   **Define Persona & Role**: Give the LLM a clear role.
-*   **Constrain Behavior & Tool Use**: Explicitly state what the LLM should *and should not* do.
+*   **Constrain Behavior & Tool Use**: Explicitly state what the LLM *and should not* do.
 *   **Define Output Format**: Tell the LLM *exactly* what its output should look like, especially when not using `output_schema`.
 *   **Dynamic Injection**: Use `{state_key}` to inject runtime data from `session.state` into the prompt.
 *   **Iteration**: Test, observe, and refine instructions.
@@ -397,7 +400,7 @@ from google.adk.tools import google_search
 
 
 plan_generator = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     name="plan_generator",
     description="Generates a 4-5 line action-oriented research plan.",
     instruction=f"""
@@ -449,6 +452,30 @@ report_composer = LlmAgent(
 )
 ```
 
+### 2.4 Production Wrapper (`App`)
+Wraps the `root_agent` to enable production-grade runtime features that an `Agent` cannot handle alone.
+
+```python
+from google.adk.apps.app import App
+from google.adk.agents.context_cache_config import ContextCacheConfig
+from google.adk.apps.events_compaction_config import EventsCompactionConfig
+from google.adk.apps.resumability_config import ResumabilityConfig
+
+production_app = App(
+    name="my_app",
+    root_agent=my_agent,
+    # 1. Reduce costs/latency for long contexts
+    context_cache_config=ContextCacheConfig(min_tokens=2048, ttl_seconds=600),
+    # 2. Allow resuming crashed workflows from last state
+    resumability_config=ResumabilityConfig(is_resumable=True),
+    # 3. Manage long conversation history automatically
+    events_compaction_config=EventsCompactionConfig(compaction_interval=5, overlap_size=1)
+)
+
+# Usage: Pass 'app' instead of 'agent' to the Runner
+# runner = Runner(app=production_app, ...)
+```
+
 ---
 
 ## 3. Orchestration with Workflow Agents
@@ -465,7 +492,7 @@ from google.adk.agents import SequentialAgent, Agent
 # Agent 1: Summarizes a document and saves to state
 summarizer = Agent(
     name="DocumentSummarizer",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     instruction="Summarize the provided document in 3 sentences.",
     output_key="document_summary" # Output saved to session.state['document_summary']
 )
@@ -473,7 +500,7 @@ summarizer = Agent(
 # Agent 2: Generates questions based on the summary from state
 question_generator = Agent(
     name="QuestionGenerator",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     instruction="Generate 3 comprehension questions based on this summary: {document_summary}",
     # 'document_summary' is dynamically injected from session.state
 )
@@ -500,7 +527,7 @@ fetch_social_sentiment = Agent(name="SentimentAnalyzer", ..., output_key="sentim
 # Agent to merge results (runs after ParallelAgent, usually in a SequentialAgent)
 merger_agent = Agent(
     name="ReportGenerator",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     instruction="Combine stock data: {stock_data}, news: {news_data}, and sentiment: {sentiment_data} into a market report."
 )
 
@@ -615,6 +642,19 @@ A hierarchical (tree-like) structure of parent-child relationships defined by th
     *   **Mechanism**: Wrap the target agent (`target_agent`) in `AgentTool(agent=target_agent)` and add it to the calling `LlmAgent`'s `tools` list. The `AgentTool` generates a `FunctionDeclaration` for the LLM. When called, `AgentTool` runs the target agent and returns its final response as the tool result.
     *   **Best for**: Hierarchical task decomposition, where a higher-level agent needs a specific output from a lower-level agent.
 
+**Delegation vs. Agent-as-a-Tool**
+*   **Delegation (`sub_agents`)**: The parent agent *transfers control*. The sub-agent interacts directly with the user for subsequent turns until it finishes.
+*   **Agent-as-a-Tool (`AgentTool`)**: The parent agent *calls* another agent like a function. The parent remains in control, receives the sub-agent's entire interaction as a single tool result, and summarizes it for the user.
+
+```python
+# Delegation: "I'll let the specialist handle this conversation."
+root = Agent(name="root", sub_agents=[specialist])
+
+# Agent-as-a-Tool: "I need the specialist to do a task and give me the results."
+from google.adk.tools import AgentTool
+root = Agent(name="root", tools=[AgentTool(specialist)])
+```
+
 ### 4.3 Common Multi-Agent Patterns
 
 *   **Coordinator/Dispatcher**: A central agent routes requests to specialized sub-agents (often via LLM-driven delegation).
@@ -655,7 +695,7 @@ research_pipeline = SequentialAgent(
 # The top-level agent that interacts with the user.
 interactive_planner_agent = LlmAgent(
     name="interactive_planner_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     description="The primary research assistant. It collaborates with the user to create a research plan, and then executes it upon approval.",
     instruction="""
     You are a research planning assistant. Your workflow is:
@@ -772,12 +812,12 @@ ADK's model flexibility allows integrating various LLMs for different needs.
 *   **AI Studio (Easy Start)**:
     *   Set `GOOGLE_API_KEY="YOUR_API_KEY"` (environment variable).
     *   Set `GOOGLE_GENAI_USE_VERTEXAI="False"`.
-    *   Model strings: `"gemini-2.5-flash"`, `"gemini-2.5-pro"`, etc.
+    *   Model strings: `"gemini-3-pro-preview"`, `"gemini-2.5-pro"`, etc.
 *   **Vertex AI (Production)**:
     *   Authenticate via `gcloud auth application-default login` (recommended).
     *   Set `GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"`, `GOOGLE_CLOUD_LOCATION="your-region"` (environment variables).
     *   Set `GOOGLE_GENAI_USE_VERTEXAI="True"`.
-    *   Model strings: `"gemini-2.5-flash"`, `"gemini-2.5-pro"`, or full Vertex AI endpoint resource names for specific deployments.
+    *   Model strings: `"gemini-3-pro-preview"`, `"gemini-2.5-pro"`, or full Vertex AI endpoint resource names for specific deployments.
 
 ### 6.2 Other Cloud & Proprietary Models via LiteLLM
 
@@ -896,14 +936,15 @@ Tools extend an agent's abilities beyond text generation.
 
 2.  **Built-in Tools**: Ready-to-use tools provided by ADK.
     *   `google_search`: Provides Google Search grounding.
-    *   `BuiltInCodeExecutor`: Enables sandboxed code execution.
+    *   **Code Execution**:
+        *   `BuiltInCodeExecutor`: Local, convenient for development. **Not** for untrusted production use.
+        *   `GkeCodeExecutor`: Production-grade. Executes code in ephemeral, sandboxed pods on Google Kubernetes Engine (GKE) using gVisor for isolation. Requires GKE cluster setup.
     *   `VertexAiSearchTool`: Provides grounding from your private Vertex AI Search data stores.
     *   `BigQueryToolset`: A collection of tools for interacting with BigQuery (e.g., `list_datasets`, `execute_sql`).
     > **Warning**: An agent can only use one type of built-in tool at a time and they cannot be used in sub-agents.
 
 3.  **Third-Party Tool Wrappers**: For seamless integration with other frameworks.
     *   `LangchainTool`: Wraps a tool from the LangChain ecosystem.
-    *   `CrewaiTool`: Wraps a tool from the CrewAI library.
 
 4.  **OpenAPI & Protocol Tools**: For interacting with APIs and services.
     *   **`OpenAPIToolset`**: Automatically generates a set of `RestApiTool`s from an OpenAPI (Swagger) v3 specification.
@@ -913,6 +954,51 @@ Tools extend an agent's abilities beyond text generation.
     *   **`ApiHubToolset`**: Turns any documented API from Apigee API Hub into a tool.
     *   **`ApplicationIntegrationToolset`**: Turns Application Integration workflows and Integration Connectors (e.g., Salesforce, SAP) into callable tools.
     *   **Toolbox for Databases**: An open-source MCP server that ADK can connect to for database interactions.
+
+6.  **Dynamic Toolsets (`BaseToolset`)**: Instead of a static list of tools, use a `Toolset` to dynamically determine which tools an agent can use based on the current context (e.g., user permissions).
+    ```python
+    from google.adk.tools.base_toolset import BaseToolset
+
+    class AdminAwareToolset(BaseToolset):
+        async def get_tools(self, context: ReadonlyContext) -> list[BaseTool]:
+            # Check state to see if user is admin
+            if context.state.get('user:role') == 'admin':
+                 return [admin_delete_tool, standard_query_tool]
+            return [standard_query_tool]
+
+    # Usage:
+    agent = Agent(tools=[AdminAwareToolset()])
+    ```
+
+### 7.4 Tool Confirmation (Human-in-the-Loop)
+ADK can pause tool execution to request human or system confirmation before proceeding, essential for sensitive actions.
+
+*   **Boolean Confirmation**: Simple yes/no via `FunctionTool(..., require_confirmation=True)`.
+*   **Dynamic Confirmation**: Pass a function to `require_confirmation` to decide at runtime based on arguments.
+*   **Advanced/Payload Confirmation**: Use `tool_context.request_confirmation()` inside the tool for structured feedback.
+
+```python
+from google.adk.tools import FunctionTool, ToolContext
+
+# 1. Simple Boolean Confirmation
+# Pauses execution until a 'confirmed': True/False event is received.
+sensitive_tool = FunctionTool(delete_database, require_confirmation=True)
+
+# 2. Dynamic Threshold Confirmation
+def needs_approval(amount: float, **kwargs) -> bool:
+    return amount > 10000
+
+transfer_tool = FunctionTool(wire_money, require_confirmation=needs_approval)
+
+# 3. Advanced Payload Confirmation (inside tool definition)
+def book_flight(destination: str, price: float, tool_context: ToolContext):
+    # Pause and ask user to select a seat class before continuing
+    tool_context.request_confirmation(
+        hint="Please confirm booking and select seat class.",
+        payload={"seat_class": ["economy", "business", "first"]} # Expected structure
+    )
+    return {"status": "pending_confirmation"}
+```
 
 ---
 
@@ -935,7 +1021,7 @@ A mutable dictionary within `session.state` for short-term, dynamic data.
     *   **(No prefix)**: Session-specific (e.g., `session.state['booking_step']`).
     *   `user:`: Persistent for a `user_id` across all their sessions (e.g., `session.state['user:preferred_currency']`).
     *   `app:`: Persistent for `app_name` across all users and sessions.
-    *   `temp:`: Volatile, for the current `Invocation` turn only.
+    *   `temp:`: Ephemeral state that only exists for the current **invocation** (one user request -> final agent response cycle). It is discarded afterwards.
 
 ### 8.3 `Memory`: Long-Term Knowledge & Retrieval
 
@@ -959,12 +1045,38 @@ For named, versioned binary data (files, images).
 
 The `Runner` is the central orchestrator of an ADK application.
 
-### 9.1 The `Runner`: The Orchestrator
+### 9.1 Runtime Configuration (`RunConfig`)
+Passed to `run` or `run_live` to control execution limits and output formats.
+
+```python
+from google.adk.agents.run_config import RunConfig
+from google.genai import types
+
+config = RunConfig(
+    # Safety limits
+    max_llm_calls=100,  # Prevent infinite agent loops
+    
+    # Streaming & Modality
+    response_modalities=["AUDIO", "TEXT"], # Request specific output formats
+    
+    # Voice configuration (for AUDIO modality)
+    speech_config=types.SpeechConfig(
+        voice_config=types.VoiceConfig(
+            prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+        )
+    ),
+    
+    # Debugging
+    save_input_blobs_as_artifacts=True # Save uploaded files to ArtifactService
+)
+```
+
+### 9.2 The `Runner`: The Orchestrator
 
 *   **Role**: Manages the agent's lifecycle, the event loop, and coordinates with services.
 *   **Entry Point**: `runner.run_async(user_id, session_id, new_message)`.
 
-### 9.2 The Event Loop: Core Execution Flow
+### 9.3 The Event Loop: Core Execution Flow
 
 1.  User input becomes a `user` `Event`.
 2.  `Runner` calls `agent.run_async(invocation_context)`.
@@ -972,7 +1084,7 @@ The `Runner` is the central orchestrator of an ADK application.
 4.  `Runner` processes the `Event` (applies state changes, etc.) and yields it to the client.
 5.  Execution resumes. This cycle repeats until the agent is done.
 
-### 9.3 `Event` Object: The Communication Backbone
+### 9.4 `Event` Object: The Communication Backbone
 
 `Event` objects carry all information and signals.
 
@@ -981,7 +1093,7 @@ The `Runner` is the central orchestrator of an ADK application.
 *   `Event.actions`: Signals side effects (`state_delta`, `transfer_to_agent`, `escalate`).
 *   `Event.is_final_response()`: Helper to identify the complete, displayable message.
 
-### 9.4 Asynchronous Programming (Python Specific)
+### 9.5 Asynchronous Programming (Python Specific)
 
 ADK is built on `asyncio`. Use `async def`, `await`, and `async for` for all I/O-bound operations.
 
@@ -1086,22 +1198,28 @@ Plugins are stateful, reusable modules for implementing cross-cutting concerns t
 *   **Execution Order**: Plugin callbacks run **before** their corresponding agent-level callbacks. If a plugin callback returns a value, the agent-level callback is skipped.
 *   **Defining a Plugin**: Inherit from `BasePlugin` and implement callback methods.
     ```python
-    from google.adk.plugins.base_plugin import BasePlugin
+    from google.adk.plugins import BasePlugin
     from google.adk.agents.callback_context import CallbackContext
+    from google.adk.models.llm_request import LlmRequest
 
-    class InvocationCounterPlugin(BasePlugin):
+    class AuditLoggingPlugin(BasePlugin):
         def __init__(self):
-            super().__init__(name="invocation_counter")
-            self.agent_runs = 0
+            super().__init__(name="audit_logger")
 
-        async def before_agent_callback(self, callback_context: CallbackContext, **kwargs):
-            self.agent_runs += 1
-            print(f"[Plugin] Total agent runs: {self.agent_runs}")
+        async def before_model_callback(self, callback_context: CallbackContext, llm_request: LlmRequest):
+            # Log every prompt sent to any LLM
+            print(f"[AUDIT] Agent {callback_context.agent_name} calling LLM with: {llm_request.contents[-1]}")
+
+        async def on_tool_error_callback(self, tool, error, **kwargs):
+            # Global error handler for all tools
+            print(f"[ALERT] Tool {tool.name} failed: {error}")
+            # Optionally return a dict to suppress the exception and provide fallback
+            return {"status": "error", "message": "An internal error occurred, handled by plugin."}
     ```
 *   **Registering a Plugin**:
     ```python
     from google.adk.runners import Runner
-    # runner = Runner(agent=root_agent, ..., plugins=[InvocationCounterPlugin()])
+    # runner = Runner(agent=root_agent, ..., plugins=[AuditLoggingPlugin()])
     ```
 *   **Error Handling Callbacks**: Plugins support unique error hooks like `on_model_error_callback` and `on_tool_error_callback` for centralized error management.
 *   **Limitation**: Plugins are not supported by the `adk web` interface.
@@ -1333,19 +1451,18 @@ Multi-layered defense against harmful content, misalignment, and unsafe actions.
     ```
 *   **Tool/Callback `print` statements**: Simple logging directly within your functions.
 *   **Logging**: Use Python's standard `logging` module. Control verbosity with `adk web --log_level DEBUG` or `adk web -v`.
-*   **Observability Integrations**: ADK supports OpenTelemetry, enabling integration with platforms like:
-    *   Google Cloud Trace
-    *   AgentOps
-    *   Arize AX
-    *   Phoenix
-    *   Weave by WandB
-    ```python
-    # Example using Comet Opik integration (conceptual)
-    # pip install comet_opik_adk
-    # from comet_opik_adk import enable_opik_tracing
-    # enable_opik_tracing() # Call at app startup
-    # Then run your ADK app, traces appear in Comet workspace.
-    ```
+*   **One-Line Observability Integrations**: ADK has native hooks for popular tracing platforms.
+    *   **AgentOps**:
+        ```python
+        import agentops
+        agentops.init(api_key="...") # Automatically instruments ADK agents
+        ```
+    *   **Arize Phoenix**:
+        ```python
+        from phoenix.otel import register
+        register(project_name="my_agent", auto_instrument=True)
+        ```
+    *   **Google Cloud Trace**: Enable via flag during deployment: `adk deploy [cloud_run|agent_engine] --trace_to_cloud ...`
 *   **Session History (`session.events`)**: Persisted for detailed post-mortem analysis.
 
 ---
@@ -1354,11 +1471,52 @@ Multi-layered defense against harmful content, misalignment, and unsafe actions.
 
 ADK supports real-time, bidirectional communication for interactive experiences like live voice conversations.
 
-*   **Bidirectional Streaming**: Enables low-latency, two-way data flow (text, audio, video) between the client and agent, allowing for interruptions.
-*   **Core Components**:
-    *   **`Runner.run_live()`**: The entry point for starting a streaming session.
-    *   **`LiveRequestQueue`**: A queue for sending data (e.g., audio chunks) from the client to the agent during a live session.
-    *   **`RunConfig`**: A configuration object passed to `run_live()` to specify modalities (`['TEXT', 'AUDIO']`), speech synthesis options, etc.
+#### Bidirectional Streaming Loop (`run_live`)
+For real-time voice/video, use `run_live` with a `LiveRequestQueue`. This enables low-latency, two-way communication where the user can interrupt the agent.
+
+```python
+import asyncio
+from google.adk.agents import LiveRequestQueue
+from google.adk.agents.run_config import RunConfig
+
+async def start_streaming_session(runner, session, user_id):
+    # 1. Configure modalities (e.g., AUDIO output for voice agents)
+    run_config = RunConfig(response_modalities=["AUDIO"])
+    
+    # 2. Create input queue for client data (audio chunks, text)
+    live_queue = LiveRequestQueue()
+
+    # 3. Start the bidirectional stream
+    live_events = runner.run_live(
+        session=session,
+        live_request_queue=live_queue,
+        run_config=run_config
+    )
+
+    # 4. Process events (simplified loop)
+    try:
+        async for event in live_events:
+            # Handle agent output (text or audio bytes)
+            if event.content and event.content.parts:
+                part = event.content.parts[0]
+                if part.inline_data and part.inline_data.mime_type.startswith("audio/"):
+                    # Send audio bytes to client
+                    await client.send_audio(part.inline_data.data)
+                elif part.text:
+                     # Send text to client
+                     await client.send_text(part.text)
+            
+            # Handle turn signals
+            if event.turn_complete:
+                 pass # Signal client that agent finished speaking
+    finally:
+        live_queue.close()
+
+# To send user input to agent during the stream:
+# await live_queue.send_content(Content(role="user", parts=[Part(text="Hello")]))
+# await live_queue.send_realtime(Blob(mime_type="audio/pcm", data=audio_bytes))
+```
+
 *   **Streaming Tools**: A special type of `FunctionTool` that can stream intermediate results back to the agent.
     *   **Definition**: Must be an `async` function with a return type of `AsyncGenerator`.
         ```python
@@ -1384,7 +1542,6 @@ ADK supports real-time, bidirectional communication for interactive experiences 
             ]
         )
         ```
-    *   **Streaming Modalities**: `RunConfig.response_modalities=['TEXT', 'AUDIO']`.
 
 ---
 
@@ -1423,7 +1580,7 @@ ADK supports real-time, bidirectional communication for interactive experiences 
 ### Testing the output of an agent
 
 The following script demonstrates how to programmatically test an agent's output. This approach is extremely useful when an LLM or coding agent needs to interact with a work-in-progress agent, as well as for automated testing, debugging, or when you need to integrate agent execution into other workflows:
-```
+```python
 import asyncio
 
 from google.adk.runners import Runner

@@ -12,7 +12,7 @@ Follow these steps to execute load tests on your local machine:
 Launch the FastAPI server in a separate terminal:
 
 ```bash
-uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **2. (In another tab) Create virtual environment with Locust**
@@ -92,14 +92,14 @@ Follow these steps to execute load tests on your local machine:
 Launch the FastAPI server in a separate terminal:
 
 ```bash
-uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 **2. (In another tab) Create virtual environment with Locust**
 Using another terminal tab, This is suggested to avoid conflicts with the existing application python environment.
 
 ```bash
-python3 -m venv .locust_env && source .locust_env/bin/activate && pip install locust==2.31.1
+python3 -m venv .locust_env && source .locust_env/bin/activate && pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.9{%- endif %}
 ```
 
 **3. Execute the Load Test:**
@@ -150,7 +150,7 @@ export _ID_TOKEN=$(gcloud auth print-identity-token -q)
 **3. Execute the Load Test:**
 Create virtual environment with Locust:
 ```bash
-python3 -m venv .locust_env && source .locust_env/bin/activate && pip install locust==2.31.1
+python3 -m venv .locust_env && source .locust_env/bin/activate && pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.9{%- endif %}
 ```
 
 Execute load tests. The following command executes the same load test parameters as the local test but targets your remote Cloud Run instance.

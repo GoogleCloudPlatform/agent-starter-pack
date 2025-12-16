@@ -38,7 +38,7 @@ except Exception:
 
 
 class GeminiPipelineComparator:
-    """Compares Cloud Build and GitHub Actions pipeline configurations using Gemini 2.5 Flash."""
+    """Compares Cloud Build and GitHub Actions pipeline configurations using Gemini 3 Pro Preview."""
 
     def __init__(self, base_template_path: Path):
         self.base_template_path = base_template_path
@@ -172,6 +172,8 @@ Respond with a JSON object containing:
 - Different dependency installation patterns in agent_engine + adk_live load tests (GitHub Actions explicitly installing uv/dependencies before load test vs Cloud Build relying on environment persistence from previous steps)
 - Different authentication handling for integration test steps (Cloud Build's service account providing inherent permissions vs GitHub Actions using separate authentication steps)
 - Missing explicit authentication/GCP auth steps in Cloud Build for integration tests (Cloud Build runs with a service account that implicitly has necessary permissions, while GitHub Actions requires explicit auth steps)
+- Shell variable escaping differences where Cloud Build uses `$$` and GitHub Actions uses `$` (e.g., `$$2` vs `$2`, `$$VAR` vs `$VAR`). Cloud Build preprocesses `$$` to `$` before shell execution, making these functionally equivalent when the resulting command is the same.
+- Different uv installation patterns in agent_engine deployment where Cloud Build installs uv in a separate step from where it's used (Cloud Build installs with --user flag which persists across steps via the home directory volume, while GitHub Actions installs in the same job; both approaches are functionally equivalent).
 
 **FLAG these as critical/moderate**:
 - Different Docker image push destinations (different projects/registries)
@@ -233,7 +235,7 @@ Respond with a JSON object containing:
                 }
 
                 response = self.client.models.generate_content(
-                    model="gemini-2.5-pro",
+                    model="gemini-3-pro-preview",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         temperature=0,

@@ -47,7 +47,7 @@ def start_server() -> subprocess.Popen[str]:
         sys.executable,
         "-m",
         "uvicorn",
-        "app.utils.expose_app:app",
+        "app.app_utils.expose_app:app",
         "--host",
         "0.0.0.0",
         "--port",
@@ -187,6 +187,12 @@ async def test_websocket_audio_input(server_fixture: subprocess.Popen[str]) -> N
                 # Verify we got responses
                 assert len(responses) > 0, "No responses received"
 
+                # Verify no error responses
+                for idx, response in enumerate(responses):
+                    assert "error" not in response, (
+                        f"Response {idx} contains error: {response.get('error')}"
+                    )
+
                 logger.info(f"Audio test passed. Received {len(responses)} responses")
 
             finally:
@@ -202,8 +208,8 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "run_id": "test-run-123",
-        "user_id": "test-user",
+        "user_id": "test-user-123",
+        "session_id": "test-session-123",
         "log_type": "feedback",
     }
 
@@ -213,32 +219,124 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     logger.info("Feedback endpoint test passed")
 {% else %}
 
+# mypy: disable-error-code="arg-type"
+{%- if cookiecutter.is_a2a %}
+
+import os
+
+import pytest
+
+from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
+from tests.helpers import (
+    build_get_request,
+    build_post_request,
+    poll_task_completion,
+)
+{%- elif cookiecutter.is_adk %}
+
 import logging
 
 import pytest
-{%- if cookiecutter.is_adk %}
 from google.adk.events.event import Event
 
-from {{cookiecutter.agent_directory}}.agent import root_agent
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- else %}
 
+import logging
+
+import pytest
+
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- endif %}
+{%- if cookiecutter.is_a2a %}
 
 
 @pytest.fixture
 def agent_app() -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
-{%- if cookiecutter.is_adk %}
-    app = AgentEngineApp(agent=root_agent)
-{%- else %}
-    app = AgentEngineApp()
-{%- endif %}
-    app.set_up()
-    return app
+    from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 
-{% if cookiecutter.is_adk %}
+    agent_engine.set_up()
+    return agent_engine
+{%- else %}
+
+
+@pytest.fixture
+def agent_app() -> AgentEngineApp:
+    """Fixture to create and set up AgentEngineApp instance"""
+    from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
+
+    agent_engine.set_up()
+    return agent_engine
+{% endif %}
+{%- if cookiecutter.is_a2a %}
+
+
+@pytest.mark.asyncio
+async def test_agent_on_message_send(agent_app: AgentEngineApp) -> None:
+    """Test complete A2A message workflow from send to task completion with artifacts."""
+    # Send message
+    message_data = {
+        "message": {
+            "messageId": f"msg-{os.urandom(8).hex()}",
+            "content": [{"text": "What is the capital of France?"}],
+            "role": "ROLE_USER",
+        },
+    }
+    response = await agent_app.on_message_send(
+        request=build_post_request(message_data),
+        context=None,
+    )
+
+    # Verify task creation
+    assert "task" in response and "id" in response["task"], (
+        "Expected task with ID in response"
+    )
+
+    # Poll for completion
+    final_response = await poll_task_completion(agent_app, response["task"]["id"])
+
+    # Verify artifacts
+    assert final_response.get("artifacts"), "Expected artifacts in completed task"
+    artifact = final_response["artifacts"][0]
+    assert artifact.get("parts") and artifact["parts"][0].get("text"), (
+        "Expected artifact with text content"
+    )
+
+
+@pytest.mark.asyncio
+async def test_agent_card(agent_app: AgentEngineApp) -> None:
+    """Test agent card retrieval and validation of required A2A fields."""
+    response = await agent_app.handle_authenticated_agent_card(
+        request=build_get_request(None),
+        context=None,
+    )
+
+    # Verify core agent card fields
+    assert response.get("name") == "root_agent", "Expected agent name 'root_agent'"
+    assert response.get("protocolVersion") == "0.3.0", "Expected protocol version 0.3.0"
+    assert response.get("preferredTransport") == "HTTP+JSON", (
+        "Expected HTTP+JSON transport"
+    )
+
+    # Verify capabilities
+    capabilities = response.get("capabilities", {})
+    assert capabilities.get("streaming") is False, "Expected streaming disabled"
+
+    # Verify skills
+    skills = response.get("skills", [])
+    assert len(skills) > 0, "Expected at least one skill"
+    for skill in skills:
+        assert all(key in skill for key in ["id", "name", "description"]), (
+            "Expected id, name, and description in each skill"
+        )
+
+    # Verify extended card support
+    assert response.get("supportsAuthenticatedExtendedCard") is True, (
+        "Expected supportsAuthenticatedExtendedCard to be True"
+    )
+{% elif cookiecutter.is_adk %}
+
 @pytest.mark.asyncio
 async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     """
@@ -246,7 +344,7 @@ async def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     Tests that the agent returns valid streaming responses.
     """
     # Create message and events for the async_stream_query
-    message = "What's the weather in San Francisco?"
+    message = "Hi!"
     events = []
     async for event in agent_app.async_stream_query(message=message, user_id="test"):
         events.append(event)
@@ -276,7 +374,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "invocation_id": "test-run-123",
+        "user_id": "test-user-456",
+        "session_id": "test-session-456",
     }
 
     # Should not raise any exceptions
@@ -287,12 +386,14 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
         invalid_feedback = {
             "score": "invalid",  # Score must be numeric
             "text": "Bad feedback",
-            "invocation_id": "test-run-123",
+            "user_id": "test-user-789",
+            "session_id": "test-session-789",
         }
         agent_app.register_feedback(invalid_feedback)
 
     logging.info("All assertions passed for agent feedback test")
 {% else %}
+
 def test_agent_stream_query(agent_app: AgentEngineApp) -> None:
     """
     Integration test for the agent stream query functionality.
@@ -368,7 +469,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
     feedback_data = {
         "score": 5,
         "text": "Great response!",
-        "run_id": "test-run-123",
+        "user_id": "test-user-456",
+        "session_id": "test-session-456",
     }
 
     # Should not raise any exceptions
@@ -379,7 +481,8 @@ def test_agent_feedback(agent_app: AgentEngineApp) -> None:
         invalid_feedback = {
             "score": "invalid",  # Score must be numeric
             "text": "Bad feedback",
-            "run_id": "test-run-123",
+            "user_id": "test-user-789",
+            "session_id": "test-session-789",
         }
         agent_app.register_feedback(invalid_feedback)
 

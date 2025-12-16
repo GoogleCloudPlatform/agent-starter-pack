@@ -15,6 +15,7 @@
 """Utilities for CI/CD setup and management."""
 
 import json
+import os
 import re
 import subprocess
 import time
@@ -26,6 +27,8 @@ import backoff
 import click
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
+
+from agent_starter_pack.cli.utils.command import get_gcloud_cmd
 
 console = Console()
 
@@ -103,9 +106,10 @@ def create_github_connection(
     """
     console.print("\n🔗 Creating GitHub connection...")
 
-    # First, ensure Cloud Build API is enabled
-    console.print("🔧 Ensuring Cloud Build API is enabled...")
+    # First, ensure required APIs are enabled
+    console.print("🔧 Ensuring required APIs are enabled...")
     try:
+        # Enable Cloud Build API
         run_command(
             [
                 "gcloud",
@@ -120,13 +124,28 @@ def create_github_connection(
         )
         console.print("✅ Cloud Build API enabled")
 
-        # Wait for the API to fully initialize and create the service account
+        # Enable Secret Manager API
+        run_command(
+            [
+                "gcloud",
+                "services",
+                "enable",
+                "secretmanager.googleapis.com",
+                "--project",
+                project_id,
+            ],
+            capture_output=True,
+            check=False,  # Don't fail if already enabled
+        )
+        console.print("✅ Secret Manager API enabled")
+
+        # Wait for the APIs to fully initialize and create the service account
         console.print(
             "⏳ Waiting for Cloud Build service account to be created (this typically takes 5-10 seconds)..."
         )
         time.sleep(10)
     except subprocess.CalledProcessError as e:
-        console.print(f"⚠️ Could not enable Cloud Build API: {e}", style="yellow")
+        console.print(f"⚠️ Could not enable required APIs: {e}", style="yellow")
 
     # Get the Cloud Build service account and grant permissions with retry logic
     try:
@@ -209,8 +228,9 @@ def create_github_connection(
         )
 
     def try_create_connection() -> subprocess.CompletedProcess[str]:
+        gcloud_cmd = get_gcloud_cmd()
         cmd = [
-            "gcloud",
+            gcloud_cmd,
             "builds",
             "connections",
             "create",
@@ -224,6 +244,7 @@ def create_github_connection(
         console.print(f"\n🔄 Running command: {' '.join(cmd)}")
 
         # Use Popen to get control over stdin
+        # On Windows, gcloud.cmd requires shell=True
         process = subprocess.Popen(
             cmd,
             stdin=subprocess.PIPE,
@@ -231,6 +252,7 @@ def create_github_connection(
             stderr=subprocess.PIPE,
             text=True,
             encoding="utf-8",
+            shell=(os.name == "nt"),
         )
 
         # Send 'y' followed by enter key to handle both the API enablement prompt and any other prompts
@@ -513,7 +535,19 @@ def run_command(
     input: str | None = None,
     env_vars: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess:
-    """Run a command and display it to the user"""
+    """Run a command and display it to the user.
+
+    Automatically handles Windows compatibility for gcloud commands by:
+    - Resolving the full path to gcloud executable (via command.py)
+    - Using shell=True on Windows for .cmd files
+    """
+    # Handle gcloud commands for Windows compatibility
+    if isinstance(cmd, list) and len(cmd) > 0 and cmd[0] == "gcloud":
+        cmd = [get_gcloud_cmd(), *cmd[1:]]
+        # On Windows, gcloud.cmd requires shell=True
+        if os.name == "nt":
+            shell = True
+
     # Format command for display
     cmd_str = cmd if isinstance(cmd, str) else " ".join(cmd)
     print(f"\n🔄 Running command: {cmd_str}")
@@ -523,8 +557,6 @@ def run_command(
     # Prepare environment variables
     env = None
     if env_vars:
-        import os
-
         env = os.environ.copy()
         env.update(env_vars)
 

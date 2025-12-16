@@ -9,27 +9,24 @@ dependencies = [
 {%- for dep in cookiecutter.extra_dependencies %}
     "{{ dep }}",
 {%- endfor %}
-    "opentelemetry-exporter-gcp-trace>=1.9.0,<2.0.0",
+    "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
+    "gcsfs>=2024.11.0",
 {%- if not cookiecutter.is_adk %}
-    "langchain-core~=0.3.9",
-    "traceloop-sdk~=0.38.7",
+    "opentelemetry-exporter-otlp-proto-http>=1.29.0,<2.0.0",
 {%- endif %}
     "google-cloud-logging>=3.12.0,<4.0.0",
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "google-cloud-aiplatform[evaluation]>=1.118.0,<2.0.0",
     "fastapi~=0.115.8",
     "uvicorn~=0.34.0",
-    "psycopg2-binary>=2.9.10,<3.0.0",
+    "asyncpg>=0.30.0,<1.0.0",
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
     "google-cloud-aiplatform[evaluation,agent-engines]>=1.118.0,<2.0.0",
-    "protobuf>=6.31.1,<7.0.0"
+    "protobuf>=6.31.1,<7.0.0",
 {%- endif %}
 ]
-{% if cookiecutter.deployment_target == 'cloud_run' %}
 requires-python = ">=3.10,<3.14"
-{% elif cookiecutter.deployment_target == 'agent_engine' %}
-requires-python = ">=3.10,<3.13"
-{%- endif %}
+
 
 [dependency-groups]
 dev = [
@@ -39,14 +36,6 @@ dev = [
 ]
 
 [project.optional-dependencies]
-{% if not cookiecutter.is_adk %}
-streamlit = [
-    "streamlit>=1.42.0,<2.0.0",
-    "streamlit-extras>=0.4.3,<1.0.0",
-    "extra-streamlit-components>=0.1.71,<1.0.0",
-    "streamlit-feedback>=0.1.3,<1.0.0",
-]
-{% endif %}
 jupyter = [
     "jupyter>=1.0.0,<2.0.0",
 ]
@@ -115,3 +104,24 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.hatch.build.targets.wheel]
 packages = ["{{cookiecutter.agent_directory}}","frontend"]
+
+[tool.agent-starter-pack]
+# Generation metadata - enables CLI commands to understand project context
+# These fields allow any generated project to work as a remote template
+name = "{{cookiecutter.project_name}}"
+description = "{{cookiecutter.agent_description}}"
+base_template = "{{cookiecutter.agent_name}}"
+agent_directory = "{{cookiecutter.agent_directory}}"
+
+# Generation context
+generated_at = "{{cookiecutter.generated_at}}"
+asp_version = "{{cookiecutter.package_version}}"
+
+[tool.agent-starter-pack.create_params]
+# Parameters used during project creation
+deployment_target = "{{cookiecutter.deployment_target}}"
+session_type = "{{cookiecutter.session_type or 'none'}}"
+cicd_runner = "{{cookiecutter.cicd_runner}}"
+include_data_ingestion = {{ cookiecutter.data_ingestion | lower }}
+datastore = "{{cookiecutter.datastore_type or 'none'}}"
+frontend_type = "{{cookiecutter.frontend_type}}"

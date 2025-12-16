@@ -18,6 +18,7 @@ import os
 import google
 import vertexai
 from google.adk.agents import Agent
+from google.adk.apps.app import App
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
@@ -26,12 +27,12 @@ from {{cookiecutter.agent_directory}}.templates import format_docs
 EMBEDDING_MODEL = "text-embedding-005"
 LLM_LOCATION = "global"
 LOCATION = "us-central1"
-LLM = "gemini-2.5-flash"
+LLM = "gemini-3-pro-preview"
 
 credentials, project_id = google.auth.default()
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", LLM_LOCATION)
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
+os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+os.environ["GOOGLE_CLOUD_LOCATION"] = LLM_LOCATION
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location=LOCATION)
 embedding = VertexAIEmbeddings(
@@ -115,3 +116,5 @@ root_agent = Agent(
     instruction=instruction,
     tools=[retrieve_docs],
 )
+
+app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")

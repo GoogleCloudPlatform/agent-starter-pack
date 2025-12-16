@@ -25,7 +25,7 @@ The `enhance` command supports all the same options as [`create`](./create.md), 
 #### `--base-template` TEMPLATE
 Override the base template for inheritance when enhancing your existing project. Available base templates include:
 - `adk_base` - Basic agent template (default)
-- `langgraph_base_react` - LangGraph-based ReAct agent
+- `langgraph_base` - LangGraph-based ReAct agent
 - `agentic_rag` - RAG-enabled agent template
 
 ### Key Shared Options
@@ -40,7 +40,8 @@ Name of the agent directory (overrides template default, usually `app`). This de
 - `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
 - `--include-data-ingestion, -i` - Include data ingestion pipeline
 - `--session-type` - Session storage type
-- `--auto-approve` - Skip confirmation prompts
+- `--google-api-key, --api-key, -k` - Use Google AI Studio API key (or placeholder if no value provided)
+- `--auto-approve, --yes, -y` - Skip confirmation prompts and use defaults
 - And all other `create` command options
 
 ## Examples
@@ -68,17 +69,17 @@ uvx agent-starter-pack enhance . --agent-directory chatbot
 uvx agent-starter-pack enhance adk@data-science --deployment-target cloud_run
 
 # Enhance with data ingestion capabilities
-uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
+uvx agent-starter-pack enhance --include-data-ingestion --datastore cloud_sql
 
 # Enhance with custom session storage
-uvx agent-starter-pack enhance --session-type alloydb
+uvx agent-starter-pack enhance --session-type cloud_sql
 ```
 
 ### Base Template Inheritance
 
 ```bash
 # Enhance current project with LangGraph capabilities
-uvx agent-starter-pack enhance . --base-template langgraph_base_react
+uvx agent-starter-pack enhance . --base-template langgraph_base
 
 # Enhance with RAG-enabled base template
 uvx agent-starter-pack enhance . --base-template agentic_rag
@@ -92,10 +93,13 @@ The enhance command validates your project structure and provides guidance:
 ```
 your-project/
 ├── app/
-│   └── agent.py    # Your agent code
+│   └── agent.py         # Python agent with root_agent
+│   └── root_agent.yaml  # OR YAML config agent (auto-detected)
 ├── tests/
 └── README.md
 ```
+
+**Note:** YAML config agents (`root_agent.yaml`) are automatically detected. An `agent.py` shim is generated to load the YAML config for deployment compatibility.
 
 **⚠️ Missing Agent Folder:**
 If your project doesn't have an agent directory (default: `/app`), the command will:
@@ -122,6 +126,18 @@ It automatically:
 - Validates the project structure for compatibility
 - Applies the same file merging logic as the `create` command
 
+### Version Locking
+
+When enhancing a project that was created with agent-starter-pack, the command automatically uses the same version that generated the project:
+
+1. Reads `asp_version` from `[tool.agent-starter-pack]` in `pyproject.toml`
+2. If the version differs from the current CLI, re-executes with the locked version via `uvx agent-starter-pack@{version}`
+3. Uses stored `create_params` to ensure identical configuration
+
+This ensures compatibility and consistent behavior when adding features to existing projects.
+
+**Skip version lock:** Set `ASP_SKIP_VERSION_LOCK=1` to use the current CLI version instead.
+
 ### Base Template Inheritance
 
 When enhancing your existing project (using `local@.` or `local@/path/to/project`), the enhance command will:
@@ -134,7 +150,7 @@ The inheritance hierarchy works as follows:
 ```
 Your Existing Project
     ↓ (inherits from)
-Base Template (adk_base, langgraph_base_react, etc.)
+Base Template (adk_base, langgraph_base, etc.)
     ↓ (provides)
 Core Infrastructure & Capabilities
 ```
@@ -143,7 +159,10 @@ Core Infrastructure & Capabilities
 
 **Prototype to Production:**
 ```bash
-# You have a prototype agent in /app/agent.py
+# Created with --prototype, now ready to add CI/CD
+uvx agent-starter-pack enhance --cicd-runner google_cloud_build
+
+# Or add a specific template
 uvx agent-starter-pack enhance adk@production-ready
 ```
 
@@ -156,7 +175,7 @@ uvx agent-starter-pack enhance --deployment-target cloud_run
 **Add Data Pipeline:**
 ```bash
 # Add data ingestion to existing agent
-uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
+uvx agent-starter-pack enhance --include-data-ingestion --datastore cloud_sql
 ```
 
 **Upgrade Agent Base:**
@@ -165,7 +184,7 @@ uvx agent-starter-pack enhance --include-data-ingestion --datastore alloydb
 uvx agent-starter-pack enhance adk@gemini-fullstack
 
 # Or change base template inheritance
-uvx agent-starter-pack enhance . --base-template langgraph_base_react
+uvx agent-starter-pack enhance . --base-template langgraph_base
 ```
 
 ## Automatic Backup
@@ -179,15 +198,15 @@ The `enhance` command automatically creates a complete backup of your project be
 ## Best Practices
 
 1. **Review Backup:** Check that the backup was created successfully
-2. **Follow Structure:** Organize your agent code in `/app/agent.py` for best compatibility  
-3. **Test Locally:** Use `--auto-approve` in CI/CD but test interactively first
+2. **Follow Structure:** Organize your agent code in `/app/agent.py` for best compatibility
+3. **Test Locally:** Use `-y` in CI/CD but test interactively first
 4. **Review Changes:** After enhancement, review the generated files and configuration
 
 ## Troubleshooting
 
 **"Project structure warning"**
 - Organize your agent code in an `/app` folder (or specify custom directory with `--agent-directory`)
-- Use `--auto-approve` to skip the confirmation prompt
+- Use `-y` to skip the confirmation prompt
 
 **"Enhancement cancelled"**
 - Create an `/app` folder with your `agent.py` file

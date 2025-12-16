@@ -16,15 +16,26 @@ import json
 import logging
 import os
 import pathlib
+import re
 import shutil
+import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
+
+if sys.version_info >= (3, 11):
+    from datetime import UTC
+else:
+    from datetime import timezone
+
+    UTC = timezone.utc  # noqa: UP017 - Required for Python 3.10 compatibility
 
 import yaml
 from cookiecutter.main import cookiecutter
 from rich.console import Console
-from rich.prompt import IntPrompt, Prompt
+from rich.prompt import Confirm, IntPrompt, Prompt
 
 from agent_starter_pack.cli.utils.version import get_current_version
 
@@ -33,6 +44,105 @@ from .remote_template import (
     get_base_template_name,
     render_and_merge_makefiles,
 )
+
+
+def add_base_template_dependencies_interactively(
+    project_path: pathlib.Path,
+    base_dependencies: list[str],
+    base_template_name: str,
+    auto_approve: bool = False,
+) -> bool:
+    """Interactively add base template dependencies using uv add.
+
+    Args:
+        project_path: Path to the project directory
+        base_dependencies: List of dependencies from base template's extra_dependencies
+        base_template_name: Name of the base template being used
+        auto_approve: Whether to skip confirmation and auto-install
+
+    Returns:
+        True if dependencies were added successfully, False otherwise
+    """
+    if not base_dependencies:
+        return True
+
+    console = Console()
+
+    # Construct dependency string once for reuse
+    deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
+
+    # Show what dependencies will be added
+    console.print(
+        f"\n✓ Base template override: Using '{base_template_name}' as foundation",
+        style="bold cyan",
+    )
+    console.print("  This requires adding the following dependencies:", style="white")
+    for dep in base_dependencies:
+        console.print(f"    • {dep}", style="yellow")
+
+    # Ask for confirmation unless auto-approve
+    should_add = True
+    if not auto_approve:
+        should_add = Confirm.ask(
+            "\n? Add these dependencies automatically?", default=True
+        )
+
+    if not should_add:
+        console.print("\n⚠️  Skipped dependency installation.", style="yellow")
+        console.print("   To add them manually later, run:", style="dim")
+        console.print(f"       cd {project_path.name}", style="dim")
+        console.print(f"       uv add {deps_str}\n", style="dim")
+        return False
+
+    # Run uv add
+    try:
+        if auto_approve:
+            console.print(
+                f"✓ Auto-installing dependencies: {', '.join(base_dependencies)}",
+                style="bold cyan",
+            )
+        else:
+            console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
+
+        # Run uv add in the project directory
+        cmd = ["uv", "add"] + base_dependencies
+        result = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Show success message
+        if not auto_approve:
+            # Show a summary line from uv output
+            output_lines = result.stderr.strip().split("\n")
+            for line in output_lines:
+                if "Resolved" in line or "Installed" in line:
+                    console.print(f"  {line}", style="dim")
+                    break
+
+        console.print("✓ Dependencies added successfully\n", style="bold green")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"\n✗ Failed to add dependencies: {e.stderr.strip()}", style="bold red"
+        )
+        console.print("  You can add them manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
+    except FileNotFoundError:
+        console.print(
+            "\n✗ uv command not found. Please install uv first.", style="bold red"
+        )
+        console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
+        console.print("\n  To add dependencies manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
 
 
 def validate_agent_directory_name(agent_dir: str) -> None:
@@ -112,9 +222,10 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
     # Define priority agents that should appear first
     PRIORITY_AGENTS = [
         "adk_base",
+        "adk_a2a_base",
         "adk_live",
         "agentic_rag",
-        "langgraph_base_react",
+        "langgraph_base",
     ]
 
     agents_list = []
@@ -251,9 +362,9 @@ def prompt_session_type_selection() -> str:
             "display_name": "In-memory session",
             "description": "Session data stored in memory - ideal for stateless applications",
         },
-        "alloydb": {
-            "display_name": "AlloyDB",
-            "description": "Use AlloyDB for session management. Comes with terraform resources for deployment.",
+        "cloud_sql": {
+            "display_name": "Cloud SQL (PostgreSQL)",
+            "description": "Managed PostgreSQL database for robust session persistence",
         },
         "agent_engine": {
             "display_name": "Vertex AI Agent Engine",
@@ -391,6 +502,10 @@ def prompt_cicd_runner_selection() -> str:
     console = Console()
 
     cicd_runners = {
+        "skip": {
+            "display_name": "Simple",
+            "description": "Minimal - no CI/CD or Terraform, add later with 'enhance'",
+        },
         "google_cloud_build": {
             "display_name": "Google Cloud Build",
             "description": "Fully managed CI/CD, deeply integrated with GCP for fast, consistent builds and deployments.",
@@ -458,6 +573,179 @@ def copy_data_ingestion_files(
         )
 
 
+def _extract_agent_garden_labels(
+    agent_garden: bool,
+    remote_spec: Any | None,
+    remote_template_path: pathlib.Path | None,
+) -> tuple[str | None, str | None]:
+    """Extract agent sample ID and publisher for Agent Garden labeling.
+
+    This function supports two mechanisms for extracting label information:
+    1. From remote_spec metadata (for ADK samples)
+    2. Fallback to pyproject.toml parsing (for version-locked templates)
+
+    Args:
+        agent_garden: Whether this deployment is from Agent Garden
+        remote_spec: Remote template spec with ADK samples metadata
+        remote_template_path: Path to remote template directory
+
+    Returns:
+        Tuple of (agent_sample_id, agent_sample_publisher) or (None, None) if no labels found
+    """
+    if not agent_garden:
+        return None, None
+
+    agent_sample_id = None
+    agent_sample_publisher = None
+
+    # Handle remote specs with ADK samples metadata
+    if (
+        remote_spec
+        and hasattr(remote_spec, "is_adk_samples")
+        and remote_spec.is_adk_samples
+    ):
+        # For ADK samples, template_path is like "python/agents/sample-name"
+        agent_sample_id = pathlib.Path(remote_spec.template_path).name
+        # For ADK samples, publisher is always "google"
+        agent_sample_publisher = "google"
+        logging.debug(f"Detected ADK sample from remote_spec: {agent_sample_id}")
+        return agent_sample_id, agent_sample_publisher
+
+    # Fallback: Detect ADK samples from pyproject.toml (for version-locked templates)
+    if remote_template_path:
+        pyproject_path = remote_template_path / "pyproject.toml"
+        if pyproject_path.exists():
+            try:
+                if sys.version_info >= (3, 11):
+                    import tomllib
+                else:
+                    import tomli as tomllib
+
+                with open(pyproject_path, "rb") as toml_file:
+                    pyproject_data = tomllib.load(toml_file)
+
+                # Extract project name from pyproject.toml
+                project_name_from_toml = pyproject_data.get("project", {}).get("name")
+
+                if project_name_from_toml:
+                    agent_sample_id = project_name_from_toml
+                    agent_sample_publisher = "google"  # ADK samples are from Google
+                    logging.debug(
+                        f"Detected ADK sample from pyproject.toml: {agent_sample_id}"
+                    )
+            except Exception as e:
+                logging.debug(f"Failed to read pyproject.toml: {e}")
+
+    return agent_sample_id, agent_sample_publisher
+
+
+def _inject_app_object_if_missing(
+    agent_py_path: pathlib.Path, agent_directory: str, console: Console
+) -> None:
+    """Inject app object into agent.py if missing (backward compatibility for ADK).
+
+    Args:
+        agent_py_path: Path to the agent.py file
+        agent_directory: Name of the agent directory for logging
+        console: Rich console for user feedback
+    """
+    try:
+        content = agent_py_path.read_text(encoding="utf-8")
+        # Check for app object (assignment, function definition, or import)
+        app_patterns = [
+            r"^\s*app\s*=",  # assignment: app = ...
+            r"^\s*def\s+app\(",  # function: def app(...)
+            r"from\s+.*\s+import\s+.*\bapp\b",  # import: from ... import app
+        ]
+        has_app = any(
+            re.search(pattern, content, re.MULTILINE) for pattern in app_patterns
+        )
+
+        if not has_app:
+            console.print(
+                f"ℹ️  Adding 'app' object to [cyan]{agent_directory}/agent.py[/cyan] for backward compatibility",
+                style="dim",
+            )
+            # Add import and app object at the end of the file
+            content = content.rstrip()
+            if "from google.adk.apps.app import App" not in content:
+                content += "\n\nfrom google.adk.apps.app import App\n"
+            content += f'\napp = App(root_agent=root_agent, name="{agent_directory}")\n'
+
+            # Write the modified content back
+            agent_py_path.write_text(content, encoding="utf-8")
+    except Exception as e:
+        logging.warning(
+            f"Could not inject app object into {agent_directory}/agent.py: {type(e).__name__}: {e}"
+        )
+
+
+def _generate_yaml_agent_shim(
+    agent_py_path: pathlib.Path,
+    agent_directory: str,
+    console: Console,
+    force: bool = False,
+) -> None:
+    """Generate agent.py shim for YAML config agents.
+
+    When a root_agent.yaml is detected, this function generates an agent.py
+    that loads the YAML config and exposes the root_agent and app objects
+    required by the deployment pipeline.
+
+    Args:
+        agent_py_path: Path where agent.py should be created/updated
+        agent_directory: Name of the agent directory for logging
+        console: Rich console for user feedback
+        force: If True, overwrite existing agent.py even if it has root_agent defined.
+               Used when the user explicitly has a root_agent.yaml.
+    """
+    root_agent_yaml = agent_py_path.parent / "root_agent.yaml"
+
+    if not root_agent_yaml.exists():
+        return
+
+    # Check if agent.py already exists and has root_agent defined
+    if agent_py_path.exists() and not force:
+        try:
+            content = agent_py_path.read_text(encoding="utf-8")
+            if re.search(r"^\s*root_agent\s*=", content, re.MULTILINE):
+                logging.debug(
+                    f"{agent_directory}/agent.py already has root_agent defined"
+                )
+                return
+        except Exception as e:
+            logging.warning(f"Could not read existing agent.py: {e}")
+
+    console.print(
+        f"ℹ️  Generating [cyan]{agent_directory}/agent.py[/cyan] shim for YAML config agent",
+        style="dim",
+    )
+
+    shim_content = f'''"""Agent module that loads the YAML config agent.
+
+This file is auto-generated to provide compatibility with the deployment pipeline.
+Edit root_agent.yaml to modify your agent configuration.
+"""
+
+from pathlib import Path
+
+from google.adk.agents import config_agent_utils
+from google.adk.apps.app import App
+
+_AGENT_DIR = Path(__file__).parent
+root_agent = config_agent_utils.from_config(str(_AGENT_DIR / "root_agent.yaml"))
+app = App(root_agent=root_agent, name="{agent_directory}")
+'''
+
+    try:
+        agent_py_path.write_text(shim_content, encoding="utf-8")
+        logging.debug(f"Generated YAML agent shim at {agent_py_path}")
+    except Exception as e:
+        logging.warning(
+            f"Could not generate YAML agent shim at {agent_py_path}: {type(e).__name__}: {e}"
+        )
+
+
 def process_template(
     agent_name: str,
     template_dir: pathlib.Path,
@@ -475,6 +763,7 @@ def process_template(
     cli_overrides: dict[str, Any] | None = None,
     agent_garden: bool = False,
     remote_spec: Any | None = None,
+    google_api_key: str | None = None,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -494,11 +783,15 @@ def process_template(
         in_folder: Whether to template directly into the output directory instead of creating a subdirectory
         cli_overrides: Optional CLI override values that should take precedence over template config
         agent_garden: Whether this deployment is from Agent Garden
+        google_api_key: Optional Google AI Studio API key to generate .env file
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
     logging.debug(f"Include pipeline: {datastore}")
     logging.debug(f"Output directory: {output_dir}")
+
+    # Create console for user feedback
+    console = Console()
 
     def get_agent_directory(
         template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
@@ -531,6 +824,13 @@ def process_template(
             pathlib.Path(__file__).parent.parent.parent / "agents" / base_template_name
         )
         logging.debug(f"Remote template using base: {base_template_name}")
+    elif cli_overrides and cli_overrides.get("base_template"):
+        # For in-folder mode with base_template override, use the agent template
+        base_template_name = cli_overrides["base_template"]
+        agent_path = (
+            pathlib.Path(__file__).parent.parent.parent / "agents" / base_template_name
+        )
+        logging.debug(f"Using base template override: {base_template_name}")
     else:
         # For local templates, use the existing logic
         agent_path = template_dir.parent  # Get parent of template dir
@@ -561,13 +861,9 @@ def process_template(
             os.chdir(temp_path)  # Change to temp directory
 
             # Extract agent sample info for labeling when using agent garden with remote templates
-            agent_sample_id = None
-            agent_sample_publisher = None
-            if agent_garden and remote_spec and remote_spec.is_adk_samples:
-                # For ADK samples, template_path is like "python/agents/sample-name"
-                agent_sample_id = pathlib.Path(remote_spec.template_path).name
-                # For ADK samples, publisher is always "google"
-                agent_sample_publisher = "google"
+            agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+                agent_garden, remote_spec, remote_template_path
+            )
 
             # Create the cookiecutter template structure
             cookiecutter_template = temp_path / "template"
@@ -663,13 +959,21 @@ def process_template(
             if agent_path.exists():
                 agent_directory = get_agent_directory(template_config, cli_overrides)
 
-                # Get the template's default agent directory (usually "app")
-                template_agent_directory = template_config.get("settings", {}).get(
-                    "agent_directory", "app"
-                )
+                # For remote/local templates with base_template override, always use "app"
+                # as the source directory since base templates store agent code in "app/"
+                if is_remote or (cli_overrides and cli_overrides.get("base_template")):
+                    template_agent_directory = "app"
+                else:
+                    # Get the template's default agent directory (usually "app")
+                    template_agent_directory = template_config.get("settings", {}).get(
+                        "agent_directory", "app"
+                    )
 
                 # Copy agent directory (always from "app" to target directory)
                 source_agent_folder = agent_path / template_agent_directory
+                logging.debug(
+                    f"6. Source agent folder: {source_agent_folder}, exists: {source_agent_folder.exists()}"
+                )
                 target_agent_folder = project_template / agent_directory
                 if source_agent_folder.exists():
                     logging.debug(
@@ -719,19 +1023,20 @@ def process_template(
                 / "docs"
                 / "adk-cheatsheet.md"
             )
-            with open(adk_cheatsheet_path, encoding="utf-8") as f:
-                adk_cheatsheet_content = f.read()
+            with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
+                adk_cheatsheet_content = md_file.read()
 
             llm_txt_path = (
                 pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
             )
-            with open(llm_txt_path, encoding="utf-8") as f:
-                llm_txt_content = f.read()
+            with open(llm_txt_path, encoding="utf-8") as txt_file:
+                llm_txt_content = txt_file.read()
 
             cookiecutter_config = {
                 "project_name": project_name,
                 "agent_name": agent_name,
                 "package_version": get_current_version(),
+                "generated_at": datetime.now(tz=UTC).isoformat(),
                 "agent_description": template_config.get("description", ""),
                 "example_question": template_config.get("example_question", "").ljust(
                     61
@@ -740,6 +1045,7 @@ def process_template(
                 "tags": tags,
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
+                "is_a2a": "a2a" in tags,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "session_type": session_type or "",
@@ -752,6 +1058,7 @@ def process_template(
                 "agent_garden": agent_garden,
                 "agent_sample_id": agent_sample_id or "",
                 "agent_sample_publisher": agent_sample_publisher or "",
+                "use_google_api_key": bool(google_api_key),
                 "adk_cheatsheet": adk_cheatsheet_content,
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [
@@ -771,17 +1078,13 @@ def process_template(
                     ".venv/*",
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
-                    # Don't render agent.py unless it's agentic_rag
-                    f"{get_agent_directory(template_config, cli_overrides)}/agent.py"
-                    if agent_name != "agentic_rag"
-                    else "",
                 ],
             }
 
             with open(
                 cookiecutter_template / "cookiecutter.json", "w", encoding="utf-8"
-            ) as f:
-                json.dump(cookiecutter_config, f, indent=4)
+            ) as json_file:
+                json.dump(cookiecutter_config, json_file, indent=4)
 
             logging.debug(f"Template structure created at {cookiecutter_template}")
             logging.debug(
@@ -863,6 +1166,25 @@ def process_template(
                 )
                 logging.debug("Remote template files copied successfully")
 
+                # Handle ADK agent compatibility
+                is_adk = "adk" in tags
+                agent_py_path = generated_project_dir / agent_directory / "agent.py"
+                root_agent_yaml = (
+                    generated_project_dir / agent_directory / "root_agent.yaml"
+                )
+
+                if is_adk:
+                    # Check for YAML config agent first
+                    if root_agent_yaml.exists():
+                        _generate_yaml_agent_shim(
+                            agent_py_path, agent_directory, console
+                        )
+                    elif agent_py_path.exists():
+                        # Inject app object if missing (backward compatibility)
+                        _inject_app_object_if_missing(
+                            agent_py_path, agent_directory, console
+                        )
+
             # Move the generated project to the final destination
             generated_project_dir = temp_path / project_name
 
@@ -931,8 +1253,12 @@ def process_template(
                                             file_template_dir / "cookiecutter.json",
                                             "w",
                                             encoding="utf-8",
-                                        ) as f:
-                                            json.dump(cookiecutter_config, f, indent=4)
+                                        ) as config_file:
+                                            json.dump(
+                                                cookiecutter_config,
+                                                config_file,
+                                                indent=4,
+                                            )
 
                                         # Process the file template
                                         cookiecutter(
@@ -1042,6 +1368,20 @@ def process_template(
             # Delete appropriate files based on ADK tag
             agent_directory = get_agent_directory(template_config, cli_overrides)
 
+            # Handle YAML config agents for in-folder mode
+            # This runs after all files have been copied to the final destination
+            # Use force=True because the user's root_agent.yaml takes precedence
+            # over the base template's agent.py
+            if in_folder:
+                final_agent_py_path = final_destination / agent_directory / "agent.py"
+                final_root_agent_yaml = (
+                    final_destination / agent_directory / "root_agent.yaml"
+                )
+                if final_root_agent_yaml.exists():
+                    _generate_yaml_agent_shim(
+                        final_agent_py_path, agent_directory, console, force=True
+                    )
+
             # Clean up unused_* files and directories created by conditional templates
             import glob
 
@@ -1060,6 +1400,26 @@ def process_template(
                         else:
                             unused_path.unlink()
                             logging.debug(f"Deleted unused file: {unused_path}")
+
+            # Clean up additional files for prototype/minimal mode (cicd_runner == "skip")
+            if cicd_runner == "skip":
+                # Remove deployment folder
+                deployment_dir = final_destination / "deployment"
+                if deployment_dir.exists():
+                    shutil.rmtree(deployment_dir)
+                    logging.debug(f"Prototype mode: deleted {deployment_dir}")
+
+                # Remove load_test folder
+                load_test_dir = final_destination / "tests" / "load_test"
+                if load_test_dir.exists():
+                    shutil.rmtree(load_test_dir)
+                    logging.debug(f"Prototype mode: deleted {load_test_dir}")
+
+                # Remove notebooks folder
+                notebooks_dir = final_destination / "notebooks"
+                if notebooks_dir.exists():
+                    shutil.rmtree(notebooks_dir)
+                    logging.debug(f"Prototype mode: deleted {notebooks_dir}")
 
             # Handle pyproject.toml and uv.lock files
             if is_remote and remote_template_path:
@@ -1094,14 +1454,27 @@ def process_template(
 
                 # Replace cookiecutter project name with actual project name in lock file
                 lock_file_path = final_destination / "uv.lock"
-                with open(lock_file_path, "r+", encoding="utf-8") as f:
-                    content = f.read()
-                    f.seek(0)
-                    f.write(
+                with open(lock_file_path, "r+", encoding="utf-8") as lock_file:
+                    content = lock_file.read()
+                    lock_file.seek(0)
+                    lock_file.write(
                         content.replace("{{cookiecutter.project_name}}", project_name)
                     )
-                    f.truncate()
+                    lock_file.truncate()
                 logging.debug(f"Updated project name in lock file at {lock_file_path}")
+
+            # Generate .env file for Google API Key if provided
+            if google_api_key:
+                env_file_path = final_destination / agent_directory / ".env"
+                env_content = f"""# AI Studio Configuration
+GOOGLE_API_KEY={google_api_key}
+"""
+                env_file_path.write_text(env_content)
+                logging.debug(f"Generated .env file at {env_file_path}")
+                console.print(
+                    f"📝 Generated .env file at [cyan]{agent_directory}/.env[/cyan] "
+                    "for Google AI Studio"
+                )
 
         except Exception as e:
             logging.error(f"Failed to process template: {e!s}")
@@ -1160,9 +1533,24 @@ def copy_files(
             return True
         return False
 
+    def log_windows_path_warning(path: pathlib.Path) -> None:
+        """Log a warning if path exceeds Windows MAX_PATH limit."""
+        if sys.platform == "win32":
+            path_str = str(path.absolute())
+            if len(path_str) >= 260:
+                logging.error(
+                    f"Path length ({len(path_str)} chars) may exceed Windows limit. Try using a shorter output directory."
+                )
+
     if src.is_dir():
         if not dst.exists():
-            dst.mkdir(parents=True)
+            try:
+                dst.mkdir(parents=True)
+                logging.debug(f"Created directory: {dst}")
+            except OSError as e:
+                logging.error(f"Failed to create directory: {dst}")
+                logging.error(f"Error: {e}")
+                raise
         for item in src.iterdir():
             if should_skip(item):
                 logging.debug(f"Skipping file/directory: {item}")
@@ -1173,14 +1561,29 @@ def copy_files(
                 copy_files(item, d, agent_name, overwrite, agent_directory)
             else:
                 if overwrite or not d.exists():
-                    logging.debug(f"Copying file: {item} -> {d}")
-                    shutil.copy2(item, d)
+                    try:
+                        # Ensure parent directory exists before copying
+                        d.parent.mkdir(parents=True, exist_ok=True)
+                        logging.debug(f"Copying file: {item} -> {d}")
+                        shutil.copy2(item, d)
+                    except OSError:
+                        logging.error(f"Failed to copy: {item} -> {d}")
+                        log_windows_path_warning(d)
+                        raise
                 else:
                     logging.debug(f"Skipping existing file: {d}")
     else:
         if not should_skip(src):
             if overwrite or not dst.exists():
-                shutil.copy2(src, dst)
+                try:
+                    # Ensure parent directory exists before copying
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    logging.debug(f"Copying file: {src} -> {dst}")
+                    shutil.copy2(src, dst)
+                except OSError:
+                    logging.error(f"Failed to copy: {src} -> {dst}")
+                    log_windows_path_warning(dst)
+                    raise
 
 
 def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> None:
@@ -1188,6 +1591,11 @@ def copy_frontend_files(frontend_type: str, project_template: pathlib.Path) -> N
     # Skip copying if frontend_type is "None" or empty
     if not frontend_type or frontend_type == "None":
         logging.debug("Frontend type is 'None' or empty, skipping frontend files")
+        return
+
+    # Skip copying if frontend_type is "inspector" - it's installed at runtime via make inspector
+    if frontend_type == "inspector":
+        logging.debug("Frontend type is 'inspector', skipping (installed at runtime)")
         return
 
     # Get the frontends directory path

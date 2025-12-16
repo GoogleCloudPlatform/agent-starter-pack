@@ -30,6 +30,7 @@ from agent_starter_pack.cli.utils.remote_template import (
     parse_agent_starter_pack_version_from_lock,
     render_and_merge_makefiles,
 )
+from agent_starter_pack.cli.utils.template import _extract_agent_garden_labels
 
 
 class TestRemoteTemplateSpec:
@@ -59,10 +60,10 @@ class TestRemoteTemplateSpec:
 class TestParseAgentSpec:
     def test_parse_adk_shortcut(self) -> None:
         """Test parsing ADK shortcut format"""
-        spec = parse_agent_spec("adk@data-science")
+        spec = parse_agent_spec("adk@academic-research")
         assert spec is not None
         assert spec.repo_url == "https://github.com/google/adk-samples"
-        assert spec.template_path == "python/agents/data-science"
+        assert spec.template_path == "python/agents/academic-research"
         assert spec.git_ref == "main"
         assert spec.is_adk_samples is True
 
@@ -339,7 +340,7 @@ class TestMergeTemplateConfigs:
         base_config = {
             "settings": {
                 "deployment_targets": ["cloud_run"],
-                "frontend_type": "streamlit",
+                "frontend_type": "None",
                 "requires_data_ingestion": False,
             }
         }
@@ -351,7 +352,7 @@ class TestMergeTemplateConfigs:
 
         # Settings should be merged
         assert result["settings"]["deployment_targets"] == ["cloud_run"]  # From base
-        assert result["settings"]["frontend_type"] == "streamlit"  # From base
+        assert result["settings"]["frontend_type"] == "None"  # From base
         assert result["settings"]["requires_data_ingestion"] is True  # Remote overrides
         assert result["settings"]["custom_setting"] == "value"  # From remote
 
@@ -389,8 +390,8 @@ class TestRemoteTemplateIntegration:
                 "builtins.open",
                 mock_open(
                     read_data="""
-name: data-science
-description: Data Science Agent
+name: academic-research
+description: Academic Research Agent
 base_template: adk_base
 settings:
   requires_data_ingestion: true
@@ -400,7 +401,7 @@ settings:
             ),
         ):
             # Parse ADK samples spec
-            spec = parse_agent_spec("adk@data-science")
+            spec = parse_agent_spec("adk@academic-research")
             assert spec is not None
             assert spec.is_adk_samples is True
 
@@ -411,7 +412,7 @@ settings:
         """Test various template validation scenarios"""
         test_cases = [
             # ADK samples
-            ("adk@data-science", True),
+            ("adk@academic-research", True),
             ("adk@custom-agent", True),
             # GitHub URLs
             ("https://github.com/org/repo", True),
@@ -487,10 +488,10 @@ class TestParseAgentSpecWithGitSuffix:
 
     def test_parse_adk_shortcut_not_affected(self) -> None:
         """Ensure the adk@ shortcut remains unaffected."""
-        spec = parse_agent_spec("adk@data-science")
+        spec = parse_agent_spec("adk@academic-research")
         assert spec is not None
         assert spec.repo_url == "https://github.com/google/adk-samples"
-        assert spec.template_path == "python/agents/data-science"
+        assert spec.template_path == "python/agents/academic-research"
         assert spec.git_ref == "main"
         assert spec.is_adk_samples is True
 
@@ -835,7 +836,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the correct command was executed
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.2",
+            "agent-starter-pack@0.14.2",
             "create",
             "test-project",
             "-a",
@@ -916,7 +917,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the command was executed without agent spec replacement
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.2",
+            "agent-starter-pack@0.14.2",
             "create",
             "test-project",
             "--skip-welcome",
@@ -958,7 +959,7 @@ class TestCheckAndExecuteWithVersionLock:
         # Verify the command was executed without --skip-welcome and --locked flags
         expected_cmd = [
             "uvx",
-            "agent-starter-pack==0.14.0",
+            "agent-starter-pack@0.14.0",
             "create",
             "test-project",
             "-a",
@@ -1047,3 +1048,99 @@ class TestCheckAndExecuteWithVersionLock:
 
         write_call = write_calls[0][0][0]
         assert "installing test_project" in write_call
+
+
+class TestAgentGardenLabelExtraction:
+    """Test the logic for extracting agent_garden labels."""
+
+    def test_extract_from_remote_spec_adk_samples(self) -> None:
+        """Test extracting labels from remote_spec when is_adk_samples=True."""
+        remote_spec = RemoteTemplateSpec(
+            repo_url="https://github.com/google/adk-samples",
+            template_path="python/agents/RAG",
+            git_ref="main",
+            is_adk_samples=True,
+        )
+
+        agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+            agent_garden=True,
+            remote_spec=remote_spec,
+            remote_template_path=None,
+        )
+
+        assert agent_sample_id == "RAG"
+        assert agent_sample_publisher == "google"
+
+    def test_extract_from_pyproject_toml(self) -> None:
+        """Test extracting labels from pyproject.toml fallback."""
+        import sys
+
+        remote_template_path = pathlib.Path("/test/template")
+
+        pyproject_content = b"""
+[project]
+name = "rag"
+version = "0.1.0"
+"""
+
+        # Mock the toml data that would be loaded
+        mock_toml_data = {"project": {"name": "rag", "version": "0.1.0"}}
+
+        # Determine which toml library to mock based on Python version
+        if sys.version_info >= (3, 11):
+            toml_module = "tomllib"
+        else:
+            toml_module = "tomli"
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", mock_open(read_data=pyproject_content)),
+            patch(f"{toml_module}.load") as mock_toml_load,
+        ):
+            mock_toml_load.return_value = mock_toml_data
+
+            agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+                agent_garden=True,
+                remote_spec=None,
+                remote_template_path=remote_template_path,
+            )
+
+        assert agent_sample_id == "rag"
+        assert agent_sample_publisher == "google"
+
+    def test_no_labels_when_agent_garden_false(self) -> None:
+        """Test that labels are not set when agent_garden=False."""
+        remote_spec = RemoteTemplateSpec(
+            repo_url="https://github.com/google/adk-samples",
+            template_path="python/agents/RAG",
+            git_ref="main",
+            is_adk_samples=True,
+        )
+
+        agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+            agent_garden=False,
+            remote_spec=remote_spec,
+            remote_template_path=None,
+        )
+
+        # Labels should remain None when agent_garden=False
+        assert agent_sample_id is None
+        assert agent_sample_publisher is None
+
+    def test_no_labels_when_no_pyproject_toml(self) -> None:
+        """Test that labels remain empty when pyproject.toml doesn't exist."""
+        remote_template_path = pathlib.Path("/test/template")
+
+        with patch("pathlib.Path.exists", return_value=False):
+            agent_sample_id, agent_sample_publisher = _extract_agent_garden_labels(
+                agent_garden=True,
+                remote_spec=None,
+                remote_template_path=remote_template_path,
+            )
+
+        assert agent_sample_id is None
+        assert agent_sample_publisher is None
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

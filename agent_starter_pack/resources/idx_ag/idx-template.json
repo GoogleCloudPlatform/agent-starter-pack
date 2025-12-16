@@ -1,0 +1,22 @@
+{
+  "name": "Agent Garden",
+  "description": "Agent Garden is a library in the Google Cloud console where you can find and explore sample agents and tools that are designed to accelerate your development.",
+  "icon": "https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/images/icon.png?raw=true",
+  "params": [
+    {
+      "id": "adk_agent_name",
+      "name": "Agent Name",
+      "description": "The name of the agent template from the google/adk-samples repository (e.g., 'data-science').",
+      "type": "string",
+      "required": true
+    },
+    {
+      "id": "region",
+      "name": "Region",
+      "description": "The Google Cloud region where the agent will be deployed.",
+      "type": "string",
+      "required": false,
+      "default": "us-central1"
+    }
+  ]
+}

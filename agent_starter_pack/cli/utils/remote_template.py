@@ -144,7 +144,8 @@ def check_and_execute_with_version_lock(
         True if version lock was found and executed, False otherwise
     """
     # Skip version locking if we're already in a locked execution (prevents recursion)
-    if locked:
+    # or if ASP_SKIP_VERSION_LOCK env var is set to "1" (for testing with local ASP)
+    if locked or os.environ.get("ASP_SKIP_VERSION_LOCK") == "1":
         return False
     uv_lock_path = template_dir / "uv.lock"
     version = parse_agent_starter_pack_version_from_lock(uv_lock_path)
@@ -204,7 +205,7 @@ def check_and_execute_with_version_lock(
 
         try:
             # Execute uvx with the locked version
-            cmd = ["uvx", f"agent-starter-pack=={version}", *original_args]
+            cmd = ["uvx", f"agent-starter-pack@{version}", *original_args]
             logging.debug(f"Executing nested command: {' '.join(cmd)}")
             subprocess.run(cmd, check=True)
             return True

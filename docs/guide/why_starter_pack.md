@@ -54,7 +54,7 @@ Think of it like this:
 *   **Your Focus (The Core Agent):**
     *   Prompts and LLM interactions
     *   Business logic integration
-    *   Agent orchestration (LangGraph, CrewAI, Google ADK)
+    *   Agent orchestration (Google ADK, LangGraph, Agent2Agent (A2A))
     *   Tools and data source definitions
 
 *   **Our Foundation (The Starter Pack Template):**

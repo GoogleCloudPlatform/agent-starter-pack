@@ -1,3 +1,4 @@
+# ruff: noqa
 # Copyright 2025 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,18 +13,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from google.adk.agents import Agent
+from google.adk.apps.app import App
+{%- if not cookiecutter.use_google_api_key %}
 
+import os
 import google.auth
 import vertexai
-from google.adk.agents import Agent
 
 _, project_id = google.auth.default()
-os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "us-central1")
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
+os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
+os.environ["GOOGLE_CLOUD_LOCATION"] = "us-central1"
+os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location="us-central1")
+{%- endif %}
 
 
 def get_weather(query: str) -> str:
@@ -42,7 +46,9 @@ def get_weather(query: str) -> str:
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-live-2.5-flash-preview-native-audio-09-2025",
+    model="gemini-live-2.5-flash-native-audio",
     instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
     tools=[get_weather],
 )
+
+app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")

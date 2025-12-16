@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import os
 import pathlib
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -28,6 +31,7 @@ else:
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.template import get_available_agents, validate_agent_directory_name
+from ..utils.version import get_current_version
 from .create import (
     create,
     get_available_base_templates,
@@ -36,6 +40,10 @@ from .create import (
 )
 
 console = Console()
+
+# Environment variable names for saved config handling
+_ENV_USING_SAVED_CONFIG = "_ASP_USING_SAVED_CONFIG"
+_ENV_SKIP_VERSION_LOCK = "ASP_SKIP_VERSION_LOCK"
 
 # Directories to exclude when scanning for agent directories
 _EXCLUDED_DIRS = {
@@ -49,6 +57,263 @@ _EXCLUDED_DIRS = {
     "dist",
     ".terraform",
 }
+
+
+def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
+    """Read agent-starter-pack config from project's pyproject.toml.
+
+    Args:
+        project_dir: Path to the project directory
+
+    Returns:
+        The [tool.agent-starter-pack] config dict if found, None otherwise
+    """
+    pyproject_path = project_dir / "pyproject.toml"
+    if not pyproject_path.exists():
+        return None
+
+    try:
+        with open(pyproject_path, "rb") as f:
+            pyproject_data = tomllib.load(f)
+
+        # Config is stored under [tool.agent-starter-pack]
+        return pyproject_data.get("tool", {}).get("agent-starter-pack")
+    except Exception as e:
+        logging.debug(f"Could not read config from pyproject.toml: {e}")
+        return None
+
+
+def _should_skip_config_value(value: Any) -> bool:
+    """Check if a config value should be skipped (empty, none, skip, etc.)."""
+    return value is None or value is False or str(value).lower() in ("none", "skip", "")
+
+
+def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
+    """Build CLI arguments from project config.
+
+    Args:
+        project_config: The [tool.agent-starter-pack] config dict
+
+    Returns:
+        List of CLI arguments to pass to enhance command
+    """
+    # --skip-deps is added because dependencies were already installed on first run
+    # --skip-welcome avoids showing the banner twice
+    # Note: we don't add --auto-approve so user still gets interactive prompts for CI/CD etc.
+    args = ["enhance", "--skip-deps", "--skip-welcome"]
+
+    # Add base template from metadata
+    base_template = project_config.get("base_template")
+    if base_template:
+        args.extend(["--base-template", base_template])
+
+    # Add agent directory from metadata
+    agent_directory = project_config.get("agent_directory")
+    if agent_directory:
+        args.extend(["--agent-directory", agent_directory])
+
+    # Add all create_params dynamically
+    # "skip" is filtered out so enhance can prompt for CI/CD on prototype projects
+    create_params = project_config.get("create_params", {})
+    for key, value in create_params.items():
+        if _should_skip_config_value(value):
+            continue
+
+        arg_name = f"--{key.replace('_', '-')}"
+        if value is True:
+            args.append(arg_name)
+        else:
+            args.extend([arg_name, str(value)])
+
+    return args
+
+
+def get_display_params_from_config(project_config: dict[str, Any]) -> dict[str, Any]:
+    """Extract display-worthy parameters from project config.
+
+    Args:
+        project_config: The [tool.agent-starter-pack] config dict
+
+    Returns:
+        Dict of parameter names to values for display
+    """
+    display_params: dict[str, Any] = {}
+
+    # Add top-level config values
+    base_template = project_config.get("base_template")
+    if base_template:
+        display_params["base_template"] = base_template
+
+    agent_directory = project_config.get("agent_directory")
+    if agent_directory:
+        display_params["agent_directory"] = agent_directory
+
+    asp_version = project_config.get("asp_version")
+    if asp_version:
+        display_params["asp_version"] = asp_version
+
+    # Add create_params
+    create_params = project_config.get("create_params", {})
+    for key, value in create_params.items():
+        if _should_skip_config_value(value):
+            continue
+        display_params[key] = value
+
+    return display_params
+
+
+def _display_saved_config(
+    display_params: dict[str, Any],
+    project_version: str | None,
+    current_version: str,
+    use_different_version: bool,
+) -> None:
+    """Display detected saved configuration to the user."""
+    console.print()
+    console.print("📋 [bold]Detected saved configuration from previous setup:[/bold]")
+    console.print()
+    for key, value in display_params.items():
+        display_key = key.replace("_", " ").title()
+        console.print(f"   • {display_key}: [cyan]{value}[/cyan]")
+
+    if use_different_version and project_version:
+        console.print()
+        console.print(
+            f"   • Version: [cyan]{project_version}[/cyan] (current: {current_version})"
+        )
+    console.print()
+
+
+def _should_use_different_version(
+    project_version: str | None, current_version: str
+) -> bool:
+    """Determine if we need to switch to a different ASP version."""
+    skip_version_lock = os.environ.get(_ENV_SKIP_VERSION_LOCK) == "1"
+    return (
+        not skip_version_lock
+        and project_version is not None
+        and current_version != "0.0.0"
+        and project_version != current_version
+    )
+
+
+def _ensure_uvx_available(project_version: str) -> None:
+    """Ensure uvx is installed, exit with instructions if not."""
+    try:
+        subprocess.run(["uvx", "--version"], capture_output=True, check=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        console.print(
+            f"❌ Project requires agent-starter-pack version {project_version}, "
+            "but 'uvx' is not installed",
+            style="bold red",
+        )
+        console.print(
+            "💡 Install uv to use version-locked projects:",
+            style="bold blue",
+        )
+        console.print("   curl -LsSf https://astral.sh/uv/install.sh | sh")
+        console.print(
+            "   OR visit: https://docs.astral.sh/uv/getting-started/installation/"
+        )
+        sys.exit(1)
+
+
+def _execute_with_saved_config(
+    args: list[str], project_version: str | None, use_different_version: bool
+) -> bool:
+    """Execute enhance command with saved config args.
+
+    Returns:
+        True if execution succeeded, False otherwise
+    """
+    if use_different_version and project_version:
+        console.print(
+            f"📦 Using agent-starter-pack version {project_version}...",
+            style="dim",
+        )
+        _ensure_uvx_available(project_version)
+        cmd = ["uvx", f"agent-starter-pack@{project_version}", *args]
+    else:
+        console.print("✅ Using saved configuration", style="dim")
+        cmd = ["agent-starter-pack", *args]
+
+    logging.debug(f"Executing command: {' '.join(cmd)}")
+
+    # Set env var to prevent infinite loop in nested execution
+    env = os.environ.copy()
+    env[_ENV_USING_SAVED_CONFIG] = "1"
+
+    try:
+        subprocess.run(cmd, check=True, env=env)
+        return True
+    except subprocess.CalledProcessError as e:
+        if use_different_version:
+            console.print(
+                f"❌ Failed to execute with locked version {project_version}: {e}",
+                style="bold red",
+            )
+            console.print(
+                "⚠️  Continuing with current version, but compatibility is not guaranteed",
+                style="yellow",
+            )
+        else:
+            console.print(
+                f"❌ Failed to execute with saved config: {e}",
+                style="bold red",
+            )
+        return False
+
+
+def check_and_execute_with_saved_config(
+    project_dir: pathlib.Path, auto_approve: bool = False
+) -> bool:
+    """Check for saved config and offer to reuse it.
+
+    If config is found, displays it to the user and asks whether to use it.
+    If yes, executes enhance with the saved parameters.
+
+    Args:
+        project_dir: Path to the project directory
+        auto_approve: If True, skip confirmation prompt and use saved config
+
+    Returns:
+        True if config was used and executed, False otherwise
+    """
+    # Skip if already executing with saved config (prevents infinite loop)
+    if os.environ.get(_ENV_USING_SAVED_CONFIG) == "1":
+        return False
+
+    project_config = get_project_asp_config(project_dir)
+    if not project_config:
+        return False
+
+    display_params = get_display_params_from_config(project_config)
+    if not display_params:
+        return False
+
+    current_version = get_current_version()
+    project_version = project_config.get("asp_version")
+    use_different_version = _should_use_different_version(
+        project_version, current_version
+    )
+
+    # Show detected configuration and ask user
+    _display_saved_config(
+        display_params, project_version, current_version, use_different_version
+    )
+
+    if not auto_approve:
+        use_saved = Prompt.ask(
+            "Use these settings?",
+            choices=["y", "customize"],
+            default="y",
+        )
+        if use_saved != "y":
+            return False
+
+    # Build and execute the command
+    args = build_args_from_config(project_config)
+    return _execute_with_saved_config(args, project_version, use_different_version)
 
 
 def display_base_template_selection(current_base: str) -> str:
@@ -106,10 +371,16 @@ def display_agent_directory_selection(
         console.print("📁 [bold]Agent Directory Selection[/bold]")
         console.print()
         console.print("Your project needs an agent directory containing:")
-        console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
-        console.print(
-            f"  • [cyan]{required_object}[/cyan] variable defined in agent.py"
-        )
+        if is_adk:
+            console.print(
+                "  • [cyan]agent.py[/cyan] with [cyan]root_agent[/cyan] variable, or"
+            )
+            console.print("  • [cyan]root_agent.yaml[/cyan] (YAML config agent)")
+        else:
+            console.print("  • [cyan]agent.py[/cyan] file with your agent logic")
+            console.print(
+                f"  • [cyan]{required_object}[/cyan] variable defined in agent.py"
+            )
         console.print()
         console.print("Choose where your agent code is located:")
 
@@ -150,7 +421,15 @@ def display_agent_directory_selection(
             directory_choices[choice_num] = dir_name
             # Check if this directory might contain agent code
             agent_py_exists = (current_dir / dir_name / "agent.py").exists()
-            hint = " (has agent.py)" if agent_py_exists else ""
+            root_agent_yaml_exists = (
+                current_dir / dir_name / "root_agent.yaml"
+            ).exists()
+            if root_agent_yaml_exists:
+                hint = " (has root_agent.yaml)"
+            elif agent_py_exists:
+                hint = " (has agent.py)"
+            else:
+                hint = ""
             console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
             if (
                 default_choice is None
@@ -222,17 +501,20 @@ def display_agent_directory_selection(
     "-n",
     help="Project name for templating (defaults to current directory name)",
 )
-@click.option(
-    "--base-template",
-    "-b",
-    help="Base template to inherit from (e.g., adk_base, langgraph_base_react, agentic_rag)",
-)
+@shared_template_options
 @click.option(
     "--adk",
     is_flag=True,
     help="Shortcut for --base-template adk_base",
+    default=False,
 )
-@shared_template_options
+@click.option(
+    "--skip-welcome",
+    is_flag=True,
+    hidden=True,
+    help="Skip the welcome banner (used by nested commands)",
+    default=False,
+)
 @handle_cli_error
 def enhance(
     ctx: click.Context,
@@ -240,6 +522,7 @@ def enhance(
     name: str | None,
     deployment_target: str | None,
     cicd_runner: str | None,
+    prototype: bool,
     include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
@@ -247,10 +530,13 @@ def enhance(
     auto_approve: bool,
     region: str,
     skip_checks: bool,
+    skip_deps: bool,
     agent_garden: bool,
     base_template: str | None,
     adk: bool,
     agent_directory: str | None,
+    skip_welcome: bool = False,
+    google_api_key: str | None = None,
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -270,8 +556,22 @@ def enhance(
     The command will validate your project structure and provide guidance if needed.
     """
 
-    # Display welcome banner for enhance command
-    display_welcome_banner(enhance_mode=True)
+    # Display welcome banner for enhance command (unless skipped by nested command)
+    if not skip_welcome:
+        display_welcome_banner(enhance_mode=True)
+
+    # Check for saved config and offer to reuse it
+    # This handles both version locking AND reusing previous settings
+    current_dir = pathlib.Path.cwd()
+    if check_and_execute_with_saved_config(current_dir, auto_approve=auto_approve):
+        # Successfully executed with saved config, exit this process
+        return
+
+    # Setup debug logging if enabled
+    if debug:
+        logging.basicConfig(level=logging.DEBUG, force=True)
+        console.print("> Debug mode enabled")
+        logging.debug("Starting enhance command in debug mode")
 
     # Handle --adk shortcut
     if adk:
@@ -497,14 +797,27 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for agent.py and validate required object
+            # Check for YAML config agent (root_agent.yaml) or agent.py
+            root_agent_yaml = agent_folder / "root_agent.yaml"
             agent_py = agent_folder / "agent.py"
 
             # Determine required object outside of if/else blocks to avoid NameError
             is_adk = base_template and "adk" in base_template.lower()
             required_object = "root_agent" if is_adk else "agent"
 
-            if agent_py.exists():
+            if root_agent_yaml.exists():
+                # YAML config agent detected
+                console.print(
+                    f"✅ Found [cyan]/{final_agent_directory}/root_agent.yaml[/cyan] (YAML config agent)"
+                )
+                console.print(
+                    "   An agent.py shim will be generated automatically for deployment compatibility."
+                )
+                if is_adk:
+                    console.print(
+                        "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/agents/agent-config/]ADK Agent Config guide[/link][/cyan]"
+                    )
+            elif agent_py.exists():
                 console.print(
                     f"✅ Found [cyan]/{final_agent_directory}/agent.py[/cyan]"
                 )
@@ -592,6 +905,7 @@ def enhance(
         agent=agent_spec,
         deployment_target=deployment_target,
         cicd_runner=cicd_runner,
+        prototype=prototype,
         include_data_ingestion=include_data_ingestion,
         datastore=datastore,
         session_type=session_type,
@@ -600,6 +914,7 @@ def enhance(
         auto_approve=auto_approve,
         region=region,
         skip_checks=skip_checks,
+        skip_deps=skip_deps,
         in_folder=True,  # Always use in-folder mode for enhance
         agent_directory=final_agent_directory
         if template_path == pathlib.Path(".")
@@ -608,4 +923,5 @@ def enhance(
         base_template=base_template,
         skip_welcome=True,  # Skip welcome message since enhance shows its own
         cli_overrides=final_cli_overrides if final_cli_overrides else None,
+        google_api_key=google_api_key,
     )

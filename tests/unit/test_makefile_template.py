@@ -42,87 +42,126 @@ TEST_CONFIGURATIONS = {
         "project_name": "test-adk-base",
         "agent_directory": "test_adk_base",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": True,
         "is_adk_live": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_base_agent_engine_no_data": {
         "project_name": "test-adk-base",
         "agent_directory": "test_adk_base",
         "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
         "is_adk": True,
         "is_adk_live": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "What can you help me with?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_live_cloud_run": {
         "project_name": "test-adk-live",
         "agent_directory": "test_adk_live",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": True,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "adk_live_agent_engine": {
         "project_name": "test-adk-live",
         "agent_directory": "test_adk_live",
         "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": True,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Tell me about your capabilities",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "agentic_rag_cloud_run_vertex_search": {
         "project_name": "test-rag",
         "agent_directory": "test_rag",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
+        "is_a2a": False,
         "data_ingestion": True,
         "datastore_type": "vertex_ai_search",
         "agent_garden": False,
         "example_question": "What's in the knowledge base?",
         "settings": {},
+        "package_version": "0.20.0",
     },
     "agentic_rag_cloud_run_vector_search": {
         "project_name": "test-rag",
         "agent_directory": "test_rag",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
+        "is_a2a": False,
         "data_ingestion": True,
         "datastore_type": "vertex_ai_vector_search",
         "agent_garden": False,
         "example_question": "What's in the knowledge base?",
         "settings": {},
+        "package_version": "0.20.0",
     },
-    "langgraph_cloud_run_no_data": {
+    "langgraph_cloud_run": {
         "project_name": "test-langgraph",
         "agent_directory": "test_langgraph",
+        "agent_name": "langgraph_base",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
+        "is_a2a": True,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "How can you help?",
         "settings": {},
+        "package_version": "0.20.0",
+    },
+    "langgraph_agent_engine": {
+        "project_name": "test-langgraph",
+        "agent_directory": "test_langgraph",
+        "agent_name": "langgraph_base",
+        "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
+        "is_adk": False,
+        "is_adk_live": False,
+        "is_a2a": True,
+        "data_ingestion": False,
+        "agent_garden": False,
+        "example_question": "How can you help?",
+        "settings": {},
+        "package_version": "0.20.0",
     },
     "agent_with_custom_commands": {
         "project_name": "test-custom",
         "agent_directory": "test_custom",
         "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
         "is_adk": False,
         "is_adk_live": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": False,
         "example_question": "Custom agent question",
@@ -147,19 +186,51 @@ TEST_CONFIGURATIONS = {
                 },
             }
         },
+        "package_version": "0.20.0",
     },
     "agent_with_agent_garden": {
         "project_name": "test-garden",
         "agent_directory": "test_garden",
         "deployment_target": "cloud_run",
+        "cicd_runner": "skip",
         "is_adk": True,
         "is_adk_live": False,
+        "is_a2a": False,
         "data_ingestion": False,
         "agent_garden": True,
         "agent_sample_id": "sample-123",
         "agent_sample_publisher": "google",
         "example_question": "Agent garden question",
         "settings": {},
+        "package_version": "0.20.0",
+    },
+    "adk_a2a_cloud_run": {
+        "project_name": "test-a2a",
+        "agent_directory": "test_a2a",
+        "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
+        "is_adk": True,
+        "is_adk_live": False,
+        "is_a2a": True,
+        "data_ingestion": False,
+        "agent_garden": False,
+        "example_question": "What can you help me with?",
+        "settings": {},
+        "package_version": "0.20.0",
+    },
+    "adk_a2a_agent_engine": {
+        "project_name": "test-a2a",
+        "agent_directory": "test_a2a",
+        "deployment_target": "agent_engine",
+        "cicd_runner": "google_cloud_build",
+        "is_adk": True,
+        "is_adk_live": False,
+        "is_a2a": True,
+        "data_ingestion": False,
+        "agent_garden": False,
+        "example_question": "What can you help me with?",
+        "settings": {},
+        "package_version": "0.20.0",
     },
 }
 
@@ -254,18 +325,20 @@ class TestMakefileGeneration:
         output = makefile_renderer.render(config)
 
         assert "build-frontend:" in output
-        assert "ui:" in output
-        assert "playground-dev:" in output
+        assert "build-frontend-if-needed:" in output
 
     def test_adk_live_agent_engine_has_remote_playground(
         self, makefile_renderer: MakefileRenderer
     ) -> None:
-        """Test that ADK Live + Agent Engine has playground-remote target."""
+        """Test that ADK Live + Agent Engine has playground-remote target and dev targets."""
         config = TEST_CONFIGURATIONS["adk_live_agent_engine"]
         output = makefile_renderer.render(config)
 
         assert "playground-remote:" in output
         assert "Connecting to REMOTE agent" in output
+        # Agent Engine also has dev mode targets
+        assert "ui:" in output
+        assert "playground-dev:" in output
 
     def test_data_ingestion_target_present(
         self, makefile_renderer: MakefileRenderer
@@ -346,7 +419,7 @@ class TestMakefileGeneration:
         self, makefile_renderer: MakefileRenderer
     ) -> None:
         """Test Cloud Run backend target uses gcloud run deploy."""
-        config = TEST_CONFIGURATIONS["langgraph_cloud_run_no_data"]
+        config = TEST_CONFIGURATIONS["langgraph_cloud_run"]
         output = makefile_renderer.render(config)
 
         assert "gcloud beta run deploy" in output
@@ -363,29 +436,8 @@ class TestMakefileGeneration:
         # Should export requirements
         assert "uv export" in output
         assert ".requirements.txt" in output
-        assert "agent_engine_app.py" in output
-
-    def test_non_adk_has_streamlit_extra(
-        self, makefile_renderer: MakefileRenderer
-    ) -> None:
-        """Test that non-ADK agents include --extra streamlit in install."""
-        config = TEST_CONFIGURATIONS["langgraph_cloud_run_no_data"]
-        output = makefile_renderer.render(config)
-
-        # Find install target and check for streamlit
-        install_section = output[
-            output.index("install:") : output.index("\nplayground:")
-        ]
-        assert "--extra streamlit" in install_section
-
-    def test_adk_no_streamlit_extra(self, makefile_renderer: MakefileRenderer) -> None:
-        """Test that ADK agents don't include --extra streamlit in install."""
-        config = TEST_CONFIGURATIONS["adk_base_cloud_run_no_data"]
-        output = makefile_renderer.render(config)
-
-        # Find install target
-        install_section = output[output.index("install:") : output.index("\n\n")]
-        assert "--extra streamlit" not in install_section
+        assert "agent_engine_app" in output
+        assert "uv run -m" in output
 
     def test_all_configs_have_required_targets(
         self, makefile_renderer: MakefileRenderer
@@ -395,7 +447,6 @@ class TestMakefileGeneration:
             "install:",
             "playground:",
             "backend:",
-            "setup-dev-env:",
             "test:",
             "lint:",
         ]
@@ -406,6 +457,16 @@ class TestMakefileGeneration:
             for target in required_targets:
                 assert target in output, (
                     f"Required target '{target}' missing in {config_name}"
+                )
+
+            # setup-dev-env is only present when cicd_runner != 'skip'
+            if config.get("cicd_runner") != "skip":
+                assert "setup-dev-env:" in output, (
+                    f"setup-dev-env target missing in {config_name}"
+                )
+            else:
+                assert "setup-dev-env:" not in output, (
+                    f"setup-dev-env should not be present in prototype mode ({config_name})"
                 )
 
 

@@ -111,14 +111,73 @@ All `create` command options work with remote templates:
 uvx agent-starter-pack create my-agent -a template-url --deployment-target cloud_run
 
 # Include data ingestion
-uvx agent-starter-pack create my-agent -a template-url --include-data-ingestion --datastore alloydb
+uvx agent-starter-pack create my-agent -a template-url --include-data-ingestion --datastore cloud_sql
 
 # Custom session storage
-uvx agent-starter-pack create my-agent -a template-url --session-type alloydb
+uvx agent-starter-pack create my-agent -a template-url --session-type cloud_sql
+
+# Override the base template
+uvx agent-starter-pack create my-agent -a template-url --base-template adk_live
 
 # Skip verification checks
 uvx agent-starter-pack create my-agent -a template-url --skip-checks
 ```
+
+### Overriding Base Templates
+
+Remote templates can specify a base template in their `pyproject.toml` configuration. You can override this using the `--base-template` flag to use a different foundational agent:
+
+```bash
+# Use adk_a2a_base as the base instead of what the template specifies
+uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_a2a_base
+
+✓ Base template override: Using 'adk_a2a_base' as foundation
+  This requires adding the following dependencies:
+    • google-adk>=1.16.0,<2.0.0
+    • a2a-sdk~=0.3.9
+
+? Add these dependencies automatically? [Y/n] y
+
+✓ Running: uv add 'google-adk>=1.16.0,<2.0.0' 'a2a-sdk~=0.3.9'
+  Resolved 111 packages in 1.2s
+✓ Dependencies added successfully
+```
+
+#### Interactive Dependency Management
+
+When you override the base template, the CLI:
+1. **Shows required dependencies** - Lists all dependencies needed by the new base template
+2. **Prompts for confirmation** - Asks if you want to add them automatically
+3. **Runs `uv add`** - Uses standard `uv` commands to add dependencies with proper version resolution
+4. **Handles conflicts** - `uv` automatically resolves any version conflicts between remote template and base dependencies
+
+**Skipping dependency installation:**
+```bash
+? Add these dependencies automatically? [Y/n] n
+
+⚠️  Skipped dependency installation.
+   To add them manually later, run:
+       cd my-agent
+       uv add 'google-adk>=1.16.0,<2.0.0' 'a2a-sdk~=0.3.9'
+```
+
+**Automatic installation with `--auto-approve`:**
+```bash
+uvx agent-starter-pack create my-agent -a template --base-template adk_a2a_base --auto-approve
+
+✓ Base template override: Using 'adk_a2a_base' as foundation
+✓ Auto-installing dependencies: google-adk>=1.16.0,<2.0.0, a2a-sdk~=0.3.9
+  Resolved 111 packages in 1.2s
+✓ Dependencies added successfully
+```
+
+#### Use Cases
+
+Base template override is useful when:
+- You want to use a remote template's logic with a different foundational agent
+- The template's default base doesn't match your deployment needs (e.g., switching from Cloud Run to Agent Engine)
+- You're experimenting with different base agents for the same custom logic
+- You need features from a different base (e.g., A2A protocol support via `adk_a2a_base`)
 
 ## Discovering Templates
 

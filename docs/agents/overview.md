@@ -8,17 +8,17 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | Agent Name | Description | Use Case |
 |------------|-------------|----------|
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
+| `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
-| `langgraph_base_react` | A base ReAct agent using LangGraph | Graph based conversational agent |
-| `crewai_coding_crew` | A multi-agent system implemented with CrewAI | Collaborative coding assistance |
+| `langgraph_base` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
 | `adk_live` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
 
 ## Choosing the Right Template
 
 When selecting a template, consider these factors:
 
-1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation crew, or something else?
-2.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, CrewAI, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
+1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation network, or something else?
+2.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
 3.  **Reasoning Complexity**: Does your agent need complex planning and tool use (like ReAct), or is it more focused on retrieval and synthesis (like basic RAG)?
 4.  **Collaboration Needs**: Do you need multiple specialized agents working together?
 5.  **Modality**: Does your agent need to process or respond with audio, video, or just text?
@@ -33,6 +33,14 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Building general-purpose conversational agents.
 *   Learning the ADK framework and ReAct pattern.
 
+### ADK A2A Base (`adk_a2a_base`)
+
+This template integrates Google's [Agent Development Kit (ADK)](https://github.com/google/adk-python) with the [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/), enabling distributed agent communication and interoperability across different frameworks and languages. It demonstrates core ADK concepts while providing standardized interfaces for building distributed agent systems. Ideal for:
+
+*   Exploring the A2A protocol and agent interoperability patterns.
+*   Building distributed, multi-agent systems that communicate across frameworks.
+*   Implementing microservices-based agent architectures.
+
 ### Agentic RAG (`agentic_rag`)
 
 Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)](https://cloud.google.com/use-cases/retrieval-augmented-generation?hl=en) with a production-ready data ingestion pipeline for document-based question answering. It allows you to ingest, process, and embed custom data to enhance response relevance. Features include:
@@ -43,24 +51,13 @@ Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)
 *   Answer synthesis from retrieved context.
 *   Infrastructure deployment via Terraform and a choice of CI/CD runners (Google Cloud Build or GitHub Actions).
 
-### LangGraph Base ReAct (`langgraph_base_react`)
+### LangGraph Base (`langgraph_base`)
 
-This template provides a minimal example of a ReAct agent built using [LangGraph](https://langchain-ai.github.io/langgraph/). It serves as an excellent starting point for developing agents with graph-based structures, offering:
+This template provides a minimal example of a ReAct agent built using [LangGraph](https://langchain-ai.github.io/langgraph/). It supports [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) integration, enabling distributed agent communication and interoperability across frameworks. It serves as an excellent starting point for developing agents with graph-based structures, offering:
 
-*   Explicit state management for complex, multi-step reasoning flows.
-*   Fine-grained control over reasoning cycles.
-*   Robust tool integration and error handling capabilities.
-*   Streaming response support using Vertex AI.
-*   Includes a basic search tool to demonstrate tool usage.
-
-### CrewAI Coding Crew (`crewai_coding_crew`)
-
-This template combines [CrewAI](https://www.crewai.com/)'s multi-agent collaboration with LangGraph's conversational control to create an interactive coding assistant. It orchestrates specialized agents (e.g., Senior Engineer, QA Engineer) to understand requirements and generate code. Key features include:
-
-*   Interactive requirements gathering through natural dialogue (LangGraph).
-*   Collaborative code development by a crew of specialized AI agents (CrewAI).
-*   Sequential processing for tasks from requirements to implementation and QA.
-*   Ideal for complex tasks requiring delegation and simulating team collaboration.
+*   Building agents with explicit state management and complex reasoning flows.
+*   Fine-grained control over agent behavior and tool orchestration.
+*   Distributed, multi-agent systems with A2A protocol support.
 
 ### Live API (`adk_live`)
 

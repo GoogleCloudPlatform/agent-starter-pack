@@ -254,10 +254,15 @@ def delete_vector_search_resources_in_project(
         # List all indexes in the project
         logger.info(f"📋 Listing all Vector Search indexes in {project_id}...")
         try:
-            indexes = aiplatform.MatchingEngineIndex.list(
+            all_indexes = aiplatform.MatchingEngineIndex.list(
                 filter=None,
                 order_by=None
             )
+            # Filter indexes that start with 'test-' or 'myagent'
+            indexes = [
+                idx for idx in all_indexes
+                if idx.display_name and (idx.display_name.startswith("test-") or idx.display_name.startswith("myagent"))
+            ]
         except Exception as e:
             logger.warning(f"⚠️ Error listing indexes in {project_id}: {e}")
             indexes = []
@@ -265,10 +270,15 @@ def delete_vector_search_resources_in_project(
         # List all endpoints in the project
         logger.info(f"📋 Listing all Vector Search endpoints in {project_id}...")
         try:
-            endpoints = aiplatform.MatchingEngineIndexEndpoint.list(
+            all_endpoints = aiplatform.MatchingEngineIndexEndpoint.list(
                 filter=None,
                 order_by=None
             )
+            # Filter endpoints that start with 'test-' or 'myagent'
+            endpoints = [
+                ep for ep in all_endpoints
+                if ep.display_name and (ep.display_name.startswith("test-") or ep.display_name.startswith("myagent"))
+            ]
         except Exception as e:
             logger.warning(f"⚠️ Error listing endpoints in {project_id}: {e}")
             endpoints = []
@@ -277,10 +287,10 @@ def delete_vector_search_resources_in_project(
         total_endpoints = len(endpoints)
 
         if total_indexes == 0 and total_endpoints == 0:
-            logger.info(f"✅ No Vector Search resources found in {project_id}")
+            logger.info(f"✅ No Vector Search resources starting with 'test-' or 'myagent' found in {project_id}")
             return 0, 0, 0, 0
 
-        logger.info(f"🎯 Found {total_indexes} Vector Search index(es) and {total_endpoints} endpoint(s) in {project_id}")
+        logger.info(f"🎯 Found {total_indexes} Vector Search index(es) and {total_endpoints} endpoint(s) starting with 'test-' or 'myagent' in {project_id}")
 
         deleted_indexes = 0
         deleted_endpoints = 0

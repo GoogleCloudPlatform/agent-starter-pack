@@ -69,6 +69,15 @@ def generate_pyproject(
             "is_adk": "adk" in tags,
             "is_adk_live": "adk_live" in tags,
             "agent_directory": config.get("agent_directory", "app"),
+            "agent_name": config.get("agent_name", ""),
+            "agent_description": config.get("description", ""),
+            "generated_at": "",
+            "package_version": "",
+            "session_type": "",
+            "cicd_runner": "skip",
+            "data_ingestion": "false",
+            "datastore_type": "",
+            "frontend_type": "",
         }
     }
 
@@ -90,7 +99,12 @@ def generate_lock_file(pyproject_content: str, output_path: pathlib.Path) -> Non
             f.write(pyproject_content)
 
         # Run uv pip compile to generate lock file
-        subprocess.run(["uv", "lock"], cwd=tmp_dir, check=True)
+        # Explicitly use PyPI to ensure consistent lock files
+        subprocess.run(
+            ["uv", "lock", "--default-index", "https://pypi.org/simple"],
+            cwd=tmp_dir,
+            check=True,
+        )
         # Replace locked-template with {{cookiecutter.project_name}} in generated lock file
         lock_file_path = tmp_dir / "uv.lock"
         with open(lock_file_path, "r+", encoding="utf-8") as f:

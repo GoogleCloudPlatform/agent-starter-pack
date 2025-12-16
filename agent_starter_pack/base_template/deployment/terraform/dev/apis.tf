@@ -26,12 +26,10 @@ locals {
     "logging.googleapis.com",
     "monitoring.googleapis.com",
     "cloudtrace.googleapis.com",
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "alloydb" %}
-    "compute.googleapis.com",
-    "servicenetworking.googleapis.com",
-    "alloydb.googleapis.com",
-    "secretmanager.googleapis.com",
-    "dns.googleapis.com"
+    "telemetry.googleapis.com",
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    "sqladmin.googleapis.com",
+    "secretmanager.googleapis.com"
 {%- endif %}
   ]
 }

@@ -8,7 +8,7 @@ install:
 {%- if cookiecutter.settings.get("commands", {}).get("override", {}).get("install") %}
 	{{cookiecutter.settings.get("commands", {}).get("override", {}).get("install")}}
 {%- else %}
-	uv sync --dev{% if not cookiecutter.is_adk and not cookiecutter.is_adk_live %} --extra streamlit{%- endif %}{% if cookiecutter.is_adk_live %} && (cd frontend && npm install){%- endif %}
+	uv sync{% if cookiecutter.is_adk_live %} && (cd frontend && npm install){%- endif %}
 {%- endif %}
 
 # ==============================================================================
@@ -38,17 +38,29 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	@echo "==============================================================================="
 {%- if cookiecutter.is_adk_live %}
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 {%- else %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- endif %}
 {%- elif cookiecutter.is_adk %}
 	uv run adk web . --port 8501 --reload_agents
-{%- else %}
+{%- elif cookiecutter.is_a2a %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload &
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
+	$(MAKE) inspector
+{%- else %}
+{%- if cookiecutter.agent_name == 'langgraph_base' %}
+	@echo "ℹ️  Note: Local playground not supported for LangGraph on Agent Engine."
+	@echo "    To test your agent, deploy first with 'make deploy' then use 'make inspector'."
+{%- else %}
+	@echo "ℹ️  Note: Local playground uses ADK web interface (not A2A endpoints)."
+	@echo "    To test A2A protocol, deploy first with 'make deploy' then use 'make inspector'."
+	@echo ""
+	uv run adk web . --port 8501 --reload_agents
 {%- endif %}
-	{% if cookiecutter.deployment_target == 'agent_engine' %}PYTHONPATH=. {% endif %}uv run streamlit run frontend/streamlit_app.py --browser.serverAddress=localhost --server.enableCORS=false --server.enableXsrfProtection=false
+{%- endif %}
+{%- else %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- endif %}
 {%- endif %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
@@ -79,6 +91,20 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- endif %}
 {%- endfor %}
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'cloud_run' or (cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live) %}
+
+# ==============================================================================
+# Local Development Commands
+# ==============================================================================
+
+# Launch local development server with hot-reload
+local-backend:
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
+{%- else %}
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+{%- endif %}
+{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 # ==============================================================================
@@ -101,17 +127,7 @@ build-frontend-if-needed:
 	else \
 		echo "Frontend build is up to date. Skipping build..."; \
 	fi
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn {{cookiecutter.agent_directory}}.server:app --host localhost --port 8000 --reload
-{%- endif %}
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 
 # Connect to remote deployed agent
 playground-remote: build-frontend-if-needed
@@ -121,8 +137,10 @@ playground-remote: build-frontend-if-needed
 	@echo "| 🌐 Access your app at: http://localhost:8000                               |"
 	@echo "| ☁️  Connected to deployed agent engine                                      |"
 	@echo "==============================================================================="
-	uv run python -m {{cookiecutter.agent_directory}}.utils.expose_app --mode remote
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode remote
 {%- endif %}
+{%- endif %}
+{%- if cookiecutter.is_adk_live and cookiecutter.deployment_target == 'agent_engine' %}
 
 # Start the frontend UI separately for development (requires backend running separately)
 ui:
@@ -143,6 +161,72 @@ playground-dev:
 	@echo "Starting frontend dev server..."
 	$(MAKE) ui
 {%- endif %}
+{%- if cookiecutter.is_a2a %}
+
+# ==============================================================================
+# A2A Protocol Inspector
+# ==============================================================================
+
+# Launch A2A Protocol Inspector to test your agent implementation
+inspector: setup-inspector-if-needed build-inspector-if-needed
+	@echo "==============================================================================="
+	@echo "| 🔍 A2A Protocol Inspector                                                  |"
+	@echo "==============================================================================="
+	@echo "| 🌐 Inspector UI: http://localhost:5001                                     |"
+	@echo "|                                                                             |"
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+	@echo "| 💡 Testing Locally:                                                         |"
+	@echo "|    Paste this URL into the inspector:                                      |"
+	@echo "|    http://localhost:8000/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json              |"
+	@echo "|                                                                             |"
+{%- endif %}
+	@echo "| 💡 Testing Remote Deployment:                                               |"
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+	@echo "|    <SERVICE_URL>/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json"
+	@echo "|    (Get SERVICE_URL from 'make deploy' output or Cloud Console)            |"
+	@echo "|                                                                             |"
+	@echo "|    🔐 Auth: Expand 'Authentication & Headers', select 'Bearer Token',       |"
+	@echo "|       and paste output of: gcloud auth print-identity-token                |"
+{%- else %}
+	@echo "|    Use the Agent Card URL from 'make deploy' output                        |"
+	@echo "|                                                                             |"
+	@echo "|    🔐 Auth: Expand 'Authentication & Headers', select 'Bearer Token',       |"
+	@echo "|       and paste output of: gcloud auth print-access-token                  |"
+	@echo "|                                                                             |"
+	@echo "| ℹ️  Note: Local testing requires deploying to Agent Engine first.          |"
+{%- endif %}
+	@echo "==============================================================================="
+	@echo ""
+	cd tools/a2a-inspector/backend && uv run app.py
+
+# Internal: Setup inspector if not already present (runs once)
+# TODO: Update to --branch v1.0.0 when a2a-inspector publishes releases
+setup-inspector-if-needed:
+	@if [ ! -d "tools/a2a-inspector" ]; then \
+		echo "" && \
+		echo "📦 First-time setup: Installing A2A Inspector..." && \
+		echo "" && \
+		mkdir -p tools && \
+		git clone --quiet https://github.com/a2aproject/a2a-inspector.git tools/a2a-inspector && \
+		(cd tools/a2a-inspector && git -c advice.detachedHead=false checkout --quiet 893e4062f6fbd85a8369228ce862ebbf4a025694) && \
+		echo "📥 Installing Python dependencies..." && \
+		(cd tools/a2a-inspector && uv sync --quiet) && \
+		echo "📥 Installing Node.js dependencies..." && \
+		(cd tools/a2a-inspector/frontend && npm install --silent) && \
+		echo "🔨 Building frontend..." && \
+		(cd tools/a2a-inspector/frontend && npm run build --silent) && \
+		echo "" && \
+		echo "✅ A2A Inspector setup complete!" && \
+		echo ""; \
+	fi
+
+# Internal: Build inspector frontend if needed
+build-inspector-if-needed:
+	@if [ -d "tools/a2a-inspector" ] && [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
+		echo "🔨 Building inspector frontend..."; \
+		cd tools/a2a-inspector/frontend && npm run build; \
+	fi
+{%- endif %}
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -150,11 +234,14 @@ playground-dev:
 
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-# Usage: make backend [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 {%- endif %}
-backend:
+deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 	PROJECT_ID=$$(gcloud config get-value project) && \
+{%- if cookiecutter.is_a2a %}
+	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \
+{%- endif %}
 	gcloud beta run deploy {{cookiecutter.project_name}} \
 		--source . \
 		--memory "4Gi" \
@@ -163,16 +250,26 @@ backend:
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
-		--set-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
+		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
+		--update-env-vars \
+		"COMMIT_SHA=$(shell git rev-parse HEAD){%- if cookiecutter.is_a2a %},APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
-	uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > .requirements.txt 2>/dev/null || \
-	uv export --no-hashes --no-header --no-dev --no-emit-project > .requirements.txt && uv run {{cookiecutter.agent_directory}}/agent_engine_app.py
+	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt) && \
+	uv run -m {{cookiecutter.agent_directory}}.app_utils.deploy \
+		--source-packages=./{{cookiecutter.agent_directory}} \
+		--entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
+		--entrypoint-object=agent_engine \
+		--requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt
 {%- endif %}
 
+# Alias for 'make deploy' for backward compatibility
+backend: deploy
+
+{%- if cookiecutter.cicd_runner != 'skip' %}
 
 # ==============================================================================
 # Infrastructure Setup
@@ -182,6 +279,7 @@ backend:
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
+{%- endif %}
 {%- if cookiecutter.data_ingestion %}
 
 # ==============================================================================
@@ -213,6 +311,7 @@ data-ingestion:
 
 # Run unit and integration tests
 test:
+	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
 # Run code quality checks (codespell, ruff, mypy)
@@ -222,3 +321,25 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run mypy .
+{%- if (cookiecutter.is_a2a and cookiecutter.deployment_target == 'cloud_run') or (cookiecutter.is_adk and not cookiecutter.is_a2a and cookiecutter.deployment_target == 'agent_engine') %}
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: make register-gemini-enterprise (interactive - will prompt for required details)
+# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION{%- if cookiecutter.deployment_target == 'agent_engine' %}, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID{%- endif %}{%- if cookiecutter.deployment_target == 'cloud_run' %}, AGENT_CARD_URL{%- endif %}
+register-gemini-enterprise:
+{%- if cookiecutter.deployment_target == 'cloud_run' and cookiecutter.is_a2a %}
+	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
+	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
+	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
+		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json" \
+		--deployment-target="{{cookiecutter.deployment_target}}" \
+		--project-number="$$PROJECT_NUMBER"
+{%- else %}
+	@uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise
+{%- endif %}
+{%- endif %}

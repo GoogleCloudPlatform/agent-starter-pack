@@ -98,23 +98,13 @@ def get_test_matrix() -> list[CICDTestConfig]:
     return [
         # Google Cloud Build configurations (default)
         # CICDTestConfig(
-        #     agent="langgraph_base_react",
+        #     agent="langgraph_base",
         #     deployment_target="agent_engine",
         #     extra_params="",
         # ),
         # CICDTestConfig(
-        #     agent="langgraph_base_react",
+        #     agent="langgraph_base",
         #     deployment_target="cloud_run",
-        #     extra_params="",
-        # ),
-        # CICDTestConfig(
-        #     agent="crewai_coding_crew",
-        #     deployment_target="cloud_run",
-        #     extra_params="",
-        # ),
-        # CICDTestConfig(
-        #     agent="crewai_coding_crew",
-        #     deployment_target="agent_engine",
         #     extra_params="",
         # ),
         CICDTestConfig(
@@ -139,7 +129,7 @@ def get_test_matrix() -> list[CICDTestConfig]:
         #     extra_params="--cicd-runner,github_actions",
         # ),
         # CICDTestConfig(
-        #     agent="langgraph_base_react",
+        #     agent="langgraph_base",
         #     deployment_target="cloud_run",
         #     extra_params="--cicd-runner,github_actions",
         # ),
@@ -584,20 +574,68 @@ class TestE2EDeployment:
                 f"No GitHub Actions PR check workflows found after waiting {max_wait_minutes} minutes"
             )
 
+    def trigger_recommit(
+        self,
+        project_dir: Path,
+    ) -> None:
+        """Create a commit with file change to re-trigger GitHub Actions workflows.
+
+        Sometimes when a repo is created and pushed too quickly, GitHub Actions
+        workflows don't get triggered. This creates a file change in the app/
+        directory to ensure path-based workflow filters are triggered.
+        """
+        logger.info("\n🔄 Creating commit with file change to re-trigger workflows...")
+
+        try:
+            # Add a trigger file in app/ directory to match path filters
+            trigger_file = project_dir / "app" / "_ci_trigger.py"
+            with open(trigger_file, "w", encoding="utf-8") as f:
+                f.write(f'''"""CI trigger file - created at {time.time()}."""\n''')
+
+            run_command(["git", "add", "."], cwd=project_dir)
+            run_command(
+                ["git", "commit", "-m", "chore: trigger CI workflows"],
+                cwd=project_dir,
+            )
+            run_command(
+                ["git", "push", "origin", "main"],
+                cwd=project_dir,
+            )
+            logger.info("✅ Commit pushed to re-trigger workflows")
+            # Give GitHub a moment to process the push
+            time.sleep(10)
+        except subprocess.CalledProcessError as e:
+            logger.warning(f"Failed to create recommit: {e}")
+
     def monitor_github_actions_deployment(
         self,
         repo_owner: str,
         repo_name: str,
         environment: str,
         max_wait_minutes: int = 10,
+        project_dir: Path | None = None,
+        retry_with_recommit: bool = True,
     ) -> None:
-        """Monitor GitHub Actions workflow runs for deployment"""
+        """Monitor GitHub Actions workflow runs for deployment.
+
+        Args:
+            repo_owner: GitHub repository owner
+            repo_name: GitHub repository name
+            environment: Deployment environment (staging/production)
+            max_wait_minutes: Maximum time to wait for deployment
+            project_dir: Path to project directory (needed for recommit)
+            retry_with_recommit: If True, create a file change commit to retry if no
+                workflow is found after initial waiting period
+        """
         logger.info(f"\n🔍 Monitoring GitHub Actions {environment} deployment...")
 
-        start_time = time.time()
+        overall_start_time = time.time()
         deployment_found = False
+        recommit_triggered = False
+        # Time to wait before triggering a recommit (2 minutes)
+        recommit_threshold_seconds = 120
 
-        while (time.time() - start_time) < (max_wait_minutes * 60):
+        while (time.time() - overall_start_time) < (max_wait_minutes * 60):
             try:
                 # Get recent workflow runs
                 result = run_command(
@@ -704,6 +742,22 @@ class TestE2EDeployment:
                                     f"GitHub Actions deployment failed: {conclusion}"
                                 )
 
+                    # Check if we should trigger a recommit to retry
+                    elapsed_seconds = time.time() - overall_start_time
+                    if (
+                        retry_with_recommit
+                        and not recommit_triggered
+                        and project_dir is not None
+                        and elapsed_seconds > recommit_threshold_seconds
+                    ):
+                        logger.info(
+                            f"⚠️ No deployment workflow found after {int(elapsed_seconds)}s, "
+                            "attempting to re-trigger with file change commit..."
+                        )
+                        self.trigger_recommit(project_dir)
+                        recommit_triggered = True
+                        continue
+
                     logger.info("⏳ No active deployment workflows found, waiting...")
                     time.sleep(30)
 
@@ -714,6 +768,7 @@ class TestE2EDeployment:
         if not deployment_found:
             raise Exception(
                 f"No GitHub Actions {environment} deployment workflows found after waiting {max_wait_minutes} minutes"
+                + (" (recommit was attempted)" if recommit_triggered else "")
             )
 
     def monitor_github_workflow_run(
@@ -1078,6 +1133,54 @@ class TestE2EDeployment:
 
             logger.info("✅ Updated datastore name in prod/staging env.tfvars")
 
+    def remove_telemetry_for_quota_savings(
+        self, project_dir: Path, agent: str, deployment_target: str, extra_params: str
+    ) -> None:
+        """Remove telemetry.tf files except for adk_base base variants.
+
+        Cloud Logging buckets have a 7-day soft delete period, so cleanup doesn't free
+        quota. We only test telemetry with two representative combinations:
+        - adk_base + agent_engine (Cloud Build)
+        - adk_base + cloud_run (Cloud Build)
+
+        This covers both deployment targets while avoiding quota limits.
+        Excluded variants: GitHub Actions, Cloud SQL session types, and non-adk_base agents.
+        """
+        # Keep telemetry only for adk_base with basic agent_engine or cloud_run
+        # Exclude GitHub Actions and Cloud SQL variants
+        norm_extra_params = extra_params.replace(" ", "")
+        is_github_actions = "--cicd-runner,github_actions" in norm_extra_params
+        is_cloud_sql = "--session-type,cloud_sql" in norm_extra_params
+
+        should_keep_telemetry = (
+            agent == "adk_base"
+            and deployment_target in ["agent_engine", "cloud_run"]
+            and not is_github_actions
+            and not is_cloud_sql
+        )
+
+        if should_keep_telemetry:
+            logger.info(
+                f"✓ Keeping telemetry.tf for {agent} + {deployment_target} "
+                "(representative test case)"
+            )
+            return
+
+        logger.info(
+            f"🗑️  Removing telemetry.tf for {agent} + {deployment_target} "
+            "to reduce Cloud Logging bucket quota usage..."
+        )
+
+        telemetry_files = [
+            project_dir / "deployment" / "terraform" / "telemetry.tf",
+            project_dir / "deployment" / "terraform" / "dev" / "telemetry.tf",
+        ]
+
+        for tf_file in telemetry_files:
+            if tf_file.exists():
+                tf_file.unlink()
+                logger.info(f"  Removed {tf_file}")
+
     @pytest.mark.flaky(reruns=2)
     @pytest.mark.parametrize(
         "config",
@@ -1152,6 +1255,11 @@ class TestE2EDeployment:
                 extra_params = config.extra_params.split(",")
                 cmd.extend(extra_params)
 
+            # Add default CICD runner (google_cloud_build) if not explicitly set in extra_params
+            # This is needed because the CLI default changed to "skip"
+            if "--cicd-runner" not in config.extra_params:
+                cmd.extend(["--cicd-runner", "google_cloud_build"])
+
             # Add default session type for cloud_run deployment if not explicitly set
             if config.deployment_target == "cloud_run":
                 # Check if session-type is already in extra_params
@@ -1169,6 +1277,14 @@ class TestE2EDeployment:
             )
             # Update datastore name in terraform variables to avoid conflicts
             self.update_datastore_name(new_project_dir, unique_id)
+
+            # Remove telemetry for quota savings (keep only adk_base + agent_engine/cloud_run)
+            self.remove_telemetry_for_quota_savings(
+                new_project_dir,
+                config.agent,
+                config.deployment_target,
+                config.extra_params,
+            )
 
             # Detect the CICD runner type from CLI params and generated project
             actual_cicd_runner = self.detect_cicd_runner(
@@ -1393,13 +1509,15 @@ def dummy_function():
                     repo_owner=github_username,
                     repo_name=project_name,
                     environment="staging",
+                    project_dir=new_project_dir,
                 )
                 time.sleep(5)
-                # Monitor production deployment
+                # Monitor production deployment (no recommit needed, staging already ran)
                 self.monitor_github_actions_deployment(
                     repo_owner=github_username,
                     repo_name=project_name,
                     environment="production",
+                    retry_with_recommit=False,
                 )
 
             logger.info("\n✅ E2E deployment test completed successfully!")

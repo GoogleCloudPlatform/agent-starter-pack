@@ -1,0 +1,64 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+  # Sync dependencies
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
+    id: install-dependencies
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        uv sync --dev --locked
+
+  # Set gcloud project to dev environment
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
+    id: set-gcloud-project
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud config set project ${_E2E_DEV_PROJECT}
+
+  # Fetch identity token for Cloud Run authentication
+  - name: gcr.io/cloud-builders/gcloud
+    id: fetch-id-token
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud auth print-identity-token -q > /workspace/id_token.txt
+
+  # Run Gemini Enterprise registration test
+  - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
+    id: gemini-enterprise-test
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        export ID_TOKEN=$(cat /workspace/id_token.txt)
+        uv run pytest tests/cicd/test_gemini_enterprise_registration.py -v
+    secretEnv: ['GEMINI_ENTERPRISE_APP_ID']
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/$PROJECT_ID/secrets/gemini-enterprise-app-id/versions/latest
+    env: 'GEMINI_ENTERPRISE_APP_ID'
+
+logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
+options:
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  env:
+    - "RUN_GEMINI_ENTERPRISE_TEST=1"
+timeout: 3600s  # 1 hour timeout

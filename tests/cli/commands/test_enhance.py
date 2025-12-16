@@ -37,7 +37,7 @@ class TestDisplayBaseTemplateSelection:
         # Mock available agents
         mock_get_agents.return_value = {
             1: {"name": "adk_base", "description": "Basic agent template"},
-            2: {"name": "langgraph_base_react", "description": "LangGraph ReAct agent"},
+            2: {"name": "langgraph_base", "description": "LangGraph ReAct agent"},
             3: {"name": "agentic_rag", "description": "RAG-enabled agent"},
         }
 
@@ -61,7 +61,7 @@ class TestDisplayBaseTemplateSelection:
         # Mock available agents
         mock_get_agents.return_value = {
             1: {"name": "adk_base", "description": "Basic agent template"},
-            2: {"name": "langgraph_base_react", "description": "LangGraph ReAct agent"},
+            2: {"name": "langgraph_base", "description": "LangGraph ReAct agent"},
             3: {"name": "agentic_rag", "description": "RAG-enabled agent"},
         }
 
@@ -70,7 +70,7 @@ class TestDisplayBaseTemplateSelection:
 
         result = display_base_template_selection("adk_base")
 
-        assert result == "langgraph_base_react"
+        assert result == "langgraph_base"
 
     @patch("agent_starter_pack.cli.commands.enhance.get_available_agents")
     def test_base_template_selection_no_agents(
@@ -99,7 +99,7 @@ class TestEnhanceCommand:
         # Mock the template config loading
         mock_get_base_name.return_value = "adk_base"
         mock_load_config.return_value = {"base_template": "adk_base"}
-        mock_display_selection.return_value = "langgraph_base_react"
+        mock_display_selection.return_value = "langgraph_base"
 
         runner = CliRunner()
 
@@ -136,13 +136,13 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph_base_react", "--auto-approve"],
+                    [".", "--base-template", "langgraph_base", "--auto-approve"],
                 )
 
                 # Should call create with the specified base template
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "langgraph_base_react"
+                assert call_args[1]["base_template"] == "langgraph_base"
 
     def test_enhance_with_agent_directory_cli_param(self) -> None:
         """Test that enhance respects --agent-directory CLI parameter."""
@@ -267,7 +267,7 @@ packages = ["detected_agent", "frontend"]
                     [
                         ".",
                         "--base-template",
-                        "langgraph_base_react",
+                        "langgraph_base",
                         "--agent-directory",
                         "my_chatbot",
                         "--auto-approve",
@@ -277,12 +277,50 @@ packages = ["detected_agent", "frontend"]
                 # Should call create with both parameters
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "langgraph_base_react"
+                assert call_args[1]["base_template"] == "langgraph_base"
 
                 cli_overrides = call_args[1]["cli_overrides"]
                 assert cli_overrides is not None
-                assert cli_overrides["base_template"] == "langgraph_base_react"
+                assert cli_overrides["base_template"] == "langgraph_base"
                 assert cli_overrides["settings"]["agent_directory"] == "my_chatbot"
+
+    def test_enhance_with_adk_flag_sets_base_template(self) -> None:
+        """Test that --adk flag sets base_template to adk_base."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create app directory structure
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").touch()
+
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [".", "--adk", "--auto-approve"],
+                )
+
+                # Should call create with base_template set to adk_base
+                mock_create.assert_called_once()
+                call_args = mock_create.call_args
+                assert call_args[1]["base_template"] == "adk_base"
+
+    def test_enhance_adk_flag_conflicts_with_base_template(self) -> None:
+        """Test that --adk and --base-template cannot be used together."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create app directory structure
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").touch()
+
+            result = runner.invoke(
+                enhance,
+                [".", "--adk", "--base-template", "langgraph_base", "--auto-approve"],
+            )
+
+            # Should fail with an error about conflicting options
+            assert result.exit_code != 0
+            assert "Cannot use --adk with --base-template" in result.output
 
 
 class TestEnhanceAgentEngineAppGeneration:
@@ -291,10 +329,10 @@ class TestEnhanceAgentEngineAppGeneration:
     @pytest.mark.parametrize(
         "base_template,expected_import",
         [
-            ("adk_base", "root_agent"),
-            ("adk_live", "root_agent"),
-            ("langgraph_base_react", "agent"),
-            ("agentic_rag", "root_agent"),  # agentic_rag is ADK-based
+            ("adk_base", "app as adk_app"),
+            ("adk_live", "app as adk_app"),
+            ("langgraph_base", "agent"),
+            ("agentic_rag", "app as adk_app"),  # agentic_rag is ADK-based
         ],
     )
     def test_agent_engine_app_has_correct_import(
@@ -312,11 +350,14 @@ class TestEnhanceAgentEngineAppGeneration:
             # Create appropriate agent.py content based on template type
             if "adk" in base_template or base_template == "agentic_rag":
                 agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+app = App(root_agent=root_agent, name="app")
 """
             else:
                 agent_content = """from langchain_core.runnables import RunnablePassthrough
@@ -358,10 +399,23 @@ agent = RunnablePassthrough()
 
             # Read the content and verify the correct import
             content = agent_engine_app.read_text()
-            expected_import_line = f"from app.agent import {expected_import}"
-            assert expected_import_line in content, (
-                f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
-            )
+
+            # For A2A non-ADK agents (like langgraph_base), they don't import from app.agent
+            if base_template == "langgraph_base":
+                # Verify A2A-specific imports for LangGraph agents
+                # Check both module path and class name (handles multi-line formatting)
+                assert (
+                    "from app.app_utils.executor.a2a_agent_executor import" in content
+                    and "LangGraphAgentExecutor" in content
+                ), (
+                    f"Expected A2A LangGraph imports in agent_engine_app.py but got:\n{content}"
+                )
+            else:
+                # For ADK-based agents, verify the standard import
+                expected_import_line = f"from app.agent import {expected_import}"
+                assert expected_import_line in content, (
+                    f"Expected '{expected_import_line}' in agent_engine_app.py but got:\n{content}"
+                )
 
     def test_agent_engine_app_created_in_custom_agent_directory(
         self, tmp_path: pathlib.Path
@@ -375,11 +429,14 @@ agent = RunnablePassthrough()
             agent_dir.mkdir()
             agent_file = agent_dir / "agent.py"
             agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+app = App(root_agent=root_agent, name="app")
 """
             agent_file.write_text(agent_content)
 
@@ -418,7 +475,7 @@ root_agent = Agent(
 
             # Verify the import uses the custom directory name
             content = agent_engine_app.read_text()
-            expected_import_line = "from my_custom_agent.agent import root_agent"
+            expected_import_line = "from my_custom_agent.agent import app as adk_app"
             assert expected_import_line in content, (
                 f"Expected '{expected_import_line}' in agent_engine_app.py"
             )
@@ -474,8 +531,8 @@ class TestEnhanceAgentDirectoryPrompt:
         runner = CliRunner()
 
         # Mock the template config to return a non-ADK base template
-        mock_get_base_name.return_value = "langgraph_base_react"
-        mock_load_config.return_value = {"base_template": "langgraph_base_react"}
+        mock_get_base_name.return_value = "langgraph_base"
+        mock_load_config.return_value = {"base_template": "langgraph_base"}
         mock_display_selection.return_value = "app"
 
         with runner.isolated_filesystem():
@@ -485,7 +542,7 @@ class TestEnhanceAgentDirectoryPrompt:
             with patch("agent_starter_pack.cli.commands.enhance.create"):
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph_base_react"],
+                    [".", "--base-template", "langgraph_base"],
                     input="n\n",  # Cancel enhancement
                 )
 
@@ -493,7 +550,7 @@ class TestEnhanceAgentDirectoryPrompt:
                 if mock_display_selection.called:
                     call_args = mock_display_selection.call_args
                     # The base_template should be passed to the function
-                    assert call_args[0][2] == "langgraph_base_react"
+                    assert call_args[0][2] == "langgraph_base"
 
 
 class TestEnhanceFilePopulation:
@@ -554,10 +611,21 @@ root_agent = Agent(
                     f"Expected frontend file {frontend_file} was not created for adk_live"
                 )
 
-            # Verify agent.py was NOT modified (customer file preservation)
+            # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
-            assert preserved_agent_content == agent_content, (
-                "agent.py was modified during enhance!"
+            expected_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+
+from google.adk.apps.app import App
+
+app = App(root_agent=root_agent, name="app")
+"""
+            assert preserved_agent_content == expected_content, (
+                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
             )
 
     def test_cloud_run_deployment_populates_files(self, tmp_path: pathlib.Path) -> None:
@@ -571,15 +639,19 @@ root_agent = Agent(
             agent_file = agent_dir / "agent.py"
 
             agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
 
 root_agent = Agent(
     name="test_agent",
     model="gemini-2.0-flash-001",
 )
+
+app = App(root_agent=root_agent, name="app")
 """
             agent_file.write_text(agent_content)
 
-            # Run enhance with cloud_run deployment target
+            # Run enhance with cloud_run deployment target and explicit cicd-runner
+            # (auto-approve defaults to 'skip' which doesn't generate Terraform)
             result = runner.invoke(
                 enhance,
                 [
@@ -588,6 +660,8 @@ root_agent = Agent(
                     "adk_base",
                     "--deployment-target",
                     "cloud_run",
+                    "--cicd-runner",
+                    "google_cloud_build",
                     "--auto-approve",
                     "--skip-checks",
                 ],
@@ -600,7 +674,7 @@ root_agent = Agent(
 
             # Verify Cloud Run specific files were populated
             cloud_run_files = [
-                agent_dir / "server.py",  # Cloud Run server
+                agent_dir / "fast_api_app.py",  # Cloud Run FastAPI app
                 pathlib.Path("Dockerfile"),  # Cloud Run Dockerfile
                 pathlib.Path("deployment") / "terraform" / "service.tf",
             ]
@@ -610,10 +684,11 @@ root_agent = Agent(
                     f"Expected Cloud Run file {cloud_run_file} was not created"
                 )
 
-            # Verify agent.py was NOT modified
+            # Verify agent.py was NOT modified for cloud_run (no injection for cloud_run)
             preserved_agent_content = agent_file.read_text()
+            # For cloud_run, agent.py should remain unchanged
             assert preserved_agent_content == agent_content, (
-                "agent.py was modified during enhance!"
+                f"agent.py should not be modified for cloud_run! Expected:\n{agent_content}\n\nGot:\n{preserved_agent_content}"
             )
 
     def test_data_ingestion_populates_files(self, tmp_path: pathlib.Path) -> None:
@@ -678,8 +753,272 @@ root_agent = Agent(
                     f"Expected data ingestion file {data_file} was not created"
                 )
 
-            # Verify agent.py was NOT modified
+            # Verify agent.py was modified to add app object (backward compatibility)
             preserved_agent_content = agent_file.read_text()
-            assert preserved_agent_content == agent_content, (
-                "agent.py was modified during enhance!"
+            expected_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+
+from google.adk.apps.app import App
+
+app = App(root_agent=root_agent, name="app")
+"""
+            assert preserved_agent_content == expected_content, (
+                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
+            )
+
+
+class TestEnhanceYamlAgentShim:
+    """Test that enhance properly generates agent.py shim for YAML config agents."""
+
+    def test_yaml_agent_shim_generated_for_agent_engine(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent.py shim is generated when root_agent.yaml exists."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml (no agent.py)
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+
+            yaml_content = """name: test_agent
+model: gemini-2.0-flash-001
+instruction: You are a helpful assistant.
+"""
+            yaml_file.write_text(yaml_content)
+
+            # Run enhance with agent_engine deployment target
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py shim was generated
+            agent_file = agent_dir / "agent.py"
+            assert agent_file.exists(), "agent.py shim was not created"
+
+            content = agent_file.read_text()
+
+            # Verify the shim loads from YAML config
+            assert "config_agent_utils" in content, (
+                f"Expected config_agent_utils import in agent.py but got:\n{content}"
+            )
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
+                f"Expected from_config call in agent.py but got:\n{content}"
+            )
+            assert "root_agent = " in content, (
+                f"Expected root_agent assignment in agent.py but got:\n{content}"
+            )
+            assert "app = App(" in content, (
+                f"Expected app assignment in agent.py but got:\n{content}"
+            )
+            assert 'name="app"' in content, (
+                f"Expected App name='app' (matching agent directory) but got:\n{content}"
+            )
+
+            # Verify root_agent.yaml was preserved
+            preserved_yaml = yaml_file.read_text()
+            assert preserved_yaml == yaml_content, (
+                f"root_agent.yaml was modified! Expected:\n{yaml_content}\n\nGot:\n{preserved_yaml}"
+            )
+
+            # Verify the generated shim is valid Python syntax
+            compile(content, agent_file, "exec")
+
+    def test_yaml_agent_shim_generated_for_cloud_run(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent.py shim is generated for Cloud Run deployment."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+
+            yaml_content = """name: test_agent
+model: gemini-2.0-flash-001
+instruction: You are a helpful assistant.
+"""
+            yaml_file.write_text(yaml_content)
+
+            # Run enhance with cloud_run deployment target
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py shim was generated
+            agent_file = agent_dir / "agent.py"
+            assert agent_file.exists(), "agent.py shim was not created for cloud_run"
+
+            content = agent_file.read_text()
+
+            # Verify the shim loads from YAML config
+            assert "config_agent_utils" in content, (
+                f"Expected config_agent_utils import in agent.py but got:\n{content}"
+            )
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
+                f"Expected from_config call in agent.py but got:\n{content}"
+            )
+
+    def test_yaml_agent_shim_in_custom_directory(self, tmp_path: pathlib.Path) -> None:
+        """Test that agent.py shim is generated in custom agent directory."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create custom agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("my_agent")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+
+            yaml_content = """name: custom_agent
+model: gemini-2.0-flash-001
+"""
+            yaml_file.write_text(yaml_content)
+
+            # Run enhance with custom agent directory
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--agent-directory",
+                    "my_agent",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py shim was generated in custom directory
+            agent_file = agent_dir / "agent.py"
+            assert agent_file.exists(), f"agent.py shim was not created in {agent_dir}"
+
+            content = agent_file.read_text()
+            assert "config_agent_utils" in content
+            # Verify app name matches the custom agent directory
+            assert 'name="my_agent"' in content, (
+                f"Expected app name to match agent directory 'my_agent' but got:\n{content}"
+            )
+
+    def test_yaml_agent_detection_message_shown(self, tmp_path: pathlib.Path) -> None:
+        """Test that enhance shows YAML config agent detection message."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+            yaml_file.write_text("name: test_agent\n")
+
+            # Run enhance
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Verify the YAML detection message was shown
+            assert "root_agent.yaml" in result.output, (
+                f"Expected YAML detection message in output:\n{result.output}"
+            )
+            assert "YAML config agent" in result.output, (
+                f"Expected 'YAML config agent' in output:\n{result.output}"
+            )
+
+    def test_yaml_agent_shim_overwrites_template_agent_py(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that YAML shim overwrites the base template's agent.py."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with root_agent.yaml
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            yaml_file = agent_dir / "root_agent.yaml"
+            yaml_file.write_text("name: yaml_agent\nmodel: gemini-2.0-flash-001\n")
+
+            # Run enhance - base template will copy its agent.py first,
+            # but YAML shim should overwrite it
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify agent.py contains the shim, not the base template content
+            agent_file = agent_dir / "agent.py"
+            content = agent_file.read_text()
+
+            # Should have the YAML loader, not the base template's Agent definition
+            assert "config_agent_utils" in content, (
+                "agent.py should contain YAML shim, not base template content"
+            )
+            assert 'from_config(str(_AGENT_DIR / "root_agent.yaml"))' in content, (
+                "agent.py should load from root_agent.yaml"
+            )
+
+            # Should NOT have the base template's get_weather function
+            assert "get_weather" not in content, (
+                "agent.py should not contain base template's get_weather function"
             )

@@ -24,3 +24,25 @@ resource "google_project_service" "cloud_resource_manager_api" {
   service            = "cloudresourcemanager.googleapis.com"
   disable_on_destroy = false
 }
+
+# Enable Cloud Scheduler API for scheduled cleanup jobs
+resource "google_project_service" "cloud_scheduler_api" {
+  project            = var.cicd_runner_project_id
+  service            = "cloudscheduler.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Enable Discovery Engine API for Gemini Enterprise registration tests
+# Note: You must manually create the secret "gemini-enterprise-app-id" in Secret Manager
+# with the Gemini Enterprise app resource name as the value. Example:
+# gcloud secrets create gemini-enterprise-app-id --project=<CICD_PROJECT_ID> \
+#   --data-file=<(echo -n "projects/{project_number}/locations/{location}/collections/{collection}/engines/{engine_id}")
+resource "google_project_service" "discovery_engine_api" {
+  for_each = {
+    "dev" = var.e2e_test_project_mapping.dev
+  }
+
+  project            = each.value
+  service            = "discoveryengine.googleapis.com"
+  disable_on_destroy = false
+}

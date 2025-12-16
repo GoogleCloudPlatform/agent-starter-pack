@@ -74,8 +74,8 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 
 **Data & Storage:**
 *   `-i, --include-data-ingestion`: Include data ingestion pipeline.
-*   `-ds, --datastore`: Datastore type (`vertex_ai_search`, `vertex_ai_vector_search`, `alloydb`).
-*   `--session-type`: Session storage (`in_memory`, `alloydb`, `agent_engine`).
+*   `-ds, --datastore`: Datastore type (`vertex_ai_search`, `vertex_ai_vector_search`, `cloud_sql`).
+*   `--session-type`: Session storage (`in_memory`, `cloud_sql`, `agent_engine`).
 
 **Project Creation:**
 *   `-o, --output-dir`: Output directory (default: current directory).
@@ -136,8 +136,7 @@ Templates for the `create` command (via `-a` or `--agent`):
 | `adk_base`             | Base ReAct agent (ADK)                       |
 | `adk_gemini_fullstack` | Production-ready fullstack research agent    |
 | `agentic_rag`          | RAG agent for document retrieval & Q&A       |
-| `langgraph_base_react` | Base ReAct agent (LangGraph)                 |
-| `crewai_coding_crew`   | Multi-agent collaborative coding assistance  |
+| `langgraph_base`       | Base ReAct agent (LangGraph)                 |
 | `adk_live`             | Real-time multimodal RAG agent               |
 
 ---
@@ -204,7 +203,7 @@ Before setting up full CI/CD, you can deploy to a personal cloud dev environment
 
 1.  **Set Project:** `gcloud config set project YOUR_DEV_PROJECT_ID`
 2.  **Provision Resources:** `make setup-dev-env` (uses Terraform).
-3.  **Deploy Backend:** `make backend` (builds and deploys the agent).
+3.  **Deploy Backend:** `make deploy` (builds and deploys the agent).
 
 ### 3. Automated Production-Ready Deployment with CI/CD
 For reliable deployments, the `setup-cicd` command streamlines the entire process. It creates a GitHub repo, connects it to your chosen CI/CD runner (Google Cloud Build or GitHub Actions), provisions staging/prod infrastructure, and configures deployment triggers.
@@ -226,13 +225,13 @@ uvx agent-starter-pack setup-cicd
 
 ### Deploying with a User Interface (UI)
 *   **Unified Deployment (for Dev/Test):** The backend and frontend can be packaged and served from a single Cloud Run service, secured with Identity-Aware Proxy (IAP).
-*   **Deploying with UI:** `make backend IAP=true`
+*   **Deploying with UI:** `make deploy IAP=true`
 *   **Access Control:** After deploying with IAP, grant users the `IAP-secured Web App User` role in IAM to give them access.
 
 ### Session Management
 
 For stateful agents, the starter pack supports persistent sessions.
-*   **Cloud Run:** Choose between `in_memory` (for testing) and durable `alloydb` sessions using the `--session-type` flag.
+*   **Cloud Run:** Choose between `in_memory` (for testing) and durable `cloud_sql` sessions using the `--session-type` flag.
 *   **Agent Engine:** Provides session management automatically.
 
 ### Monitoring & Observability
@@ -317,7 +316,7 @@ Before finalizing any `new_string` for a `replace` operation, meticulously verif
     ```python
     root_agent = Agent(
         name="root_agent",
-        model="gemini-2.5-flash",
+        model="gemini-3-pro-preview",
         instruction="You are a helpful AI assistant."
     )
     ```
@@ -333,7 +332,7 @@ Before finalizing any `new_string` for a `replace` operation, meticulously verif
     ```python
     root_agent = Agent(
         name="recipe_suggester", # OK, related to new purpose
-        model="gemini-2.5-flash", # MUST be preserved
+        model="gemini-3-pro-preview", # MUST be preserved
         instruction="You are a recipe suggester." # OK, the direct target
     )
     ```
@@ -351,7 +350,7 @@ Before finalizing any `new_string` for a `replace` operation, meticulously verif
     *   **Avoid `make playground`** unless specifically instructed; it is designed for human interaction. Focus on programmatic testing.
 
 *   **Model Selection:**
-    *   **When using Gemini, prefer the 2.5 model family** for optimal performance and capabilities: "gemini-2.5-pro" and "gemini-2.5-flash"
+    *   **When using Gemini, prefer modern model families** for optimal performance and capabilities: "gemini-2.5-pro", "gemini-2.5-flash", and "gemini-3-pro-preview"
 
 *   **Running Python Commands:**
     *   Always use `uv` to execute Python commands within this repository (e.g., `uv run run_agent.py`).

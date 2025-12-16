@@ -6,6 +6,12 @@ This comprehensive tutorial demonstrates how to rapidly deploy AI Agents using t
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/9zqwym-N3lg?si=K4kHS0G463VBGons" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
+## Deploy Your First ADK Agent in Under 5 Minutes (January 2025)
+
+Learn how to create and deploy your first AI agent in under 5 minutes using the Agent Starter Pack. This tutorial from PracticalGCP explains what's happening behind the scenes, covering project structure, ADK Playground, testing notebooks, and detailed explanations of all the make commands.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/_PU0fNGIvUw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
 ## Kaggle GenAI Intensive Course Introduction (April 2025)
 A 6-minute introduction explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 

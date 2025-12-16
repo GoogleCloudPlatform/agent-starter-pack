@@ -23,12 +23,12 @@ source .venv/bin/activate
 pip install agent-starter-pack
 
 # 3. Run the create command
-agent-starter-pack create my-awesome-agent
+agent-starter-pack create
 ```
 
 ```bash [⚡ uvx]
 # This single command downloads and runs the latest version
-uvx agent-starter-pack create my-awesome-agent
+uvx agent-starter-pack create
 ```
 
 :::
@@ -50,10 +50,10 @@ agent-starter-pack create my-adk-agent -a adk_base -d agent_engine
 Now, navigate into your new project and run its setup commands.
 
 ```bash
-cd my-awesome-agent && make install && make playground
+cd <your-project> && make install && make playground
 ```
 
-Inside your new project directory (`my-awesome-agent`), you'll find:
+Inside your new project directory, you'll find:
 
 *   `app/`: Backend agent code (or custom directory name if configured).
 *   `deployment/`: Terraform infrastructure code.
@@ -71,3 +71,4 @@ You're ready to go! See the [Development Guide](/guide/development-guide) for de
 - **Add Data (RAG):** Configure [Data Ingestion](/guide/data-ingestion) for knowledge-based agents.
 - **Monitor Performance:** Explore [Observability](/guide/observability) features for production monitoring.
 - **Deploy to Production:** Follow the [Deployment Guide](/guide/deployment) to deploy your agent to Google Cloud.
+- **Explore the Code:** Use [CodeWiki](https://codewiki.google/github.com/googlecloudplatform/agent-starter-pack) for AI-powered code navigation and understanding.

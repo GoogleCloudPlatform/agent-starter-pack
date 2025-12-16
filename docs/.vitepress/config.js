@@ -63,7 +63,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'Remote Templates', link: '/remote-templates/' },
       { text: 'Agents', link: '/agents/overview' },
-      { text: 'CLI', link: '/cli/index.md' },
+      { text: 'CLI', link: '/cli' },
       { text: 'Community', link: '/guide/community-showcase' }
     ],
     sidebar: [
@@ -112,6 +112,7 @@ export default defineConfig({
           { text: 'create', link: '/cli/create' },
           { text: 'enhance', link: '/cli/enhance' },
           { text: 'list', link: '/cli/list' },
+          { text: 'register-gemini-enterprise', link: '/cli/register_gemini_enterprise' },
           { text: 'setup-cicd', link: '/cli/setup_cicd' }
         ]
       },

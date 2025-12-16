@@ -41,3 +41,16 @@ variable "e2e_test_project_mapping" {
     staging = string
   })
 }
+
+variable "cleanup_project_ids" {
+  description = "List of all project IDs that need cleanup (for scheduled cleanup job)"
+  type        = list(string)
+  default = [
+    "asp-e2e-dev",
+    "asp-e2e-stg",
+    "asp-e2e-prd",
+    "asp-test-dev",
+    "asp-test-prd",
+    "asp-test-stg"
+  ]
+}

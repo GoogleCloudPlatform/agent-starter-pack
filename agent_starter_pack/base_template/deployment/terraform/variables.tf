@@ -50,35 +50,21 @@ variable "repository_name" {
   type        = string
 }
 
-variable "telemetry_logs_filter" {
-  type        = string
-  description = "Log Sink filter for capturing telemetry data. Captures logs with the `traceloop.association.properties.log_type` attribute set to `tracing`."
-{%- if cookiecutter.is_adk %}
-  default     = "labels.service_name=\"{{cookiecutter.project_name}}\" labels.type=\"agent_telemetry\""
-{%- else %}
-  default     = "jsonPayload.attributes.\"traceloop.association.properties.log_type\"=\"tracing\" jsonPayload.resource.attributes.\"service.name\"=\"{{cookiecutter.project_name}}\""
-{%- endif %}
-}
-
-variable "feedback_logs_filter" {
-  type        = string
-  description = "Log Sink filter for capturing feedback data. Captures logs where the `log_type` field is `feedback`."
-  default     = "jsonPayload.log_type=\"feedback\""
-}
-
 variable "app_sa_roles" {
   description = "List of roles to assign to the application service account"
   type        = list(string)
   default = [
-{%- if cookiecutter.session_type == "alloydb" %}
-    "roles/secretmanager.secretAccessor",
-{%- endif %}
+
     "roles/aiplatform.user",
     "roles/discoveryengine.editor",
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/storage.admin",
     "roles/serviceusage.serviceUsageConsumer",
+{%- if cookiecutter.session_type == "cloud_sql" %}
+    "roles/cloudsql.client",
+    "roles/secretmanager.secretAccessor",
+{%- endif %}
   ]
 }
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -186,6 +172,7 @@ variable "repository_owner" {
   description = "Owner of the Git repository - username or organization"
   type        = string
 }
+
 {% if cookiecutter.cicd_runner == "github_actions" %}
 
 
@@ -221,6 +208,13 @@ variable "create_repository" {
 }
 {% endif %}
 
+# Telemetry Configuration
+variable "feedback_logs_filter" {
+  type        = string
+  description = "Log Sink filter for capturing feedback data. Captures logs where the `log_type` field is `feedback`."
+  default     = "jsonPayload.log_type=\"feedback\" jsonPayload.service_name=\"{{cookiecutter.project_name}}\""
+}
+
 # Monitoring Configuration
 variable "alert_notification_email" {
   type        = string
@@ -251,3 +245,4 @@ variable "agent_error_rate_threshold_per_sec" {
   description = "Agent error rate threshold in errors per second for alerting (Cloud Run agents)."
   default     = 0.5
 }
+

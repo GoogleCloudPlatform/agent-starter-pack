@@ -79,7 +79,7 @@ def get_greeting(name: str = "World") -> str:
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     instruction="You are a helpful AI assistant. Use your tools to answer questions.",
     tools=[get_greeting],
 )
@@ -146,16 +146,19 @@ description = "An awesome AI agent template"
 dependencies = ["google-adk>=1.8.0", "custom-lib"]
 
 [tool.agent-starter-pack]
+# Base template to inherit from - users can override with --base-template flag
 base_template = "adk_base"
 name = "My Awesome Template"  # Optional: falls back to [project].name
 description = "Custom description"  # Optional: falls back to [project].description
 
 [tool.agent-starter-pack.settings]
 deployment_targets = ["cloud_run", "agent_engine"]
-frontend_type = "adk_streamlit"
+frontend_type = "None"
 # Optional: Customize the directory name for agent files (default: "app")
 agent_directory = "app"
 ```
+
+**Note:** Users can override the `base_template` when creating from your template using `--base-template`. When they do, the CLI will automatically prompt them to add any additional dependencies required by the new base template using `uv add`.
 
 ## Configuration Reference
 
@@ -415,7 +418,7 @@ extra_dependencies = ["pandas", "numpy", "scikit-learn"]
 [tool.agent-starter-pack]
 base_template = "adk_base"
 [tool.agent-starter-pack.settings]
-frontend_type = "adk_streamlit"
+frontend_type = "None"
 deployment_targets = ["agent_engine", "cloud_run"]
 ```
 
@@ -424,7 +427,7 @@ deployment_targets = ["agent_engine", "cloud_run"]
 [tool.agent-starter-pack]
 base_template = "adk_base"
 [tool.agent-starter-pack.settings]
-session_type = "alloydb"
+session_type = "cloud_sql"
 deployment_targets = ["cloud_run"]
 include_data_ingestion = true
 ```

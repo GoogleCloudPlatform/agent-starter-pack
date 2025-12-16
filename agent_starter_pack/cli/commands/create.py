@@ -26,8 +26,9 @@ from click.core import ParameterSource
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
+from ..utils.command import run_gcloud_command
 from ..utils.datastores import DATASTORE_TYPES, DATASTORES
-from ..utils.gcp import verify_credentials, verify_vertex_connection
+from ..utils.gcp import verify_credentials_and_vertex
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.remote_template import (
     fetch_remote_template,
@@ -37,6 +38,7 @@ from ..utils.remote_template import (
     parse_agent_spec,
 )
 from ..utils.template import (
+    add_base_template_dependencies_interactively,
     get_available_agents,
     get_deployment_targets,
     get_template_path,
@@ -58,6 +60,15 @@ def shared_template_options(f: Callable) -> Callable:
     """Decorator to add shared options for template-based commands."""
     # Apply options in reverse order since decorators are applied bottom-up
     f = click.option(
+        "-k",
+        "--google-api-key",
+        "--api-key",
+        is_flag=False,
+        flag_value="YOUR_API_KEY",
+        default=None,
+        help="Use Google AI Studio API key instead of Vertex AI. If provided without a value, generates a .env file with a placeholder.",
+    )(f)
+    f = click.option(
         "-ag",
         "--agent-garden",
         is_flag=True,
@@ -65,6 +76,14 @@ def shared_template_options(f: Callable) -> Callable:
         default=False,
     )(f)
     f = click.option(
+        "--skip-deps",
+        is_flag=True,
+        help="Skip base template dependency installation (used when reusing saved config)",
+        default=False,
+        hidden=True,
+    )(f)
+    f = click.option(
+        "-s",
         "--skip-checks",
         is_flag=True,
         help="Skip verification checks for GCP and Vertex AI",
@@ -76,12 +95,16 @@ def shared_template_options(f: Callable) -> Callable:
         default="us-central1",
     )(f)
     f = click.option(
-        "--auto-approve", is_flag=True, help="Skip credential confirmation prompts"
+        "--auto-approve",
+        "--yes",
+        "-y",
+        is_flag=True,
+        help="Skip credential confirmation prompts",
     )(f)
     f = click.option("--debug", is_flag=True, help="Enable debug logging")(f)
     f = click.option(
         "--session-type",
-        type=click.Choice(["in_memory", "alloydb", "agent_engine"]),
+        type=click.Choice(["in_memory", "cloud_sql", "agent_engine"]),
         help="Type of session storage to use",
     )(f)
     f = click.option(
@@ -97,8 +120,15 @@ def shared_template_options(f: Callable) -> Callable:
         help="Include data ingestion pipeline in the project",
     )(f)
     f = click.option(
+        "--prototype",
+        "-p",
+        is_flag=True,
+        help="Create minimal project without CI/CD or Terraform infrastructure",
+        default=False,
+    )(f)
+    f = click.option(
         "--cicd-runner",
-        type=click.Choice(["google_cloud_build", "github_actions"]),
+        type=click.Choice(["google_cloud_build", "github_actions", "skip"]),
         help="CI/CD runner to use",
     )(f)
     f = click.option(
@@ -111,6 +141,11 @@ def shared_template_options(f: Callable) -> Callable:
         "--agent-directory",
         "-dir",
         help="Name of the agent directory (overrides template default)",
+    )(f)
+    f = click.option(
+        "--base-template",
+        "-bt",
+        help="Base template to use (overrides template default, only for remote templates)",
     )(f)
     return f
 
@@ -207,7 +242,7 @@ def normalize_project_name(project_name: str) -> str:
 
 @click.command()
 @click.pass_context
-@click.argument("project_name")
+@click.argument("project_name", required=False, default=None)
 @click.option(
     "--agent",
     "-a",
@@ -241,6 +276,12 @@ def normalize_project_name(project_name: str) -> str:
     default=False,
 )
 @shared_template_options
+@click.option(
+    "--adk",
+    is_flag=True,
+    help="Quickstart mode: adk_base + agent_engine + prototype, skips prompts",
+    default=False,
+)
 @handle_cli_error
 def create(
     ctx: click.Context,
@@ -248,6 +289,8 @@ def create(
     agent: str | None,
     deployment_target: str | None,
     cicd_runner: str | None,
+    adk: bool,
+    prototype: bool,
     include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
@@ -256,6 +299,7 @@ def create(
     auto_approve: bool,
     region: str,
     skip_checks: bool,
+    skip_deps: bool,
     in_folder: bool,
     agent_directory: str | None,
     agent_garden: bool = False,
@@ -263,6 +307,7 @@ def create(
     skip_welcome: bool = False,
     locked: bool = False,
     cli_overrides: dict | None = None,
+    google_api_key: str | None = None,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
@@ -271,7 +316,44 @@ def create(
         # Display welcome banner (unless skipped)
         if not skip_welcome:
             display_welcome_banner(agent, agent_garden=agent_garden)
-        # Validate project name
+
+        # Handle missing project name
+        if not project_name:
+            if auto_approve:
+                project_name = "my-agent"
+                console.print(
+                    f"Info: Project name not specified. Defaulting to '{project_name}' in auto-approve mode.",
+                    style="yellow",
+                )
+            else:
+                # Convert output_dir to Path for directory existence check
+                check_dir = (
+                    pathlib.Path(output_dir) if output_dir else pathlib.Path.cwd()
+                ).resolve()
+
+                while True:
+                    project_name = Prompt.ask(
+                        "\n> Enter a name for your project",
+                        default="my-agent",
+                        show_default=True,
+                    )
+                    if len(project_name) > 26:
+                        console.print(
+                            f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
+                            style="bold red",
+                        )
+                        continue
+                    # Check if directory already exists
+                    normalized_name = normalize_project_name(project_name)
+                    if (check_dir / normalized_name).exists():
+                        console.print(
+                            f"Error: Project directory '{check_dir / normalized_name}' already exists. Please choose a different name.",
+                            style="bold red",
+                        )
+                        continue
+                    break
+
+        # Validate project name (for CLI-provided names)
         if len(project_name) > 26:
             console.print(
                 f"Error: Project name '{project_name}' exceeds 26 characters. Please use a shorter name.",
@@ -286,6 +368,36 @@ def create(
             logging.basicConfig(level=logging.DEBUG)
             console.print("> Debug mode enabled")
             logging.debug("Starting CLI in debug mode")
+
+        # Handle --adk quickstart flag
+        if adk:
+            console.print(
+                "⚡ ADK quickstart: adk_base + Agent Engine + prototype mode\n",
+                style="cyan",
+            )
+
+            if agent and agent != "adk_base":
+                console.print(
+                    f"Info: --agent '{agent}' ignored due to --adk flag (using adk_base).",
+                    style="yellow",
+                )
+            agent = "adk_base"
+
+            if deployment_target and deployment_target != "agent_engine":
+                console.print(
+                    f"Info: --deployment-target '{deployment_target}' ignored due to --adk flag (using agent_engine).",
+                    style="yellow",
+                )
+            deployment_target = "agent_engine"
+
+            # Enable prototype mode and auto-approve
+            prototype = True
+            auto_approve = True
+
+            if debug:
+                logging.debug(
+                    "ADK quickstart mode: agent=adk_base, deployment_target=agent_engine, prototype=True, auto_approve=True"
+                )
 
         # Convert output_dir to Path if provided, otherwise use current directory
         destination_dir = pathlib.Path(output_dir) if output_dir else pathlib.Path.cwd()
@@ -424,10 +536,19 @@ def create(
         final_agent = selected_agent
         if not final_agent:
             if auto_approve:
-                raise click.ClickException(
-                    "Error: --agent is required when running with --auto-approve."
+                # Default to first available agent in auto-approve mode
+                agents = get_available_agents(deployment_target=deployment_target)
+                if not agents:
+                    raise click.ClickException(
+                        "Error: No agents available for the selected deployment target."
+                    )
+                final_agent = next(iter(agents.values()))["name"]
+                console.print(
+                    f"Info: --agent not specified. Defaulting to '{final_agent}' in auto-approve mode.",
+                    style="yellow",
                 )
-            final_agent = display_agent_selection(deployment_target)
+            else:
+                final_agent = display_agent_selection(deployment_target)
 
             # If browse functionality returned a remote agent spec, process it like CLI input
             if final_agent and final_agent.startswith("adk@"):
@@ -468,15 +589,39 @@ def create(
             logging.debug(f"Selected agent: {final_agent}")
 
         # Load template configuration based on whether it's remote or local
+        # Track original base template to detect actual overrides (not just selection)
+        original_base_template: str | None = None
         if template_source_path:
             # Prepare CLI overrides for remote template config
             # Initialize cli_overrides if not provided (e.g., from enhance command)
             if cli_overrides is None:
                 cli_overrides = {}
+
+            # First, get the original base template BEFORE applying cli_overrides
+            # This allows us to detect if user is actually overriding vs selecting same
+            original_config = load_remote_template_config(
+                template_source_path,
+                None,  # No CLI overrides to get original value
+                is_adk_sample=remote_spec.is_adk_samples if remote_spec else False,
+            )
+            original_base_template = get_base_template_name(original_config)
+
             if base_template:
+                # Validate that the base template exists
+                if not validate_base_template(base_template):
+                    available_templates = get_available_base_templates()
+                    console.print(
+                        f"Error: Base template '{base_template}' not found.",
+                        style="bold red",
+                    )
+                    console.print(
+                        f"Available base templates: {', '.join(available_templates)}",
+                        style="yellow",
+                    )
+                    raise click.Abort()
                 cli_overrides["base_template"] = base_template
 
-            # Load remote template config
+            # Load remote template config with CLI overrides
             source_config = load_remote_template_config(
                 template_source_path,
                 cli_overrides,
@@ -651,17 +796,26 @@ def create(
             logging.debug(f"Selected session type: {final_session_type}")
 
         # CI/CD runner selection
-        final_cicd_runner = cicd_runner
-        if not final_cicd_runner:
-            if auto_approve or agent_garden:
-                final_cicd_runner = "google_cloud_build"
-                if not agent_garden:
-                    console.print(
-                        "Info: --cicd-runner not specified. Defaulting to 'google_cloud_build' in auto-approve mode.",
-                        style="yellow",
-                    )
-            else:
-                final_cicd_runner = prompt_cicd_runner_selection()
+        # --prototype flag or agent_garden mode defaults to "skip" (minimal project)
+        if prototype or agent_garden:
+            if cicd_runner and cicd_runner != "skip":
+                console.print(
+                    f"Info: --cicd-runner '{cicd_runner}' ignored due to {'--prototype' if prototype else '--agent-garden'} flag.",
+                    style="yellow",
+                )
+            final_cicd_runner = "skip"
+            if debug:
+                logging.debug("Prototype mode: setting cicd_runner to 'skip'")
+        elif cicd_runner:
+            final_cicd_runner = cicd_runner
+        elif auto_approve:
+            final_cicd_runner = "skip"
+            console.print(
+                "Info: --cicd-runner not specified. Defaulting to 'skip' (simple mode) in auto-approve mode.",
+                style="yellow",
+            )
+        else:
+            final_cicd_runner = prompt_cicd_runner_selection()
         if debug:
             logging.debug(f"Selected CI/CD runner: {final_cicd_runner}")
 
@@ -684,7 +838,7 @@ def create(
         logging.debug("Setting up GCP...")
 
         creds_info = {}
-        if not skip_checks:
+        if not skip_checks and not google_api_key:
             # Set up GCP environment
             try:
                 creds_info = setup_gcp_environment(
@@ -728,9 +882,9 @@ def create(
         try:
             # Process template (handles both local and remote templates)
             process_template(
-                final_agent,
-                template_path,
-                project_name,
+                agent_name=final_agent,
+                template_dir=template_path,
+                project_name=project_name,
                 deployment_target=final_deployment,
                 cicd_runner=final_cicd_runner,
                 include_data_ingestion=include_data_ingestion,
@@ -744,11 +898,44 @@ def create(
                 agent_garden=agent_garden,
                 remote_spec=remote_spec,
                 alert_notification_email=alert_notification_email,
+                google_api_key=google_api_key,
             )
 
             # Replace region in all files if a different region was specified
             if region != "us-central1":
                 replace_region_in_files(project_path, region, debug=debug)
+
+            # Handle base template dependencies if override was used
+            # Skip if --skip-deps is set (used when reusing saved config)
+            # Only trigger if the base template is ACTUALLY different from the original
+            # (not just selected from interactive menu but same as default)
+            is_actual_override = (
+                base_template
+                and original_base_template
+                and base_template != original_base_template
+            )
+            if (
+                is_actual_override
+                and base_template
+                and template_source_path
+                and remote_config
+                and not skip_deps
+            ):
+                # Load base template config to get extra_dependencies
+                base_template_path = get_template_path(base_template, debug=debug)
+                base_config = load_template_config(base_template_path)
+                base_deps = base_config.get("settings", {}).get(
+                    "extra_dependencies", []
+                )
+
+                if base_deps:
+                    # Call interactive dependency addition
+                    add_base_template_dependencies_interactively(
+                        project_path,
+                        base_deps,
+                        base_template,
+                        auto_approve=auto_approve,
+                    )
         finally:
             # Clean up the temporary directory if one was created
             if temp_dir_to_clean:
@@ -783,13 +970,16 @@ def create(
                 f"   See data_ingestion/README.md for more info\n"
                 f"[bold white]=================================[/bold white]\n"
             )
-        console.print("\n> 👍 Done. Execute the following command to get started:")
-
         console.print("\n> Success! Your agent project is ready.")
         console.print(
             f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"
             "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
+        # Show enhance hint for prototype mode
+        if final_cicd_runner == "skip":
+            console.print(
+                "\n💡 Once ready for production, run: [cyan]uvx agent-starter-pack enhance[/]"
+            )
         # Determine the correct path to display based on whether output_dir was specified
         console.print("\n🚀 To get started, run the following command:")
 
@@ -934,11 +1124,10 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
         set_quota_project: Whether to set the application default quota project.
     """
     try:
-        subprocess.run(
-            ["gcloud", "config", "set", "project", project_id],
+        run_gcloud_command(
+            ["config", "set", "project", project_id],
             check=True,
             capture_output=True,
-            text=True,
         )
     except subprocess.CalledProcessError as e:
         console.print(f"\n> Error setting project to {project_id}:")
@@ -947,17 +1136,10 @@ def set_gcp_project(project_id: str, set_quota_project: bool = True) -> None:
 
     if set_quota_project:
         try:
-            subprocess.run(
-                [
-                    "gcloud",
-                    "auth",
-                    "application-default",
-                    "set-quota-project",
-                    project_id,
-                ],
+            run_gcloud_command(
+                ["auth", "application-default", "set-quota-project", project_id],
                 check=True,
                 capture_output=True,
-                text=True,
             )
         except subprocess.CalledProcessError as e:
             logging.debug(f"Setting quota project failed: {e.stderr}")
@@ -991,63 +1173,76 @@ def setup_gcp_environment(
         console.print("> Skipping verification checks", style="yellow")
         return {"project": "unknown"}
 
-    # Verify current GCP credentials
     if debug:
         logging.debug("Verifying GCP credentials...")
-    creds_info = verify_credentials()
-    # Handle credential verification and project selection
-    # Skip interactive prompts if auto_approve or agent_garden is set
+
+    context = "agent-garden" if agent_garden else None
+
+    # Interactive mode: show prompts and allow user to change credentials
     if not auto_approve and not agent_garden:
-        creds_info = _handle_credential_verification(creds_info)
-        # If user chose to skip verification, don't test Vertex AI connection
-        if creds_info.get("skip_vertex_test", False):
-            console.print("> Skipping Vertex AI connection test", style="yellow")
-        else:
-            # Test Vertex AI connection
-            _test_vertex_ai_connection(
-                creds_info["project"], region, agent_garden=agent_garden
-            )
+        creds_info = _handle_interactive_credentials(context)
     else:
-        # Even with auto_approve or agent_garden, we should still set the GCP project
-        set_gcp_project(creds_info["project"], set_quota_project=True)
-        # Test Vertex AI connection
-        _test_vertex_ai_connection(
-            creds_info["project"], region, agent_garden=agent_garden
-        )
+        # Non-interactive mode
+        console.print("> Verifying GCP credentials...")
+        creds_info = verify_credentials_and_vertex(context=context, auto_approve=True)
+        console.print(f"> ✓ Connected to project: {creds_info['project']}")
 
     return creds_info
 
 
-def _handle_credential_verification(creds_info: dict) -> dict:
-    """Handle verification of credentials and project selection.
+def _handle_interactive_credentials(context: str | None = None) -> dict:
+    """Handle interactive credential verification and project selection.
 
     Args:
-        creds_info: Current credential information
+        context: Optional context for user agent
 
     Returns:
-        Updated credential information
+        Dictionary with credential information
     """
-    # Check if running in Cloud Shell
-    if os.environ.get("CLOUD_SHELL") == "true":
-        if creds_info["project"] == "":
-            console.print(
-                "> It looks like you are running in Cloud Shell.", style="bold blue"
+    # First, get credentials to show to user
+    console.print("> Verifying GCP credentials...")
+    try:
+        creds_info = verify_credentials_and_vertex(context=context, auto_approve=False)
+    except Exception:
+        # If verification fails, we still want to show what we can and let user fix it
+        import google.auth
+
+        try:
+            credentials, project = google.auth.default()
+            account = getattr(credentials, "service_account_email", None) or getattr(
+                credentials, "_account", None
             )
+            if not account:
+                result = run_gcloud_command(
+                    ["config", "get-value", "account"],
+                    check=False,
+                    capture_output=True,
+                )
+                account = result.stdout.strip() or "Unknown"
+            creds_info = {"project": project or "Unknown", "account": account}
+        except Exception:
+            creds_info = {"project": "Unknown", "account": "Unknown"}
+
+    # Check if running in Cloud Shell with no project
+    if os.environ.get("CLOUD_SHELL") == "true" and not creds_info.get("project"):
+        console.print(
+            "> It looks like you are running in Cloud Shell.", style="bold blue"
+        )
+        console.print(
+            "> You need to set up a project ID to continue.",
+            style="bold blue",
+        )
+        new_project = Prompt.ask("\n> Enter a project ID", default=None)
+        while not new_project:
             console.print(
-                "> You need to set up a project ID to continue, but you haven't setup a project yet.",
-                style="bold blue",
+                "> Project ID cannot be empty. Please try again.", style="bold red"
             )
             new_project = Prompt.ask("\n> Enter a project ID", default=None)
-            while not new_project:
-                console.print(
-                    "> Project ID cannot be empty. Please try again.", style="bold red"
-                )
-                new_project = Prompt.ask("\n> Enter a project ID", default=None)
-            creds_info["project"] = new_project
-            set_gcp_project(creds_info["project"], set_quota_project=False)
-        return creds_info
+        set_gcp_project(new_project, set_quota_project=False)
+        # Re-verify with new project
+        return verify_credentials_and_vertex(context=context, auto_approve=False)
 
-    # Ask user if current credentials are correct or if they want to skip
+    # Show current credentials and ask user
     console.print(f"\n> You are logged in with account: '{creds_info['account']}'")
     console.print(f"> You are using project: '{creds_info['project']}'")
 
@@ -1059,78 +1254,25 @@ def _handle_credential_verification(creds_info: dict) -> dict:
     ).lower()
 
     if response == "skip":
-        console.print("> Skipping credential verification", style="yellow")
-        creds_info["skip_vertex_test"] = True
+        console.print("> Skipping verification", style="yellow")
         return creds_info
 
-    change_creds = response == "edit"
-
-    if change_creds:
+    if response == "edit":
         # Handle credential change
         console.print("\n> Initiating new login...")
-        subprocess.run(["gcloud", "auth", "login", "--update-adc"], check=True)
-        console.print("> Login successful. Verifying new credentials...")
+        try:
+            run_gcloud_command(["auth", "login", "--update-adc"], check=True)
+            console.print("> Login successful.")
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            console.print(f"> ⚠️  {e}", style="yellow")
+            console.print("> Continuing with template processing...")
 
-        # Re-verify credentials after login
-        creds_info = verify_credentials()
+    # Verify credentials and Vertex AI (with interactive API enablement prompt)
+    console.print("> Testing Vertex AI connection...")
+    creds_info = verify_credentials_and_vertex(context=context, auto_approve=False)
+    console.print(f"> ✓ Connected to project: {creds_info['project']}")
 
-        # Prompt for project change
-        console.print(
-            f"\n> You are now logged in with account: '{creds_info['account']}'."
-        )
-        console.print(f"> Current project is: '{creds_info['project']}'.")
-        choices = ["y", "skip", "edit"]
-        response = Prompt.ask(
-            "> Do you want to continue? (The CLI will verify Vertex AI access in this project)",
-            choices=choices,
-            default="y",
-        ).lower()
-
-        if response == "skip":
-            console.print("> Skipping project verification", style="yellow")
-            creds_info["skip_vertex_test"] = True
-            return creds_info
-
-        if response == "edit":
-            # Prompt for new project ID
-            new_project = Prompt.ask("\n> Enter the new project ID")
-            creds_info["project"] = new_project
-
-    set_gcp_project(creds_info["project"], set_quota_project=True)
     return creds_info
-
-
-def _test_vertex_ai_connection(
-    project_id: str, region: str, auto_approve: bool = False, agent_garden: bool = False
-) -> None:
-    """Test connection to Vertex AI.
-
-    Args:
-        project_id: GCP project ID
-        region: GCP region for deployment
-        auto_approve: Whether to auto-approve API enablement
-        agent_garden: Whether this deployment is from Agent Garden
-    """
-    console.print("> Testing GCP and Vertex AI Connection...")
-    try:
-        context = "agent-garden" if agent_garden else None
-        verify_vertex_connection(
-            project_id=project_id,
-            location=region,
-            auto_approve=auto_approve,
-            context=context,
-        )
-        console.print(
-            f"> ✓ Successfully verified connection to Vertex AI in project {project_id}"
-        )
-    except Exception as e:
-        console.print(
-            f"> ✗ Failed to connect to Vertex AI: {e!s}\n"
-            f"> Please check your authentication settings and permissions. "
-            f"Visit https://cloud.google.com/vertex-ai/docs/authentication for help.",
-            style="bold red",
-        )
-        raise
 
 
 def replace_region_in_files(

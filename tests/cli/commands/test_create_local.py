@@ -72,7 +72,7 @@ def test_create_with_local_path(
     call_args, call_kwargs = mock_process_template.call_args
 
     # The template path should now be inside a temporary directory
-    actual_template_path = call_args[1]
+    actual_template_path = call_kwargs["template_dir"]
     assert "asp_local_template_" in str(actual_template_path)
     assert actual_template_path.name == ".template"
 
@@ -276,6 +276,51 @@ version = "0.1.0"
     # Other files should copy normally
     assert other_file.exists()
     assert other_file.read_text() == "# Other file content"
+
+
+@patch("agent_starter_pack.cli.commands.create.setup_gcp_environment")
+@patch("agent_starter_pack.cli.commands.create.replace_region_in_files")
+def test_create_with_google_api_key(
+    mock_replace_region: Mock,
+    mock_setup_gcp: Mock,
+    tmp_path: pathlib.Path,
+) -> None:
+    """Test the create command with --google-api-key generates .env and skips GCP init."""
+    runner = CliRunner()
+
+    result = runner.invoke(
+        create,
+        [
+            "my-test-project",
+            "--google-api-key",
+            "test-api-key-12345",
+            "--auto-approve",
+            "--deployment-target",
+            "agent_engine",
+            "--output-dir",
+            str(tmp_path),
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+
+    # GCP setup should NOT be called when using google-api-key
+    mock_setup_gcp.assert_not_called()
+
+    # Verify .env file was created with the API key
+    env_file = tmp_path / "my-test-project" / "app" / ".env"
+    assert env_file.exists(), ".env file should be created"
+    env_content = env_file.read_text()
+    assert "GOOGLE_API_KEY=test-api-key-12345" in env_content
+
+    # Verify agent.py does NOT contain GCP initialization code
+    agent_file = tmp_path / "my-test-project" / "app" / "agent.py"
+    assert agent_file.exists(), "agent.py should exist"
+    agent_content = agent_file.read_text()
+    assert "google.auth.default" not in agent_content
+    assert "GOOGLE_GENAI_USE_VERTEXAI" not in agent_content
+    assert "GOOGLE_CLOUD_PROJECT" not in agent_content
 
 
 def test_readme_and_pyproject_conflict_handling_remote_template_mode(

@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 
+import backoff
 from data_ingestion_pipeline.pipeline import pipeline
 from google.cloud import aiplatform
 from kfp import compiler
@@ -136,6 +137,22 @@ def parse_args() -> argparse.Namespace:
     return parsed_args
 
 
+@backoff.on_exception(
+    backoff.expo,
+    Exception,
+    max_tries=3,
+    max_time=3600,
+    on_backoff=lambda details: logging.warning(
+        f"Pipeline attempt {details['tries']} failed, retrying in {details['wait']:.1f}s..."
+    ),
+)
+def submit_and_wait_pipeline(pipeline_job_params: dict, service_account: str) -> None:
+    """Submit pipeline job and wait for completion with retry logic."""
+    job = aiplatform.PipelineJob(**pipeline_job_params)
+    job.submit(service_account=service_account)
+    job.wait()
+
+
 if __name__ == "__main__":
     args = parse_args()
 
@@ -182,17 +199,14 @@ if __name__ == "__main__":
     )
 {%- endif %}
 
-    # Create pipeline job instance
-    job = aiplatform.PipelineJob(**pipeline_job_params)
-
     if not args.schedule_only:
         logging.info("Running pipeline and waiting for completion...")
-        job.submit(service_account=args.service_account)
-        job.wait()
+        submit_and_wait_pipeline(pipeline_job_params, args.service_account)
         logging.info("Pipeline completed!")
 
     if args.cron_schedule and args.schedule_only:
-        # No need to create new job instance since we already have one with the same params
+        # Create pipeline job instance for scheduling
+        job = aiplatform.PipelineJob(**pipeline_job_params)
         pipeline_job_schedule = aiplatform.PipelineJobSchedule(
             pipeline_job=job,
             display_name=f"{args.pipeline_name} Weekly Ingestion Job",

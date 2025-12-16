@@ -70,13 +70,23 @@ def validate_makefile_usability(
         if not makefile_path.exists():
             raise FileNotFoundError(f"Makefile not found at {makefile_path}")
 
-        # Check for unrendered placeholders
+        # Check for unrendered placeholders and replace uvx with uv run for local testing
         with open(makefile_path, encoding="utf-8") as f:
             content = f.read()
             if "{{" in content or "}}" in content:
                 raise ValueError(
                     f"Found unrendered placeholders in Makefile for {agent} with {deployment_target}"
                 )
+
+        # Replace uvx agent-starter-pack@<version> with uv run agent-starter-pack
+        # This allows testing with the local development version instead of PyPI
+        content = re.sub(
+            r"uvx agent-starter-pack@[\d.]+", "uv run agent-starter-pack", content
+        )
+
+        # Write back the modified Makefile
+        with open(makefile_path, "w", encoding="utf-8") as f:
+            f.write(content)
 
         makefile_targets = []
         with open(makefile_path, encoding="utf-8") as f:
@@ -183,9 +193,9 @@ def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
         ),
         # adk_live - cloud_run only
         ("adk_live", "cloud_run", None),
-        # langgraph_base_react - both deployment targets
-        ("langgraph_base_react", "agent_engine", None),
-        ("langgraph_base_react", "cloud_run", ["--session-type", "in_memory"]),
+        # langgraph_base - both deployment targets
+        ("langgraph_base", "agent_engine", None),
+        ("langgraph_base", "cloud_run", ["--session-type", "in_memory"]),
     ]
 
 

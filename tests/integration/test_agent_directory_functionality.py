@@ -71,7 +71,7 @@ def greet(name: str = "World") -> str:
 
 root_agent = Agent(
     name="test_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3-pro-preview",
     instruction="You are a helpful assistant.",
     tools=[greet],
 )
@@ -131,8 +131,9 @@ root_agent = Agent(
 
                 # Verify the content is correct
                 agent_content_generated = agent_py.read_text()
-                assert "my_chatbot" not in agent_content_generated, (
-                    "Agent content should not contain hardcoded directory references"
+                # The App name should match the agent directory
+                assert 'name="my_chatbot"' in agent_content_generated, (
+                    "App name should match the custom agent directory"
                 )
 
                 # Verify pyproject.toml uses custom directory
@@ -348,6 +349,84 @@ agent_directory = "bot"
 
             finally:
                 os.chdir(original_cwd)
+
+    @pytest.mark.parametrize("deployment_target", ["cloud_run", "agent_engine"])
+    def test_enhance_with_yaml_config_agent(self, deployment_target: str) -> None:
+        """Test that enhance generates working agent.py shim for root_agent.yaml."""
+        output_dir = pathlib.Path("target")
+        os.makedirs(output_dir, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%H%M%S%f")[:8]
+        project_name = f"yaml-{deployment_target[:3]}-{timestamp}"
+        project_path = output_dir / project_name
+
+        # Create project directory with YAML config agent
+        # Use "my_agent" to avoid conflict with tests/integration/test_agent.py
+        project_path.mkdir(parents=True)
+        agent_dir = project_path / "my_agent"
+        agent_dir.mkdir()
+
+        # Create root_agent.yaml
+        yaml_content = """name: my_agent
+model: gemini-2.5-flash
+instruction: You are a helpful assistant.
+"""
+        (agent_dir / "root_agent.yaml").write_text(yaml_content)
+
+        # Run enhance command with YAML agent directory
+        cmd = [
+            "python",
+            "-m",
+            "agent_starter_pack.cli.main",
+            "enhance",
+            ".",
+            "--agent-directory",
+            "my_agent",
+            "--base-template",
+            "adk_base",
+            "--deployment-target",
+            deployment_target,
+            "--auto-approve",
+            "--skip-checks",
+        ]
+
+        run_command(cmd, cwd=project_path, message="Running enhance command")
+
+        # Verify critical files were created
+        assert (agent_dir / "__init__.py").exists(), (
+            f"__init__.py not found in {agent_dir}"
+        )
+        assert (agent_dir / "agent.py").exists(), f"agent.py not found in {agent_dir}"
+
+        # Install dependencies
+        run_command(
+            ["uv", "sync", "--dev"],
+            project_path,
+            "Installing dependencies",
+            stream_output=False,
+        )
+
+        # Run integration tests (excluding test_agent.py) to verify app works
+        test_env = os.environ.copy()
+        test_env["INTEGRATION_TEST"] = "TRUE"
+
+        run_command(
+            [
+                "uv",
+                "run",
+                "pytest",
+                "tests/integration",
+                "--ignore=tests/integration/test_agent.py",
+                "-v",
+            ],
+            project_path,
+            "Running integration tests",
+            env=test_env,
+        )
+
+        console.print(
+            f"[bold green]✓[/] YAML config agent test passed for {deployment_target}"
+        )
 
     @pytest.mark.parametrize("deployment_target", ["cloud_run", "agent_engine"])
     def test_agent_directory_in_different_deployment_targets(

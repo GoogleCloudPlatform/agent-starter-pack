@@ -12,30 +12,40 @@ This project is organized as follows:
 ├── {{cookiecutter.agent_directory}}/                 # Core application code
 │   ├── agent.py         # Main agent logic
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-│   ├── server.py        # FastAPI Backend server
+│   ├── fast_api_app.py  # FastAPI Backend server
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 │   ├── agent_engine_app.py # Agent Engine application logic
 {%- endif %}
-│   └── utils/           # Utility functions and helpers
+│   └── app_utils/       # App utilities and helpers
+{%- if cookiecutter.is_a2a and cookiecutter.agent_name == 'langgraph_base' %}
+│       ├── executor/    # A2A protocol executor implementation
+│       └── converters/  # Message converters for A2A protocol
+{%- endif %}
 {%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
 ├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build
 {%- elif cookiecutter.cicd_runner == 'github_actions' %}
 ├── .github/             # CI/CD pipeline configurations for GitHub Actions
 {%- endif %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 ├── deployment/          # Infrastructure and deployment scripts
 ├── notebooks/           # Jupyter notebooks for prototyping and evaluation
+{%- endif %}
 ├── tests/               # Unit, integration, and load tests
 ├── Makefile             # Makefile for common commands
 ├── GEMINI.md            # AI-assisted development guide
 └── pyproject.toml       # Project dependencies and configuration
 ```
 
+> 💡 **Tip:** Use [Gemini CLI](https://github.com/google-gemini/gemini-cli) for AI-assisted development - project context is pre-configured in `GEMINI.md`.
+
 ## Requirements
 
 Before you begin, ensure you have:
 - **uv**: Python package manager (used for all dependency management in this project) - [Install](https://docs.astral.sh/uv/getting-started/installation/) ([add packages](https://docs.astral.sh/uv/concepts/dependencies/) with `uv add <package>`)
 - **Google Cloud SDK**: For GCP services - [Install](https://cloud.google.com/sdk/docs/install)
+{%- if cookiecutter.cicd_runner != 'skip' %}
 - **Terraform**: For infrastructure deployment - [Install](https://developer.hashicorp.com/terraform/downloads)
+{%- endif %}
 - **make**: Build automation tool - [Install](https://www.gnu.org/software/make/) (pre-installed on most Unix-based systems)
 
 
@@ -46,6 +56,12 @@ Install required packages and launch the local development environment:
 ```bash
 make install && make playground
 ```
+
+{%- if cookiecutter.is_adk %}
+> **📊 Observability Note:** Agent telemetry (Cloud Trace) is always enabled. Prompt-response logging (GCS, BigQuery, Cloud Logging) is **disabled** locally, **enabled by default** in deployed environments (metadata only - no prompts/responses). See [Monitoring and Observability](#monitoring-and-observability) for details.
+{%- else %}
+> **📊 Observability Note:** Agent telemetry (Cloud Trace) is always enabled. Prompt-response logging is not available for LangGraph agents due to SDK limitations with streaming.
+{%- endif %}
 
 ## Commands
 
@@ -59,26 +75,101 @@ make install && make playground
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 | `make playground`    | Launch local development environment with backend and frontend{%- if cookiecutter.is_adk %} - leveraging `adk web` command. {%- endif %}|
-| `make backend`       | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy) |
-| `make local-backend` | Launch local development server |
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-{%- if cookiecutter.is_adk_live %}
-| `make ui`       | Launch Agent Playground front-end only |
-{%- endif %}
-{%- endif %}
+| `make deploy`        | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy, `PORT=8080` to specify container port) |
+| `make local-backend` | Launch local development server with hot-reload |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-| `make playground`    | Launch Streamlit interface for testing agent locally and remotely |
-| `make backend`       | Deploy agent to Agent Engine |
+| `make playground`    | Launch local development environment for testing agent |
+| `make deploy`        | Deploy agent to Agent Engine |
+{%- if cookiecutter.is_adk_live %}
+| `make local-backend` | Launch local development server with hot-reload |
+| `make ui`            | Start the frontend UI separately for development (requires backend running separately) |
+| `make playground-dev` | Launch dev playground with both frontend and backend hot-reload |
+| `make playground-remote` | Connect to remote deployed agent with local frontend |
+| `make build-frontend` | Build the frontend for production |
+{%- endif %}
+{%- if cookiecutter.is_adk or cookiecutter.is_a2a %}
+| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
+{%- endif -%}
+{%- endif -%}
+{%- if cookiecutter.is_a2a %}
+| `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
+{%- if cookiecutter.cicd_runner != 'skip' %}
 | `make setup-dev-env` | Set up development environment resources using Terraform                         |
+{%- endif %}
 {%- if cookiecutter.data_ingestion %}
 | `make data-ingestion`| Run data ingestion pipeline in the Dev environment                                           |
 {%- endif %}
-| `uv run jupyter lab` | Launch Jupyter notebook                                                                     |
 
 For full command options and usage, refer to the [Makefile](Makefile).
+
+{%- if cookiecutter.is_a2a %}
+
+## Using the A2A Inspector
+
+This agent implements the [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/), enabling interoperability with agents across different frameworks and languages.
+
+The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) provides the following core features:
+- 🔍 View agent card and capabilities
+- ✅ Validate A2A specification compliance
+- 💬 Test communication with live chat interface
+- 🐛 Debug with the raw message console
+
+### Local Testing
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+
+1. Start your agent:
+   ```bash
+   make local-backend
+   ```
+
+2. In a separate terminal, launch the A2A Protocol Inspector:
+   ```bash
+   make inspector
+   ```
+
+3. Open http://localhost:5001 and connect to `http://localhost:8000`
+{%- else %}
+
+> **Note:** For Agent Engine deployments, local testing with A2A endpoints requires deployment first, as `make playground` uses the ADK web interface. For local development, use `make playground`. To test A2A protocol compliance, follow the Remote Testing instructions below.
+{%- endif %}
+
+### Remote Testing
+
+1. Deploy your agent:
+   ```bash
+   make deploy
+   ```
+
+2. Launch the inspector:
+   ```bash
+   make inspector
+   ```
+
+3. Get an authentication token:
+   ```bash
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+   gcloud auth print-identity-token
+{%- else %}
+   gcloud auth print-access-token
+{%- endif %}
+   ```
+
+4. In the inspector UI at http://localhost:5001:
+   - Add an HTTP header with name: `Authorization`
+   - Set the value to: `Bearer <your-token-from-step-3>`
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
+   - Connect to your deployed Cloud Run URL
+{%- else %}
+   - Connect to your Agent Engine URL using this format:
+     ```
+     https://us-central1-aiplatform.googleapis.com/v1beta1/projects/{PROJECT_ID}/locations/{REGION}/reasoningEngines/{ENGINE_ID}/a2a/v1/card
+     ```
+     Find your `PROJECT_ID`, `REGION`, and `ENGINE_ID` in the `latest_deployment_metadata.json` file created after deployment.
+{%- endif %}
+{%- endif %}
 
 {% if cookiecutter.is_adk_live %}
 ## Usage
@@ -120,7 +211,7 @@ Here’s the recommended workflow for local development:
     ```bash
     make ui
     ```
-    This launches the Streamlit application, which connects to the backend server at `http://localhost:8000`.
+    This launches the frontend application, which connects to the backend server at `http://localhost:8000`.
     </details>
     <br>
 
@@ -137,16 +228,23 @@ Here’s the recommended workflow for local development:
 
 This template follows a "bring your own agent" approach - you focus on your business logic, and the template handles everything else (UI, infrastructure, deployment, monitoring).
 
+{%- if cookiecutter.cicd_runner != 'skip' %}
 1. **Prototype:** Build your Generative AI Agent using the intro notebooks in `notebooks/` for guidance. Use Vertex AI Evaluation to assess performance.
 2. **Integrate:** Import your agent into the app by editing `{{cookiecutter.agent_directory}}/agent.py`.
-3. **Test:** Explore your agent functionality using the Streamlit playground with `make playground`. The playground offers features like chat history, user feedback, and various input types, and automatically reloads your agent on code changes.
+3. **Test:** Explore your agent functionality using the local playground with `make playground`. The playground automatically reloads your agent on code changes.
 4. **Deploy:** Set up and initiate the CI/CD pipelines, customizing tests as necessary. Refer to the [deployment section](#deployment) for comprehensive instructions. For streamlined infrastructure deployment, simply run `uvx agent-starter-pack setup-cicd`. Check out the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
-5. **Monitor:** Track performance and gather insights using Cloud Logging, Tracing, and the Looker Studio dashboard to iterate on your application.
+5. **Monitor:** Track performance and gather insights using BigQuery telemetry data, Cloud Logging, and Cloud Trace to iterate on your application.
+{%- else %}
+1. **Develop:** Edit your agent logic in `{{cookiecutter.agent_directory}}/agent.py`.
+2. **Test:** Explore your agent functionality using the local playground with `make playground`. The playground automatically reloads your agent on code changes.
+3. **Enhance:** When ready for production, run `uvx agent-starter-pack enhance` to add CI/CD pipelines, Terraform infrastructure, and evaluation notebooks.
+{%- endif %}
 
 The project includes a `GEMINI.md` file that provides context for AI tools like Gemini CLI when asking questions about your template.
 {% endif %}
 
 ## Deployment
+{%- if cookiecutter.cicd_runner != 'skip' %}
 
 > **Note:** For a streamlined one-command deployment of the entire CI/CD pipeline and infrastructure using Terraform, you can use the [`agent-starter-pack setup-cicd` CLI command](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd.html). Currently supports GitHub with both Google Cloud Build and GitHub Actions as CI/CD runners.
 
@@ -156,10 +254,10 @@ You can test deployment towards a Dev Environment using the following command:
 
 ```bash
 gcloud config set project <your-dev-project-id>
-make backend
+make deploy
 ```
 {% if cookiecutter.is_adk_live %}
-**Note:** For secure access to your deployed backend, consider using Identity-Aware Proxy (IAP) by running `make backend IAP=true`.
+**Note:** For secure access to your deployed backend, consider using Identity-Aware Proxy (IAP) by running `make deploy IAP=true`.
 {%- endif %}
 
 The repository includes a Terraform configuration for the setup of the Dev Google Cloud project.
@@ -168,11 +266,50 @@ See [deployment/README.md](deployment/README.md) for instructions.
 ### Production Deployment
 
 The repository includes a Terraform configuration for the setup of a production Google Cloud project. Refer to [deployment/README.md](deployment/README.md) for detailed instructions on how to deploy the infrastructure and application.
+{%- else %}
 
-{% if not cookiecutter.is_adk_live %}
-## Monitoring and Observability
-> You can use [this Looker Studio dashboard]({%- if cookiecutter.is_adk %}https://lookerstudio.google.com/reporting/46b35167-b38b-4e44-bd37-701ef4307418/page/tEnnC{%- else %}https://lookerstudio.google.com/c/reporting/fa742264-4b4b-4c56-81e6-a667dd0f853f/page/tEnnC{%- endif %}
-) template for visualizing events being logged in BigQuery. See the "Setup Instructions" tab to getting started.
+You can deploy your agent to a Dev Environment using the following command:
 
-The application uses OpenTelemetry for comprehensive observability with all events being sent to Google Cloud Trace and Logging for monitoring and to BigQuery for long term storage. 
+```bash
+gcloud config set project <your-dev-project-id>
+make deploy
+```
+{% if cookiecutter.is_adk_live %}
+**Note:** For secure access to your deployed backend, consider using Identity-Aware Proxy (IAP) by running `make deploy IAP=true`.
 {%- endif %}
+
+When ready for production deployment with CI/CD pipelines and Terraform infrastructure, run `uvx agent-starter-pack enhance` to add these capabilities.
+{%- endif %}
+
+## Monitoring and Observability
+
+The application provides two levels of observability:
+
+**1. Agent Telemetry Events (Always Enabled)**
+- OpenTelemetry traces and spans exported to **Cloud Trace**
+- Tracks agent execution, latency, and system metrics
+
+{%- if cookiecutter.is_adk %}
+
+**2. Prompt-Response Logging (Configurable)**
+- GenAI instrumentation captures LLM interactions (tokens, model, timing)
+- Exported to **Google Cloud Storage** (JSONL), **BigQuery** (external tables), and **Cloud Logging** (dedicated bucket)
+
+| Environment | Prompt-Response Logging |
+|-------------|-------------------------|
+| **Local Development** (`make playground`) | ❌ Disabled by default |
+{%- if cookiecutter.cicd_runner != 'skip' %}
+| **Deployed Environments** (via Terraform) | ✅ **Enabled by default** (privacy-preserving: metadata only, no prompts/responses) |
+{%- endif %}
+
+**To enable locally:** Set `LOGS_BUCKET_NAME` and `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=NO_CONTENT`.
+{%- if cookiecutter.cicd_runner != 'skip' %}
+
+**To disable in deployments:** Edit Terraform config to set `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false`.
+{%- endif %}
+{%- else %}
+
+**Note:** Prompt-response logging is not available for LangGraph agents due to SDK limitations with streaming responses.
+{%- endif %}
+
+See the [observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html) for detailed instructions, example queries, and visualization options.

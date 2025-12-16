@@ -381,6 +381,11 @@ export class MultimodalLiveClient extends EventEmitter<MultimodalLiveClientEvent
         this.log("server.interrupted", "ADK interrupted");
       }
     } else {
+      // Ignore webpack dev server HMR messages
+      const hmrTypes = ["liveReload", "reconnect", "overlay", "hash", "ok", "warnings", "errors", "invalid", "still-ok", "hot"];
+      if (typeof (response as any).type === "string" && hmrTypes.includes((response as any).type)) {
+        return;
+      }
       console.log("received unmatched message", response);
       this.log("received unmatched message", response);
     }

@@ -27,6 +27,9 @@ import nest_asyncio
 import vertexai
 {%- if cookiecutter.is_a2a %}
 from a2a.types import AgentCapabilities, AgentCard, TransportProtocol
+{%- endif %}
+from dotenv import load_dotenv
+{%- if cookiecutter.is_a2a %}
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
 from google.adk.apps.app import App
@@ -53,6 +56,9 @@ from {{cookiecutter.agent_directory}}.agent import app as adk_app
 {%- endif %}
 from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+# Load environment variables from .env file at runtime
+load_dotenv()
 {%- if cookiecutter.is_a2a %}
 
 
@@ -182,6 +188,7 @@ from typing import Any
 import nest_asyncio
 import vertexai
 from a2a.types import AgentCapabilities, AgentCard, AgentSkill, TransportProtocol
+from dotenv import load_dotenv
 from google.cloud import logging as google_cloud_logging
 from vertexai.preview.reasoning_engines import A2aAgent
 
@@ -191,6 +198,9 @@ from {{cookiecutter.agent_directory}}.app_utils.executor.a2a_agent_executor impo
 )
 from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
 from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+# Load environment variables from .env file at runtime
+load_dotenv()
 
 # Capture the location before vertexai.init() might change it
 gemini_location = os.environ.get("GOOGLE_CLOUD_LOCATION")

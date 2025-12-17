@@ -1,6 +1,6 @@
 [project]
 name = "agent-starter-pack"
-version = "0.28.3"
+version = "0.29.0"
 description = "CLI to bootstrap production-ready Google Cloud GenAI agent projects from templates."
 authors = [
     { name = "Google LLC", email = "agent-starter-pack@google.com" },

@@ -31,7 +31,7 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 {%- endif %}
 
-LLM = "gemini-3-pro-preview"
+LLM = "gemini-3-flash-preview"
 
 llm = ChatGoogleGenerativeAI(model=LLM, temperature=0)
 

@@ -257,7 +257,7 @@ def get_current_time(city: str) -> dict:
 
 my_first_llm_agent = Agent(
     name="time_teller_agent",
-    model="gemini-3-pro-preview", # Essential: The LLM powering the agent
+    model="gemini-3-flash-preview", # Essential: The LLM powering the agent
     instruction="You are a helpful assistant that tells the current time in cities. Use the 'get_current_time' tool for this purpose.",
     description="Tells the current time in a specified city.", # Crucial for multi-agent delegation
     tools=[get_current_time] # List of callable functions/tool instances
@@ -331,7 +331,7 @@ This is the most reliable way to make an LLM produce predictable, parseable JSON
     ```python
     research_evaluator = LlmAgent(
         name="research_evaluator",
-        model="gemini-2.5-pro",
+        model="gemini-3-pro-preview",
         instruction="""You are a meticulous quality assurance analyst. Evaluate the research findings in 'section_research_findings' and be very critical.
         If you find significant gaps, assign a grade of 'fail', write a detailed comment, and generate 5-7 specific follow-up queries.
         If the research is thorough, grade it 'pass'.
@@ -357,7 +357,7 @@ This is the most reliable way to make an LLM produce predictable, parseable JSON
         from google.genai.types import ThinkingConfig
 
         agent = Agent(
-            model="gemini-3-pro-preview",
+            model="gemini-3-flash-preview",
             planner=BuiltInPlanner(
                 thinking_config=ThinkingConfig(include_thoughts=True)
             ),
@@ -372,7 +372,7 @@ This is the most reliable way to make an LLM produce predictable, parseable JSON
         from google.adk.code_executors import BuiltInCodeExecutor
         agent = Agent(
             name="code_agent",
-            model="gemini-3-pro-preview",
+            model="gemini-3-flash-preview",
             instruction="Write and execute Python code to solve math problems.",
             code_executor=BuiltInCodeExecutor() # Corrected from a list to an instance
         )
@@ -400,7 +400,7 @@ from google.adk.tools import google_search
 
 
 plan_generator = LlmAgent(
-    model="gemini-3-pro-preview",
+    model="gemini-3-flash-preview",
     name="plan_generator",
     description="Generates a 4-5 line action-oriented research plan.",
     instruction=f"""
@@ -422,7 +422,7 @@ plan_generator = LlmAgent(
 This agent's `instruction` relies on data placed in `session.state` by previous agents.
 ```python
 report_composer = LlmAgent(
-    model="gemini-2.5-pro",
+    model="gemini-3-pro-preview",
     name="report_composer_with_citations",
     include_contents="none", # History not needed; all data is injected.
     description="Transforms research data and a markdown outline into a final, cited report.",
@@ -492,7 +492,7 @@ from google.adk.agents import SequentialAgent, Agent
 # Agent 1: Summarizes a document and saves to state
 summarizer = Agent(
     name="DocumentSummarizer",
-    model="gemini-3-pro-preview",
+    model="gemini-3-flash-preview",
     instruction="Summarize the provided document in 3 sentences.",
     output_key="document_summary" # Output saved to session.state['document_summary']
 )
@@ -500,7 +500,7 @@ summarizer = Agent(
 # Agent 2: Generates questions based on the summary from state
 question_generator = Agent(
     name="QuestionGenerator",
-    model="gemini-3-pro-preview",
+    model="gemini-3-flash-preview",
     instruction="Generate 3 comprehension questions based on this summary: {document_summary}",
     # 'document_summary' is dynamically injected from session.state
 )
@@ -527,7 +527,7 @@ fetch_social_sentiment = Agent(name="SentimentAnalyzer", ..., output_key="sentim
 # Agent to merge results (runs after ParallelAgent, usually in a SequentialAgent)
 merger_agent = Agent(
     name="ReportGenerator",
-    model="gemini-3-pro-preview",
+    model="gemini-3-flash-preview",
     instruction="Combine stock data: {stock_data}, news: {news_data}, and sentiment: {sentiment_data} into a market report."
 )
 
@@ -695,7 +695,7 @@ research_pipeline = SequentialAgent(
 # The top-level agent that interacts with the user.
 interactive_planner_agent = LlmAgent(
     name="interactive_planner_agent",
-    model="gemini-3-pro-preview",
+    model="gemini-3-flash-preview",
     description="The primary research assistant. It collaborates with the user to create a research plan, and then executes it upon approval.",
     instruction="""
     You are a research planning assistant. Your workflow is:
@@ -812,12 +812,12 @@ ADK's model flexibility allows integrating various LLMs for different needs.
 *   **AI Studio (Easy Start)**:
     *   Set `GOOGLE_API_KEY="YOUR_API_KEY"` (environment variable).
     *   Set `GOOGLE_GENAI_USE_VERTEXAI="False"`.
-    *   Model strings: `"gemini-3-pro-preview"`, `"gemini-2.5-pro"`, etc.
+    *   Model strings: `"gemini-3-flash-preview"`, `"gemini-3-pro-preview"`, etc.
 *   **Vertex AI (Production)**:
     *   Authenticate via `gcloud auth application-default login` (recommended).
     *   Set `GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"`, `GOOGLE_CLOUD_LOCATION="your-region"` (environment variables).
     *   Set `GOOGLE_GENAI_USE_VERTEXAI="True"`.
-    *   Model strings: `"gemini-3-pro-preview"`, `"gemini-2.5-pro"`, or full Vertex AI endpoint resource names for specific deployments.
+    *   Model strings: `"gemini-3-flash-preview"`, `"gemini-3-pro-preview"`, or full Vertex AI endpoint resource names for specific deployments.
 
 ### 6.2 Other Cloud & Proprietary Models via LiteLLM
 

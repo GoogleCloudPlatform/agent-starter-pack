@@ -27,7 +27,7 @@ from {{cookiecutter.agent_directory}}.templates import format_docs
 EMBEDDING_MODEL = "text-embedding-005"
 LLM_LOCATION = "global"
 LOCATION = "us-central1"
-LLM = "gemini-3-pro-preview"
+LLM = "gemini-3-flash-preview"
 
 credentials, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
@@ -112,7 +112,7 @@ If you already know the answer to a question, you can respond directly without u
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-2.0-flash",
+    model="gemini-3-flash-preview",
     instruction=instruction,
     tools=[retrieve_docs],
 )

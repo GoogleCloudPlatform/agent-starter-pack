@@ -235,11 +235,10 @@ Respond with a JSON object containing:
                 }
 
                 response = self.client.models.generate_content(
-                    model="gemini-3-flash-preview",
+                    model="gemini-3-pro-preview",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         temperature=0,
-                        max_output_tokens=65000,
                         response_mime_type="application/json",
                         response_schema=comparison_schema,
                     ),

@@ -28,7 +28,9 @@ This project is organized as follows:
 {%- endif %}
 {%- if cookiecutter.cicd_runner != 'skip' %}
 ├── deployment/          # Infrastructure and deployment scripts
+{%- if cookiecutter.agent_name != 'adk_live' %}
 ├── notebooks/           # Jupyter notebooks for prototyping and evaluation
+{%- endif %}
 {%- endif %}
 ├── tests/               # Unit, integration, and load tests
 ├── Makefile             # Makefile for common commands

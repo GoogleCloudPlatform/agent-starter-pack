@@ -235,7 +235,7 @@ Respond with a JSON object containing:
                 }
 
                 response = self.client.models.generate_content(
-                    model="gemini-3-pro-preview",
+                    model="gemini-3-flash-preview",
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         temperature=0,

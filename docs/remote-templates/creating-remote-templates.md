@@ -79,7 +79,7 @@ def get_greeting(name: str = "World") -> str:
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-3-pro-preview",
+    model="gemini-3-flash-preview",
     instruction="You are a helpful AI assistant. Use your tools to answer questions.",
     tools=[get_greeting],
 )

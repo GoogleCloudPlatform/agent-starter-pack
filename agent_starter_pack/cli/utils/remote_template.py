@@ -251,6 +251,8 @@ def fetch_remote_template(
     # Attempt Git Clone
     try:
         clone_url = spec.repo_url
+
+        # Build clone command with --single-branch (optimized for branches)
         clone_cmd = [
             "git",
             "clone",
@@ -262,19 +264,52 @@ def fetch_remote_template(
             clone_url,
             str(repo_path),
         ]
+
         logging.debug(
             f"Attempting to clone remote template with Git: {' '.join(clone_cmd)}"
         )
         # GIT_TERMINAL_PROMPT=0 prevents git from prompting for credentials
-        subprocess.run(
+        result = subprocess.run(
             clone_cmd,
             capture_output=True,
             text=True,
-            check=True,
             encoding="utf-8",
             env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
         )
-        logging.debug("Git clone successful.")
+
+        # If clone with --single-branch fails, retry without it (for tags)
+        if result.returncode != 0:
+            # Check if the error is related to branch not found (indicates it's likely a tag)
+            if "Remote branch" in result.stderr or "not found" in result.stderr:
+                logging.debug(
+                    f"Clone with --single-branch failed, retrying without it (git_ref '{spec.git_ref}' is likely a tag)"
+                )
+                clone_cmd_without_single_branch = [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "--branch",
+                    spec.git_ref,
+                    clone_url,
+                    str(repo_path),
+                ]
+                subprocess.run(
+                    clone_cmd_without_single_branch,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    encoding="utf-8",
+                    env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+                )
+                logging.debug("Git clone successful (without --single-branch).")
+            else:
+                # Different error, raise it
+                raise subprocess.CalledProcessError(
+                    result.returncode, clone_cmd, result.stdout, result.stderr
+                )
+        else:
+            logging.debug("Git clone successful.")
     except subprocess.CalledProcessError as e:
         shutil.rmtree(temp_path, ignore_errors=True)
         raise RuntimeError(f"Git clone failed: {e.stderr.strip()}") from e

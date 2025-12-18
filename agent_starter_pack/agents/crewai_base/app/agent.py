@@ -18,7 +18,7 @@ import os
 from datetime import datetime
 
 import google.auth
-from crewai import Agent, Crew, LLM, Process, Task
+from crewai import LLM, Agent, Crew, Process, Task
 from crewai.tools import tool
 from dotenv import load_dotenv
 
@@ -54,7 +54,9 @@ def get_current_time(timezone: str = "UTC") -> str:
         The current time as a formatted string.
     """
     current_time = datetime.now()
-    return f"The current time is {current_time.strftime('%Y-%m-%d %I:%M %p')} {timezone}."
+    return (
+        f"The current time is {current_time.strftime('%Y-%m-%d %I:%M %p')} {timezone}."
+    )
 
 
 @tool("Web Search")

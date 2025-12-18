@@ -256,6 +256,7 @@ def fetch_remote_template(
             "clone",
             "--depth",
             "1",
+            "--single-branch",
             "--branch",
             spec.git_ref,
             clone_url,

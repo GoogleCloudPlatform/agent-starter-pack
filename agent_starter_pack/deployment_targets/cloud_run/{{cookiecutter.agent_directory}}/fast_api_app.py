@@ -464,7 +464,7 @@ app: FastAPI = get_fast_api_app(
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
-{% else %}
+{% elif cookiecutter.is_a2a %}
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -541,6 +541,49 @@ app = FastAPI(
 
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
+{% else %}
+import logging
+
+from fastapi import FastAPI
+from google.cloud import logging as google_cloud_logging
+
+from {{cookiecutter.agent_directory}}.agent import root_agent
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+setup_telemetry()
+
+# Initialize FastAPI app and logging
+app = FastAPI(
+    title="{{cookiecutter.project_name}}",
+    description="API for interacting with the Agent {{cookiecutter.project_name}}",
+)
+
+try:
+    logging_client = google_cloud_logging.Client()
+    logger = logging_client.logger(__name__)
+except Exception:
+    logger = logging.getLogger(__name__)
+
+
+@app.post("/chat")
+async def chat(request: dict):
+    """Simple chat endpoint for non-A2A, non-ADK agents."""
+    query = request.get("query", "")
+    if not query:
+        # Fallback for common playground formats
+        messages = request.get("messages", [])
+        if messages and len(messages) > 0:
+            if isinstance(messages[0], dict):
+                query = messages[0].get("content", "")
+            else:
+                query = str(messages[0])
+
+    if not query:
+        return {"response": "Please provide a query."}
+
+    response = await root_agent.ainvoke(query)
+    return {"response": response}
 {% endif %}
 
 @app.post("/feedback")

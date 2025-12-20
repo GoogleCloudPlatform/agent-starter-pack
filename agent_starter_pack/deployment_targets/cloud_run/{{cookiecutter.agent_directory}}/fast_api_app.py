@@ -543,8 +543,14 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 {% else %}
 import logging
+{%- if cookiecutter.frontend_type == "simple_chat" %}
+from pathlib import Path
+{%- endif %}
 
-from fastapi import FastAPI
+from fastapi import FastAPI{%- if cookiecutter.frontend_type == "simple_chat" %}, HTTPException{%- endif %}
+{%- if cookiecutter.frontend_type == "simple_chat" %}
+from fastapi.responses import FileResponse
+{%- endif %}
 from google.cloud import logging as google_cloud_logging
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
@@ -564,6 +570,24 @@ try:
     logger = logging_client.logger(__name__)
 except Exception:
     logger = logging.getLogger(__name__)
+
+{%- if cookiecutter.frontend_type == "simple_chat" %}
+
+# Get the path to the frontend file
+current_dir = Path(__file__).parent
+frontend_file = current_dir.parent / "frontend" / "index.html"
+
+
+@app.get("/")
+async def serve_frontend() -> FileResponse:
+    """Serve the simple chat frontend."""
+    if frontend_file.exists():
+        return FileResponse(str(frontend_file))
+    raise HTTPException(
+        status_code=404,
+        detail="Frontend not found.",
+    )
+{%- endif %}
 
 
 @app.post("/chat")

@@ -86,9 +86,20 @@ def setup_telemetry() -> str | None:
 import logging
 import os
 
-from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
-from opentelemetry.sdk.trace.export import SpanExporter
-from traceloop.sdk import Instruments, Traceloop
+try:
+    from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
+    from opentelemetry.sdk.trace.export import SpanExporter
+    HAS_OTEL = True
+except ImportError:
+    HAS_OTEL = False
+    CloudTraceSpanExporter = None
+    SpanExporter = None
+
+try:
+    from traceloop.sdk import Instruments, Traceloop
+    HAS_TRACELOOP = True
+except ImportError:
+    HAS_TRACELOOP = False
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +108,10 @@ TELEMETRY_ENDPOINT = "https://telemetry.googleapis.com/v1/traces"
 
 def setup_telemetry() -> str | None:
     """Configure OpenTelemetry for LangGraph agents with GenAI instrumentation."""
+    if not HAS_OTEL:
+        logger.info("OpenTelemetry not available - telemetry disabled")
+        return None
+
     bucket = os.environ.get("LOGS_BUCKET_NAME")
     capture_content = os.environ.get(
         "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "false"
@@ -121,6 +136,10 @@ def setup_telemetry() -> str | None:
 
 def _setup_langgraph_instrumentation(exporter: SpanExporter) -> None:
     """Set up LangGraph instrumentation."""
+    if not HAS_TRACELOOP:
+        logger.info("Traceloop SDK not available - skipping LangGraph instrumentation")
+        return
+
     try:
         Traceloop.init(
             app_name="{{cookiecutter.project_name}}",

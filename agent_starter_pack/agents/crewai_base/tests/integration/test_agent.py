@@ -88,7 +88,9 @@ def test_assistant_agent_properties():
     assert assistant_agent is not None
     assert assistant_agent.role == "AI Assistant"
     assert assistant_agent.allow_delegation is False
-    assert len(assistant_agent.tools) == 4  # calculate, analyze_text, get_current_time, generate_ideas
+    assert (
+        len(assistant_agent.tools) == 4
+    )  # calculate, analyze_text, get_current_time, generate_ideas
 
 
 @pytest.mark.integration

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 description: "A ReAct agent built with CrewAI framework and utility tools"
-example_question: "Analyze this text: 'Agent Starter Pack makes building AI agents easy and fun!'"
+example_question: "Analyze this text: 'CrewAI makes AI agents easy!'"
 settings:
   requires_data_ingestion: false
   requires_session: false

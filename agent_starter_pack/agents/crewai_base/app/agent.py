@@ -76,7 +76,7 @@ def calculate(expression: str) -> str:
     try:
         # Remove any characters that aren't numbers, operators, parentheses, or decimals
         # This is a simple safeguard against code injection
-        if not re.match(r'^[\d\+\-\*/\.\(\)\s\*\*]+$', expression):
+        if not re.match(r"^[\d\+\-\*/\.\(\)\s\*\*]+$", expression):
             return "Error: Invalid characters in expression. Only numbers and operators (+, -, *, /, **, parentheses) are allowed."
 
         # Evaluate the expression safely
@@ -107,15 +107,33 @@ def analyze_text(text: str) -> str:
     char_count = len(text)
     char_count_no_spaces = len(text.replace(" ", ""))
     word_count = len(text.split())
-    sentence_count = len([s for s in re.split(r'[.!?]+', text) if s.strip()])
+    sentence_count = len([s for s in re.split(r"[.!?]+", text) if s.strip()])
 
     # Average word length
     words = text.split()
     avg_word_length = sum(len(word) for word in words) / len(words) if words else 0
 
     # Simple sentiment indicators (very basic)
-    positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'happy', 'love']
-    negative_words = ['bad', 'terrible', 'awful', 'horrible', 'hate', 'sad', 'angry', 'poor']
+    positive_words = [
+        "good",
+        "great",
+        "excellent",
+        "amazing",
+        "wonderful",
+        "fantastic",
+        "happy",
+        "love",
+    ]
+    negative_words = [
+        "bad",
+        "terrible",
+        "awful",
+        "horrible",
+        "hate",
+        "sad",
+        "angry",
+        "poor",
+    ]
 
     text_lower = text.lower()
     positive_count = sum(1 for word in positive_words if word in text_lower)

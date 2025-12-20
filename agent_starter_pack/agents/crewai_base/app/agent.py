@@ -77,7 +77,7 @@ def calculate(expression: str) -> str:
         # Remove any characters that aren't numbers, operators, parentheses, or decimals
         # This is a simple safeguard against code injection
         if not re.match(r'^[\d\+\-\*/\.\(\)\s\*\*]+$', expression):
-            return f"Error: Invalid characters in expression. Only numbers and operators (+, -, *, /, **, parentheses) are allowed."
+            return "Error: Invalid characters in expression. Only numbers and operators (+, -, *, /, **, parentheses) are allowed."
 
         # Evaluate the expression safely
         result = eval(expression, {"__builtins__": {}}, {})
@@ -85,7 +85,7 @@ def calculate(expression: str) -> str:
     except ZeroDivisionError:
         return "Error: Division by zero is not allowed."
     except Exception as e:
-        return f"Error calculating expression: {str(e)}"
+        return f"Error calculating expression: {e!s}"
 
 
 @tool("Analyze Text")

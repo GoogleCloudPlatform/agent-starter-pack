@@ -14,14 +14,15 @@
 
 """Integration tests for CrewAI agent."""
 
-import os
-
 import pytest
 
 from {{cookiecutter.agent_directory}}.agent import (
+    analyze_text,
+    assistant_agent,
+    calculate,
     create_crew,
+    generate_ideas,
     get_current_time,
-    research_agent,
     run_agent,
 )
 
@@ -35,21 +36,59 @@ def test_get_current_time():
     assert "UTC" in result
 
 
+def test_calculate_tool():
+    """Test the calculator tool."""
+    # Test basic addition
+    result = calculate.run(expression="2 + 2")
+    assert result is not None
+    assert "4" in result
+
+    # Test multiplication
+    result = calculate.run(expression="10 * 5")
+    assert result is not None
+    assert "50" in result
+
+    # Test complex expression
+    result = calculate.run(expression="(10 + 5) * 2")
+    assert result is not None
+    assert "30" in result
+
+
+def test_analyze_text_tool():
+    """Test the text analysis tool."""
+    test_text = "This is a great test. It has multiple sentences!"
+    result = analyze_text.run(text=test_text)
+    assert result is not None
+    assert "Word count:" in result
+    assert "Character" in result
+    assert "Sentence count:" in result
+    # Should detect positive sentiment
+    assert "Positive" in result or "sentiment" in result.lower()
+
+
+def test_generate_ideas_tool():
+    """Test the idea generation tool."""
+    result = generate_ideas.run(topic="mobile apps", count=3)
+    assert result is not None
+    assert "mobile apps" in result.lower()
+    assert "3" in result or "ideas" in result.lower()
+
+
 def test_create_crew():
     """Test crew creation."""
     crew = create_crew("What time is it?")
     assert crew is not None
     assert len(crew.agents) == 1
     assert len(crew.tasks) == 1
-    assert crew.agents[0].role == "Research Assistant"
+    assert crew.agents[0].role == "AI Assistant"
 
 
-def test_research_agent_properties():
-    """Test research agent configuration."""
-    assert research_agent is not None
-    assert research_agent.role == "Research Assistant"
-    assert research_agent.allow_delegation is False
-    assert len(research_agent.tools) == 2  # web_search and get_current_time
+def test_assistant_agent_properties():
+    """Test assistant agent configuration."""
+    assert assistant_agent is not None
+    assert assistant_agent.role == "AI Assistant"
+    assert assistant_agent.allow_delegation is False
+    assert len(assistant_agent.tools) == 4  # calculate, analyze_text, get_current_time, generate_ideas
 
 
 @pytest.mark.integration
@@ -63,41 +102,22 @@ def test_run_agent_time_query():
 
 
 @pytest.mark.integration
-@pytest.mark.skipif(
-    not os.getenv("GOOGLE_API_KEY") or not os.getenv("GOOGLE_CSE_ID"),
-    reason="Google Search API credentials not set",
-)
-def test_run_agent_with_search():
-    """Integration test: Run agent with web search query.
-
-    Requires GOOGLE_API_KEY and GOOGLE_CSE_ID environment variables.
-    """
-    query = "What is the capital of France?"
+def test_run_agent_calculation():
+    """Integration test: Run agent with calculation query."""
+    query = "Calculate 25 * 4 + 10"
     response = run_agent(query)
     assert response is not None
     assert len(response) > 0
-    # Should mention Paris in the response
-    assert "paris" in response.lower()
+    # Should contain the answer 110 somewhere in the response
+    assert "110" in response
 
 
 @pytest.mark.integration
-def test_run_agent_mock_search():
-    """Integration test: Run agent with mock search (no API keys needed)."""
-    # Temporarily unset API keys to test mock functionality
-    old_api_key = os.environ.pop("GOOGLE_API_KEY", None)
-    old_cse_id = os.environ.pop("GOOGLE_CSE_ID", None)
-
-    try:
-        query = "What is the latest news about AI?"
-        response = run_agent(query)
-        assert response is not None
-        assert len(response) > 0
-        # Agent should produce a response even with mock search
-        # The response should be substantive (not just an error message)
-        assert len(response) > 100, "Response should be substantive"
-    finally:
-        # Restore environment variables
-        if old_api_key:
-            os.environ["GOOGLE_API_KEY"] = old_api_key
-        if old_cse_id:
-            os.environ["GOOGLE_CSE_ID"] = old_cse_id
+def test_run_agent_text_analysis():
+    """Integration test: Run agent with text analysis query."""
+    query = "Analyze this text: 'Agent Starter Pack makes AI development easy!'"
+    response = run_agent(query)
+    assert response is not None
+    assert len(response) > 0
+    # Response should be substantive
+    assert len(response) > 50, "Response should be substantive"

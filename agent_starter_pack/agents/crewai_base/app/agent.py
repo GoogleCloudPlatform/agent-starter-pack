@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CrewAI agent with web search capabilities."""
+"""CrewAI agent with utility tools for demonstrations."""
 
 import os
+import re
 from datetime import datetime
 
 import google.auth
@@ -59,76 +60,117 @@ def get_current_time(timezone: str = "UTC") -> str:
     )
 
 
-@tool("Web Search")
-def web_search(query: str) -> str:
-    """Search the web for information using Google Custom Search.
+@tool("Calculate")
+def calculate(expression: str) -> str:
+    """Perform basic mathematical calculations.
 
-    This tool performs web searches to find current information.
-    Set GOOGLE_API_KEY and GOOGLE_CSE_ID environment variables to enable real search.
-    Without API keys, returns mock results for testing.
+    Supports addition (+), subtraction (-), multiplication (*), division (/),
+    exponentiation (**), and parentheses for grouping.
 
     Args:
-        query: The search query.
+        expression: A mathematical expression to evaluate (e.g., "2 + 2", "10 * (5 + 3)").
 
     Returns:
-        Search results as formatted text.
+        The result of the calculation as a string.
     """
-    google_api_key = os.getenv("GOOGLE_API_KEY")
-    google_cse_id = os.getenv("GOOGLE_CSE_ID")
-
-    if not google_api_key or not google_cse_id:
-        # Mock search results for testing without API keys
-        return f"""Mock search results for: "{query}"
-
-This is a placeholder response. To enable real web search:
-1. Get a Google API key: https://console.cloud.google.com/apis/credentials
-2. Create a Custom Search Engine: https://programmablesearchengine.google.com/
-3. Set environment variables:
-   - GOOGLE_API_KEY=your-api-key
-   - GOOGLE_CSE_ID=your-search-engine-id
-
-For testing purposes, you can assume this query would return relevant, up-to-date information about: {query}
-"""
-
-    # Real Google Custom Search implementation
     try:
-        import requests
+        # Remove any characters that aren't numbers, operators, parentheses, or decimals
+        # This is a simple safeguard against code injection
+        if not re.match(r'^[\d\+\-\*/\.\(\)\s\*\*]+$', expression):
+            return f"Error: Invalid characters in expression. Only numbers and operators (+, -, *, /, **, parentheses) are allowed."
 
-        url = "https://www.googleapis.com/customsearch/v1"
-        params = {"key": google_api_key, "cx": google_cse_id, "q": query, "num": 5}
-
-        response = requests.get(url, params=params, timeout=10)
-        response.raise_for_status()
-
-        data = response.json()
-        items = data.get("items", [])
-
-        if not items:
-            return f"No search results found for: {query}"
-
-        results = [f"Search results for: {query}\n"]
-        for i, item in enumerate(items[:5], 1):
-            title = item.get("title", "No title")
-            snippet = item.get("snippet", "No description")
-            link = item.get("link", "")
-            results.append(f"\n{i}. {title}\n   {snippet}\n   {link}")
-
-        return "\n".join(results)
-
+        # Evaluate the expression safely
+        result = eval(expression, {"__builtins__": {}}, {})
+        return f"The result of {expression} is {result}"
+    except ZeroDivisionError:
+        return "Error: Division by zero is not allowed."
     except Exception as e:
-        return f"Error performing web search: {e}\nPlease check your API credentials and try again."
+        return f"Error calculating expression: {str(e)}"
 
 
-# Create CrewAI agent with web search capabilities
-research_agent = Agent(
-    role="Research Assistant",
-    goal="Help users find information and answer questions using web search",
+@tool("Analyze Text")
+def analyze_text(text: str) -> str:
+    """Analyze text and provide statistics.
+
+    Provides word count, character count, sentence count, and basic readability metrics.
+
+    Args:
+        text: The text to analyze.
+
+    Returns:
+        Analysis results as formatted text.
+    """
+    if not text or not text.strip():
+        return "Error: No text provided for analysis."
+
+    # Basic text statistics
+    char_count = len(text)
+    char_count_no_spaces = len(text.replace(" ", ""))
+    word_count = len(text.split())
+    sentence_count = len([s for s in re.split(r'[.!?]+', text) if s.strip()])
+
+    # Average word length
+    words = text.split()
+    avg_word_length = sum(len(word) for word in words) / len(words) if words else 0
+
+    # Simple sentiment indicators (very basic)
+    positive_words = ['good', 'great', 'excellent', 'amazing', 'wonderful', 'fantastic', 'happy', 'love']
+    negative_words = ['bad', 'terrible', 'awful', 'horrible', 'hate', 'sad', 'angry', 'poor']
+
+    text_lower = text.lower()
+    positive_count = sum(1 for word in positive_words if word in text_lower)
+    negative_count = sum(1 for word in negative_words if word in text_lower)
+
+    sentiment = "Neutral"
+    if positive_count > negative_count:
+        sentiment = "Positive"
+    elif negative_count > positive_count:
+        sentiment = "Negative"
+
+    return f"""Text Analysis Results:
+- Characters (with spaces): {char_count}
+- Characters (without spaces): {char_count_no_spaces}
+- Word count: {word_count}
+- Sentence count: {sentence_count}
+- Average word length: {avg_word_length:.1f} characters
+- Estimated sentiment: {sentiment} ({positive_count} positive indicators, {negative_count} negative indicators)"""
+
+
+@tool("Generate Ideas")
+def generate_ideas(topic: str, count: int = 5) -> str:
+    """Generate creative ideas or suggestions on a given topic.
+
+    This tool helps brainstorm ideas, suggestions, or approaches for a topic.
+    The LLM will use its knowledge to generate relevant ideas.
+
+    Args:
+        topic: The topic or problem to generate ideas about.
+        count: Number of ideas to generate (default: 5, max: 10).
+
+    Returns:
+        A list of generated ideas.
+    """
+    # Limit count to reasonable range
+    count = max(1, min(int(count), 10))
+
+    # This tool returns a structured prompt for the LLM to process
+    # The actual idea generation happens via the LLM's reasoning
+    return f"""Generate {count} creative ideas for: {topic}
+
+Please provide {count} distinct, practical, and creative ideas or approaches."""
+
+
+# Create CrewAI agent with utility tools
+assistant_agent = Agent(
+    role="AI Assistant",
+    goal="Help users with calculations, text analysis, and brainstorming",
     backstory=(
-        "You are a knowledgeable AI research assistant with access to web search. "
-        "You provide accurate, up-to-date information by searching the web and "
-        "synthesizing results into clear, concise answers."
+        "You are a helpful AI assistant with multiple utility tools. "
+        "You can perform calculations, analyze text for statistics and sentiment, "
+        "check the current time, and help generate creative ideas. "
+        "You always use the appropriate tool for each task and provide clear, helpful responses."
     ),
-    tools=[web_search, get_current_time],
+    tools=[get_current_time, calculate, analyze_text, generate_ideas],
     llm=llm,
     verbose=True,
     allow_delegation=False,
@@ -147,11 +189,11 @@ def create_crew(user_query: str) -> Crew:
     task = Task(
         description=user_query,
         expected_output="A comprehensive answer based on available information",
-        agent=research_agent,
+        agent=assistant_agent,
     )
 
     crew = Crew(
-        agents=[research_agent],
+        agents=[assistant_agent],
         tasks=[task],
         process=Process.sequential,
         verbose=True,
@@ -183,8 +225,8 @@ class CrewAIWrapper:
 
     def __init__(self):
         """Initialize the wrapper."""
-        self.research_agent = research_agent
-        self.tools = [web_search, get_current_time]
+        self.assistant_agent = assistant_agent
+        self.tools = [get_current_time, calculate, analyze_text, generate_ideas]
 
     def invoke(self, query: str | dict) -> str:
         """Invoke the crew with a query (sync interface).

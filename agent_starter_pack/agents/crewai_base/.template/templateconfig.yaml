@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A ReAct agent built with CrewAI framework and web search capabilities"
-example_question: "What are the latest developments in generative AI agents?"
+description: "A ReAct agent built with CrewAI framework and utility tools"
+example_question: "Analyze this text: 'Agent Starter Pack makes building AI agents easy and fun!'"
 settings:
   requires_data_ingestion: false
   requires_session: false
   deployment_targets: ["cloud_run"]
   extra_dependencies:
     - "crewai>=1.7.0,<2.0.0"
-    - "crewai-tools>=0.18.0,<1.0.0"
     - "google-cloud-aiplatform>=1.120.0"
     - "google-auth>=2.0.0"
     - "python-dotenv>=1.0.0,<2.0.0"

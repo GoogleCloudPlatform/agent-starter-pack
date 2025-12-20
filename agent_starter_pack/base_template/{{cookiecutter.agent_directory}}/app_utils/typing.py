@@ -45,13 +45,24 @@ from typing import (
     Literal,
 )
 
-from langchain_core.load.serializable import Serializable
-from langchain_core.messages import (
-    AIMessage,
-    HumanMessage,
-    ToolMessage,
-)
-from langchain_core.runnables import RunnableConfig
+try:
+    from langchain_core.load.serializable import Serializable
+    from langchain_core.messages import (
+        AIMessage,
+        HumanMessage,
+        ToolMessage,
+    )
+    from langchain_core.runnables import RunnableConfig
+    HAS_LANGCHAIN = True
+except ImportError:
+    HAS_LANGCHAIN = False
+    # Provide dummy types when LangChain is not available
+    Serializable = None
+    AIMessage = None
+    HumanMessage = None
+    ToolMessage = None
+    RunnableConfig = None
+
 from pydantic import (
     BaseModel,
     Field,
@@ -75,27 +86,29 @@ class Request(BaseModel):
 {%- endif %}
 {%- else %}
 
+# Only define LangChain-specific classes if LangChain is available
+if HAS_LANGCHAIN:
 
-class InputChat(BaseModel):
-    """Represents the input for a chat session."""
+    class InputChat(BaseModel):
+        """Represents the input for a chat session."""
 
-    messages: list[
-        Annotated[HumanMessage | AIMessage | ToolMessage, Field(discriminator="type")]
-    ] = Field(
-        ..., description="The chat messages representing the current conversation."
-    )
+        messages: list[
+            Annotated[HumanMessage | AIMessage | ToolMessage, Field(discriminator="type")]
+        ] = Field(
+            ..., description="The chat messages representing the current conversation."
+        )
 
 
-class Request(BaseModel):
-    """Represents the input for a chat request with optional configuration.
+    class Request(BaseModel):
+        """Represents the input for a chat request with optional configuration.
 
-    Attributes:
-        input: The chat input containing messages and other chat-related data
-        config: Optional configuration for the runnable, including tags, callbacks, etc.
-    """
+        Attributes:
+            input: The chat input containing messages and other chat-related data
+            config: Optional configuration for the runnable, including tags, callbacks, etc.
+        """
 
-    input: InputChat
-    config: RunnableConfig | None = None
+        input: InputChat
+        config: RunnableConfig | None = None
 
 {%- endif %}
 
@@ -111,54 +124,57 @@ class Feedback(BaseModel):
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
 {% if not cookiecutter.is_adk %}
 
-def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:
-    """Ensures a valid RunnableConfig by setting defaults for missing fields."""
-    if config is None:
-        config = RunnableConfig()
-    if config.get("run_id") is None:
-        config["run_id"] = uuid.uuid4()
-    if config.get("metadata") is None:
-        config["metadata"] = {}
-    return config
+# LangChain-specific utility functions
+if HAS_LANGCHAIN:
+
+    def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:
+        """Ensures a valid RunnableConfig by setting defaults for missing fields."""
+        if config is None:
+            config = RunnableConfig()
+        if config.get("run_id") is None:
+            config["run_id"] = uuid.uuid4()
+        if config.get("metadata") is None:
+            config["metadata"] = {}
+        return config
 
 
-def default_serialization(obj: Any) -> Any:
-    """
-    Default serialization for LangChain objects.
-    Converts BaseModel instances to JSON strings.
-    """
-    if isinstance(obj, Serializable):
-        return obj.to_json()
+    def default_serialization(obj: Any) -> Any:
+        """
+        Default serialization for LangChain objects.
+        Converts BaseModel instances to JSON strings.
+        """
+        if isinstance(obj, Serializable):
+            return obj.to_json()
 
 
-def dumps(obj: Any) -> str:
-    """
-    Serialize an object to a JSON string.
+    def dumps(obj: Any) -> str:
+        """
+        Serialize an object to a JSON string.
 
-    For LangChain objects (BaseModel instances), it converts them to
-    dictionaries before serialization.
+        For LangChain objects (BaseModel instances), it converts them to
+        dictionaries before serialization.
 
-    Args:
-        obj: The object to serialize
+        Args:
+            obj: The object to serialize
 
-    Returns:
-        JSON string representation of the object
-    """
-    return json.dumps(obj, default=default_serialization)
+        Returns:
+            JSON string representation of the object
+        """
+        return json.dumps(obj, default=default_serialization)
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
 
 
-def dumpd(obj: Any) -> Any:
-    """
-    Convert an object to a JSON-serializable dict.
-    Uses default_serialization for handling BaseModel instances.
+    def dumpd(obj: Any) -> Any:
+        """
+        Convert an object to a JSON-serializable dict.
+        Uses default_serialization for handling BaseModel instances.
 
-    Args:
-        obj: The object to convert
+        Args:
+            obj: The object to convert
 
-    Returns:
-        Dict/list representation of the object that can be JSON serialized
-    """
-    return json.loads(dumps(obj))
+        Returns:
+            Dict/list representation of the object that can be JSON serialized
+        """
+        return json.loads(dumps(obj))
 {%- endif %}
 {% endif %}

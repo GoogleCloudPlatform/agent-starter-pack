@@ -53,6 +53,7 @@ try:
         ToolMessage,
     )
     from langchain_core.runnables import RunnableConfig
+
     HAS_LANGCHAIN = True
 except ImportError:
     HAS_LANGCHAIN = False
@@ -93,11 +94,12 @@ if HAS_LANGCHAIN:
         """Represents the input for a chat session."""
 
         messages: list[
-            Annotated[HumanMessage | AIMessage | ToolMessage, Field(discriminator="type")]
+            Annotated[
+                HumanMessage | AIMessage | ToolMessage, Field(discriminator="type")
+            ]
         ] = Field(
             ..., description="The chat messages representing the current conversation."
         )
-
 
     class Request(BaseModel):
         """Represents the input for a chat request with optional configuration.
@@ -137,7 +139,6 @@ if HAS_LANGCHAIN:
             config["metadata"] = {}
         return config
 
-
     def default_serialization(obj: Any) -> Any:
         """
         Default serialization for LangChain objects.
@@ -145,7 +146,6 @@ if HAS_LANGCHAIN:
         """
         if isinstance(obj, Serializable):
             return obj.to_json()
-
 
     def dumps(obj: Any) -> str:
         """

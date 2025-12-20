@@ -89,6 +89,7 @@ import os
 try:
     from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
     from opentelemetry.sdk.trace.export import SpanExporter
+
     HAS_OTEL = True
 except ImportError:
     HAS_OTEL = False
@@ -97,6 +98,7 @@ except ImportError:
 
 try:
     from traceloop.sdk import Instruments, Traceloop
+
     HAS_TRACELOOP = True
 except ImportError:
     HAS_TRACELOOP = False

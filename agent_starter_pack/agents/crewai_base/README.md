@@ -1,210 +1,52 @@
 # CrewAI Base Agent
 
-A ReAct-style AI assistant built with CrewAI framework and Google Vertex AI Gemini.
+<p align="center">
+  <img src="https://avatars.githubusercontent.com/u/170677839?s=200&v=4" width="200" alt="CrewAI Logo">
+</p>
 
-## Overview
+A ReAct-style AI assistant built with **[CrewAI](https://www.crewai.com/)** framework and Google Vertex AI Gemini. This example demonstrates autonomous agent development using CrewAI with self-contained utility tools that require no external API keys.
 
-This agent template demonstrates autonomous agent development using CrewAI with Google Cloud's Vertex AI. It features multiple utility tools that work completely offline without requiring external API keys.
-
-### Key Features
+## Key Features
 
 - **Framework**: CrewAI 1.7+
 - **LLM**: Google Gemini 2.0 Flash (via Vertex AI)
-- **Tools**: Calculator, text analyzer, time checker, idea generator
-- **Deployment**: Cloud Run support
-- **Architecture**: Single agent with sequential task processing
-- **No External APIs**: All tools work offline without API keys
+- **Zero External APIs**: All tools work offline without API key configuration
+- **Simple Architecture**: Single agent with sequential task processing
+- **Web UI**: Includes simple_chat frontend for easy interaction
 
-## Quick Start
+## Tools
 
-### Prerequisites
+This agent includes four utility tools:
 
-No external API keys required! This template works completely offline with Google Vertex AI (which is configured automatically by Agent Starter Pack).
+- **Calculate**: Performs mathematical calculations (e.g., `2 + 2`, `10 * (5 + 3)`)
+- **Analyze Text**: Provides text statistics, word count, and sentiment analysis
+- **Get Current Time**: Returns current time in UTC
+- **Generate Ideas**: Brainstorms creative ideas on any topic using the LLM
 
-### Local Development
+## Known Limitations
 
-```bash
-# Install dependencies
-uv sync
+### Deployment Target: Cloud Run Only
 
-# Run the agent with the default example
-python -m {{cookiecutter.agent_directory}}.agent
+CrewAI agents currently support **Cloud Run deployment only**. Agent Engine is not supported because:
 
-# Run with custom queries
-python -c "from {{cookiecutter.agent_directory}}.agent import run_agent; print(run_agent('What is 15 * 23 + 47?'))"
-python -c "from {{cookiecutter.agent_directory}}.agent import run_agent; print(run_agent('Analyze this text: Hello world!'))"
-python -c "from {{cookiecutter.agent_directory}}.agent import run_agent; print(run_agent('Generate 3 ideas for a mobile app'))"
-```
+- CrewAI is a generic agent framework (not ADK-based)
+- Agent Engine requires ADK or A2A protocol integration
+- CrewAI uses its own agent orchestration system
 
-### Testing
+### Limited Telemetry Support
 
-```bash
-# Run all tests
-pytest tests/
+Advanced telemetry features (Traceloop SDK) are **not available** for CrewAI agents due to dependency conflicts:
 
-# Run integration tests only
-pytest tests/integration/ -v
+- CrewAI includes `opentelemetry-sdk` v1.34.x
+- Traceloop SDK requires `opentelemetry-sdk` v1.38+
+- Version conflict prevents full telemetry integration
 
-# Run specific tests
-pytest tests/integration/test_agent.py::test_get_current_time -v
-pytest tests/integration/test_agent.py::test_calculate_tool -v
-pytest tests/integration/test_agent.py::test_analyze_text_tool -v
-```
+**Impact:** Basic logging is available, but advanced distributed tracing via Traceloop is disabled for this template.
 
-## Architecture
+**Workaround:** The base template gracefully degrades when OpenTelemetry dependencies are unavailable, allowing CrewAI agents to run without telemetry errors.
 
-```
-User Query → CrewAI Task → AI Assistant → [Calculate | Analyze Text | Get Time | Generate Ideas]
-                                  ↓
-                            Gemini 2.0 Flash (Vertex AI)
-                                  ↓
-                          Synthesized Response
-```
+## Additional Resources
 
-### How It Works
-
-1. **Query Input**: User submits a question or request
-2. **Task Creation**: CrewAI creates a Task with the query
-3. **Agent Processing**: AI Assistant analyzes the query
-4. **Tool Selection**: Agent decides which tools to use based on the request
-5. **LLM Reasoning**: Gemini processes tool results and generates response
-6. **Response**: Final answer returned to user
-
-### Available Tools
-
-1. **Calculate**: Performs mathematical calculations (e.g., "What is 25 * 4 + 10?")
-2. **Analyze Text**: Provides text statistics, word count, sentiment analysis
-3. **Get Current Time**: Returns current time in UTC
-4. **Generate Ideas**: Brainstorms creative ideas on any topic
-
-## Customization
-
-### Adding Custom Tools
-
-```python
-# In {{cookiecutter.agent_directory}}/agent.py
-
-from crewai.tools import tool
-
-@tool("Your Tool Name")
-def my_custom_tool(parameter: str) -> str:
-    """Tool description for the LLM to understand when to use it.
-
-    Args:
-        parameter: Description of the parameter.
-
-    Returns:
-        Description of what the tool returns.
-    """
-    # Your implementation
-    return result
-
-# Add to agent
-assistant_agent = Agent(
-    role="AI Assistant",
-    tools=[calculate, analyze_text, get_current_time, generate_ideas, my_custom_tool],
-    # ...
-)
-```
-
-### Changing the LLM Model
-
-```python
-# In {{cookiecutter.agent_directory}}/agent.py
-
-llm = LLM(
-    model="vertex_ai/gemini-1.5-pro",  # Change model
-    temperature=0.5,                    # Adjust temperature
-)
-```
-
-### Multi-Agent Extension
-
-To extend to multiple agents:
-
-```python
-researcher = Agent(
-    role="Researcher",
-    goal="Find information",
-    tools=[web_search],
-    llm=llm
-)
-
-analyst = Agent(
-    role="Analyst",
-    goal="Analyze findings",
-    tools=[],
-    llm=llm
-)
-
-crew = Crew(
-    agents=[researcher, analyst],
-    tasks=[research_task, analysis_task],
-    process=Process.sequential
-)
-```
-
-## Configuration
-
-### Environment Variables
-
-- `GOOGLE_CLOUD_PROJECT`: Set automatically by Agent Starter Pack
-- `GOOGLE_GENAI_USE_VERTEXAI`: Set automatically for Vertex AI
-
-All tools work offline without requiring additional API keys or configuration.
-
-### Available Gemini Models
-
-- `vertex_ai/gemini-2.0-flash-exp` (default) - Fast, efficient
-- `vertex_ai/gemini-1.5-pro` - Enhanced reasoning
-- `vertex_ai/gemini-1.5-flash` - Balanced performance
-
-## Deployment
-
-### Cloud Run
-
-```bash
-# Deploy to Cloud Run
-make deploy-staging
-```
-
-See the main project documentation for detailed deployment instructions.
-
-## Troubleshooting
-
-### Vertex AI Authentication Errors
-
-**Problem**: "Could not authenticate with Vertex AI"
-
-**Solution**:
-```bash
-# Authenticate with Google Cloud
-gcloud auth application-default login
-
-# Set project
-gcloud config set project YOUR_PROJECT_ID
-```
-
-### CrewAI Import Errors
-
-**Problem**: "No module named 'crewai'"
-
-**Solution**:
-```bash
-# Ensure dependencies are installed
-uv sync
-
-# Or manually install
-uv add "crewai>=1.7.0"
-```
-
-## Learn More
-
-- [CrewAI Documentation](https://docs.crewai.com)
-- [Agent Starter Pack Documentation](https://googlecloudplatform.github.io/agent-starter-pack/)
-- [Vertex AI Gemini Documentation](https://cloud.google.com/vertex-ai/docs/generative-ai/model-reference/gemini)
-- [Google Custom Search JSON API](https://developers.google.com/custom-search/v1/overview)
-
-## License
-
-Apache License 2.0 - See LICENSE file for details
+- **CrewAI Documentation**: Learn more about CrewAI concepts and capabilities in the [official documentation](https://docs.crewai.com/)
+- **CrewAI Examples**: Explore more examples in the [CrewAI repository](https://github.com/crewAIInc/crewAI)
+- **Agent Starter Pack Docs**: See the [main documentation](https://googlecloudplatform.github.io/agent-starter-pack/) for deployment guides

@@ -42,15 +42,8 @@ class GeminiPipelineComparator:
 
     def __init__(self, base_template_path: Path):
         self.base_template_path = base_template_path
-        self.cloudbuild_dir = (
-            base_template_path
-            / "{% if cookiecutter.cicd_runner == 'google_cloud_build' %}.cloudbuild{% else %}unused_.cloudbuild{% endif %}"
-        )
-        self.github_dir = (
-            base_template_path
-            / "{% if cookiecutter.cicd_runner == 'github_actions' %}.github{% else %}unused_github{% endif %}"
-            / "workflows"
-        )
+        self.cloudbuild_dir = base_template_path / ".cloudbuild"
+        self.github_dir = base_template_path / ".github" / "workflows"
 
         # Use Vertex AI with default authentication
         self.client = genai.Client(http_options=HttpOptions(api_version="v1"))

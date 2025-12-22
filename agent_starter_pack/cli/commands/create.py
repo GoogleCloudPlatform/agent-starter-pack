@@ -739,6 +739,9 @@ def create(
         # Check if agent requires session management
         requires_session = config.get("settings", {}).get("requires_session", False)
 
+        # Session type selection is only available for these agents on cloud_run
+        session_type_supported_agents = ("adk_base", "agentic_rag")
+
         if requires_session:
             if final_deployment == "agent_engine" and session_type:
                 console.print(
@@ -748,19 +751,27 @@ def create(
                 )
                 return
 
-            if (
-                final_deployment is not None
-                and final_deployment in ("cloud_run")
-                and not session_type
-            ):
-                if auto_approve:
-                    final_session_type = "in_memory"
-                    console.print(
-                        "Info: --session-type not specified. Defaulting to 'in_memory' in auto-approve mode.",
-                        style="yellow",
-                    )
+            if final_deployment == "cloud_run":
+                if deployment_agent_name in session_type_supported_agents:
+                    # Allow session type selection for supported agents
+                    if not session_type:
+                        if auto_approve:
+                            final_session_type = "in_memory"
+                            console.print(
+                                "Info: --session-type not specified. Defaulting to 'in_memory' in auto-approve mode.",
+                                style="yellow",
+                            )
+                        else:
+                            final_session_type = prompt_session_type_selection()
                 else:
-                    final_session_type = prompt_session_type_selection()
+                    # For unsupported agents, always use in_memory
+                    final_session_type = "in_memory"
+                    if session_type and session_type != "in_memory":
+                        console.print(
+                            f"Warning: Session type selection is only available for {', '.join(session_type_supported_agents)} agents. "
+                            "Using in-memory sessions for this agent.",
+                            style="yellow",
+                        )
         else:
             # Agents that don't require session management always use in-memory sessions
             final_session_type = "in_memory"

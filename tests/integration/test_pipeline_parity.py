@@ -180,12 +180,16 @@ Respond with a JSON object containing:
         self, cb_file: Path, gh_file: Path, pipeline_type: str
     ) -> dict:
         """Compare pipeline files using Gemini AI with retry logic."""
+        from google.genai.errors import ClientError
+
         cb_content = self.read_file_content(cb_file)
         gh_content = self.read_file_content(gh_file)
 
         prompt = self.create_comparison_prompt(cb_content, gh_content, pipeline_type)
 
-        max_retries = 3
+        max_retries = 5
+        base_delay = 10  # Start with 10 seconds for rate limit errors
+
         for attempt in range(max_retries):
             try:
                 # Define JSON schema for the expected response
@@ -252,13 +256,31 @@ Respond with a JSON object containing:
 
                 return json.loads(response_text)
 
-            except (json.JSONDecodeError, Exception) as e:
+            except ClientError as e:
+                # Handle rate limit errors (429) with exponential backoff
+                if e.code == 429 and attempt < max_retries - 1:
+                    delay = base_delay * (2**attempt)  # Exponential backoff
+                    print(
+                        f"Rate limited (attempt {attempt + 1}/{max_retries}), "
+                        f"waiting {delay}s before retry..."
+                    )
+                    time.sleep(delay)
+                    continue
+                raise
+
+            except json.JSONDecodeError as e:
+                if attempt < max_retries - 1:
+                    print(f"JSON decode error (attempt {attempt + 1}), retrying: {e}")
+                    time.sleep(2)
+                    continue
+                raise
+
+            except Exception as e:
                 if attempt < max_retries - 1:
                     print(f"Attempt {attempt + 1} failed, retrying: {e}")
                     time.sleep(2)
                     continue
-                else:
-                    raise e
+                raise
 
         # This should never be reached due to the exception handling above
         raise RuntimeError("All retry attempts failed")

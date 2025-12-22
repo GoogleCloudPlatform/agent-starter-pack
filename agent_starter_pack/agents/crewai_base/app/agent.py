@@ -14,9 +14,11 @@
 
 """CrewAI agent with utility tools for demonstrations."""
 
+import ast
+import operator
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 import google.auth
 from crewai import LLM, Agent, Crew, Process, Task
@@ -45,24 +47,27 @@ llm = LLM(
 
 
 @tool("Get Current Time")
-def get_current_time(timezone: str = "UTC") -> str:
-    """Get the current time in the specified timezone.
+def get_current_time(tz: str = "UTC") -> str:
+    """Get the current time in UTC timezone.
 
     Args:
-        timezone: The timezone (currently only UTC is supported).
+        tz: The timezone (currently only UTC is supported).
 
     Returns:
-        The current time as a formatted string.
+        The current UTC time as a formatted string.
     """
-    current_time = datetime.now()
-    return (
-        f"The current time is {current_time.strftime('%Y-%m-%d %I:%M %p')} {timezone}."
-    )
+    # Get actual UTC time (timezone-aware)
+    current_time = datetime.now(timezone.utc)
+
+    # Format with explicit UTC indicator
+    formatted_time = current_time.strftime('%Y-%m-%d %I:%M %p UTC')
+
+    return f"The current time is {formatted_time}"
 
 
 @tool("Calculate")
 def calculate(expression: str) -> str:
-    """Perform basic mathematical calculations.
+    """Perform basic mathematical calculations safely.
 
     Supports addition (+), subtraction (-), multiplication (*), division (/),
     exponentiation (**), and parentheses for grouping.
@@ -73,17 +78,93 @@ def calculate(expression: str) -> str:
     Returns:
         The result of the calculation as a string.
     """
-    try:
-        # Remove any characters that aren't numbers, operators, parentheses, or decimals
-        # This is a simple safeguard against code injection
-        if not re.match(r"^[\d\+\-\*/\.\(\)\s\*\*]+$", expression):
-            return "Error: Invalid characters in expression. Only numbers and operators (+, -, *, /, **, parentheses) are allowed."
+    # Maximum value for operands to prevent DoS
+    MAX_NUM = 10**6
+    MAX_RESULT = 10**12
 
-        # Evaluate the expression safely
-        result = eval(expression, {"__builtins__": {}}, {})
+    # Allowed operations
+    operators = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.Pow: operator.pow,
+        ast.USub: operator.neg,  # Unary minus
+    }
+
+    def eval_node(node):
+        """Safely evaluate an AST node."""
+        if isinstance(node, ast.Constant):  # Python 3.8+
+            val = node.value
+            if isinstance(val, (int, float)):
+                if abs(val) > MAX_NUM:
+                    raise ValueError(f"Number too large: {val}")
+                return val
+            raise TypeError(f"Unsupported type: {type(val)}")
+
+        elif isinstance(node, ast.BinOp):
+            left = eval_node(node.left)
+            right = eval_node(node.right)
+            op = operators.get(type(node.op))
+
+            if op is None:
+                raise TypeError(f"Unsupported operator: {type(node.op)}")
+
+            # Special handling for exponentiation to prevent DoS
+            if isinstance(node.op, ast.Pow):
+                if abs(right) > 100:  # Limit exponent size
+                    raise ValueError(f"Exponent too large: {right}")
+                if abs(left) > 1000:  # Limit base for exponentiation
+                    raise ValueError(f"Base too large for exponentiation: {left}")
+
+            result = op(left, right)
+
+            # Check result magnitude
+            if isinstance(result, (int, float)) and abs(result) > MAX_RESULT:
+                raise ValueError(f"Result too large: {result}")
+
+            return result
+
+        elif isinstance(node, ast.UnaryOp):
+            operand = eval_node(node.operand)
+            op = operators.get(type(node.op))
+
+            if op is None:
+                raise TypeError(f"Unsupported unary operator: {type(node.op)}")
+
+            return op(operand)
+
+        elif isinstance(node, ast.Expression):
+            return eval_node(node.body)
+
+        else:
+            raise TypeError(f"Unsupported node type: {type(node)}")
+
+    try:
+        # Parse expression into AST
+        tree = ast.parse(expression, mode='eval')
+
+        # Evaluate safely
+        result = eval_node(tree)
+
+        # Format result nicely
+        if isinstance(result, float):
+            # Round to reasonable precision
+            if result.is_integer():
+                result = int(result)
+            else:
+                result = round(result, 10)
+
         return f"The result of {expression} is {result}"
+
     except ZeroDivisionError:
         return "Error: Division by zero is not allowed."
+    except SyntaxError:
+        return "Error: Invalid mathematical expression."
+    except ValueError as e:
+        return f"Error: {e}"
+    except TypeError as e:
+        return f"Error: {e}"
     except Exception as e:
         return f"Error calculating expression: {e!s}"
 

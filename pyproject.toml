@@ -21,17 +21,9 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black~=23.11.0",
-    "flake8~=6.1.0",
     "google-cloud-logging~=3.11.4",
     "grpcio~=1.70.0",
-    "isort~=5.12.0",
-    "langchain-core~=0.3.34",
-    "langchain-google-community[vertexaisearch]~=2.0.4",
-    "langchain-google-vertexai~=2.0.13",
-    "langgraph~=0.2.72",
     "myst-parser~=2.0.0",
-    "opentelemetry-instrumentation-langchain~=0.38.5",
     "pytest~=7.4.3",
     "pytest-cov~=4.1.0",
     "pytest-mock~=3.12.0",
@@ -44,7 +36,6 @@ dev = [
     "sphinx-rtd-theme~=2.0.0",
     "types-PyYAML",
     "types-requests",
-    "watchdog~=6.0.0",
 ]
 
 [project.optional-dependencies]

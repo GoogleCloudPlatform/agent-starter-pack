@@ -40,9 +40,6 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
-      - name: Install package
-        run: uv pip install -e . --system
-
       - name: Test template creation (${{ matrix.deployment_target }})
         run: |
           uv run agent-starter-pack create test-project -s -y -d ${{ matrix.deployment_target }} --cicd-runner google_cloud_build --output-dir target

@@ -468,7 +468,7 @@ def create(
                 from ..utils.remote_template import check_and_execute_with_version_lock
 
                 if check_and_execute_with_version_lock(
-                    template_source_path, agent, locked
+                    template_source_path, agent, locked, project_name
                 ):
                     # If we executed with locked version, cleanup and exit
                     shutil.rmtree(temp_dir, ignore_errors=True)
@@ -495,7 +495,7 @@ def create(
                     else:
                         console.print(f"Fetching remote template: {agent}")
                     template_source_path, temp_dir_path = fetch_remote_template(
-                        remote_spec, agent, locked
+                        remote_spec, agent, locked, project_name
                     )
                     temp_dir_to_clean = str(temp_dir_path)
                     selected_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template
@@ -566,7 +566,7 @@ def create(
                     else:
                         console.print(f"Fetching remote template: {agent}")
                     template_source_path, temp_dir_path = fetch_remote_template(
-                        remote_spec, agent, locked
+                        remote_spec, agent, locked, project_name
                     )
                     temp_dir_to_clean = str(temp_dir_path)
                     final_agent = f"remote_{hash(agent)}"  # Generate unique name for remote template

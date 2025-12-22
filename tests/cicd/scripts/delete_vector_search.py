@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# mypy: ignore-errors
 """
 Script to force delete all Vector Search indexes, endpoints, and instances from specified projects.
 

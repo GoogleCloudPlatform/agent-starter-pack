@@ -127,10 +127,13 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
+# mypy (legacy, kept for compatibility)
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# ty (Astral's type checker)
+.ty/
 
 # Pyre type checker
 .pyre/

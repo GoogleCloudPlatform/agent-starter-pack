@@ -194,6 +194,7 @@ def get_standard_ignore_patterns() -> Callable[[str, list[str]], list[str]]:
         ".idea",
         "*.egg-info",
         ".mypy_cache",
+        ".ty",
         ".coverage",
         "htmlcov",
         ".tox",

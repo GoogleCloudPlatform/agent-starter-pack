@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# mypy: ignore-errors
 from {{cookiecutter.agent_directory}}.agent import root_agent as agent
 
 

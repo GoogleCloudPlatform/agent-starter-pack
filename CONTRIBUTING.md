@@ -69,7 +69,7 @@ This command runs the following linters to check for code style, potential error
 
 - **codespell**: Detects common spelling mistakes in code and documentation.
 - **ruff**: A fast Python linter and formatter, it checks for errors, coding standards, and enforces style consistency.
-- **mypy**: Performs static type checking to catch type errors before runtime.
+- **ty**: Performs static type checking to catch type errors before runtime (Astral's Rust-based type checker).
 
 ```bash
 make test

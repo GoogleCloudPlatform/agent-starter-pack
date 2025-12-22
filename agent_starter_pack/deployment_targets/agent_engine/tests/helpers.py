@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# mypy: disable-error-code="arg-type"
 
 """Helper functions for testing AgentEngineApp with A2A protocol."""
 

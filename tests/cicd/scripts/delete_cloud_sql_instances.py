@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# mypy: ignore-errors
 """
 Script to delete all Cloud SQL instances from specified projects.
 

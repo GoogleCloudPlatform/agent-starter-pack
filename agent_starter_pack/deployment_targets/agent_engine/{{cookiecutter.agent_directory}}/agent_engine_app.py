@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# mypy: disable-error-code="attr-defined,arg-type"
 {%- if cookiecutter.is_adk %}
 {%- if cookiecutter.is_a2a %}
 import asyncio

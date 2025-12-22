@@ -219,7 +219,6 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     logger.info("Feedback endpoint test passed")
 {% else %}
 
-# mypy: disable-error-code="arg-type"
 {%- if cookiecutter.is_a2a %}
 
 import os

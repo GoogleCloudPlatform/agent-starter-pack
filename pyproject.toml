@@ -46,7 +46,7 @@ jupyter = [
 
 lint = [
     "ruff",
-    "mypy",
+    "ty",
     "codespell",
 ]
 
@@ -83,25 +83,29 @@ ignore = ["E501", "C901", "RUF001", "UP036"]
 [tool.ruff.lint.isort]
 known-first-party = ["app", "frontend"]
 
-[tool.mypy]
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-no_implicit_optional = true
-check_untyped_defs = true
-disallow_subclassing_any = true
-warn_incomplete_stub = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_unreachable = true
-follow_imports = "silent"
-ignore_missing_imports = true
-explicit_package_bases = true
-disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
-exclude = '''(?x)(
-    ^agent_starter_pack/agents/.*$  # exclude all files under agents
-    ^tests/cicd/scripts/.*$  # exclude cicd scripts
-)'''
+[tool.ty]
+# ty is Astral's Rust-based type checker (same team as ruff/uv)
+# See: https://docs.astral.sh/ty/
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+# Exclude agent templates and cicd scripts from type checking
+exclude = [
+    "agent_starter_pack/agents/**",
+    "tests/cicd/scripts/**",
+]
+
+[tool.ty.rules]
+# Ignore missing third-party type stubs
+unresolved-import = "ignore"
+
+[[tool.ty.overrides]]
+# Relax type checking for test files (pytest fixtures with yield have complex types)
+include = ["tests/**"]
+[tool.ty.overrides.rules]
+invalid-return-type = "ignore"
 
 [tool.codespell]
 ignore-words-list = "rouge"

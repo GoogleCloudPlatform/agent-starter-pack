@@ -164,11 +164,11 @@ Test changes across multiple dimensions:
 
 ### Linting System
 
-The project uses **Ruff** for linting and formatting. Use these commands to validate template combinations:
+The project uses **Ruff** for linting/formatting and **ty** for type checking. Use these commands to validate template combinations:
 
 **Linting:**
 ```bash
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="agent,target,--param,value" make lint-templated-agents
+_TEST_AGENT_COMBINATION="agent,target,--param,value" make lint-templated-agents
 ```
 
 **Testing:**
@@ -185,8 +185,8 @@ Both commands use the same `_TEST_AGENT_COMBINATION` environment variable to con
 **Common Combinations:**
 ```bash
 # Linting examples
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
 
 # Testing examples
 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make test-templated-agents
@@ -350,20 +350,20 @@ find agent_starter_pack -name "fast_api_app.py" -type f
 
 ```bash
 # 1. Test the specific combination you're working on
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
 
 # 2. Test related combinations (same deployment, different agents)
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
 
 # 3. Test alternate code paths (different deployment, session types)
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
 
 # 4. If modifying deployment target files, test all agents with that target
 # For agent_engine changes:
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
-SKIP_MYPY=1 _TEST_AGENT_COMBINATION="langgraph_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="langgraph_base,agent_engine" make lint-templated-agents
 ```
 
 ### Quick Reference: Whitespace Control Cheat Sheet

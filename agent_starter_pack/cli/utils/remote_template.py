@@ -190,13 +190,13 @@ def check_and_execute_with_version_lock(
             # If project_name was provided via CLI, it would be in sys.argv
             # We check by looking for it in the original sys.argv
             if project_name not in sys.argv:
-                # Insert project_name as first positional argument after 'create'
+                # Insert project_name as positional argument after 'create'
+                # Click is flexible so appending also works if 'create' isn't found
                 if "create" in original_args:
                     create_idx = original_args.index("create")
                     original_args.insert(create_idx + 1, project_name)
                 else:
-                    # 'create' might not be in args if invoked directly
-                    original_args.insert(0, project_name)
+                    original_args.append(project_name)
 
         # Add version lock flags only for ASP versions 0.14.1 and above
         if pkg_version.parse(version) > pkg_version.parse("0.14.1"):

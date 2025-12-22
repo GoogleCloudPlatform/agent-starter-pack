@@ -45,6 +45,91 @@ from .remote_template import (
     render_and_merge_makefiles,
 )
 
+# =============================================================================
+# Conditional Files Configuration
+# =============================================================================
+# Maps file/directory paths to their inclusion conditions.
+# Files are stored with simple names and deleted if condition is False.
+# This replaces Jinja2 conditionals in filenames for Windows compatibility.
+#
+# Format: "relative/path/to/file_or_dir": lambda config: bool_condition
+# The config dict contains: agent_name, cicd_runner, is_adk, is_adk_live, is_a2a
+# =============================================================================
+
+CONDITIONAL_FILES = {
+    # CI/CD runner conditional files (base_template)
+    ".cloudbuild": lambda c: c.get("cicd_runner") == "google_cloud_build",
+    ".github": lambda c: c.get("cicd_runner") == "github_actions",
+    "deployment/terraform/build_triggers.tf": (
+        lambda c: c.get("cicd_runner") == "google_cloud_build"
+    ),
+    "deployment/terraform/wif.tf": (lambda c: c.get("cicd_runner") == "github_actions"),
+    # Agent-specific conditional files (uses agent_directory placeholder)
+    "{agent_directory}/app_utils/gcs.py": (lambda c: c.get("agent_name") == "adk_live"),
+    "{agent_directory}/app_utils/executor": (
+        lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph_base"
+    ),
+    "{agent_directory}/app_utils/converters": (
+        lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph_base"
+    ),
+    # Agent Engine deployment target conditionals
+    "{agent_directory}/app_utils/expose_app.py": lambda c: c.get("is_adk_live"),
+    "tests/helpers.py": lambda c: c.get("is_a2a"),
+    "deployment/terraform/service.tf": (lambda c: c.get("agent_name") != "adk_live"),
+    "deployment/terraform/dev/service.tf": (
+        lambda c: c.get("agent_name") != "adk_live"
+    ),
+}
+
+
+def apply_conditional_files(
+    project_path: pathlib.Path,
+    config: dict[str, Any],
+    agent_directory: str = "app",
+) -> None:
+    """Apply conditional file logic by deleting files that don't match conditions.
+
+    This function checks each conditional file against its condition and either
+    keeps the file (condition True) or renames it to unused_* (condition False)
+    so it gets cleaned up by the existing unused file cleanup logic.
+
+    Args:
+        project_path: Path to the generated project directory
+        config: Configuration dict with keys: agent_name, cicd_runner,
+                is_adk, is_adk_live, is_a2a
+        agent_directory: Name of the agent directory (replaces {agent_directory} placeholder)
+    """
+    for rel_path_template, condition_fn in CONDITIONAL_FILES.items():
+        # Replace {agent_directory} placeholder
+        rel_path = rel_path_template.replace("{agent_directory}", agent_directory)
+        file_path = project_path / rel_path
+
+        if not file_path.exists():
+            continue
+
+        should_include = condition_fn(config)
+
+        if not should_include:
+            # Rename to unused_* so existing cleanup logic handles it
+            parent = file_path.parent
+            name = file_path.name
+            unused_path = parent / f"unused_{name}"
+
+            logging.debug(
+                f"Conditional file '{rel_path}' condition False, "
+                f"renaming to {unused_path.name}"
+            )
+
+            if unused_path.exists():
+                if unused_path.is_dir():
+                    shutil.rmtree(unused_path)
+                else:
+                    unused_path.unlink()
+
+            file_path.rename(unused_path)
+        else:
+            logging.debug(f"Conditional file '{rel_path}' condition True, keeping")
+
 
 def add_base_template_dependencies_interactively(
     project_path: pathlib.Path,
@@ -105,7 +190,7 @@ def add_base_template_dependencies_interactively(
             console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
 
         # Run uv add in the project directory
-        cmd = ["uv", "add"] + base_dependencies
+        cmd = ["uv", "add", *base_dependencies]
         result = subprocess.run(
             cmd,
             cwd=project_path,
@@ -1073,6 +1158,7 @@ def process_template(
                     "**/__pycache__/*",
                     ".pytest_cache/*",
                     ".venv/*",
+                    "**/.venv/*",  # Don't render .venv at any depth
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                 ],
@@ -1376,6 +1462,18 @@ def process_template(
                     _generate_yaml_agent_shim(
                         final_agent_py_path, agent_directory, console, force=True
                     )
+
+            # Apply conditional file logic (Windows-compatible replacement for Jinja2 filenames)
+            conditional_config = {
+                "agent_name": agent_name,
+                "cicd_runner": cicd_runner or "google_cloud_build",
+                "is_adk": "adk" in tags,
+                "is_adk_live": "adk_live" in tags,
+                "is_a2a": "a2a" in tags,
+            }
+            apply_conditional_files(
+                final_destination, conditional_config, agent_directory
+            )
 
             # Clean up unused_* files and directories created by conditional templates
             import glob

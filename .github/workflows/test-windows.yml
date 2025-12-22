@@ -1,0 +1,56 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Windows Compatibility Test
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-windows:
+    runs-on: windows-latest
+    env:
+      PYTHONIOENCODING: utf-8
+      PYTHONUTF8: 1
+    strategy:
+      fail-fast: false
+      matrix:
+        deployment_target: [agent_engine, cloud_run]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Test template creation (${{ matrix.deployment_target }})
+        run: |
+          uv run agent-starter-pack create test-project -s -y -d ${{ matrix.deployment_target }} --cicd-runner google_cloud_build --output-dir target
+
+      - name: Verify project structure
+        run: |
+          if (Test-Path "target/test-project") {
+            Write-Host "Project created successfully"
+            Get-ChildItem -Path "target/test-project" -Recurse | Select-Object FullName
+          } else {
+            Write-Host "ERROR: Project directory not found"
+            exit 1
+          }
+        shell: pwsh

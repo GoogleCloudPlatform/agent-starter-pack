@@ -19,6 +19,8 @@ import google
 import vertexai
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.models import Gemini
+from google.genai import types
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
@@ -112,7 +114,10 @@ If you already know the answer to a question, you can respond directly without u
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-3-flash-preview",
+    model=Gemini(
+        model="gemini-3-flash-preview",
+        retry_options=types.HttpRetryOptions(attempts=3),
+    ),
     instruction=instruction,
     tools=[retrieve_docs],
 )

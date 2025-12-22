@@ -46,6 +46,20 @@ A production-grade multi-agent system built entirely with Google's Agent Develop
 
 This project serves as a reference implementation for production-grade ADK agent departments with enterprise CI/CD practices.
 
+### Google Chat ADK Agent Add-on by [Google Workspace](https://developers.google.com/workspace)
+**Repository:** [googleworkspace/add-ons-samples](https://github.com/googleworkspace/add-ons-samples/tree/main/apps-script/chat/adk-ai-agent)
+**Tutorial:** [Build a Google Chat app with an ADK AI agent](https://developers.google.com/workspace/add-ons/chat/quickstart-adk-agent)
+
+A Google Workspace add-on that brings AI-powered fact-checking to Google Chat using an ADK agent hosted in Vertex AI Agent Engine. Users can send statements like "The Eiffel Tower was completed in 1900" and the LLM Auditor multi-agent will critique and revise facts using Gemini and Google Search grounding.
+
+**Key Features:**
+
+- **Quick Deployment:** Deploy the LLM Auditor ADK sample via Agent Starter Pack from GCP console with Cloud Shell
+- **Fact-Checking Agent:** Multi-agent system that autonomously critiques statements and provides corrections with sources
+- **Custom Chat Integration:** Reference implementation for building Google Chat apps that interface with Vertex AI agents
+
+**Technologies:** ADK, Vertex AI Agent Engine, Apps Script, Google Chat API, Google Workspace Add-ons
+
 ---
 
 *This section will be updated regularly as we review and feature outstanding community submissions.*

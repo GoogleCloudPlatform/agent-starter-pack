@@ -15,6 +15,8 @@
 
 from google.adk.agents import Agent
 from google.adk.apps.app import App
+from google.adk.models import Gemini
+from google.genai import types
 {%- if not cookiecutter.use_google_api_key %}
 
 import os
@@ -46,7 +48,10 @@ def get_weather(query: str) -> str:
 
 root_agent = Agent(
     name="root_agent",
-    model="gemini-live-2.5-flash-native-audio",
+    model=Gemini(
+        model="gemini-live-2.5-flash-native-audio",
+        retry_options=types.HttpRetryOptions(attempts=3),
+    ),
     instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
     tools=[get_weather],
 )

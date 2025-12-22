@@ -45,7 +45,6 @@ from .remote_template import (
     render_and_merge_makefiles,
 )
 
-
 # =============================================================================
 # Conditional Files Configuration
 # =============================================================================
@@ -197,7 +196,7 @@ def add_base_template_dependencies_interactively(
             console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
 
         # Run uv add in the project directory
-        cmd = ["uv", "add"] + base_dependencies
+        cmd = ["uv", "add", *base_dependencies]
         result = subprocess.run(
             cmd,
             cwd=project_path,

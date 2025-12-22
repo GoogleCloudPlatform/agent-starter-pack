@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{cookiecutter.project_name}} - Chat Interface</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,8 +16,9 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Roboto', Arial, sans-serif;
+            background: #ffffff;
+            color: #202124;
             height: 100vh;
             display: flex;
             justify-content: center;
@@ -23,10 +28,11 @@
 
         .container {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+            border: 1px solid #dadce0;
             width: 100%;
-            max-width: 800px;
+            max-width: 900px;
             height: 90vh;
             max-height: 700px;
             display: flex;
@@ -35,28 +41,31 @@
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1a73e8;
             color: white;
-            padding: 20px;
+            padding: 24px;
             text-align: center;
+            border-bottom: 1px solid #dadce0;
         }
 
         .header h1 {
-            font-size: 24px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 500;
+            letter-spacing: 0.25px;
         }
 
         .header p {
             font-size: 14px;
-            opacity: 0.9;
-            margin-top: 5px;
+            opacity: 0.95;
+            margin-top: 8px;
+            font-weight: 400;
         }
 
         .chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
-            background: #f7f7f7;
+            padding: 24px;
+            background: #f8f9fa;
         }
 
         .message {
@@ -77,69 +86,85 @@
         .message-content {
             max-width: 70%;
             padding: 12px 16px;
-            border-radius: 12px;
+            border-radius: 8px;
             word-wrap: break-word;
             white-space: pre-wrap;
+            font-size: 14px;
+            line-height: 1.5;
         }
 
         .message.user .message-content {
-            background: #667eea;
+            background: #1a73e8;
             color: white;
+            box-shadow: 0 1px 2px rgba(60, 64, 67, 0.3);
         }
 
         .message.agent .message-content {
             background: white;
-            color: #333;
-            border: 1px solid #e0e0e0;
+            color: #202124;
+            border: 1px solid #dadce0;
+            box-shadow: 0 1px 2px rgba(60, 64, 67, 0.15);
         }
 
         .input-container {
-            padding: 20px;
+            padding: 16px 24px;
             background: white;
-            border-top: 1px solid #e0e0e0;
+            border-top: 1px solid #dadce0;
             display: flex;
-            gap: 12px;
+            gap: 16px;
         }
 
         #userInput {
             flex: 1;
             padding: 12px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 24px;
+            border: 1px solid #dadce0;
+            border-radius: 8px;
+            font-family: 'Roboto', Arial, sans-serif;
             font-size: 14px;
+            color: #202124;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 150ms, box-shadow 150ms;
         }
 
         #userInput:focus {
-            border-color: #667eea;
+            border-color: #1a73e8;
+            border-width: 2px;
+            padding: 11px 15px;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.3);
+        }
+
+        #userInput::placeholder {
+            color: #5f6368;
         }
 
         #sendButton {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 10px 24px;
+            background: #1a73e8;
             color: white;
             border: none;
-            border-radius: 24px;
+            border-radius: 8px;
             cursor: pointer;
+            font-family: 'Roboto', Arial, sans-serif;
             font-size: 14px;
-            font-weight: 600;
-            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 150ms;
         }
 
         #sendButton:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            background: #1967d2;
         }
 
         #sendButton:active {
-            transform: translateY(0);
+            background: #185abc;
         }
 
         #sendButton:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
+            background: #1a73e8;
         }
 
         .loading {
@@ -151,7 +176,7 @@
         .loading span {
             width: 8px;
             height: 8px;
-            background: #667eea;
+            background: #1a73e8;
             border-radius: 50%;
             animation: bounce 1.4s infinite ease-in-out both;
         }
@@ -165,24 +190,31 @@
         }
 
         .example-questions {
-            padding: 12px 20px;
-            background: #f0f0f0;
-            border-top: 1px solid #e0e0e0;
-            font-size: 12px;
-            color: #666;
+            padding: 12px 24px;
+            background: #e8f0fe;
+            border-bottom: 1px solid #dadce0;
+            font-size: 13px;
+            color: #5f6368;
         }
 
         .example-questions strong {
-            color: #333;
+            color: #202124;
+            font-weight: 500;
         }
 
         .error-message {
-            background: #fee;
-            color: #c33;
+            background: #fce8e6;
+            color: #d93025;
             padding: 12px 16px;
             border-radius: 8px;
+            border: 1px solid #f1aea9;
             margin: 8px 0;
             font-size: 14px;
+        }
+
+        .material-icons-outlined {
+            font-size: 20px;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -208,7 +240,10 @@
                 placeholder="Type your message..."
                 autocomplete="off"
             />
-            <button id="sendButton">Send</button>
+            <button id="sendButton">
+                <span class="material-icons-outlined">send</span>
+                Send
+            </button>
         </div>
     </div>
 

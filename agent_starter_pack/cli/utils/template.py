@@ -63,13 +63,9 @@ CONDITIONAL_FILES = {
     "deployment/terraform/build_triggers.tf": (
         lambda c: c.get("cicd_runner") == "google_cloud_build"
     ),
-    "deployment/terraform/wif.tf": (
-        lambda c: c.get("cicd_runner") == "github_actions"
-    ),
+    "deployment/terraform/wif.tf": (lambda c: c.get("cicd_runner") == "github_actions"),
     # Agent-specific conditional files (uses agent_directory placeholder)
-    "{agent_directory}/app_utils/gcs.py": (
-        lambda c: c.get("agent_name") == "adk_live"
-    ),
+    "{agent_directory}/app_utils/gcs.py": (lambda c: c.get("agent_name") == "adk_live"),
     "{agent_directory}/app_utils/executor": (
         lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph_base"
     ),
@@ -79,9 +75,7 @@ CONDITIONAL_FILES = {
     # Agent Engine deployment target conditionals
     "{agent_directory}/app_utils/expose_app.py": lambda c: c.get("is_adk_live"),
     "tests/helpers.py": lambda c: c.get("is_a2a"),
-    "deployment/terraform/service.tf": (
-        lambda c: c.get("agent_name") != "adk_live"
-    ),
+    "deployment/terraform/service.tf": (lambda c: c.get("agent_name") != "adk_live"),
     "deployment/terraform/dev/service.tf": (
         lambda c: c.get("agent_name") != "adk_live"
     ),
@@ -1477,7 +1471,9 @@ def process_template(
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
             }
-            apply_conditional_files(final_destination, conditional_config, agent_directory)
+            apply_conditional_files(
+                final_destination, conditional_config, agent_directory
+            )
 
             # Clean up unused_* files and directories created by conditional templates
             import glob

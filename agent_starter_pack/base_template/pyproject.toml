@@ -80,10 +80,12 @@ exclude = [".venv/**"]
 {%- endif %}
 
 [tool.ty.rules]
-# Ignore common issues with third-party libraries
+# Ignore common issues with third-party libraries and dynamic code patterns
 unresolved-import = "ignore"
-possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-return-type = "ignore"
 
 [tool.codespell]
 ignore-words-list = "rouge"

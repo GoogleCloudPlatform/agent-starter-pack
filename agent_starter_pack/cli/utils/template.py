@@ -1165,6 +1165,7 @@ def process_template(
                     "**/__pycache__/*",
                     ".pytest_cache/*",
                     ".venv/*",
+                    "**/.venv/*",  # Don't render .venv at any depth
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                 ],

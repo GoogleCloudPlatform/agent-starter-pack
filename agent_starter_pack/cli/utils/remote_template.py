@@ -132,6 +132,7 @@ def check_and_execute_with_version_lock(
     template_dir: pathlib.Path,
     original_agent_spec: str | None = None,
     locked: bool = False,
+    project_name: str | None = None,
 ) -> bool:
     """Check if remote template has agent-starter-pack version lock and execute if found.
 
@@ -139,6 +140,7 @@ def check_and_execute_with_version_lock(
         template_dir: Path to the fetched template directory
         original_agent_spec: The original agent spec (remote URL) to replace with local path
         locked: Whether this is already a locked execution (prevents recursion)
+        project_name: Project name (may have been entered interactively)
 
     Returns:
         True if version lock was found and executed, False otherwise
@@ -180,6 +182,21 @@ def check_and_execute_with_version_lock(
             else:
                 # Agent was selected interactively, add --agent flag
                 original_args.extend(["--agent", f"local@{template_dir}"])
+
+        # Add project_name if provided interactively (not in original args)
+        if project_name:
+            # Check if project_name is already in the args (as positional argument)
+            # The create command signature is: create [PROJECT_NAME] [OPTIONS]
+            # If project_name was provided via CLI, it would be in sys.argv
+            # We check by looking for it in the original sys.argv
+            if project_name not in sys.argv:
+                # Insert project_name as positional argument after 'create'
+                # Click is flexible so appending also works if 'create' isn't found
+                if "create" in original_args:
+                    create_idx = original_args.index("create")
+                    original_args.insert(create_idx + 1, project_name)
+                else:
+                    original_args.append(project_name)
 
         # Add version lock flags only for ASP versions 0.14.1 and above
         if pkg_version.parse(version) > pkg_version.parse("0.14.1"):
@@ -228,6 +245,7 @@ def fetch_remote_template(
     spec: RemoteTemplateSpec,
     original_agent_spec: str | None = None,
     locked: bool = False,
+    project_name: str | None = None,
 ) -> tuple[pathlib.Path, pathlib.Path]:
     """Fetch remote template and return path to template directory.
 
@@ -238,6 +256,7 @@ def fetch_remote_template(
         spec: Remote template specification
         original_agent_spec: Original agent spec string (used to prevent recursion)
         locked: Whether this is already a locked execution (prevents recursion)
+        project_name: Project name (may have been entered interactively)
 
     Returns:
         A tuple containing:
@@ -328,7 +347,7 @@ def fetch_remote_template(
 
         # Check for version lock and execute nested command if found
         if check_and_execute_with_version_lock(
-            template_dir, original_agent_spec, locked
+            template_dir, original_agent_spec, locked, project_name
         ):
             # If we executed with locked version, the nested process will handle everything
             # Clean up and exit successfully

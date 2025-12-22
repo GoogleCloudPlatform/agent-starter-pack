@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# mypy: ignore-errors
 """
 Script to delete service accounts starting with 'test-' from specified projects.
 

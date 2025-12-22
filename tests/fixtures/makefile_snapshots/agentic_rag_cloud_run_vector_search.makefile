@@ -88,10 +88,10 @@ test:
 	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
-# Run code quality checks (codespell, ruff, mypy)
+# Run code quality checks (codespell, ruff, ty)
 lint:
 	uv sync --dev --extra lint
 	uv run codespell
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
-	uv run mypy .
+	uv run ty check .

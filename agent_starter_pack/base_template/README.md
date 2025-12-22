@@ -97,7 +97,7 @@ make install && make playground
 | `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
-| `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
+| `make lint`          | Run code quality checks (codespell, ruff, ty)                                               |
 {%- if cookiecutter.cicd_runner != 'skip' %}
 | `make setup-dev-env` | Set up development environment resources using Terraform                         |
 {%- endif %}

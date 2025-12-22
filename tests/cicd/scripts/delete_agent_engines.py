@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-# mypy: ignore-errors
 """
 Script to delete all Agent Engine services and Cloud Run services from specified projects.
 

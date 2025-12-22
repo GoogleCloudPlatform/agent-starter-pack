@@ -41,10 +41,8 @@ jupyter = [
 ]
 lint = [
     "ruff>=0.4.6,<1.0.0",
-    "mypy>=1.15.0,<2.0.0",
+    "ty>=0.0.1a0",
     "codespell>=2.2.0,<3.0.0",
-    "types-pyyaml>=6.0.12.20240917,<7.0.0",
-    "types-requests>=2.32.0.20240914,<3.0.0",
 ]
 
 [tool.ruff]
@@ -67,26 +65,25 @@ ignore = ["E501", "C901", "B006"] # ignore line too long, too complex
 [tool.ruff.lint.isort]
 known-first-party = ["{{cookiecutter.agent_directory}}", "frontend"]
 
-[tool.mypy]
-disallow_untyped_calls = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-no_implicit_optional = true
-check_untyped_defs = true
-disallow_subclassing_any = true
-warn_incomplete_stub = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_unreachable = true
-follow_imports = "silent"
-ignore_missing_imports = true
-explicit_package_bases = true
-disable_error_code = ["misc", "no-untyped-call", "no-any-return"]
-{% if cookiecutter.is_adk_live %}
-exclude = [".venv","./frontend"]
-{% else %}
-exclude = [".venv"]
+[tool.ty]
+# ty is Astral's Rust-based type checker (same team as ruff/uv)
+# See: https://docs.astral.sh/ty/
+
+[tool.ty.environment]
+python-version = "3.10"
+
+[tool.ty.src]
+{% if cookiecutter.is_adk_live -%}
+exclude = [".venv/**", "frontend/**"]
+{%- else -%}
+exclude = [".venv/**"]
 {%- endif %}
+
+[tool.ty.rules]
+# Ignore common issues with third-party libraries
+unresolved-import = "ignore"
+possibly-missing-attribute = "ignore"
+invalid-argument-type = "ignore"
 
 [tool.codespell]
 ignore-words-list = "rouge"

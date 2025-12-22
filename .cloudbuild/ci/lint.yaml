@@ -22,7 +22,7 @@ steps:
       - |
         uv sync --dev --extra lint --locked
 
-  # Run unit tests using pytest
+  # Run linting checks
   - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: lint
     entrypoint: /bin/bash
@@ -32,7 +32,7 @@ steps:
         set -e
         uv run ruff check . --config pyproject.toml --diff
         uv run ruff format . --check  --config pyproject.toml --diff
-        uv run mypy --config-file pyproject.toml ./agent_starter_pack/cli ./tests
+        uv run ty check ./agent_starter_pack/cli ./tests
 
 logsBucket: gs://${PROJECT_ID}-logs-data/build-logs
 options:

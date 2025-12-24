@@ -24,6 +24,7 @@ locals {
     "bigquery.googleapis.com",
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
+    "monitoring.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}

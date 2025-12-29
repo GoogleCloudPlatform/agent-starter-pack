@@ -12,8 +12,8 @@ generate-lock:
 
 lint:
 	uv sync --dev --extra lint
-	uv run ruff check . --config pyproject.toml --diff
-	uv run ruff format . --check  --config pyproject.toml --diff
+	uv run ruff check agent_starter_pack/cli tests --config pyproject.toml --diff
+	uv run ruff format agent_starter_pack/cli tests --check  --config pyproject.toml --diff
 	uv run ty check ./agent_starter_pack/cli ./tests
 
 lint-templated-agents:

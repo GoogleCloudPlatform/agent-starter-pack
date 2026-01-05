@@ -103,9 +103,10 @@ def _run_remote_templating_test(
         # Verify app object was injected for ADK templates
         # This is critical for remote templates that only define root_agent
         if verify_app_injection:
+            import re
             agent_py_content = (agent_dir / "agent.py").read_text()
-            assert "app = " in agent_py_content or "app=" in agent_py_content, (
-                f"Expected 'app' object in agent.py for ADK template. "
+            assert re.search(r"^\s*app\s*=", agent_py_content, re.MULTILINE), (
+                f"Expected 'app' object assignment in agent.py for ADK template. "
                 f"Content:\n{agent_py_content[:500]}..."
             )
 

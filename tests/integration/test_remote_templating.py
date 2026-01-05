@@ -14,6 +14,7 @@
 
 import os
 import pathlib
+import re
 from datetime import datetime
 
 from rich.console import Console
@@ -103,7 +104,6 @@ def _run_remote_templating_test(
         # Verify app object was injected for ADK templates
         # This is critical for remote templates that only define root_agent
         if verify_app_injection:
-            import re
             agent_py_content = (agent_dir / "agent.py").read_text()
             assert re.search(r"^\s*app\s*=", agent_py_content, re.MULTILINE), (
                 f"Expected 'app' object assignment in agent.py for ADK template. "

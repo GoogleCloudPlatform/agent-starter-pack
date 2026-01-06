@@ -92,7 +92,7 @@ Explore amazing projects built with the Agent Starter Pack!
 The `agent-starter-pack` offers key features to accelerate and simplify the development of your agent:
 - **🔄 [CI/CD Automation](https://googlecloudplatform.github.io/agent-starter-pack/cli/setup_cicd)** - A single command to set up a complete CI/CD pipeline for all environments, supporting both **Google Cloud Build** and **GitHub Actions**.
 - **📥 [Data Pipeline for RAG with Terraform/CI-CD](https://googlecloudplatform.github.io/agent-starter-pack/guide/data-ingestion)** - Seamlessly integrate a data pipeline to process embeddings for RAG into your agent system. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).
-- **[Remote Templates](docs/guide/remote-templating.md)**: Create and share your own agent starter packs templates from any Git repository.
+- **[Remote Templates](https://googlecloudplatform.github.io/agent-starter-pack/remote-templates/)**: Create and share your own agent starter packs templates from any Git repository.
 - **🤖 Gemini CLI Integration** - Use the [Gemini CLI](https://github.com/google-gemini/gemini-cli) and the included `GEMINI.md` context file to ask questions about your template, agent architecture, and the path to production. Get instant guidance and code examples directly in your terminal.
 
 ## High-Level Architecture

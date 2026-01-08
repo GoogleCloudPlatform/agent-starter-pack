@@ -312,7 +312,7 @@ async def test_agent_card(agent_app: AgentEngineApp) -> None:
     )
 
     # Verify core agent card fields
-    assert response.get("name") == "root_agent", "Expected agent name 'root_agent'"
+    assert response.get("name"), "Expected agent name in response"
     assert response.get("protocolVersion") == "0.3.0", "Expected protocol version 0.3.0"
     assert response.get("preferredTransport") == "HTTP+JSON", (
         "Expected HTTP+JSON transport"

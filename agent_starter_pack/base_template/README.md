@@ -132,7 +132,7 @@ The [A2A Inspector](https://github.com/a2aproject/a2a-inspector) provides the fo
    make inspector
    ```
 
-3. Open http://localhost:5001 and connect to `http://localhost:8000`
+3. Open http://localhost:5001 and connect to `http://localhost:8000/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json`
 {%- else %}
 
 > **Note:** For Agent Engine deployments, local testing with A2A endpoints requires deployment first, as `make playground` uses the ADK web interface. For local development, use `make playground`. To test A2A protocol compliance, follow the Remote Testing instructions below.

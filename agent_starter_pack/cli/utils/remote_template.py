@@ -364,6 +364,40 @@ def fetch_remote_template(
         ) from e
 
 
+def _detect_flat_structure(template_dir: pathlib.Path) -> bool:
+    """Detect if template has a flat structure (agent code in root).
+
+    A flat structure means:
+    - agent.py exists directly in the template root
+    - No obvious agent subdirectory exists (like 'app/' or folder_name as package)
+
+    Args:
+        template_dir: Path to template directory
+
+    Returns:
+        True if template has flat structure, False otherwise
+    """
+    # Check if agent.py exists in root
+    agent_py_in_root = (template_dir / "agent.py").exists()
+    if not agent_py_in_root:
+        return False
+
+    # Check for common agent subdirectory patterns
+    folder_name = template_dir.name.replace("-", "_")
+    potential_agent_dirs = ["app", folder_name]
+
+    for subdir in potential_agent_dirs:
+        subdir_path = template_dir / subdir
+        if subdir_path.is_dir() and (subdir_path / "agent.py").exists():
+            # Found a proper agent subdirectory
+            return False
+
+    logging.debug(
+        f"Detected flat structure in {template_dir}: agent.py in root, no agent subdirectory"
+    )
+    return True
+
+
 def _infer_agent_directory_for_adk(
     template_dir: pathlib.Path, is_adk_sample: bool
 ) -> dict[str, Any]:
@@ -379,19 +413,35 @@ def _infer_agent_directory_for_adk(
     if not is_adk_sample:
         return {}
 
+    # Check for flat structure (agent code in root)
+    is_flat = _detect_flat_structure(template_dir)
+
     # Convert folder name to Python package convention (hyphens to underscores)
     folder_name = template_dir.name
-    agent_directory = folder_name.replace("-", "_")
+    target_agent_directory = folder_name.replace("-", "_")
+
+    if is_flat:
+        logging.debug(
+            f"Flat structure detected: source is '.', target agent_directory is '{target_agent_directory}'"
+        )
+        return {
+            "settings": {
+                "agent_directory": target_agent_directory,
+                "source_agent_directory": ".",  # Special value for flat structure
+            },
+            "has_explicit_config": False,
+            "is_flat_structure": True,
+        }
 
     logging.debug(
-        f"Inferred agent_directory '{agent_directory}' from folder name '{folder_name}' for ADK sample"
+        f"Inferred agent_directory '{target_agent_directory}' from folder name '{folder_name}' for ADK sample"
     )
 
     return {
         "settings": {
-            "agent_directory": agent_directory,
+            "agent_directory": target_agent_directory,
         },
-        "has_explicit_config": False,  # Track that this was inferred
+        "has_explicit_config": False,
     }
 
 
@@ -480,6 +530,19 @@ def load_remote_template_config(
         except Exception as e:
             logging.warning(f"Failed to apply ADK inference for {template_dir}: {e}")
             # Continue with default configuration
+
+    # Detect flat structure for all remote templates (not just ADK samples)
+    # This handles cases where agent.py is in root with no subdirectory
+    if not has_explicit_config and not is_adk_sample:
+        if _detect_flat_structure(template_dir):
+            folder_name = template_dir.name.replace("-", "_")
+            config.setdefault("settings", {})
+            config["settings"]["agent_directory"] = folder_name
+            config["settings"]["source_agent_directory"] = "."
+            config["is_flat_structure"] = True
+            logging.debug(
+                f"Detected flat structure for non-ADK template: source='.', target='{folder_name}'"
+            )
 
     # Add metadata about configuration source
     config["has_explicit_config"] = bool(has_explicit_config)

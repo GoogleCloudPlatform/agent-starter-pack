@@ -21,6 +21,8 @@ import pytest
 
 from agent_starter_pack.cli.utils.remote_template import (
     RemoteTemplateSpec,
+    _detect_flat_structure,
+    _infer_agent_directory_for_adk,
     check_and_execute_with_version_lock,
     fetch_remote_template,
     get_base_template_name,
@@ -234,12 +236,14 @@ requires_data_ingestion = false
                 "has_explicit_config": False,
             }
 
+    @patch("agent_starter_pack.cli.utils.remote_template._detect_flat_structure")
     @patch("agent_starter_pack.cli.utils.remote_template.logging")
     def test_load_remote_template_config_yaml_error(
-        self, mock_logging: MagicMock
+        self, mock_logging: MagicMock, mock_detect_flat: MagicMock
     ) -> None:
         """Test loading config with TOML parsing error - returns defaults"""
         template_dir = pathlib.Path("/mock/template")
+        mock_detect_flat.return_value = False  # Don't trigger flat structure detection
 
         with (
             patch("pathlib.Path.exists", return_value=True),
@@ -1140,6 +1144,196 @@ version = "0.1.0"
 
         assert agent_sample_id is None
         assert agent_sample_publisher is None
+
+
+class TestDetectFlatStructure:
+    """Tests for the _detect_flat_structure function."""
+
+    def test_flat_structure_agent_py_in_root_no_subdirs(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test detection of flat structure with agent.py in root and no agent subdirectory."""
+        # Create flat structure
+        (tmp_path / "agent.py").write_text("root_agent = None")
+        (tmp_path / "__init__.py").write_text("")
+
+        result = _detect_flat_structure(tmp_path)
+        assert result is True
+
+    def test_nested_structure_agent_py_in_app_subdir(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that nested structure (agent.py in app/) is not detected as flat."""
+        # Create nested structure
+        app_dir = tmp_path / "app"
+        app_dir.mkdir()
+        (app_dir / "agent.py").write_text("root_agent = None")
+        (app_dir / "__init__.py").write_text("")
+
+        result = _detect_flat_structure(tmp_path)
+        assert result is False
+
+    def test_nested_structure_agent_py_in_folder_name_subdir(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that nested structure with folder-named subdir is not detected as flat."""
+        # Create a template dir named "bigquery" with agent code in bigquery/ subdir
+        template_dir = tmp_path / "bigquery"
+        template_dir.mkdir()
+        agent_subdir = template_dir / "bigquery"
+        agent_subdir.mkdir()
+        (agent_subdir / "agent.py").write_text("root_agent = None")
+
+        result = _detect_flat_structure(template_dir)
+        assert result is False
+
+    def test_no_agent_py_at_all(self, tmp_path: pathlib.Path) -> None:
+        """Test that structure without agent.py is not detected as flat."""
+        (tmp_path / "README.md").write_text("# Test")
+
+        result = _detect_flat_structure(tmp_path)
+        assert result is False
+
+    def test_agent_py_in_both_root_and_subdir_prefers_nested(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that when agent.py exists in both root and subdir, nested is preferred."""
+        # Create agent.py in root
+        (tmp_path / "agent.py").write_text("root_agent = None")
+        # Create agent.py in app/ subdir
+        app_dir = tmp_path / "app"
+        app_dir.mkdir()
+        (app_dir / "agent.py").write_text("root_agent = None")
+
+        result = _detect_flat_structure(tmp_path)
+        assert result is False  # Prefer nested structure
+
+    def test_flat_structure_with_hyphenated_folder_name(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test flat structure detection with hyphenated folder name."""
+        template_dir = tmp_path / "my-agent"
+        template_dir.mkdir()
+        (template_dir / "agent.py").write_text("root_agent = None")
+
+        result = _detect_flat_structure(template_dir)
+        assert result is True
+
+
+class TestInferAgentDirectoryForAdkWithFlatStructure:
+    """Tests for _infer_agent_directory_for_adk with flat structure detection."""
+
+    def test_flat_adk_sample_returns_flat_config(self, tmp_path: pathlib.Path) -> None:
+        """Test that flat ADK sample returns config with source_agent_directory='.'."""
+        # Create flat structure
+        (tmp_path / "agent.py").write_text("root_agent = None")
+
+        result = _infer_agent_directory_for_adk(tmp_path, is_adk_sample=True)
+
+        assert result.get("is_flat_structure") is True
+        assert result.get("settings", {}).get("source_agent_directory") == "."
+        assert result.get("settings", {}).get(
+            "agent_directory"
+        ) == tmp_path.name.replace("-", "_")
+        assert result.get("has_explicit_config") is False
+
+    def test_nested_adk_sample_returns_standard_config(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that nested ADK sample returns standard config without flat flags."""
+        # Create nested structure
+        app_dir = tmp_path / "app"
+        app_dir.mkdir()
+        (app_dir / "agent.py").write_text("root_agent = None")
+
+        result = _infer_agent_directory_for_adk(tmp_path, is_adk_sample=True)
+
+        assert (
+            result.get("is_flat_structure") is None
+            or result.get("is_flat_structure") is False
+        )
+        assert result.get("settings", {}).get("source_agent_directory") is None
+        assert result.get("settings", {}).get(
+            "agent_directory"
+        ) == tmp_path.name.replace("-", "_")
+
+    def test_non_adk_sample_returns_empty_config(self, tmp_path: pathlib.Path) -> None:
+        """Test that non-ADK sample returns empty config."""
+        (tmp_path / "agent.py").write_text("root_agent = None")
+
+        result = _infer_agent_directory_for_adk(tmp_path, is_adk_sample=False)
+
+        assert result == {}
+
+    def test_flat_adk_sample_with_hyphenated_name(self, tmp_path: pathlib.Path) -> None:
+        """Test that hyphenated folder name is converted to underscores."""
+        template_dir = tmp_path / "my-cool-agent"
+        template_dir.mkdir()
+        (template_dir / "agent.py").write_text("root_agent = None")
+
+        result = _infer_agent_directory_for_adk(template_dir, is_adk_sample=True)
+
+        assert result.get("settings", {}).get("agent_directory") == "my_cool_agent"
+
+
+class TestLoadRemoteTemplateConfigWithFlatStructure:
+    """Tests for load_remote_template_config with flat structure detection."""
+
+    def test_non_adk_template_with_flat_structure_auto_detects(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that non-ADK template with flat structure is auto-detected."""
+        # Create flat structure
+        (tmp_path / "agent.py").write_text("root_agent = None")
+
+        result = load_remote_template_config(tmp_path, is_adk_sample=False)
+
+        assert result.get("is_flat_structure") is True
+        assert result.get("settings", {}).get("source_agent_directory") == "."
+        # Target agent directory should be derived from folder name
+        assert result.get("settings", {}).get(
+            "agent_directory"
+        ) == tmp_path.name.replace("-", "_")
+
+    def test_non_adk_template_with_nested_structure_no_flat_flags(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that non-ADK template with nested structure has no flat flags."""
+        # Create nested structure
+        app_dir = tmp_path / "app"
+        app_dir.mkdir()
+        (app_dir / "agent.py").write_text("root_agent = None")
+
+        result = load_remote_template_config(tmp_path, is_adk_sample=False)
+
+        assert (
+            result.get("is_flat_structure") is None
+            or result.get("is_flat_structure") is False
+        )
+        assert result.get("settings", {}).get("source_agent_directory") is None
+
+    def test_template_with_explicit_config_no_flat_detection(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that template with explicit config does not trigger flat detection."""
+        # Create flat structure
+        (tmp_path / "agent.py").write_text("root_agent = None")
+        # Create pyproject.toml with explicit config
+        pyproject_content = b"""
+[tool.agent-starter-pack]
+name = "my-template"
+base_template = "adk_base"
+
+[tool.agent-starter-pack.settings]
+agent_directory = "custom_agent"
+"""
+        (tmp_path / "pyproject.toml").write_bytes(pyproject_content)
+
+        result = load_remote_template_config(tmp_path, is_adk_sample=False)
+
+        # Explicit config should be used, no flat detection
+        assert result.get("has_explicit_config") is True
+        assert result.get("settings", {}).get("agent_directory") == "custom_agent"
 
 
 if __name__ == "__main__":

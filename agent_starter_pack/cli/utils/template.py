@@ -1281,16 +1281,8 @@ def process_template(
                     if cli_overrides
                     else None
                 )
-                is_flat_structure = (
-                    (cli_agent_dir == ".")
-                    or (remote_config and remote_config.get("is_flat_structure", False))
-                    or (
-                        remote_config
-                        and remote_config.get("settings", {}).get(
-                            "source_agent_directory"
-                        )
-                        == "."
-                    )
+                is_flat_structure = (cli_agent_dir == ".") or (
+                    remote_config and remote_config.get("is_flat_structure", False)
                 )
 
                 if is_flat_structure:
@@ -1854,4 +1846,4 @@ def copy_flat_structure_agent_files(
             logging.debug(f"Flat structure: copying directory {item.name}")
             if dest_dir.exists():
                 shutil.rmtree(dest_dir)
-            shutil.copytree(item, dest_dir, dirs_exist_ok=True)
+            shutil.copytree(item, dest_dir)

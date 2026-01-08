@@ -14,6 +14,7 @@
 
 import os
 import pathlib
+import re
 from datetime import datetime
 
 from rich.console import Console
@@ -29,6 +30,8 @@ def _run_remote_templating_test(
     project_name: str,
     skip_version_lock: bool = False,
     deployment_target: str = "agent_engine",
+    base_template: str | None = None,
+    verify_app_injection: bool = True,
 ) -> None:
     """Helper to run remote templating test with common logic.
 
@@ -36,6 +39,8 @@ def _run_remote_templating_test(
         project_name: Name for the generated project
         skip_version_lock: If True, set ASP_SKIP_VERSION_LOCK=1 to use local ASP
         deployment_target: Deployment target (agent_engine or cloud_run)
+        base_template: Optional base template override (e.g., "adk_a2a_base")
+        verify_app_injection: If True, verify app object exists in agent.py
     """
     output_dir = pathlib.Path(TARGET_DIR)
     project_path = output_dir / project_name
@@ -64,6 +69,10 @@ def _run_remote_templating_test(
             "--skip-checks",
         ]
 
+        # Add base template override if specified
+        if base_template:
+            cmd.extend(["--base-template", base_template])
+
         suffix = " (using local ASP)" if skip_version_lock else ""
         run_command(
             cmd,
@@ -91,6 +100,15 @@ def _run_remote_templating_test(
         )
         agent_dir = agent_dirs[0]
         assert (agent_dir / "agent.py").exists(), "Missing agent.py in agent directory"
+
+        # Verify app object was injected for ADK templates
+        # This is critical for remote templates that only define root_agent
+        if verify_app_injection:
+            agent_py_content = (agent_dir / "agent.py").read_text()
+            assert re.search(r"^\s*app\s*=", agent_py_content, re.MULTILINE), (
+                f"Expected 'app' object assignment in agent.py for ADK template. "
+                f"Content:\n{agent_py_content[:500]}..."
+            )
 
         # Install dependencies
         run_command(
@@ -155,6 +173,23 @@ def test_remote_templating_cloud_run() -> None:
     project_name = f"agent-cr-{timestamp}"
     _run_remote_templating_test(
         project_name, skip_version_lock=True, deployment_target="cloud_run"
+    )
+
+
+def test_remote_templating_adk_a2a_base() -> None:
+    """Test creating an agent from a remote template with adk_a2a_base.
+
+    Remote templates using adk_a2a_base should have app object injected
+    even if they only define root_agent (no explicit app).
+    """
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    project_name = f"agent-a2a-{timestamp}"
+    _run_remote_templating_test(
+        project_name,
+        skip_version_lock=True,
+        deployment_target="agent_engine",
+        base_template="adk_a2a_base",
+        verify_app_injection=True,
     )
 
 

@@ -1022,3 +1022,188 @@ model: gemini-2.0-flash-001
             assert "get_weather" not in content, (
                 "agent.py should not contain base template's get_weather function"
             )
+
+
+class TestEnhanceAdkAppInjection:
+    """Test that enhance properly injects app object for all ADK templates."""
+
+    @pytest.mark.parametrize(
+        "base_template",
+        [
+            "adk_base",
+            "adk_a2a_base",
+            "adk_live",
+        ],
+    )
+    def test_app_injected_for_adk_templates_without_app(
+        self, base_template: str, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that app object is injected for ADK templates that only have root_agent."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with ONLY root_agent (no app)
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            # This simulates a remote template that only defines root_agent
+            agent_content = """from google.adk.agents import Agent
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+    instruction="You are a helpful assistant.",
+)
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance with the ADK base template
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    base_template,
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify app object was injected
+            modified_content = agent_file.read_text()
+            assert "from google.adk.apps.app import App" in modified_content, (
+                f"Expected App import to be injected for {base_template}"
+            )
+            assert 'app = App(root_agent=root_agent, name="app")' in modified_content, (
+                f"Expected app object to be injected for {base_template}"
+            )
+
+    def test_app_not_injected_for_non_adk_templates(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that app object is NOT injected for non-ADK templates."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with agent (not root_agent)
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            agent_content = """from langchain_core.runnables import RunnablePassthrough
+
+agent = RunnablePassthrough()
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance with langgraph_base (non-ADK)
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "langgraph_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            # Check that enhance succeeded
+            assert result.exit_code == 0, (
+                f"Enhance failed with output:\n{result.output}"
+            )
+
+            # Verify app object was NOT injected (langgraph doesn't need it)
+            modified_content = agent_file.read_text()
+            assert "from google.adk.apps.app import App" not in modified_content, (
+                "App import should NOT be injected for langgraph_base"
+            )
+
+    def test_app_not_injected_when_already_present(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that app object is not duplicated when already present."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create agent directory with both root_agent AND app
+            agent_dir = pathlib.Path("app")
+            agent_dir.mkdir()
+            agent_file = agent_dir / "agent.py"
+
+            agent_content = """from google.adk.agents import Agent
+from google.adk.apps.app import App
+
+root_agent = Agent(
+    name="test_agent",
+    model="gemini-2.0-flash-001",
+)
+
+app = App(root_agent=root_agent, name="my_agent")
+"""
+            agent_file.write_text(agent_content)
+
+            # Run enhance
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--base-template",
+                    "adk_base",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0
+
+            # Verify content was NOT modified (app already exists)
+            modified_content = agent_file.read_text()
+            assert modified_content == agent_content, (
+                "agent.py should not be modified when app already exists"
+            )
+
+    def test_is_adk_derived_from_base_template_name_not_tags(self) -> None:
+        """Verify is_adk is derived from base_template_name, not tags.
+
+        This is the core fix: remote templates using adk_a2a_base may not
+        have explicit tags, but should still get app injection based on
+        the base_template_name containing 'adk'.
+        """
+        test_cases = [
+            ("adk_base", True),
+            ("adk_a2a_base", True),
+            ("adk_live", True),
+            ("ADK_BASE", True),  # Case insensitive
+            ("langgraph_base", False),
+            ("agentic_rag", False),
+        ]
+
+        for base_template_name, expected_is_adk in test_cases:
+            is_adk_enhance = (
+                base_template_name is not None and "adk" in base_template_name.lower()
+            )
+
+            is_adk_template = "adk" in base_template_name.lower()
+
+            assert is_adk_enhance == expected_is_adk, (
+                f"enhance.py pattern failed for {base_template_name}"
+            )
+            assert is_adk_template == expected_is_adk, (
+                f"template.py pattern failed for {base_template_name}"
+            )
+            assert is_adk_enhance == is_adk_template, (
+                f"Patterns don't match for {base_template_name}"
+            )

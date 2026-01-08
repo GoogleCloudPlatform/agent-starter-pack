@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import re
 from collections.abc import Generator
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -228,8 +229,8 @@ class TestCreateCommand:
             patch("rich.prompt.Prompt.ask") as mock_prompt,
         ):
             mock_int_prompt.return_value = 1  # Select first agent
-            # Respond with a valid choice ("Y") for credential confirmation
-            mock_prompt.return_value = "Y"
+            # First prompt captures optional alert email, then credential confirmation.
+            mock_prompt.side_effect = ["", "Y"]  # Use current credentials
 
             result = runner.invoke(create, ["test-project"])
 
@@ -279,7 +280,8 @@ class TestCreateCommand:
                 "shutil.which", return_value="gcloud"
             ),  # Mock shutil.which for consistent test behavior
         ):
-            mock_prompt.side_effect = ["edit", "y"]
+            # First prompt captures optional alert email, then credential flow prompts.
+            mock_prompt.side_effect = ["", "edit", "y"]
 
             result = runner.invoke(
                 create,
@@ -323,7 +325,9 @@ class TestCreateCommand:
             )
 
         assert result.exit_code == 1
-        assert "Invalid agent name or number: non_existent_agent" in result.output
+        clean_output = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+        assert "Invalid agent name or number" in clean_output
+        assert "non_existent_agent" in clean_output
 
     def test_create_with_invalid_deployment_target(self) -> None:
         """Test create command fails with invalid deployment target"""

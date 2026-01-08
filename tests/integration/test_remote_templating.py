@@ -156,3 +156,123 @@ def test_remote_templating_cloud_run() -> None:
     _run_remote_templating_test(
         project_name, skip_version_lock=True, deployment_target="cloud_run"
     )
+
+
+def _run_flat_structure_test(
+    project_name: str,
+    remote_url: str,
+    use_dir_dot: bool = False,
+    expected_agent_dir: str = "bigquery",
+) -> None:
+    """Helper to run flat structure templating tests.
+
+    Args:
+        project_name: Name for the generated project
+        remote_url: Remote template URL (should have flat structure)
+        use_dir_dot: If True, explicitly pass -dir . flag
+        expected_agent_dir: Expected agent directory name in output
+    """
+    output_dir = pathlib.Path(TARGET_DIR)
+    project_path = output_dir / project_name
+
+    try:
+        # Create target directory if it doesn't exist
+        os.makedirs(output_dir, exist_ok=True)
+
+        # Set up environment - skip version lock for testing
+        env = os.environ.copy()
+        env["ASP_SKIP_VERSION_LOCK"] = "1"
+
+        # Build command
+        cmd = [
+            "python",
+            "-m",
+            "agent_starter_pack.cli.main",
+            "create",
+            project_name,
+            "-a",
+            remote_url,
+            "--deployment-target",
+            "agent_engine",
+            "--auto-approve",
+            "--skip-checks",
+            "--prototype",
+        ]
+
+        # Add -dir . if requested
+        if use_dir_dot:
+            cmd.extend(["-dir", "."])
+
+        flag_info = " with -dir ." if use_dir_dot else " (auto-detect)"
+        run_command(
+            cmd,
+            output_dir,
+            f"Templating flat structure agent {project_name}{flag_info}",
+            env=env,
+        )
+
+        # Verify essential files are created
+        essential_files = [
+            "pyproject.toml",
+            "README.md",
+        ]
+        for file in essential_files:
+            assert (project_path / file).exists(), f"Missing file: {file}"
+
+        # Verify agent directory exists with correct name
+        agent_dir = project_path / expected_agent_dir
+        assert agent_dir.is_dir(), (
+            f"Expected agent directory '{expected_agent_dir}' not found. "
+            f"Contents: {list(project_path.iterdir())}"
+        )
+        assert (agent_dir / "agent.py").exists(), (
+            f"Missing agent.py in {expected_agent_dir}/"
+        )
+
+        console.print(
+            f"[bold green]✓[/] Flat structure templating{flag_info} test passed for {project_name}"
+        )
+
+    except Exception as e:
+        console.print(f"[bold red]Error:[/] {e!s}")
+        raise
+
+
+def test_flat_structure_auto_detection() -> None:
+    """Test that flat structure templates are auto-detected correctly.
+
+    Uses a known flat structure template (adk-python bigquery sample)
+    where agent.py is in the root, not in a subdirectory.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    project_name = f"flat-auto-{timestamp}"
+    remote_url = (
+        "https://github.com/google/adk-python/tree/main/contributing/samples/bigquery"
+    )
+
+    _run_flat_structure_test(
+        project_name,
+        remote_url,
+        use_dir_dot=False,
+        expected_agent_dir="bigquery",
+    )
+
+
+def test_flat_structure_with_dir_dot_flag() -> None:
+    """Test that -dir . flag works correctly for flat structure templates.
+
+    Explicitly passing -dir . should trigger flat structure handling
+    and derive the agent directory name from the folder name.
+    """
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    project_name = f"flat-dir-{timestamp}"
+    remote_url = (
+        "https://github.com/google/adk-python/tree/main/contributing/samples/bigquery"
+    )
+
+    _run_flat_structure_test(
+        project_name,
+        remote_url,
+        use_dir_dot=True,
+        expected_agent_dir="bigquery",
+    )

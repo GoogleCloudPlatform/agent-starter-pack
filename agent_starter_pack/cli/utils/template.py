@@ -230,15 +230,29 @@ def add_base_template_dependencies_interactively(
         return False
 
 
-def validate_agent_directory_name(agent_dir: str) -> None:
+def validate_agent_directory_name(agent_dir: str, allow_dot: bool = False) -> None:
     """Validate that an agent directory name is a valid Python identifier.
 
     Args:
         agent_dir: The agent directory name to validate
+        allow_dot: If True, allows "." as a special value indicating flat structure
 
     Raises:
         ValueError: If the agent directory name is not a valid Python identifier
+
+    Note:
+        The special value "." indicates flat structure - agent code is in the
+        template root. When "." is used, the target directory name will be
+        derived from the template folder name.
     """
+    if agent_dir == ".":
+        if allow_dot:
+            return  # "." is valid when explicitly allowed (will be resolved later)
+        raise ValueError(
+            "Agent directory '.' is not valid in this context. "
+            "Use '.' only to indicate flat structure templates."
+        )
+
     if "-" in agent_dir:
         raise ValueError(
             f"Agent directory '{agent_dir}' contains hyphens (-) which are not allowed. "
@@ -879,7 +893,11 @@ def process_template(
     def get_agent_directory(
         template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
     ) -> str:
-        """Get agent directory with CLI override support."""
+        """Get agent directory with CLI override support.
+
+        Handles the special case where agent_directory is "." (flat structure),
+        deriving the target directory name from the remote template folder name.
+        """
         agent_dir = None
         if (
             cli_overrides
@@ -891,6 +909,20 @@ def process_template(
             agent_dir = template_config.get("settings", {}).get(
                 "agent_directory", "app"
             )
+
+        # Handle "." (flat structure) - derive target from folder name
+        if agent_dir == ".":
+            if remote_template_path:
+                # Derive from remote template folder name
+                folder_name = remote_template_path.name.replace("-", "_")
+                logging.debug(
+                    f"Flat structure (-dir .): deriving target '{folder_name}' from folder name"
+                )
+                agent_dir = folder_name
+            else:
+                # Fallback to "app" for non-remote templates
+                logging.debug("Flat structure (-dir .): using 'app' as fallback")
+                agent_dir = "app"
 
         # Validate agent directory is a valid Python identifier
         validate_agent_directory_name(agent_dir)
@@ -1239,13 +1271,47 @@ def process_template(
                             f"Preserved base template {preserve_file} as starter_pack_{base_name}{extension}"
                         )
 
-                copy_files(
-                    remote_template_path,
-                    generated_project_dir,
-                    agent_name=agent_name,
-                    overwrite=True,
-                    agent_directory=agent_directory,
+                # Check if this is a flat structure template
+                # Flat structure can be detected via:
+                # 1. Auto-detection (is_flat_structure flag in remote_config)
+                # 2. source_agent_directory set to "." in config
+                # 3. CLI override with -dir . (agent_directory = ".")
+                cli_agent_dir = (
+                    cli_overrides.get("settings", {}).get("agent_directory")
+                    if cli_overrides
+                    else None
                 )
+                is_flat_structure = (
+                    (cli_agent_dir == ".")
+                    or (remote_config and remote_config.get("is_flat_structure", False))
+                    or (
+                        remote_config
+                        and remote_config.get("settings", {}).get(
+                            "source_agent_directory"
+                        )
+                        == "."
+                    )
+                )
+
+                if is_flat_structure:
+                    # For flat structures, Python files go to agent_directory
+                    logging.debug(
+                        f"Flat structure detected: copying files to {agent_directory}/"
+                    )
+                    copy_flat_structure_agent_files(
+                        remote_template_path,
+                        generated_project_dir,
+                        agent_directory,
+                    )
+                else:
+                    # Standard structure: copy as-is
+                    copy_files(
+                        remote_template_path,
+                        generated_project_dir,
+                        agent_name=agent_name,
+                        overwrite=True,
+                        agent_directory=agent_directory,
+                    )
                 logging.debug("Remote template files copied successfully")
 
                 # Handle ADK agent compatibility
@@ -1738,3 +1804,54 @@ def copy_deployment_files(
         )
     else:
         logging.warning(f"Deployment target directory not found: {deployment_path}")
+
+
+def copy_flat_structure_agent_files(
+    src: pathlib.Path,
+    dst: pathlib.Path,
+    agent_directory: str,
+) -> None:
+    """Copy agent files from a flat structure template to the agent directory.
+
+    For flat structure templates, Python files (*.py) in the root are copied
+    to the agent directory, while other files are copied to the project root.
+
+    Args:
+        src: Source path (template root with flat structure)
+        dst: Destination path (project root)
+        agent_directory: Target agent directory name
+    """
+    agent_dst = dst / agent_directory
+    agent_dst.mkdir(parents=True, exist_ok=True)
+
+    # Files that should go to agent directory
+    agent_file_extensions = {".py"}
+    # Files to skip entirely
+    skip_files = {"pyproject.toml", "uv.lock", "README.md", ".gitignore"}
+
+    for item in src.iterdir():
+        if item.name.startswith(".") or item.name in skip_files:
+            continue
+        if item.name == "__pycache__":
+            continue
+
+        if item.is_file():
+            if item.suffix in agent_file_extensions:
+                # Python files go to agent directory
+                dest_file = agent_dst / item.name
+                logging.debug(
+                    f"Flat structure: copying {item.name} -> {agent_directory}/{item.name}"
+                )
+                shutil.copy2(item, dest_file)
+            else:
+                # Other files go to project root
+                dest_file = dst / item.name
+                logging.debug(f"Flat structure: copying {item.name} -> {item.name}")
+                shutil.copy2(item, dest_file)
+        elif item.is_dir():
+            # Directories are copied to project root (preserving structure)
+            dest_dir = dst / item.name
+            logging.debug(f"Flat structure: copying directory {item.name}")
+            if dest_dir.exists():
+                shutil.rmtree(dest_dir)
+            shutil.copytree(item, dest_dir, dirs_exist_ok=True)

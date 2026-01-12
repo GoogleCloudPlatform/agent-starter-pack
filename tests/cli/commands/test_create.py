@@ -118,8 +118,17 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
             1: {
                 "name": "langgraph_base",
                 "description": "LangGraph Base React Agent",
+                "language": "python",
+                "framework": "langgraph",
+                "priority": 0,
             },
-            2: {"name": "another-agent", "description": "Another Test Agent"},
+            2: {
+                "name": "another-agent",
+                "description": "Another Test Agent",
+                "language": "python",
+                "framework": "adk",
+                "priority": 100,
+            },
         }
         yield mock
 

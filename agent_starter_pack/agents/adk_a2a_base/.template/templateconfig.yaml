@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A base ReAct agent built with Google's Agent Development Kit (ADK) and Agent2Agent (A2A) Protocol. #experimental"
+description: "ReAct agent with A2A protocol [experimental]"
 example_question: "What's the weather in San Francisco?"
 settings:
   requires_data_ingestion: false

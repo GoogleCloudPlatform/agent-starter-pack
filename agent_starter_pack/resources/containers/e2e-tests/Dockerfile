@@ -30,6 +30,7 @@ COPY --from=builder /usr/share/keyrings/ /usr/share/keyrings/
 # Install the final packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+    curl \
     gh \
     google-cloud-cli \
     terraform \
@@ -39,3 +40,8 @@ RUN apt-get update && \
     # Clean up apt cache
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Install Go
+ARG GO_VERSION=1.24.3
+RUN curl -fsSL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz | tar -C /usr/local -xz
+ENV PATH="/usr/local/go/bin:${PATH}"

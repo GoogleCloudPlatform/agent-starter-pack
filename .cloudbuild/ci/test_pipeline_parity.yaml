@@ -22,14 +22,14 @@ steps:
       - |
         uv sync --dev --locked
 
-  # Run pipeline parity tests
+  # Run pipeline parity tests (Python and Go templates in parallel)
   - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: pipeline-parity-tests
     entrypoint: /bin/bash
     args:
       - "-c"
       - |
-        uv run pytest tests/integration/test_pipeline_parity.py -v
+        uv run pytest tests/integration/test_pipeline_parity.py -v -n auto
 
 
 logsBucket: gs://${PROJECT_ID}-logs-data/build-logs

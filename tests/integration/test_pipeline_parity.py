@@ -40,8 +40,9 @@ except Exception:
 class GeminiPipelineComparator:
     """Compares Cloud Build and GitHub Actions pipeline configurations using Gemini 3 Pro Preview."""
 
-    def __init__(self, base_template_path: Path):
+    def __init__(self, base_template_path: Path, language: str = ""):
         self.base_template_path = base_template_path
+        self.language = language or base_template_path.name
         self.cloudbuild_dir = base_template_path / ".cloudbuild"
         self.github_dir = base_template_path / ".github" / "workflows"
 
@@ -286,16 +287,27 @@ Respond with a JSON object containing:
         raise RuntimeError("All retry attempts failed")
 
 
-@pytest.fixture
-def comparator() -> GeminiPipelineComparator:
-    """Create a GeminiPipelineComparator instance."""
+@pytest.fixture(params=["python", "go"])
+def comparator(request: pytest.FixtureRequest) -> GeminiPipelineComparator:
+    """Create a GeminiPipelineComparator instance for the specified language.
+
+    This fixture is parametrized to run tests for both Python and Go templates.
+    Tests using this fixture will run twice - once for each language.
+    Use pytest -n auto to run tests in parallel.
+    """
+    language: str = request.param
     base_path = (
-        Path(__file__).parent.parent.parent / "agent_starter_pack" / "base_template"
+        Path(__file__).parent.parent.parent
+        / "agent_starter_pack"
+        / "base_templates"
+        / language
     )
-    return GeminiPipelineComparator(base_path)
+    return GeminiPipelineComparator(base_path, language=language)
 
 
-def assert_pipelines_equivalent(comparison_result: dict, pipeline_name: str) -> None:
+def assert_pipelines_equivalent(
+    comparison_result: dict, pipeline_name: str, language: str
+) -> None:
     """Assert that pipelines are equivalent based on Gemini analysis."""
     if not comparison_result["are_equivalent"]:
         # Filter only critical and moderate differences
@@ -310,7 +322,7 @@ def assert_pipelines_equivalent(comparison_result: dict, pipeline_name: str) -> 
                 [f"- {d['type']}: {d['description']}" for d in critical_diffs]
             )
             pytest.fail(
-                f"{pipeline_name} pipelines are not equivalent according to Gemini analysis.\n"
+                f"[{language}] {pipeline_name} pipelines are not equivalent.\n"
                 f"Critical/Moderate Differences:\n{diff_summary}"
             )
 
@@ -320,13 +332,15 @@ def test_deploy_to_prod_parity(comparator: GeminiPipelineComparator) -> None:
     cb_file = comparator.cloudbuild_dir / "deploy-to-prod.yaml"
     gh_file = comparator.github_dir / "deploy-to-prod.yaml"
 
-    assert cb_file.exists(), f"Cloud Build deploy-to-prod.yaml not found at {cb_file}"
+    assert cb_file.exists(), (
+        f"[{comparator.language}] Cloud Build deploy-to-prod.yaml not found at {cb_file}"
+    )
     assert gh_file.exists(), (
-        f"GitHub Actions deploy-to-prod.yaml not found at {gh_file}"
+        f"[{comparator.language}] GitHub Actions deploy-to-prod.yaml not found at {gh_file}"
     )
 
     comparison = comparator.compare_pipelines(cb_file, gh_file, "Production Deployment")
-    assert_pipelines_equivalent(comparison, "Deploy-to-prod")
+    assert_pipelines_equivalent(comparison, "Deploy-to-prod", comparator.language)
 
 
 def test_staging_parity(comparator: GeminiPipelineComparator) -> None:
@@ -334,11 +348,15 @@ def test_staging_parity(comparator: GeminiPipelineComparator) -> None:
     cb_file = comparator.cloudbuild_dir / "staging.yaml"
     gh_file = comparator.github_dir / "staging.yaml"
 
-    assert cb_file.exists(), f"Cloud Build staging.yaml not found at {cb_file}"
-    assert gh_file.exists(), f"GitHub Actions staging.yaml not found at {gh_file}"
+    assert cb_file.exists(), (
+        f"[{comparator.language}] Cloud Build staging.yaml not found at {cb_file}"
+    )
+    assert gh_file.exists(), (
+        f"[{comparator.language}] GitHub Actions staging.yaml not found at {gh_file}"
+    )
 
     comparison = comparator.compare_pipelines(cb_file, gh_file, "Staging Deployment")
-    assert_pipelines_equivalent(comparison, "Staging")
+    assert_pipelines_equivalent(comparison, "Staging", comparator.language)
 
 
 def test_pr_checks_parity(comparator: GeminiPipelineComparator) -> None:
@@ -346,11 +364,15 @@ def test_pr_checks_parity(comparator: GeminiPipelineComparator) -> None:
     cb_file = comparator.cloudbuild_dir / "pr_checks.yaml"
     gh_file = comparator.github_dir / "pr_checks.yaml"
 
-    assert cb_file.exists(), f"Cloud Build pr_checks.yaml not found at {cb_file}"
-    assert gh_file.exists(), f"GitHub Actions pr_checks.yaml not found at {gh_file}"
+    assert cb_file.exists(), (
+        f"[{comparator.language}] Cloud Build pr_checks.yaml not found at {cb_file}"
+    )
+    assert gh_file.exists(), (
+        f"[{comparator.language}] GitHub Actions pr_checks.yaml not found at {gh_file}"
+    )
 
     comparison = comparator.compare_pipelines(cb_file, gh_file, "Pull Request Checks")
-    assert_pipelines_equivalent(comparison, "PR Checks")
+    assert_pipelines_equivalent(comparison, "PR Checks", comparator.language)
 
 
 if __name__ == "__main__":

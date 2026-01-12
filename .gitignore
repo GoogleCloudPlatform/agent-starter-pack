@@ -109,6 +109,7 @@ celerybeat.pid
 
 # Environments
 .env
+!agent_starter_pack/base_templates/go/.env
 .venv
 .venv*
 env/

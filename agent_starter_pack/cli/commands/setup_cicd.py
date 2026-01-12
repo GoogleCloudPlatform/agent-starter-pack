@@ -211,11 +211,42 @@ def prompt_for_git_provider() -> str:
 
 def validate_working_directory() -> None:
     """Ensure we're in the project root directory."""
-    if not Path("pyproject.toml").exists():
+    # Accept either pyproject.toml (Python) or .asp.toml (Go)
+    if not Path("pyproject.toml").exists() and not Path(".asp.toml").exists():
         raise click.UsageError(
-            "This command must be run from the project root directory containing pyproject.toml. "
+            "This command must be run from the project root directory containing "
+            "pyproject.toml (Python) or .asp.toml (Go). "
             "Make sure you are in the folder created by agent-starter-pack."
         )
+
+
+def get_project_name_from_config() -> str | None:
+    """Get project name from pyproject.toml or .asp.toml.
+
+    Returns:
+        Project name if found, None otherwise.
+    """
+    # Try .asp.toml first (Go projects)
+    if Path(".asp.toml").exists():
+        try:
+            with open(".asp.toml", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("name ="):
+                        return line.split("=")[1].strip().strip("\"'")
+        except Exception:
+            pass
+
+    # Try pyproject.toml (Python projects)
+    if Path("pyproject.toml").exists():
+        try:
+            with open("pyproject.toml", encoding="utf-8") as f:
+                for line in f:
+                    if line.strip().startswith("name ="):
+                        return line.split("=")[1].strip().strip("\"'")
+        except Exception:
+            pass
+
+    return None
 
 
 def detect_region_from_terraform_vars() -> str | None:
@@ -306,17 +337,8 @@ def prompt_for_repository_details(
 
     # Step 2: Get repository name if missing
     if not repository_name:
-        # Get project name from pyproject.toml as default
-        try:
-            with open("pyproject.toml", encoding="utf-8") as f:
-                for line in f:
-                    if line.strip().startswith("name ="):
-                        default_name = line.split("=")[1].strip().strip("\"'")
-                        break
-                else:
-                    default_name = f"genai-app-{int(time.time())}"
-        except FileNotFoundError:
-            default_name = f"genai-app-{int(time.time())}"
+        # Get project name from config as default
+        default_name = get_project_name_from_config() or f"genai-app-{int(time.time())}"
 
         prompt_text = (
             "Enter new repository name"
@@ -530,12 +552,8 @@ def setup_cicd(
             "Cannot specify both --create-repository and --use-existing-repository flags"
         )
 
-    # Check if we're in the root folder by looking for pyproject.toml
-    if not Path("pyproject.toml").exists():
-        raise click.UsageError(
-            "This command must be run from the project root directory containing pyproject.toml. "
-            "Make sure you are in the folder created by agent-starter-pack."
-        )
+    # Check if we're in the root folder
+    validate_working_directory()
 
     # Prompt for staging and prod projects if not provided
     if staging_project is None:
@@ -619,17 +637,10 @@ def setup_cicd(
                 ["gh", "api", "user", "--jq", ".login"], capture_output=True
             ).stdout.strip()
         if not repository_name:
-            # Get project name from pyproject.toml or generate one
-            try:
-                with open("pyproject.toml", encoding="utf-8") as f:
-                    for line in f:
-                        if line.strip().startswith("name ="):
-                            repository_name = line.split("=")[1].strip().strip("\"'")
-                            break
-                    else:
-                        repository_name = f"genai-app-{int(time.time())}"
-            except FileNotFoundError:
-                repository_name = f"genai-app-{int(time.time())}"
+            # Get project name from config or generate one
+            repository_name = (
+                get_project_name_from_config() or f"genai-app-{int(time.time())}"
+            )
         console.print(
             f"✅ Auto-generated repository: {repository_owner}/{repository_name}"
         )

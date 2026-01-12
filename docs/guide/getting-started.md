@@ -6,7 +6,7 @@ This guide quickly walks you through setting up your first agent project.
 
 ### Prerequisites
 
-**Python 3.10+** | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (Optional, Recommended)** [Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
+**Python 3.10+** (or **Go 1.21+** for Go templates) | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (Optional, Recommended for Python)** [Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### 1. Create Your Agent Project
 
@@ -34,15 +34,18 @@ uvx agent-starter-pack create
 :::
 
 No matter which method you choose, the `create` command will:
-*   Let you choose an agent template (e.g., `adk_base`, `agentic_rag`).
+*   Let you choose an agent template (e.g., `adk_base`, `adk_base_go`, `agentic_rag`).
 *   Let you select a deployment target (e.g., `cloud_run`, `agent_engine`).
 *   Generate a complete project structure (backend, optional frontend, deployment infra).
 
 **Examples:**
 
 ```bash
-# You can also pass flags to skip the prompts
+# Python agent with Agent Engine
 agent-starter-pack create my-adk-agent -a adk_base -d agent_engine
+
+# Go agent with Cloud Run
+agent-starter-pack create my-go-agent -a adk_base_go -d cloud_run
 ```
 
 ### 2. Explore and Run Locally
@@ -55,10 +58,10 @@ cd <your-project> && make install && make playground
 
 Inside your new project directory, you'll find:
 
-*   `app/`: Backend agent code (or custom directory name if configured).
+*   `app/` (Python) or `agent/` (Go): Backend agent code.
 *   `deployment/`: Terraform infrastructure code.
-*   `tests/`: Unit and integration tests for your agent.
-*   `notebooks/`: Jupyter notebooks for getting started with evaluation.
+*   `tests/` (Python) or `e2e/` (Go): Unit and integration tests.
+*   `notebooks/`: (Python only) Jupyter notebooks for evaluation.
 *   `frontend/`: (If applicable) Web UI for interacting with your agent.
 *   `README.md`: **Project-specific instructions for running locally and deploying.**
 

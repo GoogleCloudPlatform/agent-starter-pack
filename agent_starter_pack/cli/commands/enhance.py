@@ -60,14 +60,44 @@ _EXCLUDED_DIRS = {
 
 
 def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
-    """Read agent-starter-pack config from project's pyproject.toml.
+    """Read agent-starter-pack config from project's .asp.toml or pyproject.toml.
+
+    For Go projects, config is stored in .asp.toml under [project].
+    For Python projects, config is stored in pyproject.toml under [tool.agent-starter-pack].
 
     Args:
         project_dir: Path to the project directory
 
     Returns:
-        The [tool.agent-starter-pack] config dict if found, None otherwise
+        Normalized config dict if found, None otherwise.
+        The returned dict has a consistent structure with keys:
+        - base_template, asp_version, agent_directory, create_params, language
     """
+    # First, check for .asp.toml (Go projects)
+    asp_toml_path = project_dir / ".asp.toml"
+    if asp_toml_path.exists():
+        try:
+            with open(asp_toml_path, "rb") as f:
+                asp_data = tomllib.load(f)
+
+            # Config is stored under [project] in .asp.toml
+            project_config = asp_data.get("project", {})
+            if project_config:
+                # Normalize to match pyproject.toml structure
+                return {
+                    "base_template": project_config.get("base_template"),
+                    "asp_version": project_config.get("version"),
+                    "agent_directory": project_config.get("agent_directory", "agent"),
+                    "language": project_config.get("language", "go"),
+                    "create_params": {
+                        "deployment_target": project_config.get("deployment_target"),
+                        "cicd_runner": project_config.get("cicd_runner"),
+                    },
+                }
+        except Exception as e:
+            logging.debug(f"Could not read config from .asp.toml: {e}")
+
+    # Fall back to pyproject.toml (Python projects)
     pyproject_path = project_dir / "pyproject.toml"
     if not pyproject_path.exists():
         return None
@@ -696,34 +726,46 @@ def enhance(
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
 
-        # Determine agent directory: CLI param > pyproject.toml detection > default
-        detected_agent_directory = "app"  # default
+        # Detect if this is a Go project from base_template or config
+        is_go_project = base_template and base_template.endswith("_go")
+        asp_config = get_project_asp_config(current_dir)
+        if asp_config and asp_config.get("language") == "go":
+            is_go_project = True
+
+        # Determine agent directory: CLI param > config detection > language default
+        detected_agent_directory = "agent" if is_go_project else "app"
         if not agent_directory:  # Only try to detect if not provided via CLI
-            pyproject_path = current_dir / "pyproject.toml"
-            if pyproject_path.exists():
-                try:
-                    with open(pyproject_path, "rb") as f:
-                        pyproject_data = tomllib.load(f)
-                    packages = (
-                        pyproject_data.get("tool", {})
-                        .get("hatch", {})
-                        .get("build", {})
-                        .get("targets", {})
-                        .get("wheel", {})
-                        .get("packages", [])
-                    )
-                    if packages:
-                        # Find the first package that isn't 'frontend'
-                        for pkg in packages:
-                            if pkg != "frontend":
-                                detected_agent_directory = pkg
-                                break
-                except Exception as e:
-                    if debug:
-                        console.print(
-                            f"[dim]Could not auto-detect agent directory: {e}[/dim]"
+            # First check .asp.toml/pyproject.toml config
+            config_agent_dir = asp_config.get("agent_directory") if asp_config else None
+            if config_agent_dir and isinstance(config_agent_dir, str):
+                detected_agent_directory = config_agent_dir
+            elif not is_go_project:
+                # For Python, also try to detect from hatch config
+                pyproject_path = current_dir / "pyproject.toml"
+                if pyproject_path.exists():
+                    try:
+                        with open(pyproject_path, "rb") as f:
+                            pyproject_data = tomllib.load(f)
+                        packages = (
+                            pyproject_data.get("tool", {})
+                            .get("hatch", {})
+                            .get("build", {})
+                            .get("targets", {})
+                            .get("wheel", {})
+                            .get("packages", [])
                         )
-                    pass  # Fall back to default
+                        if packages:
+                            # Find the first package that isn't 'frontend'
+                            for pkg in packages:
+                                if isinstance(pkg, str) and pkg != "frontend":
+                                    detected_agent_directory = pkg
+                                    break
+                    except Exception as e:
+                        if debug:
+                            console.print(
+                                f"[dim]Could not auto-detect agent directory: {e}[/dim]"
+                            )
+                        pass  # Fall back to default
 
         # Interactive agent directory selection if not provided via CLI and not auto-approved
         if not agent_directory and not auto_approve:
@@ -797,11 +839,17 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for YAML config agent (root_agent.yaml) or agent.py
+            # Check for agent files (supports both Python and Go)
             root_agent_yaml = agent_folder / "root_agent.yaml"
             agent_py = agent_folder / "agent.py"
+            agent_go = agent_folder / "agent.go"
 
-            # Determine required object outside of if/else blocks to avoid NameError
+            # Determine if this is a Go project (prioritize Python if both exist)
+            is_go = (base_template and base_template.endswith("_go")) or (
+                agent_go.exists()
+                and not agent_py.exists()
+                and not root_agent_yaml.exists()
+            )
             is_adk = base_template and "adk" in base_template.lower()
             required_object = "root_agent" if is_adk else "agent"
 
@@ -817,6 +865,11 @@ def enhance(
                     console.print(
                         "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/agents/agent-config/]ADK Agent Config guide[/link][/cyan]"
                     )
+            elif agent_go.exists():
+                # Go agent detected
+                console.print(
+                    f"✅ Found [cyan]/{final_agent_directory}/agent.go[/cyan]"
+                )
             elif agent_py.exists():
                 console.print(
                     f"✅ Found [cyan]/{final_agent_directory}/agent.py[/cyan]"
@@ -872,16 +925,27 @@ def enhance(
                         f"⚠️  [yellow]Warning: Could not read {final_agent_directory}/agent.py: {e}[/yellow]"
                     )
             else:
-                console.print(
-                    f"⚠️  [yellow]Warning: {final_agent_directory}/agent.py not found[/yellow]"
-                )
-                console.print(
-                    f"   Create {final_agent_directory}/agent.py with your agent logic and define: [cyan]{required_object} = your_agent_instance[/cyan]"
-                )
+                # Suggest the appropriate file based on context
+                if is_go:
+                    agent_file = "agent.go"
+                    console.print(
+                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.go not found[/yellow]"
+                    )
+                    console.print(
+                        f"   Create {final_agent_directory}/agent.go with your agent logic"
+                    )
+                else:
+                    agent_file = "agent.py"
+                    console.print(
+                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.py not found[/yellow]"
+                    )
+                    console.print(
+                        f"   Create {final_agent_directory}/agent.py with your agent logic and define: [cyan]{required_object} = your_agent_instance[/cyan]"
+                    )
                 console.print()
                 if not auto_approve:
                     if not click.confirm(
-                        f"Continue enhancement? (An example {final_agent_directory}/agent.py will be created for you)",
+                        f"Continue enhancement? (An example {final_agent_directory}/{agent_file} will be created for you)",
                         default=True,
                     ):
                         console.print("✋ [yellow]Enhancement cancelled.[/yellow]")

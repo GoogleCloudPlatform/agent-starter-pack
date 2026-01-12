@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "A base ReAct agent implemented using LangGraph with Agent2Agent (A2A) Protocol support"
+description: "ReAct agent with A2A protocol"
 settings:
   requires_data_ingestion: false
   deployment_targets: ["agent_engine", "cloud_run"]

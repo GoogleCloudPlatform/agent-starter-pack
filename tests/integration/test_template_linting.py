@@ -14,7 +14,6 @@
 
 import os
 import pathlib
-import subprocess
 from datetime import datetime
 
 from rich.console import Console
@@ -76,40 +75,9 @@ def test_template_linting(
                         f"Found unrendered placeholders in Makefile for {agent} with {deployment_target}"
                     )
 
-        # Install dependencies
-        run_command(
-            [
-                "uv",
-                "sync",
-                "--dev",
-                "--extra",
-                "lint",
-                "--frozen",
-            ],
-            project_path,
-            "Installing dependencies",
-        )
-
-        # Run linting commands one by one
-        lint_commands = [
-            ["uv", "run", "codespell"],
-            ["uv", "run", "ruff", "check", ".", "--diff"],
-            ["uv", "run", "ruff", "format", ".", "--check", "--diff"],
-            ["uv", "run", "ty", "check", "."],
-        ]
-
-        for cmd in lint_commands:
-            try:
-                command_name = cmd[2]
-                command_args = cmd[3] if len(cmd) > 3 else ""
-                run_command(cmd, project_path, f"Running {command_name} {command_args}")
-            except subprocess.CalledProcessError as e:
-                console.print(f"[bold red]Linting failed on {cmd[2]}[/]")
-                if e.stdout:
-                    console.print(e.stdout)
-                if e.stderr:
-                    console.print(e.stderr)
-                raise
+        # Run make install and make lint (works for both Python and Go projects)
+        run_command(["make", "install"], project_path, "Installing dependencies")
+        run_command(["make", "lint"], project_path, "Running lint")
 
     except Exception as e:
         console.print(f"[bold red]Error:[/] {e!s}")

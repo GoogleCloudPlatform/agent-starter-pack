@@ -183,8 +183,11 @@ uvx agent-starter-pack create my-prototype -p -d agent_engine
 # Create a new project with specific name
 uvx agent-starter-pack create my-agent-project
 
-# Create with specific built-in agent
+# Create with specific built-in agent (Python)
 uvx agent-starter-pack create my-agent -a adk_base -d cloud_run
+
+# Create a Go agent (Cloud Run only)
+uvx agent-starter-pack create my-go-agent -a adk_base_go
 ```
 
 ### Remote Templates

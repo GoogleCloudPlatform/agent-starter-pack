@@ -39,6 +39,7 @@ from ..utils.remote_template import (
 )
 from ..utils.template import (
     add_base_template_dependencies_interactively,
+    get_agent_language,
     get_available_agents,
     get_deployment_targets,
     get_template_path,
@@ -667,7 +668,20 @@ def create(
                         f"Applied CLI overrides to local template config: {cli_overrides}"
                     )
         # Data ingestion and datastore selection
-        if include_data_ingestion or datastore:
+        # Check language early for data ingestion validation
+        early_agent_language = get_agent_language(final_agent)
+
+        # Go agents don't support data ingestion
+        if early_agent_language == "go":
+            if include_data_ingestion or datastore:
+                console.print(
+                    "Warning: Go agents do not support data ingestion. "
+                    "Ignoring --include-data-ingestion and --datastore flags.",
+                    style="yellow",
+                )
+                include_data_ingestion = False
+                datastore = None
+        elif include_data_ingestion or datastore:
             include_data_ingestion = True
             if not datastore:
                 if auto_approve:
@@ -717,11 +731,18 @@ def create(
             available_targets = get_deployment_targets(
                 deployment_agent_name, remote_config=remote_config
             )
-            if auto_approve:
-                if not available_targets:
-                    raise click.ClickException(
-                        f"Error: No deployment targets available for agent '{deployment_agent_name}'."
-                    )
+            if not available_targets:
+                raise click.ClickException(
+                    f"Error: No deployment targets available for agent '{deployment_agent_name}'."
+                )
+            # Auto-select if only one target available or in auto-approve mode
+            if len(available_targets) == 1:
+                final_deployment = available_targets[0]
+                console.print(
+                    f"Info: Using '{final_deployment}' (only available deployment target for this agent).",
+                    style="yellow",
+                )
+            elif auto_approve:
                 final_deployment = available_targets[0]
                 console.print(
                     f"Info: --deployment-target not specified. Defaulting to '{final_deployment}' in auto-approve mode.",
@@ -737,51 +758,64 @@ def create(
         # Session type validation and selection (only for agents that require session management)
         final_session_type = session_type
 
-        # Check if agent requires session management
-        requires_session = config.get("settings", {}).get("requires_session", False)
+        # Get agent language for language-specific validation
+        agent_language = get_agent_language(deployment_agent_name, remote_config)
 
-        # Session type selection is only available for these agents on cloud_run
-        session_type_supported_agents = ("adk_base", "agentic_rag")
-
-        if requires_session:
-            if final_deployment == "agent_engine" and session_type:
-                console.print(
-                    "Error: --session-type cannot be used with agent_engine deployment target. "
-                    "Agent Engine handles session management internally.",
-                    style="bold red",
-                )
-                return
-
-            if final_deployment == "cloud_run":
-                if deployment_agent_name in session_type_supported_agents:
-                    # Allow session type selection for supported agents
-                    if not session_type:
-                        if auto_approve:
-                            final_session_type = "in_memory"
-                            console.print(
-                                "Info: --session-type not specified. Defaulting to 'in_memory' in auto-approve mode.",
-                                style="yellow",
-                            )
-                        else:
-                            final_session_type = prompt_session_type_selection()
-                else:
-                    # For unsupported agents, always use in_memory
-                    final_session_type = "in_memory"
-                    if session_type and session_type != "in_memory":
-                        console.print(
-                            f"Warning: Session type selection is only available for {', '.join(session_type_supported_agents)} agents. "
-                            "Using in-memory sessions for this agent.",
-                            style="yellow",
-                        )
-        else:
-            # Agents that don't require session management always use in-memory sessions
+        # Go agents only support in-memory sessions
+        if agent_language == "go":
             final_session_type = "in_memory"
             if session_type and session_type != "in_memory":
                 console.print(
-                    "Warning: Session type options are only available for agents that require session management. "
+                    "Warning: Go agents only support in-memory sessions. "
                     "Using in-memory sessions for this agent.",
                     style="yellow",
                 )
+        else:
+            # Python agents - check if session management is required
+            requires_session = config.get("settings", {}).get("requires_session", False)
+
+            # Session type selection is only available for these agents on cloud_run
+            session_type_supported_agents = ("adk_base", "agentic_rag")
+
+            if requires_session:
+                if final_deployment == "agent_engine" and session_type:
+                    console.print(
+                        "Error: --session-type cannot be used with agent_engine deployment target. "
+                        "Agent Engine handles session management internally.",
+                        style="bold red",
+                    )
+                    return
+
+                if final_deployment == "cloud_run":
+                    if deployment_agent_name in session_type_supported_agents:
+                        # Allow session type selection for supported agents
+                        if not session_type:
+                            if auto_approve:
+                                final_session_type = "in_memory"
+                                console.print(
+                                    "Info: --session-type not specified. Defaulting to 'in_memory' in auto-approve mode.",
+                                    style="yellow",
+                                )
+                            else:
+                                final_session_type = prompt_session_type_selection()
+                    else:
+                        # For unsupported agents, always use in_memory
+                        final_session_type = "in_memory"
+                        if session_type and session_type != "in_memory":
+                            console.print(
+                                f"Warning: Session type selection is only available for {', '.join(session_type_supported_agents)} agents. "
+                                "Using in-memory sessions for this agent.",
+                                style="yellow",
+                            )
+            else:
+                # Agents that don't require session management always use in-memory sessions
+                final_session_type = "in_memory"
+                if session_type and session_type != "in_memory":
+                    console.print(
+                        "Warning: Session type options are only available for agents that require session management. "
+                        "Using in-memory sessions for this agent.",
+                        style="yellow",
+                    )
 
         if debug and final_session_type:
             logging.debug(f"Selected session type: {final_session_type}")
@@ -846,6 +880,22 @@ def create(
                 console.print(
                     "> Continuing with template processing...", style="yellow"
                 )
+        elif skip_checks and not google_api_key and final_agent.endswith("_go"):
+            # For Go templates, try to get project ID from gcloud config even when skipping checks
+            # This is needed because Go's .env requires a valid project ID for local development
+            try:
+                result = subprocess.run(
+                    ["gcloud", "config", "get-value", "project"],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                project_id = result.stdout.strip()
+                if project_id:
+                    creds_info = {"project": project_id}
+                    logging.debug(f"Got project ID from gcloud config: {project_id}")
+            except Exception as e:
+                logging.debug(f"Could not get project ID from gcloud: {e}")
 
         # Process template
         if not template_source_path:
@@ -889,6 +939,7 @@ def create(
                 agent_garden=agent_garden,
                 remote_spec=remote_spec,
                 google_api_key=google_api_key,
+                google_cloud_project=creds_info.get("project"),
             )
 
             # Replace region in all files if a different region was specified
@@ -960,23 +1011,27 @@ def create(
                 f"   See data_ingestion/README.md for more info\n"
                 f"[bold white]=================================[/bold white]\n"
             )
-        console.print("\n> Success! Your agent project is ready.")
+        console.print("\n[bold green]✅ Success![/] Your agent project is ready.\n")
+
+        console.print("[bold cyan]📖 Documentation[/]")
+        console.print(f"   README:    [cyan]cat {cd_path}/README.md[/]")
         console.print(
-            f"\n📖 Project README: [cyan]cat {cd_path}/README.md[/]"
-            "\n   Online Development Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
+            "   Dev Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]"
         )
+
         # Show enhance hint for prototype mode
         if final_cicd_runner == "skip":
             console.print(
-                "\n💡 Once ready for production, run: [cyan]uvx agent-starter-pack enhance[/]"
+                "\n[bold cyan]💡 Tip[/]\n"
+                "   Once ready for production, run: [cyan]uvx agent-starter-pack enhance[/]"
             )
-        # Determine the correct path to display based on whether output_dir was specified
-        console.print("\n🚀 To get started, run the following command:")
 
+        # Determine the correct path to display based on whether output_dir was specified
         # Check if the agent has a 'dev' command in its settings
         interactive_command = config.get("settings", {}).get(
             "interactive_command", "playground"
         )
+        console.print("\n[bold cyan]🚀 Get Started[/]")
         console.print(
             f"   [bold bright_green]cd {cd_path} && make install && make {interactive_command}[/]"
         )
@@ -993,7 +1048,7 @@ def prompt_region_confirmation(
 ) -> str:
     """Prompt user to confirm or change the default region."""
     new_region = Prompt.ask(
-        "\nEnter desired GCP region (Gemini uses global endpoint by default)",
+        "\n🌍 Enter GCP region (Gemini uses global endpoint)",
         default=default_region,
         show_default=True,
     )
@@ -1002,7 +1057,7 @@ def prompt_region_confirmation(
 
 
 def display_agent_selection(deployment_target: str | None = None) -> str:
-    """Display available agents and prompt for selection."""
+    """Display available agents grouped by language/framework and prompt for selection."""
     agents = get_available_agents(deployment_target=deployment_target)
 
     if not agents:
@@ -1012,16 +1067,36 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
             )
         raise click.ClickException("No valid agents found")
 
-    console.print("\n> Please select a agent to get started:")
+    # Group headers for display
+    GROUP_HEADERS = {
+        ("python", "adk"): "🐍 Python (ADK)",
+        ("python", "langgraph"): "🦜 Python (LangGraph)",
+        ("go", "adk"): "🔵 Go (ADK)",
+    }
+
+    console.print("\n> Please select an agent to get started:")
+
+    current_group = None
     for num, agent in agents.items():
+        agent_group = (agent["language"], agent["framework"])
+
+        # Print group header when transitioning to a new group
+        if agent_group != current_group:
+            current_group = agent_group
+            header = GROUP_HEADERS.get(agent_group, "Other")
+            console.print(f"\n  [bold cyan]{header}[/]")
+
+        # Align agent names for cleaner display
+        name_padded = agent["name"].ljust(14)
         console.print(
-            f"{num}. [bold]{agent['name']}[/] - [dim]{agent['description']}[/]"
+            f"     {num}. [bold]{name_padded}[/] [dim]{agent['description']}[/]"
         )
 
     # Add special option for adk-samples
     adk_samples_option = len(agents) + 1
+    console.print("\n  [bold cyan]🌐 Community[/]")
     console.print(
-        f"{adk_samples_option}. [bold]Browse agents from [link=https://github.com/google/adk-samples]google/adk-samples[/link][/] - [dim]Discover additional samples[/]"
+        f"     {adk_samples_option}. [bold][link=https://github.com/google/adk-samples]google/adk-samples[/link][/] [dim]Browse community agents[/]"
     )
 
     choice = IntPrompt.ask(

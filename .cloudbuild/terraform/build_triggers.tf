@@ -81,11 +81,11 @@ locals {
       value = "langgraph_base,cloud_run,-dir,tag"
     },
     {
-      name = "agentic_rag-agent_engine-vertex_ai_search"
+      name  = "agentic_rag-agent_engine-vertex_ai_search"
       value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search"
     },
     {
-      name = "agentic_rag-cloud_run-vertex_ai_vector_search"
+      name  = "agentic_rag-cloud_run-vertex_ai_vector_search"
       value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
     },
     {
@@ -112,15 +112,38 @@ locals {
       name  = "adk_a2a_base-cloud_run"
       value = "adk_a2a_base,cloud_run"
     },
+    {
+      name  = "adk_base_go-cloud_run"
+      value = "adk_base_go,cloud_run"
+    },
   ]
 
-agent_testing_included_files = { for combo in local.agent_testing_combinations :
-    combo.name => [
+  # Go-specific included files (different paths from Python)
+  # Only triggers when Go-specific template files change
+  go_agent_testing_included_files = {
+    "adk_base_go-cloud_run" = [
+      # Go agent-specific files
+      "agent_starter_pack/agents/adk_base_go/**",
+      # Shared base template (affects all languages)
+      "agent_starter_pack/base_templates/_shared/**",
+      # Go base template
+      "agent_starter_pack/base_templates/go/**",
+      # Go deployment target
+      "agent_starter_pack/deployment_targets/cloud_run/go/**",
+    ]
+  }
+
+  agent_testing_included_files = {
+    # Python agents use base_template paths
+    for combo in local.agent_testing_combinations :
+    combo.name => endswith(split(",", combo.value)[0], "_go") ? local.go_agent_testing_included_files[combo.name] : [
       # Only include files for the specific agent being tested
       "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
       # Common files that affect all agents
       "agent_starter_pack/cli/**",
       "agent_starter_pack/base_template/**",
+      "agent_starter_pack/base_templates/_shared/**",
+      "agent_starter_pack/base_templates/python/**",
       "agent_starter_pack/deployment_targets/**",
       "tests/integration/test_template_linting.py",
       "tests/integration/test_templated_patterns.py",
@@ -139,7 +162,7 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "adk_base,cloud_run,--cicd-runner,github_actions"
     },
     {
-      name = "agentic_rag-agent_engine-vertex_ai_search-github"
+      name  = "agentic_rag-agent_engine-vertex_ai_search-github"
       value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search,--cicd-runner,github_actions"
     },
     {
@@ -155,15 +178,15 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       value = "adk_base,cloud_run,-dir,tag"
     },
     {
-      name = "langgraph_base-agent_engine"
+      name  = "langgraph_base-agent_engine"
       value = "langgraph_base,agent_engine"
     },
     {
-      name = "agentic_rag-agent_engine-vertex_ai_search"
+      name  = "agentic_rag-agent_engine-vertex_ai_search"
       value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search"
     },
     {
-      name = "agentic_rag-cloud_run-vertex_ai_vector_search"
+      name  = "agentic_rag-cloud_run-vertex_ai_vector_search"
       value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
     },
     {
@@ -186,43 +209,67 @@ agent_testing_included_files = { for combo in local.agent_testing_combinations :
       name  = "adk_a2a_base-cloud_run"
       value = "adk_a2a_base,cloud_run"
     },
+    {
+      name  = "adk_base_go-cloud_run"
+      value = "adk_base_go,cloud_run"
+    },
   ]
+
+  # Go-specific E2E included files
+  # Only triggers when Go-specific template files change
+  go_e2e_agent_deployment_included_files = {
+    "adk_base_go-cloud_run" = [
+      # Go agent-specific files
+      "agent_starter_pack/agents/adk_base_go/**",
+      # Shared base template
+      "agent_starter_pack/base_templates/_shared/**",
+      # Go base template
+      "agent_starter_pack/base_templates/go/**",
+      # Go deployment target
+      "agent_starter_pack/deployment_targets/cloud_run/go/**",
+    ]
+  }
+
   # Create a safe trigger name by replacing underscores with hyphens and dots with hyphens
   # This ensures we have valid trigger names that don't exceed character limits
   trigger_name_safe = { for combo in local.agent_testing_combinations :
-      combo.name => replace(replace(combo.name, "_", "-"), ".", "-")
-    }
+    combo.name => replace(replace(combo.name, "_", "-"), ".", "-")
+  }
 
   # Create safe trigger names for e2e deployment combinations
   e2e_trigger_name_safe = { for combo in local.e2e_agent_deployment_combinations :
-      combo.name => replace(replace(combo.name, "_", "-"), ".", "-")
-    }
+    combo.name => replace(replace(combo.name, "_", "-"), ".", "-")
+  }
 
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
-    combo.name => combo.name == "adk_base-cloud_run-cloud_sql" ? [
-      "agent_starter_pack/deployment_targets/cloud_run/**",
-      "pyproject.toml",
-    ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
-      "agent_starter_pack/agents/agentic_rag/**",
-      "agent_starter_pack/data_ingestion/**",
-      "pyproject.toml",
-    ] : substr(combo.name, 0, 8) == "adk_live" ? [
-      "agent_starter_pack/agents/adk_live/**",
-      "pyproject.toml",
-    ] : [
-      # Only include files for the specific agent being tested
-      "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
-      # Common files that affect all agents
-      "agent_starter_pack/cli/**",
-      "agent_starter_pack/base_template/**",
-      "agent_starter_pack/data_ingestion/**",
-      "agent_starter_pack/deployment_targets/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "agent_starter_pack/resources/locks/**",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild"
-    ]
+    combo.name => endswith(split(",", combo.value)[0], "_go") ? local.go_e2e_agent_deployment_included_files[combo.name] : (
+      combo.name == "adk_base-cloud_run-cloud_sql" ? [
+        "agent_starter_pack/deployment_targets/cloud_run/**",
+        "pyproject.toml",
+        ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
+        "agent_starter_pack/agents/agentic_rag/**",
+        "agent_starter_pack/data_ingestion/**",
+        "pyproject.toml",
+        ] : substr(combo.name, 0, 8) == "adk_live" ? [
+        "agent_starter_pack/agents/adk_live/**",
+        "pyproject.toml",
+        ] : [
+        # Only include files for the specific agent being tested
+        "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
+        # Common files that affect all agents
+        "agent_starter_pack/cli/**",
+        "agent_starter_pack/base_template/**",
+        "agent_starter_pack/base_templates/_shared/**",
+        "agent_starter_pack/base_templates/python/**",
+        "agent_starter_pack/data_ingestion/**",
+        "agent_starter_pack/deployment_targets/**",
+        "tests/cicd/test_e2e_deployment.py",
+        "agent_starter_pack/resources/locks/**",
+        "pyproject.toml",
+        "uv.lock",
+        ".cloudbuild"
+      ]
+    )
   }
 }
 
@@ -241,9 +288,9 @@ resource "google_cloudbuild_trigger" "pr_build_use_wheel" {
     }
   }
 
-  filename       = ".cloudbuild/ci/build_use_wheel.yaml"
-  included_files = local.common_included_files
-  ignored_files  = local.common_ignored_files
+  filename           = ".cloudbuild/ci/build_use_wheel.yaml"
+  included_files     = local.common_included_files
+  ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
 
@@ -263,9 +310,9 @@ resource "google_cloudbuild_trigger" "pr_tests" {
     }
   }
 
-  filename       = ".cloudbuild/ci/test.yaml"
-  included_files = local.common_included_files
-  ignored_files  = local.common_ignored_files
+  filename           = ".cloudbuild/ci/test.yaml"
+  included_files     = local.common_included_files
+  ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
 
@@ -285,16 +332,16 @@ resource "google_cloudbuild_trigger" "pr_lint" {
     }
   }
 
-  filename       = ".cloudbuild/ci/lint.yaml"
-  included_files = local.common_included_files
-  ignored_files  = local.common_ignored_files
+  filename           = ".cloudbuild/ci/lint.yaml"
+  included_files     = local.common_included_files
+  ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
 
 # c. Create Templated Agents Lint trigger for PRs - one for each agent/deployment combination:
 resource "google_cloudbuild_trigger" "pr_templated_agents_lint" {
   for_each = { for combo in local.agent_testing_combinations : combo.name => combo }
-  
+
   name            = "lint-${local.trigger_name_safe[each.key]}"
   project         = var.cicd_runner_project_id
   location        = var.region
@@ -309,9 +356,9 @@ resource "google_cloudbuild_trigger" "pr_templated_agents_lint" {
     }
   }
 
-  filename       = ".cloudbuild/ci/lint_templated_agents.yaml"
-  included_files = local.agent_testing_included_files[each.key]
-  ignored_files  = local.common_ignored_files
+  filename           = ".cloudbuild/ci/lint_templated_agents.yaml"
+  included_files     = local.agent_testing_included_files[each.key]
+  ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 
   substitutions = {
@@ -337,9 +384,9 @@ resource "google_cloudbuild_trigger" "pr_templated_agents_test" {
     }
   }
 
-  filename       = ".cloudbuild/ci/test_templated_agents.yaml"
-  included_files = local.agent_testing_included_files[each.key]
-  ignored_files  = local.common_ignored_files
+  filename           = ".cloudbuild/ci/test_templated_agents.yaml"
+  included_files     = local.agent_testing_included_files[each.key]
+  ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 
   substitutions = {
@@ -364,9 +411,9 @@ resource "google_cloudbuild_trigger" "main_e2e_deployment_test" {
     }
   }
 
-  filename       = ".cloudbuild/cd/test_e2e.yaml"
-  included_files = local.e2e_agent_deployment_included_files[each.key]
-  ignored_files  = concat(local.common_ignored_files, local.gemini_enterprise_files)
+  filename           = ".cloudbuild/cd/test_e2e.yaml"
+  included_files     = local.e2e_agent_deployment_included_files[each.key]
+  ignored_files      = concat(local.common_ignored_files, local.gemini_enterprise_files)
   include_build_logs = "INCLUDE_BUILD_LOGS_UNSPECIFIED"
 
   substitutions = {
@@ -418,7 +465,7 @@ resource "google_cloudbuild_trigger" "pr_test_makefile" {
 
   filename           = ".cloudbuild/ci/test_makefile.yaml"
   included_files     = local.makefile_usability_included_files
-  ignored_files      = ["**/*.md"]  # Don't ignore Makefiles for this trigger
+  ignored_files      = ["**/*.md"] # Don't ignore Makefiles for this trigger
   include_build_logs = "INCLUDE_BUILD_LOGS_WITH_STATUS"
 }
 
@@ -438,7 +485,7 @@ resource "google_cloudbuild_trigger" "pr_test_pipeline_parity" {
     }
   }
 
-  filename       = ".cloudbuild/ci/test_pipeline_parity.yaml"
+  filename = ".cloudbuild/ci/test_pipeline_parity.yaml"
   included_files = [
     "tests/integration/test_pipeline_parity.py",
     "agent_starter_pack/cli/**",
@@ -468,7 +515,7 @@ resource "google_cloudbuild_trigger" "pr_test_agent_directory" {
     }
   }
 
-  filename       = ".cloudbuild/ci/test_agent_directory.yaml"
+  filename = ".cloudbuild/ci/test_agent_directory.yaml"
   included_files = [
     "pyproject.toml",
     "uv.lock",
@@ -494,12 +541,12 @@ resource "google_cloudbuild_trigger" "main_e2e_gemini_enterprise_test" {
     }
   }
 
-  filename       = ".cloudbuild/cd/test_gemini_enterprise.yaml"
+  filename = ".cloudbuild/cd/test_gemini_enterprise.yaml"
   included_files = [
-    "pyproject.toml",  # Triggers on releases
-    "agent_starter_pack/cli/commands/register_gemini_enterprise.py",  # Registration code changes
-    "tests/cicd/test_gemini_enterprise_registration.py",  # Test changes
-    ".cloudbuild/cd/test_gemini_enterprise.yaml",  # Pipeline changes
+    "pyproject.toml",                                                # Triggers on releases
+    "agent_starter_pack/cli/commands/register_gemini_enterprise.py", # Registration code changes
+    "tests/cicd/test_gemini_enterprise_registration.py",             # Test changes
+    ".cloudbuild/cd/test_gemini_enterprise.yaml",                    # Pipeline changes
   ]
   ignored_files      = local.common_ignored_files
   include_build_logs = "INCLUDE_BUILD_LOGS_UNSPECIFIED"

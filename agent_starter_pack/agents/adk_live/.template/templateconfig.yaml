@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "Real-time multimodal agent with ADK and Gemini Live API for low-latency voice and video interaction."
+description: "Real-time voice & video agent"
 settings:
   requires_data_ingestion: false
   frontend_type: "adk_live_react"

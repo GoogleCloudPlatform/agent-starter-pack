@@ -8,6 +8,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 | Agent Name | Description | Use Case |
 |------------|-------------|----------|
 | `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
+| `adk_base_go` | A base ReAct agent implemented using Google's [Agent Development Kit for Go](https://github.com/google/adk-go) | Go-based conversational agent |
 | `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph_base` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
@@ -18,10 +19,11 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 When selecting a template, consider these factors:
 
 1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation network, or something else?
-2.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
-3.  **Reasoning Complexity**: Does your agent need complex planning and tool use (like ReAct), or is it more focused on retrieval and synthesis (like basic RAG)?
-4.  **Collaboration Needs**: Do you need multiple specialized agents working together?
-5.  **Modality**: Does your agent need to process or respond with audio, video, or just text?
+2.  **Programming Language**: Do you prefer Python or Go? Most templates are Python-based, but `adk_base_go` provides a Go alternative.
+3.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
+4.  **Reasoning Complexity**: Does your agent need complex planning and tool use (like ReAct), or is it more focused on retrieval and synthesis (like basic RAG)?
+5.  **Collaboration Needs**: Do you need multiple specialized agents working together?
+6.  **Modality**: Does your agent need to process or respond with audio, video, or just text?
 
 ## Template Details
 
@@ -32,6 +34,16 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Getting started with agent development on Google Cloud.
 *   Building general-purpose conversational agents.
 *   Learning the ADK framework and ReAct pattern.
+
+### ADK Base Go (`adk_base_go`)
+
+This template provides a minimal example of a ReAct agent built using Google's [Agent Development Kit for Go](https://github.com/google/adk-go). It offers the same core ADK concepts as the Python version but for Go developers. Ideal for:
+
+*   Go developers building agents on Google Cloud.
+*   Teams with existing Go codebases wanting to add AI agent capabilities.
+*   High-performance agent deployments leveraging Go's concurrency model.
+
+**Note:** Currently supports Cloud Run deployment only.
 
 ### ADK A2A Base (`adk_a2a_base`)
 

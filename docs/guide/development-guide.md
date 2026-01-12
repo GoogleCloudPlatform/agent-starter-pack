@@ -38,30 +38,64 @@ cd <your-project>
 
 Inside, you'll find a complete project structure:
 
-*   `app/`: Backend agent code (prompts, tools, business logic). Directory name is configurable via the `--agent-directory` parameter.
-*   `.cloudbuild/`: CI/CD pipeline configurations for Google Cloud Build (if you selected Cloud Build as your CI/CD runner).
-*   `.github/`: CI/CD pipeline configurations for GitHub Actions (if you selected GitHub Actions as your CI/CD runner).
-*   `deployment/`: Terraform infrastructure-as-code files.
-*   `tests/`: Unit, integration, and load tests.
-*   `notebooks/`: Jupyter notebooks for prototyping and evaluation.
-*   `frontend/`: (If applicable) Web UI for interacting with your agent.
-*   `README.md`: **Project-specific instructions for your chosen template.**
-*   `GEMINI.md`: Use this file with AI tools (like [Gemini CLI](https://github.com/google-gemini/gemini-cli)) to ask questions about the template, ADK concepts, or project structure.
+::: code-group
+```text [Python Projects]
+app/           # Backend agent code (prompts, tools, business logic)
+.cloudbuild/   # CI/CD for Google Cloud Build (if selected)
+.github/       # CI/CD for GitHub Actions (if selected)
+deployment/    # Terraform infrastructure-as-code files
+tests/         # Unit, integration, and load tests
+notebooks/     # Jupyter notebooks for prototyping
+frontend/      # (If applicable) Web UI for your agent
+README.md      # Project-specific instructions
+GEMINI.md      # AI assistant context file
+```
+
+```text [Go Projects]
+agent/         # Backend agent code (tools, business logic)
+.cloudbuild/   # CI/CD for Google Cloud Build (if selected)
+.github/       # CI/CD for GitHub Actions (if selected)
+deployment/    # Terraform infrastructure-as-code files
+e2e/           # Integration and load tests
+README.md      # Project-specific instructions
+GEMINI.md      # AI assistant context file
+```
+:::
 
 Your development loop will look like this:
 
-1.  **Prototype:** Use the notebooks in `notebooks/` for rapid experimentation with your agent's core logic. This is ideal for trying new prompts or tools before integrating them.
-2.  **Integrate:** Edit `app/agent.py` and other files in the agent directory (usually `app/`, but configurable) to incorporate your new logic into the main application.
-3.  **Test:** Run the interactive UI playground to test your changes. It features hot-reloading, chat history, and user feedback.
+::: code-group
+```text [Python Projects]
+1. **Prototype:** Use notebooks in `notebooks/` for rapid experimentation
+2. **Integrate:** Edit `app/agent.py` to incorporate your logic
+3. **Test:** Run the interactive playground with hot-reloading
+```
+
+```text [Go Projects]
+1. **Integrate:** Edit `agent/agent.go` to add tools and logic
+2. **Test:** Run the interactive playground to test changes
+```
+:::
 
 ```bash
 # Install dependencies and launch the local playground
 make install && make playground
 ```
 
-::: tip Package Management with uv
-Add new dependencies with `uv add <package>` and remove them with `uv remove <package>`.
+::: tip Package Management
+::: code-group
+```bash [Python (uv)]
+uv add <package>      # Add dependency
+uv remove <package>   # Remove dependency
+```
+
+```bash [Go]
+go get <package>      # Add dependency
+go mod tidy           # Clean up dependencies
+```
 :::
+:::
+
 > Note: The specific UI playground launched by `make playground` depends on the agent template you selected during creation.
 
 ## 2. Deploy to the Cloud

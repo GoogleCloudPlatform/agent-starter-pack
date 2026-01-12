@@ -20,7 +20,10 @@ class MakefileRenderer:
 
     def __init__(self) -> None:
         template_dir = (
-            Path(__file__).parent.parent.parent / "agent_starter_pack" / "base_template"
+            Path(__file__).parent.parent.parent
+            / "agent_starter_pack"
+            / "base_templates"
+            / "python"
         )
         self.env = Environment(
             loader=FileSystemLoader(str(template_dir)),

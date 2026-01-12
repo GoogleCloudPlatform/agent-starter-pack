@@ -66,62 +66,57 @@ def _run_agent_test(
             "Templating project",
         )
 
-        # Determine agent directory from extra_params
-        agent_directory = "app"  # default
-        if extra_params:
-            # Check for -dir or --agent-directory parameter
-            for i, param in enumerate(extra_params):
-                if param in ["-dir", "--agent-directory"] and i + 1 < len(extra_params):
-                    agent_directory = extra_params[i + 1]
-                    break
+        # Detect language based on generated files
+        is_go = (project_path / "go.mod").exists()
 
-        # Verify essential files
-        essential_files = [
-            "pyproject.toml",
-            f"{agent_directory}/agent.py",
-        ]
+        # Verify essential files based on language
+        if is_go:
+            essential_files = ["go.mod", "main.go", "agent/agent.go", "Makefile"]
+        else:
+            # Determine agent directory from extra_params
+            agent_directory = "app"  # default
+            if extra_params:
+                for i, param in enumerate(extra_params):
+                    if param in ["-dir", "--agent-directory"] and i + 1 < len(
+                        extra_params
+                    ):
+                        agent_directory = extra_params[i + 1]
+                        break
+            essential_files = [
+                "pyproject.toml",
+                f"{agent_directory}/agent.py",
+                "Makefile",
+            ]
+
         for file in essential_files:
             assert (project_path / file).exists(), f"Missing file: {file}"
 
-        # Verify A2A inspector setup for A2A agents
-        if agent == "langgraph_base":
-            # A2A agents use inspector which is installed at runtime via make inspector
-            # Just verify the Makefile has the inspector target
+        # Verify A2A inspector setup for A2A agents (Python only for now)
+        if agent == "langgraph_base" and not is_go:
             makefile_path = project_path / "Makefile"
-            assert makefile_path.exists(), "Makefile missing"
             makefile_content = makefile_path.read_text()
             assert "inspector:" in makefile_content, (
                 "inspector target missing in Makefile"
             )
 
-        # Install dependencies
+        # Set environment variable for integration tests
+        env = os.environ.copy()
+        env["INTEGRATION_TEST"] = "TRUE"
+
+        # Install dependencies and run tests using make (handles both Python and Go)
         run_command(
-            [
-                "uv",
-                "sync",
-                "--dev",
-                "--extra",
-                "lint",
-                "--frozen",
-            ],
+            ["make", "install"],
             project_path,
             "Installing dependencies",
             stream_output=False,
         )
 
-        # Run tests
-        test_dirs = ["tests/unit", "tests/integration"]
-        for test_dir in test_dirs:
-            # Set environment variable for integration tests
-            env = os.environ.copy()
-            env["INTEGRATION_TEST"] = "TRUE"
-
-            run_command(
-                ["uv", "run", "pytest", test_dir],
-                project_path,
-                f"Running {test_dir} tests",
-                env=env,
-            )
+        run_command(
+            ["make", "test"],
+            project_path,
+            "Running tests",
+            env=env,
+        )
 
     except Exception as e:
         console.print(f"[bold red]Error:[/] {e!s}")

@@ -123,4 +123,3 @@ session_type = "{{cookiecutter.session_type or 'none'}}"
 cicd_runner = "{{cookiecutter.cicd_runner}}"
 include_data_ingestion = {{ cookiecutter.data_ingestion | lower }}
 datastore = "{{cookiecutter.datastore_type or 'none'}}"
-frontend_type = "{{cookiecutter.frontend_type}}"

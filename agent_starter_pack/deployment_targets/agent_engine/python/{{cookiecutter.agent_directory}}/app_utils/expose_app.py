@@ -43,12 +43,12 @@ app.add_middleware(
 current_dir = Path(__file__).parent
 frontend_build_dir = current_dir.parent.parent / "frontend" / "build"
 
-# Mount static files if build directory exists
+# Mount assets if build directory exists
 if frontend_build_dir.exists():
     app.mount(
-        "/static",
-        StaticFiles(directory=str(frontend_build_dir / "static")),
-        name="static",
+        "/assets",
+        StaticFiles(directory=str(frontend_build_dir / "assets")),
+        name="assets",
     )
 logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
@@ -366,10 +366,10 @@ async def serve_frontend_spa(full_path: str) -> FileResponse:
     """Catch-all route to serve the frontend for SPA routing.
 
     This ensures that client-side routes are handled by the React app.
-    Excludes API routes (ws, feedback) and static assets.
+    Excludes API routes (ws, feedback) and assets.
     """
     # Don't intercept API routes
-    if full_path.startswith(("ws", "feedback", "static", "api")):
+    if full_path.startswith(("ws", "feedback", "assets", "api")):
         raise HTTPException(status_code=404, detail="Not found")
 
     # Serve index.html for all other routes (SPA routing)

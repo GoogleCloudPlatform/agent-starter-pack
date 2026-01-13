@@ -15,80 +15,84 @@
 
 import json
 import logging
+import os
 import time
-from typing import Any
+import uuid
 
 from locust import User, between, task
-from websockets.exceptions import WebSocketException
 from websockets.sync.client import connect
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
+
+# Timeout settings for Gemini Live
+CONNECTION_TIMEOUT = 60
+MESSAGE_TIMEOUT = 30
 
 
 class WebSocketUser(User):
-    """Simulates a user making websocket requests to the remote agent engine."""
+    """Simulates a user interacting with the ADK Live WebSocket API."""
 
-    wait_time = between(1, 3)  # Wait 1-3 seconds between tasks
-    abstract = True
+    wait_time = between(5, 10)
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ws_url = (
-            self.host.replace("http://", "ws://").replace("https://", "wss://") + "/ws"
-        )
+        self.ws = None
+        self.user_id = f"loadtest_{uuid.uuid4()}"
 
-    @task
-    def websocket_audio_conversation(self) -> None:
-        """Test a full websocket conversation with audio input."""
-        start_time = time.time()
-        response_count = 0
-        exception = None
+    def on_start(self):
+        """Connect to WebSocket when user starts."""
+        ws_url = self.host.replace("http://", "ws://").replace("https://", "wss://")
+        ws_url = f"{ws_url}/ws"
+
+        # Add authorization header if ID token is available (for Cloud Run)
+        additional_headers = {}
+        id_token = os.environ.get("_ID_TOKEN")
+        if id_token:
+            additional_headers["Authorization"] = f"Bearer {id_token}"
 
         try:
-            response_count = self._websocket_interaction()
-
-            # Mark as failure if we got no valid responses
-            if response_count == 0:
-                exception = Exception("No responses received from agent")
-
-        except WebSocketException as e:
-            exception = e
-            logger.error(f"WebSocket error: {e}")
-        except Exception as e:
-            exception = e
-            logger.error(f"Unexpected error: {e}")
-        finally:
-            total_time = int((time.time() - start_time) * 1000)
-
-            # Report the request metrics to Locust
-            self.environment.events.request.fire(
-                request_type="WS",
-                name="websocket_conversation",
-                response_time=total_time,
-                response_length=response_count * 100,  # Approximate response size
-                response=None,
-                context={},
-                exception=exception,
+            self.ws = connect(
+                ws_url,
+                open_timeout=CONNECTION_TIMEOUT,
+                additional_headers=additional_headers if additional_headers else None,
             )
-
-    def _websocket_interaction(self) -> int:
-        """Handle the websocket interaction and return response count."""
-        response_count = 0
-
-        with connect(self.ws_url, open_timeout=10, close_timeout=20) as websocket:
             # Wait for setupComplete
-            setup_response = websocket.recv(timeout=10.0)
-            setup_data = json.loads(setup_response)
-            assert "setupComplete" in setup_data, (
-                f"Expected setupComplete, got {setup_data}"
-            )
-            logger.info("Received setupComplete")
+            response = self.ws.recv(timeout=MESSAGE_TIMEOUT)
+            data = json.loads(response)
+            if "setupComplete" in data:
+                logger.info("WebSocket connection established, setupComplete received")
+        except Exception as e:
+            logger.error(f"Failed to connect: {e}")
+            self.ws = None
 
-            # Send dummy audio chunk with user_id
+    def on_stop(self):
+        """Close WebSocket when user stops."""
+        if self.ws:
+            try:
+                self.ws.close()
+            except Exception:
+                pass
+
+    @task
+    def chat_message(self) -> None:
+        """Send a chat message through WebSocket to ADK Live agent."""
+        if not self.ws:
+            logger.warning("No WebSocket connection, attempting reconnect")
+            self.on_start()
+            if not self.ws:
+                return
+
+        start_time = time.time()
+
+        try:
+            # Send dummy audio chunk with user_id (matching integration test format)
             dummy_audio = bytes([0] * 1024)
             audio_msg = {
-                "user_id": "load-test-user",
+                "user_id": self.user_id,
                 "realtimeInput": {
                     "mediaChunks": [
                         {
@@ -98,44 +102,102 @@ class WebSocketUser(User):
                     ]
                 },
             }
-            websocket.send(json.dumps(audio_msg))
-            logger.info("Sent audio chunk")
+            self.ws.send(json.dumps(audio_msg))
+            logger.info(f"Sent audio chunk for user {self.user_id}")
 
-            # Send text message to complete the turn
+            # Send text message to complete the turn (matching integration test format)
             text_msg = {
                 "content": {
                     "role": "user",
-                    "parts": [{"text": "Hello!"}],
+                    "parts": [{"text": "What's the weather in San Francisco?"}],
                 }
             }
-            websocket.send(json.dumps(text_msg))
-            logger.info("Sent text completion")
+            self.ws.send(json.dumps(text_msg))
+            logger.info("Sent text message")
 
-            # Collect responses until turn_complete or timeout
-            for _ in range(20):  # Max 20 responses
+            # Collect responses
+            responses = []
+            has_error = False
+            turn_complete = False
+
+            for _ in range(20):
                 try:
-                    response = websocket.recv(timeout=10.0)
-                    response_data = json.loads(response)
-                    response_count += 1
-                    logger.debug(f"Received response: {response_data}")
+                    response = self.ws.recv(timeout=MESSAGE_TIMEOUT)
+                    if isinstance(response, bytes):
+                        data = json.loads(response.decode())
+                    else:
+                        data = json.loads(response)
 
-                    if isinstance(response_data, dict) and response_data.get(
-                        "turn_complete"
-                    ):
-                        logger.info(f"Turn complete after {response_count} responses")
-                        break
+                    responses.append(data)
+                    logger.debug(
+                        f"Received: {list(data.keys()) if isinstance(data, dict) else type(data)}"
+                    )
+
+                    if isinstance(data, dict):
+                        if "error" in data:
+                            has_error = True
+                            logger.error(f"Error response: {data['error']}")
+                            break
+                        if data.get("turn_complete") or data.get("turnComplete"):
+                            turn_complete = True
+                            break
+
+                        # Check serverContent for turn complete
+                        server_content = data.get("serverContent", {})
+                        if server_content.get("turnComplete"):
+                            turn_complete = True
+                            break
+
                 except TimeoutError:
-                    logger.info(f"Timeout after {response_count} responses")
+                    logger.warning("Timeout waiting for response")
+                    break
+                except Exception as e:
+                    logger.error(f"Error receiving: {e}")
                     break
 
-        return response_count
+            end_time = time.time()
+            total_time = (end_time - start_time) * 1000  # ms
 
+            if len(responses) > 0 and not has_error:
+                self.environment.events.request.fire(
+                    request_type="WebSocket",
+                    name="chat_message",
+                    response_time=total_time,
+                    response_length=len(responses),
+                    response=None,
+                    context={},
+                    exception=None,
+                )
+                logger.info(
+                    f"Request completed in {total_time:.0f}ms with {len(responses)} responses"
+                )
+            else:
+                self.environment.events.request.fire(
+                    request_type="WebSocket",
+                    name="chat_message",
+                    response_time=total_time,
+                    response_length=len(responses),
+                    response=None,
+                    context={},
+                    exception=Exception("No responses or error"),
+                )
 
-class RemoteAgentUser(WebSocketUser):
-    """User for testing remote agent engine deployment."""
-
-    # Set the host via command line: locust -f load_test.py --host=https://your-deployed-service.run.app
-    host = "http://localhost:8000"  # Default for local testing
+        except Exception as e:
+            end_time = time.time()
+            total_time = (end_time - start_time) * 1000
+            logger.error(f"Request failed: {e}")
+            self.environment.events.request.fire(
+                request_type="WebSocket",
+                name="chat_message",
+                response_time=total_time,
+                response_length=0,
+                response=None,
+                context={},
+                exception=e,
+            )
+            # Reconnect on failure
+            self.on_stop()
+            self.on_start()
 {%- else %}
 
 import json

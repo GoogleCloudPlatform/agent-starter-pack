@@ -268,7 +268,9 @@ async def serve_frontend_root() -> FileResponse | dict:
     index_file = frontend_build_dir / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
-    logging.warning("Frontend not built. Run 'npm run build' in the frontend directory.")
+    logging.warning(
+        "Frontend not built. Run 'npm run build' in the frontend directory."
+    )
     return {"status": "ok", "message": "Backend running. Frontend not built."}
 
 
@@ -287,7 +289,9 @@ async def serve_frontend_spa(full_path: str) -> FileResponse | dict:
     index_file = frontend_build_dir / "index.html"
     if index_file.exists():
         return FileResponse(str(index_file))
-    logging.warning("Frontend not built. Run 'npm run build' in the frontend directory.")
+    logging.warning(
+        "Frontend not built. Run 'npm run build' in the frontend directory."
+    )
     return {"status": "ok", "message": "Backend running. Frontend not built."}
 {% elif cookiecutter.is_adk %}
 import os

@@ -19,8 +19,8 @@ Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack
 
 ## Requirements
 
-- Go 1.24 or later
-- Google Cloud SDK (`gcloud`)
+- **Go**: 1.24 or later - [Install](https://go.dev/doc/install)
+- **golangci-lint**: For code quality checks - [Install](https://golangci-lint.run/welcome/install/)
 
 ## Quick Start
 

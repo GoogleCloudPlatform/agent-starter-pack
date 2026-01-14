@@ -16,6 +16,7 @@
 
 import logging
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -400,9 +401,8 @@ def is_scaffolding_dependency(dep: str) -> bool:
     Returns:
         True if this is a scaffolding dependency
     """
-    # Extract base package name (before version specifiers)
-    dep_name = dep.split("[")[0].split(">")[0].split("<")[0].split("~")[0].split("=")[0]
-    dep_name = dep_name.strip()
+    # Extract base package name (before version specifiers or extras)
+    dep_name = re.split(r"[\s\[><~=]", dep)[0].strip()
     return dep_name.lower() in {d.lower() for d in SCAFFOLDING_DEPENDENCIES}
 
 
@@ -415,8 +415,8 @@ def is_core_dependency(dep: str) -> bool:
     Returns:
         True if this is a core dependency that must be kept
     """
-    dep_name = dep.split("[")[0].split(">")[0].split("<")[0].split("~")[0].split("=")[0]
-    dep_name = dep_name.strip().lower()
+    # Extract base package name (before version specifiers or extras)
+    dep_name = re.split(r"[\s\[><~=]", dep)[0].strip().lower()
     for core in CORE_DEPENDENCIES:
         core_lower = core.lower()
         # Exact match or extension package (e.g., langchain-google-genai for langchain)

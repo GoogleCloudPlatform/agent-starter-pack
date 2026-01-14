@@ -20,6 +20,7 @@ from rich.console import Console
 
 from .commands.create import create
 from .commands.enhance import enhance
+from .commands.extract import extract
 from .commands.list import list_agents
 from .commands.register_gemini_enterprise import register_gemini_enterprise
 from .commands.setup_cicd import setup_cicd
@@ -58,6 +59,7 @@ def cli() -> None:
 # Register commands
 cli.add_command(create)
 cli.add_command(enhance)
+cli.add_command(extract)
 cli.add_command(register_gemini_enterprise)
 cli.add_command(setup_cicd)
 cli.add_command(list_agents, name="list")

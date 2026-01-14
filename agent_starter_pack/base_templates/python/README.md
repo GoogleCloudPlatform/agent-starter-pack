@@ -1,3 +1,51 @@
+{%- if extracted|default(false) %}
+# {{cookiecutter.project_name}}
+
+{{cookiecutter.agent_description}}
+
+Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack) version `{{ cookiecutter.package_version }}`
+
+## Project Structure
+
+```
+{{cookiecutter.project_name}}/
+├── {{cookiecutter.agent_directory}}/         # Core agent code
+│   ├── agent.py               # Main agent logic
+│   └── ...                    # Custom modules
+├── pyproject.toml             # Project dependencies
+├── Makefile                   # Development commands
+└── README.md                  # This file
+```
+
+## Requirements
+
+- **uv**: Python package manager - [Install](https://docs.astral.sh/uv/getting-started/installation/)
+
+## Quick Start
+
+```bash
+make install    # Install dependencies
+make playground # Launch local development environment
+```
+
+## Commands
+
+| Command          | Description                              |
+| ---------------- | ---------------------------------------- |
+| `make install`   | Install dependencies using uv            |
+| `make playground`| Launch local development environment     |
+| `make lint`      | Run code quality checks (ruff)           |
+
+## Adding Deployment Capabilities
+
+This is a minimal extracted agent. To add deployment infrastructure (CI/CD, Terraform, Cloud Run/Agent Engine support) and testing scaffolding, run:
+
+```bash
+agent-starter-pack enhance
+```
+
+This will restore the full project structure with deployment capabilities.
+{%- else %}
 # {{cookiecutter.project_name}}
 
 {{cookiecutter.agent_description}}
@@ -315,3 +363,4 @@ The application provides two levels of observability:
 {%- endif %}
 
 See the [observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html) for detailed instructions, example queries, and visualization options.
+{%- endif %}

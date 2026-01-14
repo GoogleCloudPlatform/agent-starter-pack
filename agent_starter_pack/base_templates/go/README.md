@@ -1,3 +1,52 @@
+{%- if extracted|default(false) %}
+# {{cookiecutter.project_name}}
+
+A Go agent built with Google's Agent Development Kit (ADK).
+
+Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack)
+
+## Project Structure
+
+```
+{{cookiecutter.project_name}}/
+├── agent/
+│   └── agent.go         # Agent implementation
+├── main.go              # Application entry point
+├── go.mod               # Go module definition
+├── Makefile             # Development commands
+└── README.md            # This file
+```
+
+## Requirements
+
+- Go 1.24 or later
+- Google Cloud SDK (`gcloud`)
+
+## Quick Start
+
+```bash
+make install    # Install dependencies
+make playground # Launch local development environment
+```
+
+## Commands
+
+| Command          | Description                              |
+| ---------------- | ---------------------------------------- |
+| `make install`   | Download Go dependencies                 |
+| `make playground`| Launch local development environment     |
+| `make lint`      | Run code quality checks (golangci-lint)  |
+
+## Adding Deployment Capabilities
+
+This is a minimal extracted agent. To add deployment infrastructure (CI/CD, Terraform, Cloud Run support) and testing scaffolding, run:
+
+```bash
+agent-starter-pack enhance
+```
+
+This will restore the full project structure with deployment capabilities.
+{%- else %}
 # {{cookiecutter.project_name}}
 
 A Go agent built with Google's Agent Development Kit (ADK).
@@ -92,3 +141,4 @@ make load-test      # In another terminal
 - [ADK for Go Documentation](https://google.github.io/adk-docs/)
 - [Vertex AI Documentation](https://cloud.google.com/vertex-ai/docs)
 - [Agent Starter Pack](https://github.com/GoogleCloudPlatform/agent-starter-pack)
+{%- endif %}

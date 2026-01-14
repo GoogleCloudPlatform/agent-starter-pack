@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 
 # Full A2UI Schema as of v0.8
 A2UI_SCHEMA = r'''

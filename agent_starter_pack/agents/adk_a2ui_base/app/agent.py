@@ -27,8 +27,8 @@ try:
     os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
     os.environ["GOOGLE_CLOUD_LOCATION"] = "global"
     os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
-except Exception:
-    pass
+except Exception as e:
+    print(f"Warning: Could not automatically configure Vertex AI. Defaulting to standard Auth. Error: {e}")
 {%- endif %}
 
 def list_items(category: str) -> str:

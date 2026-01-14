@@ -18,7 +18,7 @@ from app.agent import root_agent
 class TestA2UIAgent(unittest.TestCase):
     def test_agent_initialization(self):
         self.assertEqual(root_agent.name, "a2ui_base_agent")
-        self.assertTrue(len(root_agent.tools) > 0)
+        self.assertEqual(len(root_agent.tools), 2)
 
 if __name__ == "__main__":
     unittest.main()

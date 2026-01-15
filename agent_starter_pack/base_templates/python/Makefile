@@ -1,3 +1,29 @@
+{%- if extracted|default(false) %}
+# ==============================================================================
+# Minimal Makefile for Extracted Agent
+# ==============================================================================
+# This agent was extracted from a full agent-starter-pack project.
+# Run `agent-starter-pack enhance` to add deployment capabilities.
+# ==============================================================================
+
+install:
+	@command -v uv >/dev/null 2>&1 || { echo "uv is not installed. Installing uv..."; curl -LsSf https://astral.sh/uv/install.sh | sh; source $$HOME/.local/bin/env; }
+	uv sync
+
+playground:
+	@echo "==============================================================================="
+	@echo "| Starting your agent playground...                                          |"
+	@echo "|                                                                             |"
+	@echo "| Select the '{{cookiecutter.agent_directory}}' folder to interact with your agent.         |"
+	@echo "==============================================================================="
+{%- if cookiecutter.is_adk %}
+	uv run adk web . --port 8501 --reload_agents
+{%- else %}
+	@echo "Note: For full playground, run 'agent-starter-pack enhance' first."
+	uv run python -c "from {{cookiecutter.agent_directory}}.agent import agent; print(agent)"
+{%- endif %}
+
+{%- else %}
 # ==============================================================================
 # Installation & Setup
 # ==============================================================================
@@ -63,6 +89,8 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- endif %}
 {%- endif %}
+{%- endif %}
+{%- if not extracted|default(false) %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
 
 # ==============================================================================
@@ -304,15 +332,18 @@ data-ingestion:
 		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \
 		--pipeline-name="data-ingestion-pipeline")
 {%- endif %}
+{%- endif %}
 
 # ==============================================================================
 # Testing & Code Quality
 # ==============================================================================
+{%- if not extracted|default(false) %}
 
 # Run unit and integration tests
 test:
 	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
+{%- endif %}
 
 # Run code quality checks (codespell, ruff, ty)
 lint:
@@ -321,6 +352,7 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run ty check .
+{%- if not extracted|default(false) %}
 {%- if (cookiecutter.is_a2a and cookiecutter.deployment_target == 'cloud_run') or (cookiecutter.is_adk and not cookiecutter.is_a2a and cookiecutter.deployment_target == 'agent_engine') %}
 
 # ==============================================================================
@@ -341,5 +373,6 @@ register-gemini-enterprise:
 		--project-number="$$PROJECT_NUMBER"
 {%- else %}
 	@uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise
+{%- endif %}
 {%- endif %}
 {%- endif %}

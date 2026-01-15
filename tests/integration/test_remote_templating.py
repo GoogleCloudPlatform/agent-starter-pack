@@ -112,13 +112,7 @@ def _run_remote_templating_test(
 
         # Install dependencies
         run_command(
-            [
-                "uv",
-                "sync",
-                "--dev",
-                "--extra",
-                "lint",
-            ],
+            ["uv", "sync", "--dev"],
             project_path,
             "Installing dependencies",
             stream_output=False,

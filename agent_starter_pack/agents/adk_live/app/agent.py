@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from google.adk.agents import Agent
-from google.adk.apps.app import App
+from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
 {%- if not cookiecutter.use_google_api_key %}

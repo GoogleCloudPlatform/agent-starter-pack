@@ -783,8 +783,8 @@ def _inject_app_object_if_missing(
             )
             # Add import and app object at the end of the file
             content = content.rstrip()
-            if "from google.adk.apps.app import App" not in content:
-                content += "\n\nfrom google.adk.apps.app import App\n"
+            if "from google.adk.apps import App" not in content:
+                content += "\n\nfrom google.adk.apps import App\n"
             content += f'\napp = App(root_agent=root_agent, name="{agent_directory}")\n'
 
             # Write the modified content back
@@ -845,7 +845,7 @@ Edit root_agent.yaml to modify your agent configuration.
 from pathlib import Path
 
 from google.adk.agents import config_agent_utils
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 _AGENT_DIR = Path(__file__).parent
 root_agent = config_agent_utils.from_config(str(_AGENT_DIR / "root_agent.yaml"))

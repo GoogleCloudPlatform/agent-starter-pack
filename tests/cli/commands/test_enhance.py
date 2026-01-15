@@ -350,7 +350,7 @@ class TestEnhanceAgentEngineAppGeneration:
             # Create appropriate agent.py content based on template type
             if "adk" in base_template or base_template == "agentic_rag":
                 agent_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 root_agent = Agent(
     name="test_agent",
@@ -429,7 +429,7 @@ agent = RunnablePassthrough()
             agent_dir.mkdir()
             agent_file = agent_dir / "agent.py"
             agent_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 root_agent = Agent(
     name="test_agent",
@@ -620,7 +620,7 @@ root_agent = Agent(
     model="gemini-2.0-flash-001",
 )
 
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 app = App(root_agent=root_agent, name="app")
 """
@@ -639,7 +639,7 @@ app = App(root_agent=root_agent, name="app")
             agent_file = agent_dir / "agent.py"
 
             agent_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 root_agent = Agent(
     name="test_agent",
@@ -762,7 +762,7 @@ root_agent = Agent(
     model="gemini-2.0-flash-001",
 )
 
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 app = App(root_agent=root_agent, name="app")
 """
@@ -1079,7 +1079,7 @@ root_agent = Agent(
 
             # Verify app object was injected
             modified_content = agent_file.read_text()
-            assert "from google.adk.apps.app import App" in modified_content, (
+            assert "from google.adk.apps import App" in modified_content, (
                 f"Expected App import to be injected for {base_template}"
             )
             assert 'app = App(root_agent=root_agent, name="app")' in modified_content, (
@@ -1125,7 +1125,7 @@ agent = RunnablePassthrough()
 
             # Verify app object was NOT injected (langgraph doesn't need it)
             modified_content = agent_file.read_text()
-            assert "from google.adk.apps.app import App" not in modified_content, (
+            assert "from google.adk.apps import App" not in modified_content, (
                 "App import should NOT be injected for langgraph_base"
             )
 
@@ -1142,7 +1142,7 @@ agent = RunnablePassthrough()
             agent_file = agent_dir / "agent.py"
 
             agent_content = """from google.adk.agents import Agent
-from google.adk.apps.app import App
+from google.adk.apps import App
 
 root_agent = Agent(
     name="test_agent",

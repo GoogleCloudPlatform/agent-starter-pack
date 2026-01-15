@@ -456,7 +456,7 @@ report_composer = LlmAgent(
 Wraps the `root_agent` to enable production-grade runtime features that an `Agent` cannot handle alone.
 
 ```python
-from google.adk.apps.app import App
+from google.adk.apps import App
 from google.adk.agents.context_cache_config import ContextCacheConfig
 from google.adk.apps.events_compaction_config import EventsCompactionConfig
 from google.adk.apps.resumability_config import ResumabilityConfig

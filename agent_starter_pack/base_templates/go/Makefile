@@ -12,9 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{%- if extracted|default(false) %}
+# ==============================================================================
+# Minimal Makefile for Extracted Agent
+# ==============================================================================
+# This agent was extracted from a full agent-starter-pack project.
+# Run `agent-starter-pack enhance` to add deployment capabilities.
+# ==============================================================================
+
+{%- else %}
 # ==============================================================================
 # Installation & Setup
 # ==============================================================================
+{%- endif %}
 
 # Download Go module dependencies and generate go.sum
 install:
@@ -33,6 +43,7 @@ playground:
 	@echo "| Try asking: What's the weather in San Francisco?                            |"
 	@echo "==============================================================================="
 	go run . web --port 8501 api webui -api_server_address http://localhost:8501/api
+{%- if not extracted|default(false) %}
 
 # ==============================================================================
 # Local Development Commands
@@ -76,6 +87,7 @@ backend: deploy
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
+{%- endif %}
 
 # ==============================================================================
 # Testing & Code Quality
@@ -84,6 +96,7 @@ setup-dev-env:
 # Run unit and e2e tests
 test:
 	go test -v ./agent/... ./e2e/...
+{%- if not extracted|default(false) %}
 
 # Run load tests (requires server running on port 8000)
 # Server auto-loads .env on startup
@@ -93,6 +106,7 @@ load-test:
 		-duration=$(or $(DURATION),30s) \
 		-users=$(or $(USERS),10) \
 		-ramp=$(or $(RAMP),2)
+{%- endif %}
 
 # Run code quality checks
 lint:
@@ -117,6 +131,7 @@ build:
 # Clean build artifacts
 clean:
 	rm -rf bin/
+{%- if not extracted|default(false) %}
 
 # ==============================================================================
 # A2A Protocol Inspector
@@ -183,3 +198,4 @@ register-gemini-enterprise:
 		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
 		--project-number="$$PROJECT_NUMBER"
+{%- endif %}

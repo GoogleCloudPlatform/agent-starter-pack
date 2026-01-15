@@ -1,9 +1,11 @@
-{%- if extracted|default(false) %}
 # {{cookiecutter.project_name}}
 
 {{cookiecutter.agent_description}}
-
+{%- if extracted|default(false) %}
 Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack) version `{{ cookiecutter.package_version }}`
+{%- else %}
+Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack) version `{{ cookiecutter.package_version }}`
+{%- endif %}
 
 ## Project Structure
 
@@ -11,84 +13,46 @@ Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack
 {{cookiecutter.project_name}}/
 ├── {{cookiecutter.agent_directory}}/         # Core agent code
 │   ├── agent.py               # Main agent logic
+{%- if extracted|default(false) %}
 │   └── ...                    # Custom modules
-├── pyproject.toml             # Project dependencies
-├── Makefile                   # Development commands
-└── README.md                  # This file
-```
-
-## Requirements
-
-- **uv**: Python package manager - [Install](https://docs.astral.sh/uv/getting-started/installation/)
-
-## Quick Start
-
-```bash
-make install    # Install dependencies
-make playground # Launch local development environment
-```
-
-## Commands
-
-| Command          | Description                              |
-| ---------------- | ---------------------------------------- |
-| `make install`   | Install dependencies using uv            |
-| `make playground`| Launch local development environment     |
-| `make lint`      | Run code quality checks (ruff)           |
-
-## Adding Deployment Capabilities
-
-This is a minimal extracted agent. To add deployment infrastructure (CI/CD, Terraform, Cloud Run/Agent Engine support) and testing scaffolding, run:
-
-```bash
-agent-starter-pack enhance
-```
-
-This will restore the full project structure with deployment capabilities.
 {%- else %}
-# {{cookiecutter.project_name}}
-
-{{cookiecutter.agent_description}}
-Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.com/GoogleCloudPlatform/agent-starter-pack) version `{{ cookiecutter.package_version }}`
-
-## Project Structure
-
-This project is organized as follows:
-
-```
-{{cookiecutter.project_name}}/
-├── {{cookiecutter.agent_directory}}/                 # Core application code
-│   ├── agent.py         # Main agent logic
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-│   ├── fast_api_app.py  # FastAPI Backend server
+│   ├── fast_api_app.py        # FastAPI Backend server
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-│   ├── agent_engine_app.py # Agent Engine application logic
+│   ├── agent_engine_app.py    # Agent Engine application logic
 {%- endif %}
-│   └── app_utils/       # App utilities and helpers
+│   └── app_utils/             # App utilities and helpers
 {%- if cookiecutter.is_a2a and cookiecutter.agent_name == 'langgraph_base' %}
-│       ├── executor/    # A2A protocol executor implementation
-│       └── converters/  # Message converters for A2A protocol
+│       ├── executor/          # A2A protocol executor implementation
+│       └── converters/        # Message converters for A2A protocol
 {%- endif %}
 {%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
-├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build
+├── .cloudbuild/               # CI/CD pipeline configurations for Google Cloud Build
 {%- elif cookiecutter.cicd_runner == 'github_actions' %}
-├── .github/             # CI/CD pipeline configurations for GitHub Actions
+├── .github/                   # CI/CD pipeline configurations for GitHub Actions
 {%- endif %}
 {%- if cookiecutter.cicd_runner != 'skip' %}
-├── deployment/          # Infrastructure and deployment scripts
+├── deployment/                # Infrastructure and deployment scripts
 {%- if cookiecutter.agent_name != 'adk_live' %}
-├── notebooks/           # Jupyter notebooks for prototyping and evaluation
+├── notebooks/                 # Jupyter notebooks for prototyping and evaluation
 {%- endif %}
 {%- endif %}
-├── tests/               # Unit, integration, and load tests
-├── Makefile             # Makefile for common commands
-├── GEMINI.md            # AI-assisted development guide
-└── pyproject.toml       # Project dependencies and configuration
+├── tests/                     # Unit, integration, and load tests
+├── GEMINI.md                  # AI-assisted development guide
+{%- endif %}
+├── Makefile                   # Development commands
+└── pyproject.toml             # Project dependencies
 ```
+{%- if not extracted|default(false) %}
 
 > 💡 **Tip:** Use [Gemini CLI](https://github.com/google-gemini/gemini-cli) for AI-assisted development - project context is pre-configured in `GEMINI.md`.
+{%- endif %}
 
 ## Requirements
+{%- if extracted|default(false) %}
+
+- **uv**: Python package manager - [Install](https://docs.astral.sh/uv/getting-started/installation/)
+{%- else %}
 
 Before you begin, ensure you have:
 - **uv**: Python package manager (used for all dependency management in this project) - [Install](https://docs.astral.sh/uv/getting-started/installation/) ([add packages](https://docs.astral.sh/uv/concepts/dependencies/) with `uv add <package>`)
@@ -97,9 +61,16 @@ Before you begin, ensure you have:
 - **Terraform**: For infrastructure deployment - [Install](https://developer.hashicorp.com/terraform/downloads)
 {%- endif %}
 - **make**: Build automation tool - [Install](https://www.gnu.org/software/make/) (pre-installed on most Unix-based systems)
+{%- endif %}
 
 
-## Quick Start (Local Testing)
+## Quick Start
+{%- if extracted|default(false) %}
+
+```bash
+make install && make playground
+```
+{%- else %}
 
 Install required packages and launch the local development environment:
 
@@ -112,49 +83,63 @@ make install && make playground
 {%- else %}
 > **📊 Observability Note:** Agent telemetry (Cloud Trace) is always enabled. Prompt-response logging is not available for LangGraph agents due to SDK limitations with streaming.
 {%- endif %}
+{%- endif %}
 
 ## Commands
 
 | Command              | Description                                                                                 |
 | -------------------- | ------------------------------------------------------------------------------------------- |
-| `make install`       | Install all required dependencies using uv                                                  |
+| `make install`       | Install dependencies using uv                                                               |
+| `make playground`    | Launch local development environment                                                        |
+| `make lint`          | Run code quality checks                                                                     |
+{%- if not extracted|default(false) %}
 {%- if cookiecutter.settings.get("commands", {}).get("extra", {}) %}
 {%- for cmd_name, cmd_value in cookiecutter.settings.get("commands", {}).get("extra", {}).items() %}
 | `make {{ cmd_name }}`       | {% if cmd_value is mapping %}{% if cmd_value.description %}{{ cmd_value.description }}{% else %}{% if cookiecutter.deployment_target in cmd_value %}{{ cmd_value[cookiecutter.deployment_target] }}{% else %}{{ cmd_value.command if cmd_value.command is string else "" }}{% endif %}{% endif %}{% else %}{{ cmd_value }}{% endif %} |
 {%- endfor %}
 {%- endif %}
+| `make test`          | Run unit and integration tests                                                              |
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-| `make playground`    | Launch local development environment with backend and frontend{%- if cookiecutter.is_adk %} - leveraging `adk web` command. {%- endif %}|
-| `make deploy`        | Deploy agent to Cloud Run (use `IAP=true` to enable Identity-Aware Proxy, `PORT=8080` to specify container port) |
-| `make local-backend` | Launch local development server with hot-reload |
+| `make deploy`        | Deploy agent to Cloud Run                                                                   |
+| `make local-backend` | Launch local development server with hot-reload                                             |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-| `make playground`    | Launch local development environment for testing agent |
-| `make deploy`        | Deploy agent to Agent Engine |
+| `make deploy`        | Deploy agent to Agent Engine                                                                |
 {%- if cookiecutter.is_adk_live %}
-| `make local-backend` | Launch local development server with hot-reload |
-| `make ui`            | Start the frontend UI separately for development (requires backend running separately) |
-| `make playground-dev` | Launch dev playground with both frontend and backend hot-reload |
-| `make playground-remote` | Connect to remote deployed agent with local frontend |
-| `make build-frontend` | Build the frontend for production |
+| `make local-backend` | Launch local development server with hot-reload                                             |
+| `make ui`            | Start the frontend UI separately for development                                            |
+| `make playground-dev` | Launch dev playground with both frontend and backend hot-reload                            |
+| `make playground-remote` | Connect to remote deployed agent with local frontend                                    |
+| `make build-frontend` | Build the frontend for production                                                          |
 {%- endif %}
 {%- if cookiecutter.is_adk or cookiecutter.is_a2a %}
-| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise ([docs](https://googlecloudplatform.github.io/agent-starter-pack/cli/register_gemini_enterprise.html)) |
+| `make register-gemini-enterprise` | Register deployed agent to Gemini Enterprise                                  |
 {%- endif -%}
 {%- endif -%}
 {%- if cookiecutter.is_a2a %}
-| `make inspector`     | Launch A2A Protocol Inspector to test your agent implementation                             |
+| `make inspector`     | Launch A2A Protocol Inspector                                                               |
 {%- endif %}
-| `make test`          | Run unit and integration tests                                                              |
-| `make lint`          | Run code quality checks (codespell, ruff, ty)                                               |
 {%- if cookiecutter.cicd_runner != 'skip' %}
-| `make setup-dev-env` | Set up development environment resources using Terraform                         |
+| `make setup-dev-env` | Set up development environment resources using Terraform                                   |
 {%- endif %}
 {%- if cookiecutter.data_ingestion %}
-| `make data-ingestion`| Run data ingestion pipeline in the Dev environment                                           |
+| `make data-ingestion`| Run data ingestion pipeline                                                                 |
 {%- endif %}
 
 For full command options and usage, refer to the [Makefile](Makefile).
+{%- endif %}
+{%- if extracted|default(false) %}
 
+## Adding Deployment Capabilities
+
+This is a minimal extracted agent. To add deployment infrastructure (CI/CD, Terraform, Cloud Run/Agent Engine support) and testing scaffolding, run:
+
+```bash
+agent-starter-pack enhance
+```
+
+This will restore the full project structure with deployment capabilities.
+{%- endif %}
+{%- if not extracted|default(false) %}
 {%- if cookiecutter.is_a2a %}
 
 ## Using the A2A Inspector

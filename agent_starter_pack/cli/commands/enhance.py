@@ -30,7 +30,11 @@ else:
     import tomli as tomllib
 
 from ..utils.logging import display_welcome_banner, handle_cli_error
-from ..utils.template import get_available_agents, validate_agent_directory_name
+from ..utils.template import (
+    get_available_agents,
+    resolve_agent_alias,
+    validate_agent_directory_name,
+)
 from ..utils.version import get_current_version
 from .create import (
     create,
@@ -535,7 +539,7 @@ def display_agent_directory_selection(
 @click.option(
     "--adk",
     is_flag=True,
-    help="Shortcut for --base-template adk_base",
+    help="Shortcut for --base-template adk",
     default=False,
 )
 @click.option(
@@ -580,7 +584,7 @@ def enhance(
 
     TEMPLATE_PATH can be:
     - A local directory path (e.g., . for current directory)
-    - An agent name (e.g., adk_base)
+    - An agent name (e.g., adk)
     - A remote template (e.g., adk@data-science)
 
     The command will validate your project structure and provide guidance if needed.
@@ -609,7 +613,10 @@ def enhance(
             raise click.ClickException(
                 "Cannot use --adk with --base-template. Use one or the other."
             )
-        base_template = "adk_base"
+        base_template = "adk"
+
+    # Resolve base template aliases (backwards compatibility)
+    base_template = resolve_agent_alias(base_template)
 
     # Validate base template if provided
     if base_template and not validate_base_template(base_template):

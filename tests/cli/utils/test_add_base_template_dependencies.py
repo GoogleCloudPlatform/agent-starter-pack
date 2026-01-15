@@ -40,7 +40,7 @@ class TestAddBaseTemplateDependencies:
         base_deps = ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9"]
 
         result = add_base_template_dependencies_interactively(
-            project_path, base_deps, "adk_a2a_base", auto_approve=True
+            project_path, base_deps, "adk_a2a", auto_approve=True
         )
 
         assert result is True
@@ -71,7 +71,7 @@ class TestAddBaseTemplateDependencies:
         base_deps = ["a2a-sdk~=0.3.9"]
 
         result = add_base_template_dependencies_interactively(
-            project_path, base_deps, "adk_a2a_base", auto_approve=False
+            project_path, base_deps, "adk_a2a", auto_approve=False
         )
 
         assert result is True
@@ -90,7 +90,7 @@ class TestAddBaseTemplateDependencies:
         base_deps = ["a2a-sdk~=0.3.9"]
 
         result = add_base_template_dependencies_interactively(
-            project_path, base_deps, "adk_a2a_base", auto_approve=False
+            project_path, base_deps, "adk_a2a", auto_approve=False
         )
 
         assert result is False
@@ -112,7 +112,7 @@ class TestAddBaseTemplateDependencies:
         base_deps = ["a2a-sdk~=0.3.9"]
 
         result = add_base_template_dependencies_interactively(
-            project_path, base_deps, "adk_a2a_base", auto_approve=True
+            project_path, base_deps, "adk_a2a", auto_approve=True
         )
 
         assert result is False
@@ -133,7 +133,7 @@ class TestAddBaseTemplateDependencies:
             mock_subprocess.side_effect = FileNotFoundError("uv not found")
 
             result = add_base_template_dependencies_interactively(
-                project_path, base_deps, "adk_a2a_base", auto_approve=True
+                project_path, base_deps, "adk_a2a", auto_approve=True
             )
 
         assert result is False
@@ -147,7 +147,7 @@ class TestAddBaseTemplateDependencies:
         project_path = pathlib.Path("/test/project")
 
         result = add_base_template_dependencies_interactively(
-            project_path, [], "adk_base", auto_approve=True
+            project_path, [], "adk", auto_approve=True
         )
 
         assert result is True

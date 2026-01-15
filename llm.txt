@@ -65,7 +65,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 *   `PROJECT_NAME`: Name for your new project directory and base for GCP resource naming (max 26 chars, converted to lowercase).
 
 **Template Selection:**
-*   `-a, --agent`: Agent template - built-in agents (e.g., `adk_base`, `agentic_rag`), remote templates (`adk@gemini-fullstack`, `github.com/user/repo@branch`), or local projects (`local@./path`).
+*   `-a, --agent`: Agent template - built-in agents (e.g., `adk`, `agentic_rag`), remote templates (`adk@gemini-fullstack`, `github.com/user/repo@branch`), or local projects (`local@./path`).
 
 **Deployment Options:**
 *   `-d, --deployment-target`: Target environment (`cloud_run` or `agent_engine`).
@@ -90,7 +90,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 **Automated Creation Example:**
 ```bash
 uvx agent-starter-pack create my-automated-agent \
-  -a adk_base \
+  -a adk \
   -d cloud_run \
   --region us-central1 \
   --auto-approve
@@ -117,7 +117,7 @@ agent-starter-pack enhance [TEMPLATE_PATH] [OPTIONS]
 ```bash
 # Enhance current directory with agent capabilities
 uvx agent-starter-pack enhance . \
-  --base-template adk_base \
+  --base-template adk \
   -d cloud_run \
   --region us-central1 \
   --auto-approve
@@ -133,10 +133,10 @@ Templates for the `create` command (via `-a` or `--agent`):
 
 | Agent Name             | Description                                  |
 | :--------------------- | :------------------------------------------- |
-| `adk_base`             | Base ReAct agent (ADK)                       |
+| `adk`             | Base ReAct agent (ADK)                       |
 | `adk_gemini_fullstack` | Production-ready fullstack research agent    |
 | `agentic_rag`          | RAG agent for document retrieval & Q&A       |
-| `langgraph_base`       | Base ReAct agent (LangGraph)                 |
+| `langgraph`       | Base ReAct agent (LangGraph)                 |
 | `adk_live`             | Real-time multimodal RAG agent               |
 
 ---

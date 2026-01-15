@@ -192,7 +192,7 @@ name = "test-agent"
 
 [tool.agent-starter-pack]
 name = "test-agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 """
         (tmp_path / "pyproject.toml").write_text(pyproject_content)
@@ -201,7 +201,7 @@ agent_directory = "app"
 
         assert config is not None
         assert config["name"] == "test-agent"
-        assert config["base_template"] == "adk_base"
+        assert config["base_template"] == "adk"
         assert config["agent_directory"] == "app"
 
     def test_no_pyproject(self, tmp_path: pathlib.Path) -> None:
@@ -261,7 +261,7 @@ name = "test-agent"
 
 [tool.agent-starter-pack]
 name = "test-agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 """)
             pathlib.Path("app").mkdir()
@@ -359,7 +359,7 @@ dependencies = [
 
 [tool.agent-starter-pack]
 name = "test-agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 """)
             pathlib.Path("app").mkdir()
@@ -541,7 +541,7 @@ name = "test-agent"
 
 [tool.agent-starter-pack]
 name = "test-agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 """
         (tmp_path / "pyproject.toml").write_text(pyproject_content)
@@ -550,7 +550,7 @@ agent_directory = "app"
 
         assert config is not None
         assert config["name"] == "test-agent"
-        assert config["base_template"] == "adk_base"
+        assert config["base_template"] == "adk"
 
     def test_read_go_config(self, tmp_path: pathlib.Path) -> None:
         """Test reading ASP config from .asp.toml for Go."""
@@ -558,7 +558,7 @@ agent_directory = "app"
 [project]
 name = "test-go-agent"
 language = "go"
-base_template = "adk_base_go"
+base_template = "adk_go"
 deployment_target = "cloud_run"
 """
         (tmp_path / ".asp.toml").write_text(asp_toml_content)
@@ -568,7 +568,7 @@ deployment_target = "cloud_run"
         assert config is not None
         assert config["name"] == "test-go-agent"
         assert config["language"] == "go"
-        assert config["base_template"] == "adk_base_go"
+        assert config["base_template"] == "adk_go"
 
     def test_missing_config_file_returns_none(self, tmp_path: pathlib.Path) -> None:
         """Test that missing config file returns None."""
@@ -597,7 +597,7 @@ class TestGoProjectExtraction:
 [project]
 name = "test-go-agent"
 language = "go"
-base_template = "adk_base_go"
+base_template = "adk_go"
 agent_directory = "agent"
 """)
             pathlib.Path("agent").mkdir()
@@ -631,7 +631,7 @@ agent_directory = "agent"
 [project]
 name = "test-go-agent"
 language = "go"
-base_template = "adk_base_go"
+base_template = "adk_go"
 agent_directory = "agent"
 """)
             pathlib.Path("agent").mkdir()

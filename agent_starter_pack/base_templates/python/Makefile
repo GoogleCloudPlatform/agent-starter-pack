@@ -75,7 +75,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
 	$(MAKE) inspector
 {%- else %}
-{%- if cookiecutter.agent_name == 'langgraph_base' %}
+{%- if cookiecutter.agent_name == 'langgraph' %}
 	@echo "ℹ️  Note: Local playground not supported for LangGraph on Agent Engine."
 	@echo "    To test your agent, deploy first with 'make deploy' then use 'make inspector'."
 {%- else %}

@@ -31,7 +31,7 @@ from dotenv import load_dotenv
 {%- if cookiecutter.is_a2a %}
 from google.adk.a2a.executor.a2a_agent_executor import A2aAgentExecutor
 from google.adk.a2a.utils.agent_card_builder import AgentCardBuilder
-from google.adk.apps.app import App
+from google.adk.apps import App
 {%- endif %}
 from google.adk.artifacts import GcsArtifactService, InMemoryArtifactService
 {%- if cookiecutter.is_a2a %}

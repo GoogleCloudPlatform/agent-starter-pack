@@ -19,39 +19,24 @@ playground:
 	@echo "|                                                                             |"
 	@echo "| 💡 Try asking: What can you help me with?|"
 	@echo "|                                                                             |"
-	@echo "| 🔍 IMPORTANT: Select the 'test_adk_base' folder to interact with your agent.          |"
+	@echo "| 🔍 IMPORTANT: Select the 'test_adk' folder to interact with your agent.          |"
 	@echo "==============================================================================="
 	uv run adk web . --port 8501 --reload_agents
-
-# ==============================================================================
-# Local Development Commands
-# ==============================================================================
-
-# Launch local development server with hot-reload
-local-backend:
-	uv run uvicorn test_adk_base.fast_api_app:app --host localhost --port 8000 --reload
 
 # ==============================================================================
 # Backend Deployment Targets
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
 deploy:
-	PROJECT_ID=$$(gcloud config get-value project) && \
-	gcloud beta run deploy test-adk-base \
-		--source . \
-		--memory "4Gi" \
-		--project $$PROJECT_ID \
-		--region "us-central1" \
-		--no-allow-unauthenticated \
-		--no-cpu-throttling \
-		--labels "created-by=adk" \
-		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
-		--update-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD)" \
-		$(if $(IAP),--iap) \
-		$(if $(PORT),--port=$(PORT))
+	# Export dependencies to requirements file using uv export.
+	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_adk/app_utils/.requirements.txt 2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project > test_adk/app_utils/.requirements.txt) && \
+	uv run -m test_adk.app_utils.deploy \
+		--source-packages=./test_adk \
+		--entrypoint-module=test_adk.agent_engine_app \
+		--entrypoint-object=agent_engine \
+		--requirements-file=test_adk/app_utils/.requirements.txt
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -81,3 +66,14 @@ lint:
 	uv run ruff check . --diff
 	uv run ruff format . --check --diff
 	uv run ty check .
+
+# ==============================================================================
+# Gemini Enterprise Integration
+# ==============================================================================
+
+# Register the deployed agent to Gemini Enterprise
+# Usage: make register-gemini-enterprise (interactive - will prompt for required details)
+# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
+# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, GEMINI_TOOL_DESCRIPTION, AGENT_ENGINE_ID
+register-gemini-enterprise:
+	@uvx agent-starter-pack@0.20.0 register-gemini-enterprise

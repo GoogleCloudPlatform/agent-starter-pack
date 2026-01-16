@@ -147,7 +147,7 @@ def generate_go_lock_file() -> None:
             [
                 "uv", "run", "agent-starter-pack", "create", project_name,
                 "-p", "-s", "-y",
-                "-a", "adk_base_go",
+                "-a", "adk_go",
                 "-d", "cloud_run",
                 "--output-dir", str(tmp_dir),
             ],

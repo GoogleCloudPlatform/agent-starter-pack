@@ -22,7 +22,7 @@ Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.c
 │   ├── agent_engine_app.py    # Agent Engine application logic
 {%- endif %}
 │   └── app_utils/             # App utilities and helpers
-{%- if cookiecutter.is_a2a and cookiecutter.agent_name == 'langgraph_base' %}
+{%- if cookiecutter.is_a2a and cookiecutter.agent_name == 'langgraph' %}
 │       ├── executor/          # A2A protocol executor implementation
 │       └── converters/        # Message converters for A2A protocol
 {%- endif %}

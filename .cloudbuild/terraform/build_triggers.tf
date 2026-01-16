@@ -65,20 +65,20 @@ locals {
   # Define a local variable for agent/deployment combinations
   agent_testing_combinations = [
     {
-      name  = "adk_base-agent_engine"
-      value = "adk_base,agent_engine"
+      name  = "adk-agent_engine"
+      value = "adk,agent_engine"
     },
     {
-      name  = "adk_base-cloud_run"
-      value = "adk_base,cloud_run"
+      name  = "adk-cloud_run"
+      value = "adk,cloud_run"
     },
     {
-      name  = "langgraph_base-agent_engine"
-      value = "langgraph_base,agent_engine"
+      name  = "langgraph-agent_engine"
+      value = "langgraph,agent_engine"
     },
     {
-      name  = "langgraph_base-cloud_run"
-      value = "langgraph_base,cloud_run,-dir,tag"
+      name  = "langgraph-cloud_run"
+      value = "langgraph,cloud_run,-dir,tag"
     },
     {
       name  = "agentic_rag-agent_engine-vertex_ai_search"
@@ -97,33 +97,33 @@ locals {
       value = "adk_live,cloud_run"
     },
     {
-      name  = "adk_base-cloud_run-cloud_sql"
-      value = "adk_base,cloud_run,--session-type,cloud_sql"
+      name  = "adk-cloud_run-cloud_sql"
+      value = "adk,cloud_run,--session-type,cloud_sql"
     },
     {
       name  = "adk_b-cr-agent_engine"
-      value = "adk_base,cloud_run,--session-type,agent_engine"
+      value = "adk,cloud_run,--session-type,agent_engine"
     },
     {
-      name  = "adk_a2a_base-agent_engine"
-      value = "adk_a2a_base,agent_engine"
+      name  = "adk_a2a-agent_engine"
+      value = "adk_a2a,agent_engine"
     },
     {
-      name  = "adk_a2a_base-cloud_run"
-      value = "adk_a2a_base,cloud_run"
+      name  = "adk_a2a-cloud_run"
+      value = "adk_a2a,cloud_run"
     },
     {
-      name  = "adk_base_go-cloud_run"
-      value = "adk_base_go,cloud_run"
+      name  = "adk_go-cloud_run"
+      value = "adk_go,cloud_run"
     },
   ]
 
   # Go-specific included files (different paths from Python)
   # Only triggers when Go-specific template files change
   go_agent_testing_included_files = {
-    "adk_base_go-cloud_run" = [
+    "adk_go-cloud_run" = [
       # Go agent-specific files
-      "agent_starter_pack/agents/adk_base_go/**",
+      "agent_starter_pack/agents/adk_go/**",
       # Shared base template (affects all languages)
       "agent_starter_pack/base_templates/_shared/**",
       # Go base template
@@ -154,12 +154,12 @@ locals {
   }
   e2e_agent_deployment_combinations = [
     {
-      name  = "adk_base-agent_engine-github"
-      value = "adk_base,agent_engine,--cicd-runner,github_actions"
+      name  = "adk-agent_engine-github"
+      value = "adk,agent_engine,--cicd-runner,github_actions"
     },
     {
-      name  = "adk_base-cloud_run-github"
-      value = "adk_base,cloud_run,--cicd-runner,github_actions"
+      name  = "adk-cloud_run-github"
+      value = "adk,cloud_run,--cicd-runner,github_actions"
     },
     {
       name  = "agentic_rag-agent_engine-vertex_ai_search-github"
@@ -170,16 +170,16 @@ locals {
       value = "adk_live,agent_engine,--cicd-runner,github_actions"
     },
     {
-      name  = "adk_base-agent_engine"
-      value = "adk_base,agent_engine,-dir,tag"
+      name  = "adk-agent_engine"
+      value = "adk,agent_engine,-dir,tag"
     },
     {
-      name  = "adk_base-cloud_run"
-      value = "adk_base,cloud_run,-dir,tag"
+      name  = "adk-cloud_run"
+      value = "adk,cloud_run,-dir,tag"
     },
     {
-      name  = "langgraph_base-agent_engine"
-      value = "langgraph_base,agent_engine"
+      name  = "langgraph-agent_engine"
+      value = "langgraph,agent_engine"
     },
     {
       name  = "agentic_rag-agent_engine-vertex_ai_search"
@@ -198,29 +198,29 @@ locals {
       value = "adk_live,cloud_run"
     },
     {
-      name  = "adk_base-cloud_run-cloud_sql"
-      value = "adk_base,cloud_run,--session-type,cloud_sql"
+      name  = "adk-cloud_run-cloud_sql"
+      value = "adk,cloud_run,--session-type,cloud_sql"
     },
     {
-      name  = "adk_a2a_base-agent_engine"
-      value = "adk_a2a_base,agent_engine"
+      name  = "adk_a2a-agent_engine"
+      value = "adk_a2a,agent_engine"
     },
     {
-      name  = "adk_a2a_base-cloud_run"
-      value = "adk_a2a_base,cloud_run"
+      name  = "adk_a2a-cloud_run"
+      value = "adk_a2a,cloud_run"
     },
     {
-      name  = "adk_base_go-cloud_run"
-      value = "adk_base_go,cloud_run"
+      name  = "adk_go-cloud_run"
+      value = "adk_go,cloud_run"
     },
   ]
 
   # Go-specific E2E included files
   # Only triggers when Go-specific template files change
   go_e2e_agent_deployment_included_files = {
-    "adk_base_go-cloud_run" = [
+    "adk_go-cloud_run" = [
       # Go agent-specific files
-      "agent_starter_pack/agents/adk_base_go/**",
+      "agent_starter_pack/agents/adk_go/**",
       # Shared base template
       "agent_starter_pack/base_templates/_shared/**",
       # Go base template
@@ -243,7 +243,7 @@ locals {
 
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
     combo.name => endswith(split(",", combo.value)[0], "_go") ? local.go_e2e_agent_deployment_included_files[combo.name] : (
-      combo.name == "adk_base-cloud_run-cloud_sql" ? [
+      combo.name == "adk-cloud_run-cloud_sql" ? [
         "agent_starter_pack/deployment_targets/cloud_run/**",
         "pyproject.toml",
         ] : substr(combo.name, 0, 11) == "agentic_rag" ? [

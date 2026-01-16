@@ -22,7 +22,7 @@ Templates work even without explicit configuration thanks to intelligent default
 
 ## Quick Start: Creating Your First Template
 
-Let's build a simple remote template that customizes the built-in `adk_base` agent.
+Let's build a simple remote template that customizes the built-in `adk` agent.
 
 ### Step 1: Create the Template Structure
 
@@ -51,7 +51,7 @@ dependencies = [
 
 [tool.agent-starter-pack]
 # The built-in agent to use as a foundation
-base_template = "adk_base"
+base_template = "adk"
 
 # Template metadata (optional - falls back to [project] section)
 name = "My First Remote Template"
@@ -147,7 +147,7 @@ dependencies = ["google-adk>=1.8.0", "custom-lib"]
 
 [tool.agent-starter-pack]
 # Base template to inherit from - users can override with --base-template flag
-base_template = "adk_base"
+base_template = "adk"
 name = "My Awesome Template"  # Optional: falls back to [project].name
 description = "Custom description"  # Optional: falls back to [project].description
 
@@ -178,7 +178,7 @@ description = "A template for building chatbots"
 
 # This section is optional - without it, falls back to [project] + defaults
 [tool.agent-starter-pack]
-base_template = "adk_base"  # Override default
+base_template = "adk"  # Override default
 # name and description will use [project] values
 ```
 
@@ -208,7 +208,7 @@ When someone uses your template, files are copied and overlaid in this order (la
 1. **Base Template Files**: The foundational files from the starter pack
 2. **Deployment Target Files**: Files for the chosen deployment target (e.g., `cloud_run`)
 3. **Frontend Files** (Optional): If a `frontend_type` is specified
-4. **Base Agent Files**: The application logic from the `base_template` (e.g., `adk_base`)
+4. **Base Agent Files**: The application logic from the `base_template` (e.g., `adk`)
 5. **Remote Template Files** (Highest Precedence): All files from your repository root
 
 This means your template files will override any conflicting files from the base system.
@@ -392,7 +392,7 @@ Include in your template's README:
 
 ### "Template uses wrong base or missing features"
 - Check your `[tool.agent-starter-pack]` configuration
-- Verify `base_template` is set correctly (defaults to "adk_base")
+- Verify `base_template` is set correctly (defaults to "adk")
 - Review available settings in the [Template Config Reference](../guide/template-config-reference.md)
 
 ### "Users report missing dependencies"
@@ -407,7 +407,7 @@ Include in your template's README:
 **Data Science Agent:**
 ```toml
 [tool.agent-starter-pack]
-base_template = "adk_base"
+base_template = "adk"
 [tool.agent-starter-pack.settings]
 deployment_targets = ["cloud_run"]
 extra_dependencies = ["pandas", "numpy", "scikit-learn"]
@@ -416,7 +416,7 @@ extra_dependencies = ["pandas", "numpy", "scikit-learn"]
 **Chat Bot Template:**
 ```toml
 [tool.agent-starter-pack]
-base_template = "adk_base"
+base_template = "adk"
 [tool.agent-starter-pack.settings]
 frontend_type = "None"
 deployment_targets = ["agent_engine", "cloud_run"]
@@ -425,7 +425,7 @@ deployment_targets = ["agent_engine", "cloud_run"]
 **Enterprise Template:**
 ```toml
 [tool.agent-starter-pack]
-base_template = "adk_base"
+base_template = "adk"
 [tool.agent-starter-pack.settings]
 session_type = "cloud_sql"
 deployment_targets = ["cloud_run"]

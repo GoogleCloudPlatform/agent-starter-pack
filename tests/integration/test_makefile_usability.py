@@ -182,9 +182,9 @@ def validate_makefile_usability(
 def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
     """Get representative subset of combinations for Makefile testing."""
     return [
-        # adk_base - both deployment targets
-        ("adk_base", "agent_engine", None),
-        ("adk_base", "cloud_run", ["--session-type", "in_memory"]),
+        # adk - both deployment targets
+        ("adk", "agent_engine", None),
+        ("adk", "cloud_run", ["--session-type", "in_memory"]),
         # agentic_rag - one variant
         (
             "agentic_rag",
@@ -193,9 +193,9 @@ def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
         ),
         # adk_live - cloud_run only
         ("adk_live", "cloud_run", None),
-        # langgraph_base - both deployment targets
-        ("langgraph_base", "agent_engine", None),
-        ("langgraph_base", "cloud_run", ["--session-type", "in_memory"]),
+        # langgraph - both deployment targets
+        ("langgraph", "agent_engine", None),
+        ("langgraph", "cloud_run", ["--session-type", "in_memory"]),
     ]
 
 

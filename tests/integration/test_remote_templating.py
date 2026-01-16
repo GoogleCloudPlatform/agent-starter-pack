@@ -39,7 +39,7 @@ def _run_remote_templating_test(
         project_name: Name for the generated project
         skip_version_lock: If True, set ASP_SKIP_VERSION_LOCK=1 to use local ASP
         deployment_target: Deployment target (agent_engine or cloud_run)
-        base_template: Optional base template override (e.g., "adk_a2a_base")
+        base_template: Optional base template override (e.g., "adk_a2a")
         verify_app_injection: If True, verify app object exists in agent.py
     """
     output_dir = pathlib.Path(TARGET_DIR)
@@ -170,10 +170,10 @@ def test_remote_templating_cloud_run() -> None:
     )
 
 
-def test_remote_templating_adk_a2a_base() -> None:
-    """Test creating an agent from a remote template with adk_a2a_base.
+def test_remote_templating_adk_a2a() -> None:
+    """Test creating an agent from a remote template with adk_a2a.
 
-    Remote templates using adk_a2a_base should have app object injected
+    Remote templates using adk_a2a should have app object injected
     even if they only define root_agent (no explicit app).
     """
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -182,7 +182,7 @@ def test_remote_templating_adk_a2a_base() -> None:
         project_name,
         skip_version_lock=True,
         deployment_target="agent_engine",
-        base_template="adk_a2a_base",
+        base_template="adk_a2a",
         verify_app_injection=True,
     )
 

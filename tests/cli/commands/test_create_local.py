@@ -22,7 +22,7 @@ from agent_starter_pack.cli.utils.remote_template import parse_agent_spec
 
 
 def create_fake_template(
-    tmp_path: pathlib.Path, base_template: str = "adk_base"
+    tmp_path: pathlib.Path, base_template: str = "adk"
 ) -> pathlib.Path:
     template_dir = tmp_path / "my-local-template"
     template_dir.mkdir(parents=True)

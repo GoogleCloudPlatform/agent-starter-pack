@@ -7,11 +7,11 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 
 | Agent Name | Description | Use Case |
 |------------|-------------|----------|
-| `adk_base` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
-| `adk_base_go` | A base ReAct agent implemented using Google's [Agent Development Kit for Go](https://github.com/google/adk-go) | Go-based conversational agent |
-| `adk_a2a_base` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
+| `adk` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
+| `adk_go` | A base ReAct agent implemented using Google's [Agent Development Kit for Go](https://github.com/google/adk-go) | Go-based conversational agent |
+| `adk_a2a` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
-| `langgraph_base` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
+| `langgraph` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
 | `adk_live` | A real-time multimodal RAG agent | Audio/video/text chat with knowledge base |
 
 ## Choosing the Right Template
@@ -19,7 +19,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 When selecting a template, consider these factors:
 
 1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation network, or something else?
-2.  **Programming Language**: Do you prefer Python or Go? Most templates are Python-based, but `adk_base_go` provides a Go alternative.
+2.  **Programming Language**: Do you prefer Python or Go? Most templates are Python-based, but `adk_go` provides a Go alternative.
 3.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
 4.  **Reasoning Complexity**: Does your agent need complex planning and tool use (like ReAct), or is it more focused on retrieval and synthesis (like basic RAG)?
 5.  **Collaboration Needs**: Do you need multiple specialized agents working together?
@@ -27,7 +27,7 @@ When selecting a template, consider these factors:
 
 ## Template Details
 
-### ADK Base (`adk_base`)
+### ADK Base (`adk`)
 
 This template provides a minimal example of a ReAct agent built using Google's [Agent Development Kit (ADK)](https://github.com/google/adk-python). It demonstrates core ADK concepts like agent creation and tool integration, enabling reasoning and tool selection. Ideal for:
 
@@ -35,7 +35,7 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Building general-purpose conversational agents.
 *   Learning the ADK framework and ReAct pattern.
 
-### ADK Base Go (`adk_base_go`)
+### ADK Base Go (`adk_go`)
 
 This template provides a minimal example of a ReAct agent built using Google's [Agent Development Kit for Go](https://github.com/google/adk-go). It offers the same core ADK concepts as the Python version but for Go developers. Ideal for:
 
@@ -45,7 +45,7 @@ This template provides a minimal example of a ReAct agent built using Google's [
 
 **Note:** Currently supports Cloud Run deployment only.
 
-### ADK A2A Base (`adk_a2a_base`)
+### ADK A2A Base (`adk_a2a`)
 
 This template integrates Google's [Agent Development Kit (ADK)](https://github.com/google/adk-python) with the [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/), enabling distributed agent communication and interoperability across different frameworks and languages. It demonstrates core ADK concepts while providing standardized interfaces for building distributed agent systems. Ideal for:
 
@@ -63,7 +63,7 @@ Built on the ADK, this template implements [Retrieval-Augmented Generation (RAG)
 *   Answer synthesis from retrieved context.
 *   Infrastructure deployment via Terraform and a choice of CI/CD runners (Google Cloud Build or GitHub Actions).
 
-### LangGraph Base (`langgraph_base`)
+### LangGraph Base (`langgraph`)
 
 This template provides a minimal example of a ReAct agent built using [LangGraph](https://langchain-ai.github.io/langgraph/). It supports [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) integration, enabling distributed agent communication and interoperability across frameworks. It serves as an excellent starting point for developing agents with graph-based structures, offering:
 

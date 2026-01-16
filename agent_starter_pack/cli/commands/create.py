@@ -49,6 +49,7 @@ from ..utils.template import (
     prompt_datastore_selection,
     prompt_deployment_target,
     prompt_session_type_selection,
+    resolve_agent_alias,
 )
 
 console = Console()
@@ -281,7 +282,7 @@ def normalize_project_name(project_name: str) -> str:
 @click.option(
     "--adk",
     is_flag=True,
-    help="Quickstart mode: adk_base + agent_engine + prototype, skips prompts",
+    help="Quickstart mode: adk + agent_engine + prototype, skips prompts",
     default=False,
 )
 @handle_cli_error
@@ -374,16 +375,16 @@ def create(
         # Handle --adk quickstart flag
         if adk:
             console.print(
-                "⚡ ADK quickstart: adk_base + Agent Engine + prototype mode\n",
+                "⚡ ADK quickstart: adk + Agent Engine + prototype mode\n",
                 style="cyan",
             )
 
-            if agent and agent != "adk_base":
+            if agent and agent != "adk":
                 console.print(
-                    f"Info: --agent '{agent}' ignored due to --adk flag (using adk_base).",
+                    f"Info: --agent '{agent}' ignored due to --adk flag (using adk).",
                     style="yellow",
                 )
-            agent = "adk_base"
+            agent = "adk"
 
             if deployment_target and deployment_target != "agent_engine":
                 console.print(
@@ -398,7 +399,7 @@ def create(
 
             if debug:
                 logging.debug(
-                    "ADK quickstart mode: agent=adk_base, deployment_target=agent_engine, prototype=True, auto_approve=True"
+                    "ADK quickstart mode: agent=adk, deployment_target=agent_engine, prototype=True, auto_approve=True"
                 )
 
         # Convert output_dir to Path if provided, otherwise use current directory
@@ -440,6 +441,9 @@ def create(
                     style="bold red",
                 )
                 return
+
+        # Resolve agent name aliases (backwards compatibility)
+        agent = resolve_agent_alias(agent)
 
         # Agent selection - handle remote templates
         selected_agent = None
@@ -775,7 +779,7 @@ def create(
             requires_session = config.get("settings", {}).get("requires_session", False)
 
             # Session type selection is only available for these agents on cloud_run
-            session_type_supported_agents = ("adk_base", "agentic_rag")
+            session_type_supported_agents = ("adk", "agentic_rag")
 
             if requires_session:
                 if final_deployment == "agent_engine" and session_type:

@@ -34,7 +34,7 @@ uvx agent-starter-pack create
 :::
 
 No matter which method you choose, the `create` command will:
-*   Let you choose an agent template (e.g., `adk_base`, `adk_base_go`, `agentic_rag`).
+*   Let you choose an agent template (e.g., `adk`, `adk_go`, `agentic_rag`).
 *   Let you select a deployment target (e.g., `cloud_run`, `agent_engine`).
 *   Generate a complete project structure (backend, optional frontend, deployment infra).
 
@@ -42,10 +42,10 @@ No matter which method you choose, the `create` command will:
 
 ```bash
 # Python agent with Agent Engine
-agent-starter-pack create my-adk-agent -a adk_base -d agent_engine
+agent-starter-pack create my-adk-agent -a adk -d agent_engine
 
 # Go agent with Cloud Run
-agent-starter-pack create my-go-agent -a adk_base_go -d cloud_run
+agent-starter-pack create my-go-agent -a adk_go -d cloud_run
 ```
 
 ### 2. Explore and Run Locally

@@ -137,7 +137,7 @@ def watch(
     """
     Watch a agent's template and automatically rebuild when changes are detected.
 
-    agent: Name of the agent to watch (e.g., langgraph_base)
+    agent: Name of the agent to watch (e.g., langgraph)
     PROJECT_NAME: Name of the project to generate
     """
     if debug:

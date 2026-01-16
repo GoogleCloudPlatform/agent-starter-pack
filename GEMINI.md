@@ -148,7 +148,7 @@ Changes often require coordinated updates:
 
 ### Testing Strategy
 Test changes across multiple dimensions:
-- Agent types (adk_live, adk_base, etc.)
+- Agent types (adk_live, adk, etc.)
 - Deployment targets (cloud_run, agent_engine)
 - Feature combinations (data_ingestion, frontend_type)
 - Example command for testing the starter pack creation - from the root of the repo run: `uv run agent-starter-pack create myagent-$(date +%s) --output-dir target`
@@ -185,12 +185,12 @@ Both commands use the same `_TEST_AGENT_COMBINATION` environment variable to con
 **Common Combinations:**
 ```bash
 # Linting examples
-_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
-_TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
 
 # Testing examples
-_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make test-templated-agents
-_TEST_AGENT_COMBINATION="langgraph_base,agent_engine" make test-templated-agents
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make test-templated-agents
+_TEST_AGENT_COMBINATION="langgraph,agent_engine" make test-templated-agents
 ```
 
 ### Critical Whitespace Control Patterns
@@ -350,20 +350,20 @@ find agent_starter_pack -name "fast_api_app.py" -type f
 
 ```bash
 # 1. Test the specific combination you're working on
-_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,in_memory" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
 
 # 2. Test related combinations (same deployment, different agents)
 _TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
 
 # 3. Test alternate code paths (different deployment, session types)
-_TEST_AGENT_COMBINATION="adk_base,cloud_run,--session-type,agent_engine" make lint-templated-agents
-_TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
 
 # 4. If modifying deployment target files, test all agents with that target
 # For agent_engine changes:
-_TEST_AGENT_COMBINATION="adk_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
-_TEST_AGENT_COMBINATION="langgraph_base,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="langgraph,agent_engine" make lint-templated-agents
 ```
 
 ### Quick Reference: Whitespace Control Cheat Sheet
@@ -544,7 +544,7 @@ Generated projects store creation context in `pyproject.toml`:
 [tool.agent-starter-pack]
 # Metadata
 name = "my-project"
-base_template = "adk_base"
+base_template = "adk"
 asp_version = "0.25.0"
 
 [tool.agent-starter-pack.create_params]

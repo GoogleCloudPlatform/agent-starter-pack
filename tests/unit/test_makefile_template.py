@@ -41,9 +41,9 @@ class MakefileRenderer:
 
 # Define test configurations covering major templating journeys
 TEST_CONFIGURATIONS = {
-    "adk_base_cloud_run_no_data": {
+    "adk_cloud_run_no_data": {
         "project_name": "test-adk-base",
-        "agent_directory": "test_adk_base",
+        "agent_directory": "test_adk",
         "deployment_target": "cloud_run",
         "cicd_runner": "google_cloud_build",
         "is_adk": True,
@@ -55,9 +55,9 @@ TEST_CONFIGURATIONS = {
         "settings": {},
         "package_version": "0.20.0",
     },
-    "adk_base_agent_engine_no_data": {
+    "adk_agent_engine_no_data": {
         "project_name": "test-adk-base",
-        "agent_directory": "test_adk_base",
+        "agent_directory": "test_adk",
         "deployment_target": "agent_engine",
         "cicd_runner": "google_cloud_build",
         "is_adk": True,
@@ -130,7 +130,7 @@ TEST_CONFIGURATIONS = {
     "langgraph_cloud_run": {
         "project_name": "test-langgraph",
         "agent_directory": "test_langgraph",
-        "agent_name": "langgraph_base",
+        "agent_name": "langgraph",
         "deployment_target": "cloud_run",
         "cicd_runner": "google_cloud_build",
         "is_adk": False,
@@ -145,7 +145,7 @@ TEST_CONFIGURATIONS = {
     "langgraph_agent_engine": {
         "project_name": "test-langgraph",
         "agent_directory": "test_langgraph",
-        "agent_name": "langgraph_base",
+        "agent_name": "langgraph",
         "deployment_target": "agent_engine",
         "cicd_runner": "google_cloud_build",
         "is_adk": False,
@@ -433,7 +433,7 @@ class TestMakefileGeneration:
         self, makefile_renderer: MakefileRenderer
     ) -> None:
         """Test Agent Engine backend target uses requirements export."""
-        config = TEST_CONFIGURATIONS["adk_base_agent_engine_no_data"]
+        config = TEST_CONFIGURATIONS["adk_agent_engine_no_data"]
         output = makefile_renderer.render(config)
 
         # Should export requirements

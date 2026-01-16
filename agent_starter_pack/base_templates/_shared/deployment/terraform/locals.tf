@@ -21,6 +21,7 @@ locals {
     "bigquery.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "cloudtrace.googleapis.com",
+    "telemetry.googleapis.com",
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
     "sqladmin.googleapis.com",
 {%- endif %}

@@ -194,7 +194,7 @@ build-inspector-if-needed:
 register-gemini-enterprise:
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
-	uvx agent-starter-pack@{{cookiecutter.asp_version}} register-gemini-enterprise \
+	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
 		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
 		--project-number="$$PROJECT_NUMBER"

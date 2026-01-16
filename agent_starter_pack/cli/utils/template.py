@@ -46,6 +46,39 @@ from .remote_template import (
 )
 
 # =============================================================================
+# Agent Name Aliases (Backwards Compatibility)
+# =============================================================================
+# Maps legacy agent names to their current names.
+# This allows users to continue using old names like `--agent adk_base`
+# and for remote templates to reference `base_template: adk_base`.
+# =============================================================================
+
+AGENT_ALIASES: dict[str, str] = {
+    "adk_base": "adk",
+    "langgraph_base": "langgraph",
+    "adk_a2a_base": "adk_a2a",
+    "adk_base_go": "adk_go",
+}
+
+
+def resolve_agent_alias(name: str | None) -> str | None:
+    """Resolve legacy agent name to current name.
+
+    Args:
+        name: Agent name (possibly a legacy alias)
+
+    Returns:
+        Current agent name, or original if not an alias
+    """
+    if name is None:
+        return None
+    resolved = AGENT_ALIASES.get(name, name)
+    if resolved != name:
+        logging.info(f"Agent '{name}' has been renamed to '{resolved}'")
+    return resolved
+
+
+# =============================================================================
 # Conditional Files Configuration
 # =============================================================================
 # Maps file/directory paths to their inclusion conditions.
@@ -67,10 +100,10 @@ CONDITIONAL_FILES = {
     # Agent-specific conditional files (uses agent_directory placeholder)
     "{agent_directory}/app_utils/gcs.py": (lambda c: c.get("agent_name") == "adk_live"),
     "{agent_directory}/app_utils/executor": (
-        lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph_base"
+        lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph"
     ),
     "{agent_directory}/app_utils/converters": (
-        lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph_base"
+        lambda c: c.get("is_a2a") and c.get("agent_name") == "langgraph"
     ),
     # Agent Engine deployment target conditionals
     "{agent_directory}/app_utils/expose_app.py": lambda c: c.get("is_adk_live"),
@@ -324,12 +357,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
     """
     # Define display order for agents within each group
     PRIORITY_ORDER = {
-        "adk_base": 0,
-        "adk_a2a_base": 1,
+        "adk": 0,
+        "adk_a2a": 1,
         "adk_live": 2,
         "agentic_rag": 3,
-        "langgraph_base": 0,
-        "adk_base_go": 0,
+        "langgraph": 0,
+        "adk_go": 0,
     }
 
     agents_list = []

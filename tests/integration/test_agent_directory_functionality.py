@@ -49,7 +49,7 @@ description = "Test template with custom agent directory"
 dependencies = ["google-adk>=1.8.0"]
 
 [tool.agent-starter-pack]
-base_template = "adk_base"
+base_template = "adk"
 name = "Custom Agent Directory Test"
 description = "Test template with custom agent directory"
 
@@ -383,7 +383,7 @@ instruction: You are a helpful assistant.
             "--agent-directory",
             "my_agent",
             "--base-template",
-            "adk_base",
+            "adk",
             "--deployment-target",
             deployment_target,
             "--auto-approve",
@@ -461,7 +461,7 @@ description = "Test template with custom agent directory for {deployment_target}
 dependencies = ["google-adk>=1.8.0"]
 
 [tool.agent-starter-pack]
-base_template = "adk_base"
+base_template = "adk"
 
 [tool.agent-starter-pack.settings]
 agent_directory = "service"

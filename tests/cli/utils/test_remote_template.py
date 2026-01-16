@@ -229,7 +229,7 @@ requires_data_ingestion = false
 
             # Should return defaults when no pyproject.toml exists
             assert result == {
-                "base_template": "adk_base",
+                "base_template": "adk",
                 "name": "template",
                 "description": "",
                 "agent_directory": "app",
@@ -256,7 +256,7 @@ requires_data_ingestion = false
 
             # Should return defaults when pyproject.toml parsing fails
             assert result == {
-                "base_template": "adk_base",
+                "base_template": "adk",
                 "name": "template",
                 "description": "",
                 "agent_directory": "app",
@@ -324,7 +324,7 @@ class TestGetBaseTemplateName:
         """Test getting default base template name"""
         config: dict[str, Any] = {}
         result = get_base_template_name(config)
-        assert result == "adk_base"
+        assert result == "adk"
 
 
 class TestMergeTemplateConfigs:
@@ -396,7 +396,7 @@ class TestRemoteTemplateIntegration:
                     read_data="""
 name: academic-research
 description: Academic Research Agent
-base_template: adk_base
+base_template: adk
 settings:
   requires_data_ingestion: true
   deployment_targets: ["cloud_run"]
@@ -454,7 +454,7 @@ settings:
 
         # Test config loading with empty config
         empty_config: dict[str, Any] = {}
-        assert get_base_template_name(empty_config) == "adk_base"
+        assert get_base_template_name(empty_config) == "adk"
 
         # Test merge with empty configs
         result = merge_template_configs({}, {})
@@ -1322,7 +1322,7 @@ class TestLoadRemoteTemplateConfigWithFlatStructure:
         pyproject_content = b"""
 [tool.agent-starter-pack]
 name = "my-template"
-base_template = "adk_base"
+base_template = "adk"
 
 [tool.agent-starter-pack.settings]
 agent_directory = "custom_agent"

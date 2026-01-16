@@ -16,7 +16,7 @@ The file merging follows this priority order:
 1. Base template files (foundation)
 2. Deployment target files (Cloud Run, Agent Engine, etc.)
 3. Frontend files (if specified)
-4. Built-in agent files (adk_base, etc.)
+4. Built-in agent files (adk, etc.)
 5. **Remote template files (highest priority)**
 
 ## Quick Start
@@ -128,10 +128,10 @@ uvx agent-starter-pack create my-agent -a template-url --skip-checks
 Remote templates can specify a base template in their `pyproject.toml` configuration. You can override this using the `--base-template` flag to use a different foundational agent:
 
 ```bash
-# Use adk_a2a_base as the base instead of what the template specifies
-uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_a2a_base
+# Use adk_a2a as the base instead of what the template specifies
+uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_a2a
 
-✓ Base template override: Using 'adk_a2a_base' as foundation
+✓ Base template override: Using 'adk_a2a' as foundation
   This requires adding the following dependencies:
     • google-adk>=1.16.0,<2.0.0
     • a2a-sdk~=0.3.9
@@ -163,9 +163,9 @@ When you override the base template, the CLI:
 
 **Automatic installation with `--auto-approve`:**
 ```bash
-uvx agent-starter-pack create my-agent -a template --base-template adk_a2a_base --auto-approve
+uvx agent-starter-pack create my-agent -a template --base-template adk_a2a --auto-approve
 
-✓ Base template override: Using 'adk_a2a_base' as foundation
+✓ Base template override: Using 'adk_a2a' as foundation
 ✓ Auto-installing dependencies: google-adk>=1.16.0,<2.0.0, a2a-sdk~=0.3.9
   Resolved 111 packages in 1.2s
 ✓ Dependencies added successfully
@@ -177,7 +177,7 @@ Base template override is useful when:
 - You want to use a remote template's logic with a different foundational agent
 - The template's default base doesn't match your deployment needs (e.g., switching from Cloud Run to Agent Engine)
 - You're experimenting with different base agents for the same custom logic
-- You need features from a different base (e.g., A2A protocol support via `adk_a2a_base`)
+- You need features from a different base (e.g., A2A protocol support via `adk_a2a`)
 
 ## Discovering Templates
 

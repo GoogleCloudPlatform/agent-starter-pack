@@ -470,7 +470,7 @@ def load_remote_template_config(
 
     # Start with defaults
     defaults = {
-        "base_template": "adk_base",
+        "base_template": "adk",
         "name": template_dir.name,
         "description": "",
         "agent_directory": "app",  # Default for non-ADK samples
@@ -562,9 +562,13 @@ def get_base_template_name(config: dict[str, Any]) -> str:
         config: Template configuration dictionary
 
     Returns:
-        Base template name (defaults to "adk_base")
+        Base template name (defaults to "adk"), with legacy aliases resolved
     """
-    return config.get("base_template", "adk_base")
+    # Lazy import to avoid circular dependency
+    from .template import resolve_agent_alias
+
+    base_template = config.get("base_template", "adk")
+    return resolve_agent_alias(base_template) or "adk"
 
 
 def merge_template_configs(

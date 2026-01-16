@@ -92,7 +92,7 @@ def _run_agent_test(
             assert (project_path / file).exists(), f"Missing file: {file}"
 
         # Verify A2A inspector setup for A2A agents (Python only for now)
-        if agent == "langgraph_base" and not is_go:
+        if agent == "langgraph" and not is_go:
             makefile_path = project_path / "Makefile"
             makefile_content = makefile_path.read_text()
             assert "inspector:" in makefile_content, (
@@ -126,7 +126,7 @@ def _run_agent_test(
 @pytest.mark.parametrize(
     "agent,deployment_target,extra_params",
     get_test_combinations_to_run(),
-    # Edit here to manually force a specific combination e.g [("langgraph_base", "agent_engine", None)]
+    # Edit here to manually force a specific combination e.g [("langgraph", "agent_engine", None)]
 )
 def test_agent_deployment(
     agent: str, deployment_target: str, extra_params: list[str] | None

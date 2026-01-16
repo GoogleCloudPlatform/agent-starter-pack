@@ -64,7 +64,7 @@ version = "0.1.0"
 [tool.agent-starter-pack]
 name = "test-project"
 description = "A test agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
@@ -109,7 +109,7 @@ version = "0.1.0"
 [tool.agent-starter-pack]
 name = "test-project"
 description = "A test agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
@@ -161,7 +161,7 @@ version = "0.1.0"
 [tool.agent-starter-pack]
 name = "test-project"
 description = "A test agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
@@ -196,7 +196,7 @@ version = "0.1.0"
 [tool.agent-starter-pack]
 name = "test-project"
 description = "A test agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
@@ -306,7 +306,7 @@ version = "0.1.0"
 [tool.agent-starter-pack]
 name = "round-trip-test"
 description = "Test agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "custom_app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
@@ -324,7 +324,7 @@ frontend_type = "None"
         create_params = metadata["create_params"]
 
         # Verify metadata can be used to determine original settings
-        assert metadata["base_template"] == "adk_base"
+        assert metadata["base_template"] == "adk"
         assert metadata["agent_directory"] == "custom_app"
         assert create_params["deployment_target"] == "agent_engine"
         assert create_params["cicd_runner"] == "google_cloud_build"
@@ -345,7 +345,7 @@ version = "0.1.0"
 [tool.agent-starter-pack]
 name = "my-agent"
 description = "My custom agent"
-base_template = "adk_base"
+base_template = "adk"
 agent_directory = "app"
 generated_at = "2025-12-04T15:35:34.021638+00:00"
 asp_version = "0.25.0"
@@ -370,7 +370,7 @@ frontend_type = "None"
         # Verify values are usable
         assert metadata["name"] == "my-agent"
         assert metadata["description"] == "My custom agent"
-        assert metadata["base_template"] == "adk_base"
+        assert metadata["base_template"] == "adk"
         assert metadata["agent_directory"] == "app"
 
 
@@ -407,9 +407,9 @@ class TestMetadataEnablesIdenticalRecreation:
     @pytest.mark.parametrize(
         "agent,deployment_target,session_type,cicd_runner",
         [
-            ("adk_base", "cloud_run", "in_memory", "google_cloud_build"),
-            ("adk_base", "agent_engine", None, "google_cloud_build"),
-            ("adk_base", "cloud_run", "cloud_sql", "github_actions"),
+            ("adk", "cloud_run", "in_memory", "google_cloud_build"),
+            ("adk", "agent_engine", None, "google_cloud_build"),
+            ("adk", "cloud_run", "cloud_sql", "github_actions"),
         ],
     )
     def test_metadata_enables_recreation(

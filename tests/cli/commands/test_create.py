@@ -98,7 +98,7 @@ def mock_load_template_config() -> Generator[MagicMock, None, None]:
     """Mocks the template config loading to prevent file system access."""
     with patch("agent_starter_pack.cli.commands.create.load_template_config") as mock:
         mock.return_value = {
-            "name": "langgraph_base",
+            "name": "langgraph",
             "description": "LangGraph Base React Agent",
             "settings": {
                 "deployment_targets": ["cloud_run", "agent_engine"],
@@ -116,7 +116,7 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
     with patch("agent_starter_pack.cli.commands.create.get_available_agents") as mock:
         mock.return_value = {
             1: {
-                "name": "langgraph_base",
+                "name": "langgraph",
                 "description": "LangGraph Base React Agent",
                 "language": "python",
                 "framework": "langgraph",
@@ -358,7 +358,7 @@ class TestCreateCommand:
             mock_prompt.return_value = 1
             result = display_agent_selection()
 
-        assert result == "langgraph_base"
+        assert result == "langgraph"
         mock_get_available_agents.assert_called_once()
 
     def test_normalize_project_name(self, mock_console: MagicMock) -> None:
@@ -454,7 +454,7 @@ class TestCreateCommand:
             result = runner.invoke(create, ["test-project", "-y"])
 
         assert result.exit_code == 0, result.output
-        assert "--agent not specified. Defaulting to 'langgraph_base'" in result.output
+        assert "--agent not specified. Defaulting to 'langgraph'" in result.output
         mock_process_template.assert_called_once()
 
     def test_create_interactive_prompts_for_project_name(
@@ -501,7 +501,7 @@ class TestCreateCommand:
         mock_load_template_config: MagicMock,
         mock_get_deployment_targets: MagicMock,
     ) -> None:
-        """Test --adk flag sets adk_base, agent_engine, prototype mode, and skips prompts"""
+        """Test --adk flag sets adk, agent_engine, prototype mode, and skips prompts"""
         runner = CliRunner()
 
         with (
@@ -510,10 +510,10 @@ class TestCreateCommand:
                 "agent_starter_pack.cli.commands.create.get_available_agents"
             ) as mock_agents,
         ):
-            # Include adk_base in available agents
+            # Include adk in available agents
             mock_agents.return_value = {
-                1: {"name": "adk_base", "description": "ADK Base Agent"},
-                2: {"name": "langgraph_base", "description": "LangGraph Agent"},
+                1: {"name": "adk", "description": "ADK Base Agent"},
+                2: {"name": "langgraph", "description": "LangGraph Agent"},
             }
             # Only --adk flag needed - no -s or -y required
             result = runner.invoke(create, ["test-project", "--adk"])
@@ -523,6 +523,6 @@ class TestCreateCommand:
 
         # Verify process_template was called with correct arguments
         call_kwargs = mock_process_template.call_args[1]
-        assert call_kwargs["agent_name"] == "adk_base"
+        assert call_kwargs["agent_name"] == "adk"
         assert call_kwargs["deployment_target"] == "agent_engine"
         assert call_kwargs["cicd_runner"] == "skip"  # prototype mode

@@ -36,18 +36,18 @@ class TestDisplayBaseTemplateSelection:
         """Test that current base template is the default selection."""
         # Mock available agents
         mock_get_agents.return_value = {
-            1: {"name": "adk_base", "description": "Basic agent template"},
-            2: {"name": "langgraph_base", "description": "LangGraph ReAct agent"},
+            1: {"name": "adk", "description": "Basic agent template"},
+            2: {"name": "langgraph", "description": "LangGraph ReAct agent"},
             3: {"name": "agentic_rag", "description": "RAG-enabled agent"},
         }
 
         # Mock user selecting default (current template)
         mock_prompt.return_value = 1
 
-        result = display_base_template_selection("adk_base")
+        result = display_base_template_selection("adk")
 
-        assert result == "adk_base"
-        # Check that prompt was called with the correct default (1 for adk_base)
+        assert result == "adk"
+        # Check that prompt was called with the correct default (1 for adk)
         mock_prompt.assert_called_once()
         call_args = mock_prompt.call_args
         assert call_args[1]["default"] == 1
@@ -60,17 +60,17 @@ class TestDisplayBaseTemplateSelection:
         """Test selecting a different base template."""
         # Mock available agents
         mock_get_agents.return_value = {
-            1: {"name": "adk_base", "description": "Basic agent template"},
-            2: {"name": "langgraph_base", "description": "LangGraph ReAct agent"},
+            1: {"name": "adk", "description": "Basic agent template"},
+            2: {"name": "langgraph", "description": "LangGraph ReAct agent"},
             3: {"name": "agentic_rag", "description": "RAG-enabled agent"},
         }
 
         # Mock user selecting option 2
         mock_prompt.return_value = 2
 
-        result = display_base_template_selection("adk_base")
+        result = display_base_template_selection("adk")
 
-        assert result == "langgraph_base"
+        assert result == "langgraph"
 
     @patch("agent_starter_pack.cli.commands.enhance.get_available_agents")
     def test_base_template_selection_no_agents(
@@ -80,7 +80,7 @@ class TestDisplayBaseTemplateSelection:
         mock_get_agents.return_value = {}
 
         with pytest.raises(click.ClickException):
-            display_base_template_selection("adk_base")
+            display_base_template_selection("adk")
 
 
 class TestEnhanceCommand:
@@ -97,9 +97,9 @@ class TestEnhanceCommand:
     ) -> None:
         """Test that enhance prompts for base template when not provided via CLI."""
         # Mock the template config loading
-        mock_get_base_name.return_value = "adk_base"
-        mock_load_config.return_value = {"base_template": "adk_base"}
-        mock_display_selection.return_value = "langgraph_base"
+        mock_get_base_name.return_value = "adk"
+        mock_load_config.return_value = {"base_template": "adk"}
+        mock_display_selection.return_value = "langgraph"
 
         runner = CliRunner()
 
@@ -136,13 +136,13 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph_base", "--auto-approve"],
+                    [".", "--base-template", "langgraph", "--auto-approve"],
                 )
 
                 # Should call create with the specified base template
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "langgraph_base"
+                assert call_args[1]["base_template"] == "langgraph"
 
     def test_enhance_with_agent_directory_cli_param(self) -> None:
         """Test that enhance respects --agent-directory CLI parameter."""
@@ -267,7 +267,7 @@ packages = ["detected_agent", "frontend"]
                     [
                         ".",
                         "--base-template",
-                        "langgraph_base",
+                        "langgraph",
                         "--agent-directory",
                         "my_chatbot",
                         "--auto-approve",
@@ -277,15 +277,15 @@ packages = ["detected_agent", "frontend"]
                 # Should call create with both parameters
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "langgraph_base"
+                assert call_args[1]["base_template"] == "langgraph"
 
                 cli_overrides = call_args[1]["cli_overrides"]
                 assert cli_overrides is not None
-                assert cli_overrides["base_template"] == "langgraph_base"
+                assert cli_overrides["base_template"] == "langgraph"
                 assert cli_overrides["settings"]["agent_directory"] == "my_chatbot"
 
     def test_enhance_with_adk_flag_sets_base_template(self) -> None:
-        """Test that --adk flag sets base_template to adk_base."""
+        """Test that --adk flag sets base_template to adk."""
         runner = CliRunner()
 
         with runner.isolated_filesystem():
@@ -299,10 +299,10 @@ packages = ["detected_agent", "frontend"]
                     [".", "--adk", "--auto-approve"],
                 )
 
-                # Should call create with base_template set to adk_base
+                # Should call create with base_template set to adk
                 mock_create.assert_called_once()
                 call_args = mock_create.call_args
-                assert call_args[1]["base_template"] == "adk_base"
+                assert call_args[1]["base_template"] == "adk"
 
     def test_enhance_adk_flag_conflicts_with_base_template(self) -> None:
         """Test that --adk and --base-template cannot be used together."""
@@ -315,7 +315,7 @@ packages = ["detected_agent", "frontend"]
 
             result = runner.invoke(
                 enhance,
-                [".", "--adk", "--base-template", "langgraph_base", "--auto-approve"],
+                [".", "--adk", "--base-template", "langgraph", "--auto-approve"],
             )
 
             # Should fail with an error about conflicting options
@@ -329,9 +329,9 @@ class TestEnhanceAgentEngineAppGeneration:
     @pytest.mark.parametrize(
         "base_template,expected_import",
         [
-            ("adk_base", "app as adk_app"),
+            ("adk", "app as adk_app"),
             ("adk_live", "app as adk_app"),
-            ("langgraph_base", "agent"),
+            ("langgraph", "agent"),
             ("agentic_rag", "app as adk_app"),  # agentic_rag is ADK-based
         ],
     )
@@ -400,8 +400,8 @@ agent = RunnablePassthrough()
             # Read the content and verify the correct import
             content = agent_engine_app.read_text()
 
-            # For A2A non-ADK agents (like langgraph_base), they don't import from app.agent
-            if base_template == "langgraph_base":
+            # For A2A non-ADK agents (like langgraph), they don't import from app.agent
+            if base_template == "langgraph":
                 # Verify A2A-specific imports for LangGraph agents
                 # Check both module path and class name (handles multi-line formatting)
                 assert (
@@ -446,7 +446,7 @@ app = App(root_agent=root_agent, name="app")
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--agent-directory",
                     "my_custom_agent",
                     "--deployment-target",
@@ -497,8 +497,8 @@ class TestEnhanceAgentDirectoryPrompt:
         runner = CliRunner()
 
         # Mock the template config to return an ADK base template
-        mock_get_base_name.return_value = "adk_base"
-        mock_load_config.return_value = {"base_template": "adk_base"}
+        mock_get_base_name.return_value = "adk"
+        mock_load_config.return_value = {"base_template": "adk"}
         mock_display_selection.return_value = "app"
 
         with runner.isolated_filesystem():
@@ -508,7 +508,7 @@ class TestEnhanceAgentDirectoryPrompt:
             with patch("agent_starter_pack.cli.commands.enhance.create"):
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "adk_base"],
+                    [".", "--base-template", "adk"],
                     input="n\n",  # Cancel enhancement
                 )
 
@@ -516,7 +516,7 @@ class TestEnhanceAgentDirectoryPrompt:
                 if mock_display_selection.called:
                     call_args = mock_display_selection.call_args
                     # The base_template should be passed to the function
-                    assert call_args[0][2] == "adk_base"  # Third positional arg
+                    assert call_args[0][2] == "adk"  # Third positional arg
 
     @patch("agent_starter_pack.cli.commands.enhance.display_agent_directory_selection")
     @patch("agent_starter_pack.cli.utils.remote_template.get_base_template_name")
@@ -531,8 +531,8 @@ class TestEnhanceAgentDirectoryPrompt:
         runner = CliRunner()
 
         # Mock the template config to return a non-ADK base template
-        mock_get_base_name.return_value = "langgraph_base"
-        mock_load_config.return_value = {"base_template": "langgraph_base"}
+        mock_get_base_name.return_value = "langgraph"
+        mock_load_config.return_value = {"base_template": "langgraph"}
         mock_display_selection.return_value = "app"
 
         with runner.isolated_filesystem():
@@ -542,7 +542,7 @@ class TestEnhanceAgentDirectoryPrompt:
             with patch("agent_starter_pack.cli.commands.enhance.create"):
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph_base"],
+                    [".", "--base-template", "langgraph"],
                     input="n\n",  # Cancel enhancement
                 )
 
@@ -550,7 +550,7 @@ class TestEnhanceAgentDirectoryPrompt:
                 if mock_display_selection.called:
                     call_args = mock_display_selection.call_args
                     # The base_template should be passed to the function
-                    assert call_args[0][2] == "langgraph_base"
+                    assert call_args[0][2] == "langgraph"
 
 
 class TestEnhanceFilePopulation:
@@ -657,7 +657,7 @@ app = App(root_agent=root_agent, name="app")
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "cloud_run",
                     "--cicd-runner",
@@ -716,7 +716,7 @@ root_agent = Agent(
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "agent_engine",
                     "--include-data-ingestion",
@@ -798,7 +798,7 @@ instruction: You are a helpful assistant.
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "agent_engine",
                     "--auto-approve",
@@ -867,7 +867,7 @@ instruction: You are a helpful assistant.
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "cloud_run",
                     "--auto-approve",
@@ -915,7 +915,7 @@ model: gemini-2.0-flash-001
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--agent-directory",
                     "my_agent",
                     "--deployment-target",
@@ -958,7 +958,7 @@ model: gemini-2.0-flash-001
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "agent_engine",
                     "--auto-approve",
@@ -994,7 +994,7 @@ model: gemini-2.0-flash-001
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "agent_engine",
                     "--auto-approve",
@@ -1030,8 +1030,8 @@ class TestEnhanceAdkAppInjection:
     @pytest.mark.parametrize(
         "base_template",
         [
-            "adk_base",
-            "adk_a2a_base",
+            "adk",
+            "adk_a2a",
             "adk_live",
         ],
     )
@@ -1104,13 +1104,13 @@ agent = RunnablePassthrough()
 """
             agent_file.write_text(agent_content)
 
-            # Run enhance with langgraph_base (non-ADK)
+            # Run enhance with langgraph (non-ADK)
             result = runner.invoke(
                 enhance,
                 [
                     ".",
                     "--base-template",
-                    "langgraph_base",
+                    "langgraph",
                     "--deployment-target",
                     "agent_engine",
                     "--auto-approve",
@@ -1126,7 +1126,7 @@ agent = RunnablePassthrough()
             # Verify app object was NOT injected (langgraph doesn't need it)
             modified_content = agent_file.read_text()
             assert "from google.adk.apps import App" not in modified_content, (
-                "App import should NOT be injected for langgraph_base"
+                "App import should NOT be injected for langgraph"
             )
 
     def test_app_not_injected_when_already_present(
@@ -1159,7 +1159,7 @@ app = App(root_agent=root_agent, name="my_agent")
                 [
                     ".",
                     "--base-template",
-                    "adk_base",
+                    "adk",
                     "--deployment-target",
                     "agent_engine",
                     "--auto-approve",
@@ -1178,16 +1178,16 @@ app = App(root_agent=root_agent, name="my_agent")
     def test_is_adk_derived_from_base_template_name_not_tags(self) -> None:
         """Verify is_adk is derived from base_template_name, not tags.
 
-        This is the core fix: remote templates using adk_a2a_base may not
+        This is the core fix: remote templates using adk_a2a may not
         have explicit tags, but should still get app injection based on
         the base_template_name containing 'adk'.
         """
         test_cases = [
-            ("adk_base", True),
-            ("adk_a2a_base", True),
+            ("adk", True),
+            ("adk_a2a", True),
             ("adk_live", True),
             ("ADK_BASE", True),  # Case insensitive
-            ("langgraph_base", False),
+            ("langgraph", False),
             ("agentic_rag", False),
         ]
 

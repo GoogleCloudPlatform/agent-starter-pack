@@ -86,8 +86,17 @@ func main() {
 		SessionService: session.InMemoryService(),
 	}
 
+	args := os.Args[1:]
+	// Inject -a2a_agent_url flag for correct agent card URL
+	// Uses APP_URL env var if set, otherwise defaults to localhost:8000 for local dev
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:8000"
+	}
+	args = append(args, "-a2a_agent_url", appURL)
+
 	l := full.NewLauncher()
-	if err = l.Execute(ctx, config, os.Args[1:]); err != nil {
+	if err = l.Execute(ctx, config, args); err != nil {
 		log.Fatalf("Run failed: %v\n\n%s", err, l.CommandLineSyntax())
 	}
 }

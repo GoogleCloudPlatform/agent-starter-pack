@@ -108,9 +108,17 @@ CONDITIONAL_FILES = {
     # Agent Engine deployment target conditionals
     "{agent_directory}/app_utils/expose_app.py": lambda c: c.get("is_adk_live"),
     "tests/helpers.py": lambda c: c.get("is_a2a"),
-    "deployment/terraform/service.tf": (lambda c: c.get("agent_name") != "adk_live"),
+    "deployment/terraform/service.tf": (
+        lambda c: not (
+            c.get("agent_name") == "adk_live"
+            and c.get("deployment_target") == "agent_engine"
+        )
+    ),
     "deployment/terraform/dev/service.tf": (
-        lambda c: c.get("agent_name") != "adk_live"
+        lambda c: not (
+            c.get("agent_name") == "adk_live"
+            and c.get("deployment_target") == "agent_engine"
+        )
     ),
 }
 

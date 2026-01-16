@@ -87,10 +87,13 @@ func main() {
 	}
 
 	args := os.Args[1:]
-	// If APP_URL is set, inject -a2a_agent_url flag for correct agent card URL
-	if appURL := os.Getenv("APP_URL"); appURL != "" {
-		args = append(args, "-a2a_agent_url", appURL)
+	// Inject -a2a_agent_url flag for correct agent card URL
+	// Uses APP_URL env var if set, otherwise defaults to localhost:8000 for local dev
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "http://localhost:8000"
 	}
+	args = append(args, "-a2a_agent_url", appURL)
 
 	l := full.NewLauncher()
 	if err = l.Execute(ctx, config, args); err != nil {

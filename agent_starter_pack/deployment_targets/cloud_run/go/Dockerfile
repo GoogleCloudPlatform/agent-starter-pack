@@ -30,8 +30,8 @@ COPY agent/ ./agent/
 # Build the binary
 RUN CGO_ENABLED=0 GOOS=linux go build -o /agent .
 
-# Runtime stage - using alpine for shell support to read APP_URL env var
-FROM alpine:3.21
+# Runtime stage
+FROM gcr.io/distroless/static-debian12
 
 COPY --from=builder /agent /agent
 
@@ -45,5 +45,4 @@ EXPOSE 8080
 # API endpoints: /api/run_sse, /api/apps/...
 # A2A endpoint: /a2a/invoke (JSON-RPC)
 # Agent card: /.well-known/agent-card.json
-# APP_URL: Set this env var to the Cloud Run service URL for Gemini Enterprise
-ENTRYPOINT ["/bin/sh", "-c", "/agent web api a2a -a2a_agent_url ${APP_URL:-http://localhost:8080}"]
+ENTRYPOINT ["/agent", "web", "api", "a2a"]

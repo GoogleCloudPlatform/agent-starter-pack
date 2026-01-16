@@ -86,8 +86,14 @@ func main() {
 		SessionService: session.InMemoryService(),
 	}
 
+	args := os.Args[1:]
+	// If APP_URL is set, inject -a2a_agent_url flag for correct agent card URL
+	if appURL := os.Getenv("APP_URL"); appURL != "" {
+		args = append(args, "-a2a_agent_url", appURL)
+	}
+
 	l := full.NewLauncher()
-	if err = l.Execute(ctx, config, os.Args[1:]); err != nil {
+	if err = l.Execute(ctx, config, args); err != nil {
 		log.Fatalf("Run failed: %v\n\n%s", err, l.CommandLineSyntax())
 	}
 }

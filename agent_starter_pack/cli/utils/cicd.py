@@ -783,7 +783,7 @@ class E2EDeployment:
         # Ensure bucket exists and is accessible
         try:
             result = run_command(
-                ["gsutil", "ls", "-b", f"gs://{bucket_name}"],
+                ["gcloud", "storage", "buckets", "describe", f"gs://{bucket_name}"],
                 check=False,
                 capture_output=True,
             )
@@ -792,18 +792,25 @@ class E2EDeployment:
                 print(f"\n📦 Creating Terraform state bucket: {bucket_name}")
                 run_command(
                     [
-                        "gsutil",
-                        "mb",
-                        "-p",
-                        self.config.cicd_project_id,
-                        "-l",
-                        self.config.region,
+                        "gcloud",
+                        "storage",
+                        "buckets",
+                        "create",
                         f"gs://{bucket_name}",
+                        f"--project={self.config.cicd_project_id}",
+                        f"--location={self.config.region}",
                     ]
                 )
 
                 run_command(
-                    ["gsutil", "versioning", "set", "on", f"gs://{bucket_name}"]
+                    [
+                        "gcloud",
+                        "storage",
+                        "buckets",
+                        "update",
+                        f"gs://{bucket_name}",
+                        "--versioning",
+                    ]
                 )
         except subprocess.CalledProcessError as e:
             print(f"\n❌ Failed to setup state bucket: {e}")

@@ -307,11 +307,11 @@ class TestSetupCICD:
                 mock_response.stdout = '{"isEmpty": true}'
                 mock_response.returncode = 0
                 print("Mocking repository view command")
-            # Mock gsutil commands
-            elif "gsutil" in command:
+            # Mock gcloud storage commands
+            elif "gcloud" in command and "storage" in command:
                 mock_response.stdout = ""
                 mock_response.returncode = 0
-                print("Mocking gsutil command")
+                print("Mocking gcloud storage command")
             # Mock git init
             elif "git" in command and "init" in command:
                 mock_response.stdout = ""

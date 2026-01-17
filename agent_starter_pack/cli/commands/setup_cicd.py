@@ -372,7 +372,7 @@ def setup_terraform_backend(
     # Ensure bucket exists
     try:
         result = run_command(
-            ["gsutil", "ls", "-b", f"gs://{bucket_name}"],
+            ["gcloud", "storage", "buckets", "describe", f"gs://{bucket_name}"],
             check=False,
             capture_output=True,
         )
@@ -381,11 +381,28 @@ def setup_terraform_backend(
             console.print(f"\n📦 Creating Terraform state bucket: {bucket_name}")
             # Create bucket
             run_command(
-                ["gsutil", "mb", "-p", project_id, "-l", region, f"gs://{bucket_name}"]
+                [
+                    "gcloud",
+                    "storage",
+                    "buckets",
+                    "create",
+                    f"gs://{bucket_name}",
+                    f"--project={project_id}",
+                    f"--location={region}",
+                ]
             )
 
             # Enable versioning
-            run_command(["gsutil", "versioning", "set", "on", f"gs://{bucket_name}"])
+            run_command(
+                [
+                    "gcloud",
+                    "storage",
+                    "buckets",
+                    "update",
+                    f"gs://{bucket_name}",
+                    "--versioning",
+                ]
+            )
     except subprocess.CalledProcessError as e:
         console.print(f"\n❌ Failed to setup state bucket: {e}")
         raise

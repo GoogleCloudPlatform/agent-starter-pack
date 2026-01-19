@@ -47,7 +47,7 @@ deploy:
 		--labels "" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD),VECTOR_SEARCH_INDEX=test-rag-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT=test-rag-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-test-rag-vs" \
+		"VECTOR_SEARCH_INDEX=test-rag-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT=test-rag-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-test-rag-vs" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 

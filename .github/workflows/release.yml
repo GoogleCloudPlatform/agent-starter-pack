@@ -117,6 +117,7 @@ jobs:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
         run: |
           echo "Waiting for all status checks to complete..."
+          sleep 10
           gh pr checks "${{ steps.create_pr.outputs.pr_url }}" --watch --fail-fast
 
       - name: Enable auto-merge

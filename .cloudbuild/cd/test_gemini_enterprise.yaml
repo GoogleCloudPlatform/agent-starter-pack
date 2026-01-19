@@ -20,6 +20,12 @@ steps:
     args:
       - "-c"
       - |
+        # Skip tests for dependency updates (e.g., Dependabot PRs)
+        if [[ "${_COMMIT_MESSAGE}" == build\(deps\)* ]]; then
+          echo "Skipping tests for dependency update: ${_COMMIT_MESSAGE}"
+          touch /workspace/.skip-e2e
+          exit 0
+        fi
         uv sync --dev --locked
 
   # Set gcloud project to dev environment
@@ -29,6 +35,10 @@ steps:
     args:
       - "-c"
       - |
+        if [ -f /workspace/.skip-e2e ]; then
+          echo "Skipping - dependency update commit"
+          exit 0
+        fi
         gcloud config set project ${_E2E_DEV_PROJECT}
 
   # Fetch identity token for Cloud Run authentication
@@ -38,6 +48,10 @@ steps:
     args:
       - "-c"
       - |
+        if [ -f /workspace/.skip-e2e ]; then
+          echo "Skipping - dependency update commit"
+          exit 0
+        fi
         gcloud auth print-identity-token -q > /workspace/id_token.txt
 
   # Run Gemini Enterprise registration test
@@ -47,6 +61,10 @@ steps:
     args:
       - "-c"
       - |
+        if [ -f /workspace/.skip-e2e ]; then
+          echo "Skipping Gemini Enterprise test - dependency update commit"
+          exit 0
+        fi
         export ID_TOKEN=$(cat /workspace/id_token.txt)
         uv run pytest tests/cicd/test_gemini_enterprise_registration.py -v
     secretEnv: ['GEMINI_ENTERPRISE_APP_ID']
@@ -62,3 +80,5 @@ options:
   env:
     - "RUN_GEMINI_ENTERPRISE_TEST=1"
 timeout: 3600s  # 1 hour timeout
+substitutions:
+  _COMMIT_MESSAGE: ''

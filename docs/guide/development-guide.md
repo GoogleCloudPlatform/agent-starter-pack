@@ -64,18 +64,16 @@ GEMINI.md      # AI assistant context file
 
 Your development loop will look like this:
 
-::: code-group
-```text [Python Projects]
+**Python Projects**
+
 1. **Prototype:** Use notebooks in `notebooks/` for rapid experimentation
 2. **Integrate:** Edit `app/agent.py` to incorporate your logic
 3. **Test:** Run the interactive playground with hot-reloading
-```
 
-```text [Go Projects]
+**Go Projects**
+
 1. **Integrate:** Edit `agent/agent.go` to add tools and logic
 2. **Test:** Run the interactive playground to test changes
-```
-:::
 
 ```bash
 # Install dependencies and launch the local playground

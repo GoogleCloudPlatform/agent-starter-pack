@@ -30,7 +30,10 @@ from packaging import version
 from rich.console import Console
 
 from agent_starter_pack.cli.utils.command import run_gcloud_command
-from agent_starter_pack.cli.utils.gcp import _get_user_agent, _get_x_goog_api_client_header
+from agent_starter_pack.cli.utils.gcp import (
+    get_user_agent,
+    get_x_goog_api_client_header,
+)
 
 # TOML parser - use standard library for Python 3.11+, fallback to tomli
 if sys.version_info >= (3, 11):
@@ -317,8 +320,8 @@ def _build_api_headers(
     headers = {
         "Authorization": f"Bearer {access_token}",
         "x-goog-user-project": project_id,
-        "User-Agent": _get_user_agent(),
-        "x-goog-api-client": _get_x_goog_api_client_header(),
+        "User-Agent": get_user_agent(),
+        "x-goog-api-client": get_x_goog_api_client_header(),
     }
     if content_type:
         headers["Content-Type"] = "application/json"

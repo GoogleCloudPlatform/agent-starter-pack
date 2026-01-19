@@ -209,7 +209,14 @@ def create_github_connection(
             "⏳ Waiting for IAM permissions to propagate (this typically takes 5-10 seconds)..."
         )
         time.sleep(10)  # Give IAM time to propagate before proceeding
-    except subprocess.CalledProcessError as e:
+    except (PermissionError, ValueError) as e:
+        console.print(
+            f"⚠️ Could not setup Cloud Build service account: {e}", style="yellow"
+        )
+        console.print(
+            "You may need to manually grant the permissions if the connection creation fails."
+        )
+    except Exception as e:
         console.print(
             f"⚠️ Could not setup Cloud Build service account: {e}", style="yellow"
         )
@@ -488,7 +495,17 @@ def ensure_apis_enabled(project_id: str, apis: list[str]) -> None:
         )
         console.print("✅ Permissions granted to Cloud Build service account")
 
+    except (PermissionError, ValueError) as e:
+        console.print(
+            f"❌ Failed to set up service account permissions: {e!s}", style="bold red"
+        )
+        raise
     except subprocess.CalledProcessError as e:
+        console.print(
+            f"❌ Failed to set up service account permissions: {e!s}", style="bold red"
+        )
+        raise
+    except Exception as e:
         console.print(
             f"❌ Failed to set up service account permissions: {e!s}", style="bold red"
         )

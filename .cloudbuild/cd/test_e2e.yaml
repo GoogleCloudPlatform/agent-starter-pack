@@ -20,18 +20,28 @@ steps:
     args:
       - "-c"
       - |
+        # Skip E2E tests for dependency updates (e.g., Dependabot PRs)
+        if [[ "${_COMMIT_MESSAGE}" == build\(deps\)* ]]; then
+          echo "Skipping E2E tests for dependency update: ${_COMMIT_MESSAGE}"
+          touch /workspace/.skip-e2e
+          exit 0
+        fi
         uv sync --dev --locked
 
-  # Run unit tests using pytest
+  # Run E2E tests using pytest
   - name: "europe-west4-docker.pkg.dev/production-ai-template/starter-pack/e2e-tests"
     id: e2e-tests
     entrypoint: /bin/bash
     args:
       - "-c"
       - |
+        if [ -f /workspace/.skip-e2e ]; then
+          echo "Skipping E2E tests - dependency update commit"
+          exit 0
+        fi
         GH_TOKEN=$$GITHUB_PAT uv run pytest tests/cicd/test_e2e_deployment.py -v
     secretEnv: ['GITHUB_PAT', 'GITHUB_APP_INSTALLATION_ID']
-    
+
 availableSecrets:
   secretManager:
   - versionName: projects/${_SECRETS_PROJECT_ID}/secrets/github-pat/versions/latest
@@ -51,3 +61,4 @@ options:
 timeout: 43200s
 substitutions:
   _SECRETS_PROJECT_ID: 'asp-e2e-vars'
+  _COMMIT_MESSAGE: ''

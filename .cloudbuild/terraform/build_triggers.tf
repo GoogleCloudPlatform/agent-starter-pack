@@ -448,6 +448,7 @@ resource "google_cloudbuild_trigger" "main_e2e_deployment_test" {
     _E2E_STAGING_PROJECT    = var.e2e_test_project_mapping.staging
     _E2E_PROD_PROJECT       = var.e2e_test_project_mapping.prod
     _SECRETS_PROJECT_ID     = "asp-e2e-vars"
+    _COMMIT_MESSAGE         = "$(push.head_commit.message)"
   }
 }
 
@@ -579,5 +580,6 @@ resource "google_cloudbuild_trigger" "main_e2e_gemini_enterprise_test" {
 
   substitutions = {
     _E2E_DEV_PROJECT = var.e2e_test_project_mapping.dev
+    _COMMIT_MESSAGE  = "$(push.head_commit.message)"
   }
 }

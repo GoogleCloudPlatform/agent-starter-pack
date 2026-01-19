@@ -61,7 +61,12 @@ local-backend:
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+# Usage: make deploy [IAP=true] [PORT=8080]
+#   IAP=true  - Enable Identity-Aware Proxy for authenticated access (required for Web UI)
+#   PORT=8080 - Specify container port
+#
+# The deployed app includes Web UI at /ui/ - access requires IAP authentication
+# Example: make deploy IAP=true
 deploy:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)") && \

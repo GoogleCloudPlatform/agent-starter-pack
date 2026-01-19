@@ -41,8 +41,9 @@ ENV COMMIT_SHA=${COMMIT_SHA}
 EXPOSE 8080
 
 # Cloud Run sets PORT env var which ADK launcher reads automatically
-# Supports both REST API and A2A protocol
+# Supports REST API, A2A protocol, and Web UI
 # API endpoints: /api/run_sse, /api/apps/...
 # A2A endpoint: /a2a/invoke (JSON-RPC)
 # Agent card: /.well-known/agent-card.json
-ENTRYPOINT ["/agent", "web", "api", "a2a"]
+# Web UI: /ui/ (requires IAP for authenticated access)
+ENTRYPOINT ["/agent", "web", "api", "a2a", "webui"]

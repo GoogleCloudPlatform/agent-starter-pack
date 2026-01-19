@@ -28,6 +28,9 @@ if TYPE_CHECKING:
 from agent_starter_pack.cli.utils.command import run_gcloud_command
 from agent_starter_pack.cli.utils.version import PACKAGE_NAME, get_current_version
 
+# API endpoint constants
+RESOURCE_MANAGER_API_BASE = "https://cloudresourcemanager.googleapis.com"
+
 # Lazy console - only create when needed
 _console = None
 
@@ -49,16 +52,16 @@ _AUTH_ERROR_MESSAGE = (
 )
 
 
-def _get_user_agent(context: str | None = None) -> str:
+def get_user_agent(context: str | None = None) -> str:
     """Returns a custom user agent string."""
     version = get_current_version()
     prefix = "ag" if context == "agent-garden" else ""
     return f"{prefix}{version}-{PACKAGE_NAME}/{prefix}{version}-{PACKAGE_NAME}"
 
 
-def _get_x_goog_api_client_header(context: str | None = None) -> str:
+def get_x_goog_api_client_header(context: str | None = None) -> str:
     """Build x-goog-api-client header matching SDK format."""
-    user_agent = _get_user_agent(context)
+    user_agent = get_user_agent(context)
     python_version = (
         f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
     )
@@ -112,8 +115,8 @@ def _test_vertex_connection(
     Returns:
         Tuple of (success, error_message)
     """
-    user_agent = _get_user_agent(context)
-    x_goog_api_client = _get_x_goog_api_client_header(context)
+    user_agent = get_user_agent(context)
+    x_goog_api_client = get_x_goog_api_client_header(context)
 
     try:
         response = requests.post(
@@ -268,3 +271,44 @@ def verify_credentials_and_vertex(
         ):
             raise Exception(_AUTH_ERROR_MESSAGE) from e
         raise
+
+
+def get_project_number(project_id: str) -> str:
+    """Get project number from project ID using Resource Manager API.
+
+    Args:
+        project_id: GCP project ID
+
+    Returns:
+        Project number as string
+
+    Raises:
+        PermissionError: If access is denied to the project
+        ValueError: If the project is not found
+        requests.exceptions.HTTPError: For other API failures
+    """
+    _, _, token = _get_credentials_and_token()
+
+    user_agent = get_user_agent()
+    x_goog_api_client = get_x_goog_api_client_header()
+
+    response = requests.get(
+        f"{RESOURCE_MANAGER_API_BASE}/v1/projects/{project_id}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "User-Agent": user_agent,
+            "x-goog-api-client": x_goog_api_client,
+        },
+        timeout=30,
+    )
+
+    if response.status_code == 403:
+        raise PermissionError(
+            f"Permission denied accessing project '{project_id}'. "
+            "Ensure you have the required permissions."
+        )
+    if response.status_code == 404:
+        raise ValueError(f"Project '{project_id}' not found.")
+
+    response.raise_for_status()
+    return response.json()["projectNumber"]

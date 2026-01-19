@@ -30,6 +30,10 @@ from packaging import version
 from rich.console import Console
 
 from agent_starter_pack.cli.utils.command import run_gcloud_command
+from agent_starter_pack.cli.utils.gcp import (
+    get_user_agent,
+    get_x_goog_api_client_header,
+)
 
 # TOML parser - use standard library for Python 3.11+, fallback to tomli
 if sys.version_info >= (3, 11):
@@ -296,6 +300,32 @@ def get_access_token() -> str:
             "Please ensure you are authenticated with 'gcloud auth application-default login'"
         )
         raise RuntimeError("Failed to get access token") from e
+
+
+def _build_api_headers(
+    access_token: str,
+    project_id: str,
+    content_type: bool = False,
+) -> dict[str, str]:
+    """Build headers for Discovery Engine API requests with user-agent.
+
+    Args:
+        access_token: Google Cloud access token
+        project_id: GCP project ID or number for billing
+        content_type: Whether to include Content-Type header (for POST/PATCH)
+
+    Returns:
+        Headers dictionary
+    """
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "x-goog-user-project": project_id,
+        "User-Agent": get_user_agent(),
+        "x-goog-api-client": get_x_goog_api_client_header(),
+    }
+    if content_type:
+        headers["Content-Type"] = "application/json"
+    return headers
 
 
 def get_identity_token() -> str:
@@ -604,10 +634,7 @@ def list_gemini_enterprise_apps(
             f"{base_endpoint}/v1alpha/projects/{project_number}/"
             f"locations/{location}/collections/default_collection/engines"
         )
-        headers = {
-            "Authorization": f"Bearer {access_token}",
-            "x-goog-user-project": project_number,
-        }
+        headers = _build_api_headers(access_token, project_number)
 
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
@@ -937,11 +964,7 @@ def register_a2a_agent(
         f"locations/{as_location}/collections/{collection}/engines/{engine_id}/"
         "assistants/default_assistant/agents"
     )
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-        "x-goog-user-project": project_id,
-    }
+    headers = _build_api_headers(access_token, project_id, content_type=True)
 
     # Build payload with A2A agent definition
     payload = {
@@ -1106,11 +1129,7 @@ def register_agent(
     )
 
     # Request headers
-    headers = {
-        "Authorization": f"Bearer {access_token}",
-        "Content-Type": "application/json",
-        "x-goog-user-project": project_id,
-    }
+    headers = _build_api_headers(access_token, project_id, content_type=True)
 
     # Request body
     payload: dict = {

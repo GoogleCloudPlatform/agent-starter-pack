@@ -29,6 +29,7 @@ from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
 from agent_starter_pack.cli.utils.command import get_gcloud_cmd
+from agent_starter_pack.cli.utils.gcp import get_project_number
 
 console = Console()
 
@@ -149,18 +150,7 @@ def create_github_connection(
 
     # Get the Cloud Build service account and grant permissions with retry logic
     try:
-        project_number_result = run_command(
-            [
-                "gcloud",
-                "projects",
-                "describe",
-                project_id,
-                "--format=value(projectNumber)",
-            ],
-            capture_output=True,
-            check=True,
-        )
-        project_number = project_number_result.stdout.strip()
+        project_number = get_project_number(project_id)
         cloud_build_sa = (
             f"service-{project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"
         )
@@ -477,16 +467,7 @@ def ensure_apis_enabled(project_id: str, apis: list[str]) -> None:
             capture_output=True,
         )
 
-        project_number = run_command(
-            [
-                "gcloud",
-                "projects",
-                "describe",
-                project_id,
-                "--format=value(projectNumber)",
-            ],
-            capture_output=True,
-        ).stdout.strip()
+        project_number = get_project_number(project_id)
 
         cloudbuild_sa = (
             f"service-{project_number}@gcp-sa-cloudbuild.iam.gserviceaccount.com"

@@ -268,3 +268,45 @@ def verify_credentials_and_vertex(
         ):
             raise Exception(_AUTH_ERROR_MESSAGE) from e
         raise
+
+
+def get_project_number(project_id: str) -> str:
+    """Get project number from project ID using Resource Manager API.
+
+    Args:
+        project_id: GCP project ID
+
+    Returns:
+        Project number as string
+
+    Raises:
+        Exception: If the API request fails
+    """
+    _, _, token = _get_credentials_and_token()
+
+    user_agent = _get_user_agent()
+    x_goog_api_client = _get_x_goog_api_client_header()
+
+    response = requests.get(
+        f"https://cloudresourcemanager.googleapis.com/v1/projects/{project_id}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "User-Agent": user_agent,
+            "x-goog-api-client": x_goog_api_client,
+        },
+        timeout=30,
+    )
+
+    if response.status_code == 200:
+        return response.json()["projectNumber"]
+    elif response.status_code == 403:
+        raise Exception(
+            f"Permission denied accessing project '{project_id}'. "
+            "Ensure you have the required permissions."
+        )
+    elif response.status_code == 404:
+        raise Exception(f"Project '{project_id}' not found.")
+    else:
+        raise Exception(
+            f"Failed to get project number: {response.status_code} - {response.text}"
+        )

@@ -78,7 +78,7 @@ deploy:
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "created-by=adk" \
-		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,COMMIT_SHA=$(shell git rev-parse HEAD),APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app" \
+		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 

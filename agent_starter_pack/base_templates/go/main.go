@@ -100,6 +100,9 @@ func main() {
 		if arg == "a2a" {
 			newArgs = append(newArgs, "-a2a_agent_url", appURL)
 		}
+		if arg == "webui" {
+			newArgs = append(newArgs, "-api_server_address", appURL+"/api")
+		}
 	}
 	args = newArgs
 

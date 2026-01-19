@@ -92,7 +92,6 @@ go get <package>      # Add dependency
 go mod tidy           # Clean up dependencies
 ```
 :::
-:::
 
 > Note: The specific UI playground launched by `make playground` depends on the agent template you selected during creation.
 

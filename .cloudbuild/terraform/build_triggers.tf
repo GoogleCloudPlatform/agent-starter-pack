@@ -41,7 +41,7 @@ locals {
 
   lint_templated_agents_included_files = [
     "agent_starter_pack/cli/**",
-    "agent_starter_pack/base_template/**",
+    "agent_starter_pack/base_templates/**",
     "agent_starter_pack/data_ingestion/**",
     "agent_starter_pack/deployment_targets/**",
     "tests/integration/test_template_linting.py",
@@ -54,7 +54,7 @@ locals {
 
   makefile_usability_included_files = [
     "agent_starter_pack/cli/**",
-    "agent_starter_pack/base_template/**",
+    "agent_starter_pack/base_templates/**",
     "agent_starter_pack/deployment_targets/**",
     "tests/integration/test_makefile_usability.py",
     "pyproject.toml",
@@ -128,23 +128,35 @@ locals {
       "agent_starter_pack/base_templates/_shared/**",
       # Go base template
       "agent_starter_pack/base_templates/go/**",
-      # Go deployment target
+      # Go deployment target (Cloud Run only for Go)
+      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
       "agent_starter_pack/deployment_targets/cloud_run/go/**",
+      # Common files
+      "agent_starter_pack/cli/**",
+      "tests/integration/test_template_linting.py",
+      "tests/integration/test_templated_patterns.py",
+      "agent_starter_pack/resources/locks/**",
+      "pyproject.toml",
+      "uv.lock",
     ]
   }
 
   agent_testing_included_files = {
-    # Python agents use base_template paths
+    # Python agents use Python-specific paths only
     for combo in local.agent_testing_combinations :
     combo.name => endswith(split(",", combo.value)[0], "_go") ? local.go_agent_testing_included_files[combo.name] : [
       # Only include files for the specific agent being tested
       "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
       # Common files that affect all agents
       "agent_starter_pack/cli/**",
-      "agent_starter_pack/base_template/**",
+      # Shared and Python base templates only (not Go)
       "agent_starter_pack/base_templates/_shared/**",
       "agent_starter_pack/base_templates/python/**",
-      "agent_starter_pack/deployment_targets/**",
+      # Python deployment targets only (not Go)
+      "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
+      "agent_starter_pack/deployment_targets/agent_engine/python/**",
+      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
+      "agent_starter_pack/deployment_targets/cloud_run/python/**",
       "tests/integration/test_template_linting.py",
       "tests/integration/test_templated_patterns.py",
       "agent_starter_pack/resources/locks/**",
@@ -225,8 +237,16 @@ locals {
       "agent_starter_pack/base_templates/_shared/**",
       # Go base template
       "agent_starter_pack/base_templates/go/**",
-      # Go deployment target
+      # Go deployment target (Cloud Run only for Go)
+      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
       "agent_starter_pack/deployment_targets/cloud_run/go/**",
+      # Common files
+      "agent_starter_pack/cli/**",
+      "tests/cicd/test_e2e_deployment.py",
+      "agent_starter_pack/resources/locks/**",
+      "pyproject.toml",
+      "uv.lock",
+      ".cloudbuild/**",
     ]
   }
 
@@ -244,7 +264,9 @@ locals {
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
     combo.name => endswith(split(",", combo.value)[0], "_go") ? local.go_e2e_agent_deployment_included_files[combo.name] : (
       combo.name == "adk-cloud_run-cloud_sql" ? [
-        "agent_starter_pack/deployment_targets/cloud_run/**",
+        # Cloud SQL is Python Cloud Run only
+        "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
+        "agent_starter_pack/deployment_targets/cloud_run/python/**",
         "pyproject.toml",
         ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
         "agent_starter_pack/agents/agentic_rag/**",
@@ -258,16 +280,20 @@ locals {
         "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
         # Common files that affect all agents
         "agent_starter_pack/cli/**",
-        "agent_starter_pack/base_template/**",
+        # Shared and Python base templates only (not Go)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
         "agent_starter_pack/data_ingestion/**",
-        "agent_starter_pack/deployment_targets/**",
+        # Python deployment targets only (not Go)
+        "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
+        "agent_starter_pack/deployment_targets/agent_engine/python/**",
+        "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
+        "agent_starter_pack/deployment_targets/cloud_run/python/**",
         "tests/cicd/test_e2e_deployment.py",
         "agent_starter_pack/resources/locks/**",
         "pyproject.toml",
         "uv.lock",
-        ".cloudbuild"
+        ".cloudbuild/**",
       ]
     )
   }
@@ -490,8 +516,8 @@ resource "google_cloudbuild_trigger" "pr_test_pipeline_parity" {
     "tests/integration/test_pipeline_parity.py",
     "agent_starter_pack/cli/**",
     ".cloudbuild/**",
-    "agent_starter_pack/base_template/**/.github/**",
-    "agent_starter_pack/base_template/**/.cloudbuild/**",
+    "agent_starter_pack/base_templates/**/.github/**",
+    "agent_starter_pack/base_templates/**/.cloudbuild/**",
     "pyproject.toml",
     "uv.lock",
   ]

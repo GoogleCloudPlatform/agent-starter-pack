@@ -437,9 +437,8 @@ if use_in_memory_session:
     session_service_uri = None
 else:
     # Use environment variable for agent name, default to project name
-    agent_name = os.environ.get(
-        "AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}"
-    )
+    default_agent_name = "{{cookiecutter.project_name}}"
+    agent_name = os.environ.get("AGENT_ENGINE_SESSION_NAME", default_agent_name)
 
     # Check if an agent with this name already exists
     existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))

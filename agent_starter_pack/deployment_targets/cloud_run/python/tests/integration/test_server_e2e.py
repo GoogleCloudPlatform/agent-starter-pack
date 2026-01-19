@@ -690,9 +690,8 @@ def cleanup_agent_engine_sessions() -> None:
 
     try:
         # Use same environment variable as server, default to project name
-        agent_name = os.environ.get(
-            "AGENT_ENGINE_SESSION_NAME", "{{cookiecutter.project_name}}"
-        )
+        default_agent_name = "{{cookiecutter.project_name}}"
+        agent_name = os.environ.get("AGENT_ENGINE_SESSION_NAME", default_agent_name)
 
         # Find and delete agent engines with this name
         existing_agents = list(agent_engines.list(filter=f"display_name={agent_name}"))

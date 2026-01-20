@@ -78,3 +78,19 @@ The **Content Integrity Evaluation (CIE-V1)** service performs neutral perturbat
 ## Notes
 - Only **neutral perturbation** profiles are permitted.
 - Any deviation from neutrality must fail the run and be escalated.
+
+## World Engine Memory Strategy (RAG Kernel Options)
+
+### Option A: Direct Visual Recall
+- Retrieve the nearest image/video embeddings to the current scene.
+- Best for immediate visual similarity and fast scene matching.
+- Risk: can miss physics/state cues that are not visually obvious.
+
+### Option B: Semantic State Mapping
+- Derive physics tags (e.g., velocity, friction, hazard class) from media.
+- Retrieve LoRA adapters and rules based on those tags.
+- Best for deterministic simulation and controllable agent behavior.
+
+### Recommended Path
+Use **Semantic State Mapping** as the primary kernel for deterministic control,
+and layer **Direct Visual Recall** as a secondary signal for scene grounding.

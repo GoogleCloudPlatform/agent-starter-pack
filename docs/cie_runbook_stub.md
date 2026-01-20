@@ -41,6 +41,29 @@ The **Content Integrity Evaluation (CIE-V1)** service performs neutral perturbat
 - [ ] Seed manifest logged for replayability.
 - [ ] Retention window set to 90 days.
 
+## Zapier RAG Webhook Configuration (Simulation Chain Reaction)
+
+### Trigger
+- **App:** Webhooks by Zapier
+- **Event:** Catch Hook
+- **Webhook URL:** Use the same URL referenced in your CI workflow configuration.
+- **Payload mapping:** Capture `run_id`, `status`, and `repository` from the CI payload.
+
+### Action 1: Formulate RAG Prompt
+- **App:** Formatter by Zapier
+- **Transform:** Text
+- **Input:** `Analyze CI status {{status}} for {{repository}}. If success, proceed to merge PR #188 with the embedding validation token.`
+
+### Action 2: Execute Merge
+- **App:** GitHub
+- **Event:** Merge Pull Request
+- **Pull Request:** `#188`
+- **Commit Message:** `Merge pull request #188 from Q-Enterprises/codex/fix-and-run-valid-unit-test`
+
+### Notes
+- Ensure the automation uses a fine-grained token with `Contents: Read & write` permissions.
+- If the CI status is not `success`, stop the chain reaction and record a failed receipt.
+
 ## Notes
 - Only **neutral perturbation** profiles are permitted.
 - Any deviation from neutrality must fail the run and be escalated.

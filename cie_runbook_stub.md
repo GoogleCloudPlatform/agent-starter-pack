@@ -25,17 +25,19 @@ Define the operational flow for the Content Integrity Evaluation Service (CIE-V1
 4. **Evaluate** outputs against the policy thresholds and record pass/fail results.
 5. **Archive** inputs, outputs, and verdicts for auditability.
 
-## Resolver Posture (Fossil vs Muscle)
-Choose where the invariant lives before running an audit:
+## Bootstrap (Runtime Muscle)
+Use `init_runtime.py` to initialize the vector store, register experts, and run the first
+`resolve_and_execute` loop with audit-grade ledger output.
 
-- **Fossil (schema-only)**: validate every TaskOntology object against a static JSON ruleset.
-  - The invariant is a contract surface; no routing or execution occurs.
-  - Best for archival, audit-only validation runs.
+## Resolver Posture (Muscle Runtime)
+The CIE-V1 resolver runs in **muscle** posture to enforce invariants at runtime:
+
 - **Muscle (runtime)**: implement the invariant as a deterministic function.
   - Enforce fail-closed behavior during routing in the corridor runtime.
   - Best for real-time, replay-safe enforcement.
+- **Fossil (schema-only)** remains available as a validation contract surface but is not the default runtime posture.
 
-Record the chosen posture and rationale for each audit run.
+Record the posture and rationale for each audit run.
 
 ## Outputs
 - `noised_content`

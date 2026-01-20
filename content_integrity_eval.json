@@ -7,8 +7,8 @@
     "auditability": "required"
   },
   "resolver": {
-    "posture": "fossil",
-    "description": "Schema-only invariant validation; no runtime routing.",
+    "posture": "muscle",
+    "description": "Runtime invariant enforcement with fail-closed routing.",
     "fail_closed": true
   },
   "modules": [

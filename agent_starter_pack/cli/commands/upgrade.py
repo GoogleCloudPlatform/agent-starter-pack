@@ -18,6 +18,7 @@ import difflib
 import logging
 import pathlib
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -40,6 +41,9 @@ from ..utils.version import get_current_version
 from .enhance import get_project_asp_config
 
 console = Console()
+
+# Maximum characters to display when showing diffs
+MAX_DIFF_DISPLAY_CHARS = 2000
 
 
 def _ensure_uvx_available() -> bool:
@@ -79,7 +83,7 @@ def _run_create_command(
     cmd.extend(["--auto-approve", "--skip-deps", "--skip-checks"])
     cmd.extend(args)
 
-    logging.debug(f"Running command: {' '.join(cmd)}")
+    logging.debug(f"Running command: {shlex.join(cmd)}")
 
     try:
         result = subprocess.run(
@@ -238,9 +242,9 @@ def _handle_conflict(
 
             console.print()
             if diff_output:
-                # Limit output to ~2000 characters
-                if len(diff_output) > 2000:
-                    console.print(diff_output[:2000])
+                # Limit output to a reasonable length
+                if len(diff_output) > MAX_DIFF_DISPLAY_CHARS:
+                    console.print(diff_output[:MAX_DIFF_DISPLAY_CHARS])
                     console.print("[dim]... (truncated)[/dim]")
                 else:
                     console.print(diff_output)

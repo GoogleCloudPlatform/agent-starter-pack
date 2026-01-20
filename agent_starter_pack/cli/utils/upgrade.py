@@ -128,7 +128,8 @@ def _file_hash(file_path: pathlib.Path) -> str | None:
     try:
         content = file_path.read_bytes()
         return hashlib.sha256(content).hexdigest()
-    except Exception:
+    except Exception as e:
+        logging.warning(f"Could not hash file {file_path}: {e}")
         return None
 
 

@@ -1,0 +1,56 @@
+{
+  "service": "content.integrity.eval.v1",
+  "version": "1.0.0",
+  "compliance": {
+    "mandate": "ZERO-DRIFT",
+    "perturbation_policy": "neutral",
+    "auditability": "required"
+  },
+  "modules": [
+    {
+      "id": "synthetic.noise.injector.v1",
+      "replaces": ["CNE", "FSV"],
+      "purpose": "Injects statistically neutral noise to stress-test robustness without altering semantic intent.",
+      "inputs": {
+        "payload": "content payload",
+        "noise_profile": "seeded neutral distribution",
+        "seed": "deterministic seed for repeatability"
+      },
+      "outputs": {
+        "noised_payload": "payload with neutral perturbations",
+        "noise_receipt": "hash of noise profile and seed"
+      },
+      "controls": [
+        "seeded reproducibility",
+        "bounded perturbation budget",
+        "semantic invariance checks"
+      ]
+    },
+    {
+      "id": "synthetic.contradiction.synth.v1",
+      "purpose": "Synthesizes bounded contradictions for validation of resilience without introducing biased content.",
+      "inputs": {
+        "payload": "content payload",
+        "contradiction_profile": "rule set for neutral contradiction synthesis",
+        "seed": "deterministic seed for repeatability"
+      },
+      "outputs": {
+        "contradicted_payload": "payload with neutral contradictions",
+        "contradiction_receipt": "hash of contradiction profile and seed"
+      },
+      "controls": [
+        "rule-based constraint checks",
+        "neutrality validation",
+        "replayable synthesis receipts"
+      ]
+    }
+  ],
+  "audit": {
+    "required_artifacts": [
+      "neutrality_receipt",
+      "module_receipts",
+      "seed_manifest"
+    ],
+    "retention": "90 days"
+  }
+}

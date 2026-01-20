@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "corridor-stripe-slack/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "event", "trace_id", "repo", "pr_id", "verdict", "physics_context"],
+  "properties": {
+    "schema": { "const": "corridor-stripe-slack/v1" },
+    "event": { "const": "REVIEW_DECIDED" },
+    "trace_id": { "type": "string", "minLength": 8 },
+    "repo": { "type": "string", "minLength": 3 },
+    "pr_id": { "type": "string", "minLength": 1 },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "operator", "operator_id", "timestamp"],
+      "properties": {
+        "outcome": { "enum": ["OPERATIONAL_FINALITY", "ENTROPY_VIOLATION"] },
+        "operator": { "type": "string", "minLength": 1 },
+        "operator_id": { "type": "string", "minLength": 1 },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
+    "physics_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "head_sha", "energy_signature"],
+      "properties": {
+        "run_id": { "type": "string", "minLength": 1 },
+        "head_sha": { "type": "string", "minLength": 7 },
+        "energy_signature": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

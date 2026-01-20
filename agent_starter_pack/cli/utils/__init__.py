@@ -14,6 +14,7 @@
 
 from .datastores import DATASTORE_TYPES, get_datastore_info
 from .gcp import verify_credentials_and_vertex
+from .generation_metadata import metadata_to_cli_args
 from .logging import handle_cli_error
 from .template import (
     get_available_agents,
@@ -35,6 +36,7 @@ __all__ = [
     "get_template_path",
     "handle_cli_error",
     "load_template_config",
+    "metadata_to_cli_args",
     "process_template",
     "prompt_datastore_selection",
     "prompt_deployment_target",

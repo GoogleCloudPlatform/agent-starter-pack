@@ -93,6 +93,13 @@ Answer these before wiring the webhook:
    - Body template
    - Target branch
 
+### MCP Share Link Access Note
+If you share a Zapier MCP link for review, ensure the link is accessible to reviewers:
+
+- Confirm the MCP share is public or explicitly shared with the reviewer’s account.
+- If the link is private, export the MCP configuration (or paste the step list) so it can be
+  reviewed without session access.
+
 ### GHCR PR Content Guidance
 If the PR should publish CIE-V1 to GHCR, include:
 

@@ -1,0 +1,35 @@
+{
+  "service": "content.integrity.eval.v1",
+  "description": "Content Integrity Evaluation Service (CIE-V1) using neutral perturbation models.",
+  "policy": {
+    "mandate": "ZERO-DRIFT",
+    "mode": "neutral-perturbation",
+    "auditability": "required"
+  },
+  "resolver": {
+    "posture": "muscle",
+    "description": "Runtime invariant enforcement with fail-closed routing.",
+    "fail_closed": true
+  },
+  "modules": [
+    {
+      "id": "synthetic.noise.injector.v1",
+      "role": "neutral_noise",
+      "replaces": ["CNE", "FSV"],
+      "inputs": ["content", "seed"],
+      "outputs": ["noised_content"],
+      "notes": "Injects bounded, neutral noise without semantic steering."
+    },
+    {
+      "id": "synthetic.contradiction.synth.v1",
+      "role": "neutral_contradiction",
+      "inputs": ["content", "seed"],
+      "outputs": ["contradiction_set"],
+      "notes": "Generates counterfactuals for robustness checks while preserving neutrality."
+    }
+  ],
+  "telemetry": {
+    "schema": "corridor-stripe-slack/v1",
+    "event": "REVIEW_DECIDED"
+  }
+}

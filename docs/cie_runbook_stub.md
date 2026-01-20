@@ -49,10 +49,21 @@ The **Content Integrity Evaluation (CIE-V1)** service performs neutral perturbat
 - **Webhook URL:** Use the same URL referenced in your CI workflow configuration.
 - **Payload mapping:** Capture `run_id`, `status`, and `repository` from the CI payload.
 
+#### Payload Mapping (Audit-Grade Schema)
+| Incoming Field | Example Value | Purpose |
+| --- | --- | --- |
+| `run_id` | `21174769180` | Traceability to CI run |
+| `status` | `success` or `failure` | Gate merge action |
+| `repository` | `Q-Enterprises/core-orchestrator` | Context for prompt |
+
 ### Action 1: Formulate RAG Prompt
 - **App:** Formatter by Zapier
 - **Transform:** Text
 - **Input:** `Analyze CI status {{status}} for {{repository}}. If success, proceed to merge PR #188 with the embedding validation token.`
+
+### Filter: Success-Only Gate
+- **Condition:** Continue only if `status` **Text Exactly Matches** `success`.
+- **On failure:** Stop the chain reaction and record a failed receipt.
 
 ### Action 2: Execute Merge
 - **App:** GitHub
@@ -62,7 +73,7 @@ The **Content Integrity Evaluation (CIE-V1)** service performs neutral perturbat
 
 ### Notes
 - Ensure the automation uses a fine-grained token with `Contents: Read & write` permissions.
-- If the CI status is not `success`, stop the chain reaction and record a failed receipt.
+- The RAG prompt is deterministic and must only consume the three mapped telemetry fields.
 
 ## Notes
 - Only **neutral perturbation** profiles are permitted.

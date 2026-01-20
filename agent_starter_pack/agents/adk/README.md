@@ -1,6 +1,6 @@
 # ADK: Minimal Agent Example
 
-<img src="https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/images/adk_logo.png?raw=true" width="400">
+<img src="https://github.com/GoogleCloudPlatform/agent-starter-pack/blob/main/docs/images/adk_logo.png?raw=true" width="400">>
 
 A basic agent built using the **[Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/)**. This example demonstrates core ADK concepts like agent creation and tool integration in a minimal setup.
 

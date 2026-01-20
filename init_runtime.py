@@ -1,73 +1,110 @@
-from __future__ import annotations
+import time
+from dataclasses import dataclass
+from typing import Any, Dict, List
 
-import json
-from dataclasses import asdict
-from datetime import datetime, timezone
-from pathlib import Path
-
-from agent_starter_pack.runtime.kinetic_resolver import (
-    AuditLedger,
-    ExpertProfile,
-    KineticResolver,
-    TaskOntology,
-    VectorStore,
-)
+import numpy as np
+from pydantic import BaseModel
 
 
-class JsonlLedger(AuditLedger):
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+# --- 1. THE FOSSIL (Schema & Contracts) ---
+class KernelControlToken(BaseModel):
+    session_id: str
+    entropy_budget: float
+    physics_tags: Dict[str, float]
 
-    def record(self, task: TaskOntology, verdict: str, energy_cost: float | None) -> None:
-        payload = {
-            "schema": "corridor-stripe-slack/v1",
-            "event": "REVIEW_DECIDED",
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "task": asdict(task),
-            "verdict": verdict,
-            "energy_cost": energy_cost,
+
+class TaskOntology(BaseModel):
+    intent: str
+    required_capabilities: List[str]
+    energy_budget: float
+
+
+@dataclass
+class MemoryEvent:
+    task: str
+    outcome: str
+    energy: float
+
+
+# --- 2. THE MUSCLE (Runtime Resolver) ---
+class KineticTaskRouter:
+    def __init__(self, kct: KernelControlToken) -> None:
+        self.kct = kct
+        self.memory_bus: List[MemoryEvent] = []
+        print(f"⚡ [KERNEL] Physics Engine Online. Session: {kct.session_id}")
+        print(f"⚡ [KERNEL] Global Invariant: ΔEnergy <= {kct.entropy_budget}")
+
+    def _calculate_drift(self, current_state: np.ndarray, proposed_state: np.ndarray) -> float:
+        dot_product = np.dot(current_state, proposed_state)
+        norm_a = np.linalg.norm(current_state)
+        norm_b = np.linalg.norm(proposed_state)
+        return 1 - (dot_product / (norm_a * norm_b))
+
+    def resolve_and_execute(
+        self, task: TaskOntology, current_vector: np.ndarray
+    ) -> bool:
+        print(f"\n🎯 [CORTEX] Received Task: {task.intent}")
+        time.sleep(0.1)
+
+        candidates: Dict[str, np.ndarray] = {
+            "Expert_A (Visual)": np.random.normal(0, 0.1, 768) + current_vector,
+            "Expert_B (Motion)": np.random.normal(0, 0.5, 768) + current_vector,
+            "Expert_C (Physics)": current_vector * 0.99,
         }
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(payload) + "\n")
+
+        print("   ... Simulating outcomes across Eigen-manifold ...")
+
+        best_fit = None
+        lowest_energy = float("inf")
+
+        for expert_id, vector in candidates.items():
+            drift = self._calculate_drift(current_vector, vector)
+            print(f"   > {expert_id}: Drift = {drift:.4f} (Budget: {task.energy_budget})")
+
+            if drift <= task.energy_budget and drift < lowest_energy:
+                lowest_energy = drift
+                best_fit = expert_id
+
+        if best_fit:
+            print(f"✅ [ACTUATOR] COMMITTING to {best_fit}")
+            print(f"   Physics Validated. Energy Cost: {lowest_energy:.4f}")
+            self.memory_bus.append(
+                MemoryEvent(task=task.intent, outcome=best_fit, energy=lowest_energy)
+            )
+            return True
+
+        print("🛑 [KERNEL] REJECTION. All paths violate Lyapunov constraints.")
+        return False
 
 
-def call_nano(task: TaskOntology) -> dict:
-    return {"expert": "NANO", "intent": task.intent, "status": "ok"}
-
-
-def call_veo(task: TaskOntology) -> dict:
-    return {"expert": "VEO", "intent": task.intent, "status": "ok"}
-
-
-def run_simulation(task: TaskOntology) -> dict:
-    return {"expert": "PHYSICS", "intent": task.intent, "status": "ok"}
-
-
-def main() -> None:
-    profiles = [
-        ExpertProfile(expert_id="NANO", weights=[0.9, 0.9, 0.9]),
-        ExpertProfile(expert_id="VEO", weights=[0.8, 0.8, 0.8]),
-        ExpertProfile(expert_id="PHYSICS", weights=[0.7, 0.7, 0.7]),
-    ]
-    vector_store = VectorStore(profiles)
-    ledger = JsonlLedger(Path("logs/runtime_ledger.jsonl"))
-
-    resolver = KineticResolver(vector_store, ledger)
-    resolver.register_expert("NANO", call_nano)
-    resolver.register_expert("VEO", call_veo)
-    resolver.register_expert("PHYSICS", run_simulation)
-
-    task = TaskOntology(
-        intent="validate_content_robustness",
-        required_capabilities=["visual_generation", "physics_simulation"],
-        energy_budget=0.2,
+# --- 3. THE IGNITION (Main Loop) ---
+def ignite_runtime() -> None:
+    genesis_kct = KernelControlToken(
+        session_id="RUN_GENESIS_001",
+        entropy_budget=0.05,
+        physics_tags={"gravity": 1.0, "friction": 0.4},
     )
-    current_state = [1.0, 0.5, 0.25]
 
-    result = resolver.resolve_and_execute(task, current_state)
-    print(json.dumps(result, indent=2))
+    engine = KineticTaskRouter(genesis_kct)
+
+    current_eigenstate = np.random.rand(768)
+
+    mission_1 = TaskOntology(
+        intent="Generate visual overlay for Sector 7",
+        required_capabilities=["nano_banana", "visual_coherence"],
+        energy_budget=0.04,
+    )
+
+    engine.resolve_and_execute(mission_1, current_eigenstate)
+
+    mission_2 = TaskOntology(
+        intent="Simulate chaotic weather remix",
+        required_capabilities=["veo", "particle_physics"],
+        energy_budget=0.01,
+    )
+
+    engine.resolve_and_execute(mission_2, current_eigenstate)
 
 
 if __name__ == "__main__":
-    main()
+    ignite_runtime()

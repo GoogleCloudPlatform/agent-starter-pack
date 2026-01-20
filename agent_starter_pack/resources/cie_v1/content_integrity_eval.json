@@ -1,0 +1,41 @@
+{
+  "service": "content.integrity.eval.v1",
+  "version": "CIE-V1",
+  "purpose": "Neutral-perturbation integrity evaluation with deterministic, auditable modules.",
+  "modules": [
+    {
+      "id": "synthetic.noise.injector.v1",
+      "replaces": ["CNE", "FSV"],
+      "role": "Neutral perturbation generator for robustness testing.",
+      "determinism": {
+        "policy": "seeded",
+        "inputs": ["seed", "payload_hash"],
+        "outputs": ["noise_profile_id", "noise_tensor"]
+      },
+      "constraints": {
+        "perturbation": "neutral_only",
+        "drift_budget": "zero",
+        "audit_required": true
+      }
+    },
+    {
+      "id": "synthetic.contradiction.synth.v1",
+      "role": "Generate neutral contradictions to validate invariants.",
+      "determinism": {
+        "policy": "seeded",
+        "inputs": ["seed", "payload_hash", "invariant_set"],
+        "outputs": ["contradiction_set_id", "contradiction_vectors"]
+      },
+      "constraints": {
+        "perturbation": "neutral_only",
+        "drift_budget": "zero",
+        "audit_required": true
+      }
+    }
+  ],
+  "compliance": {
+    "policy": "ZERO-DRIFT",
+    "neutral_perturbation_only": true,
+    "audit_bundle": "CIE-V1"
+  }
+}

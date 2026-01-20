@@ -6,6 +6,11 @@
     "mode": "neutral-perturbation",
     "auditability": "required"
   },
+  "resolver": {
+    "posture": "fossil",
+    "description": "Schema-only invariant validation; no runtime routing.",
+    "fail_closed": true
+  },
   "modules": [
     {
       "id": "synthetic.noise.injector.v1",

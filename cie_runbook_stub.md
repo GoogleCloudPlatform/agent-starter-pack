@@ -25,6 +25,18 @@ Define the operational flow for the Content Integrity Evaluation Service (CIE-V1
 4. **Evaluate** outputs against the policy thresholds and record pass/fail results.
 5. **Archive** inputs, outputs, and verdicts for auditability.
 
+## Resolver Posture (Fossil vs Muscle)
+Choose where the invariant lives before running an audit:
+
+- **Fossil (schema-only)**: validate every TaskOntology object against a static JSON ruleset.
+  - The invariant is a contract surface; no routing or execution occurs.
+  - Best for archival, audit-only validation runs.
+- **Muscle (runtime)**: implement the invariant as a deterministic function.
+  - Enforce fail-closed behavior during routing in the corridor runtime.
+  - Best for real-time, replay-safe enforcement.
+
+Record the chosen posture and rationale for each audit run.
+
 ## Outputs
 - `noised_content`
 - `contradiction_set`

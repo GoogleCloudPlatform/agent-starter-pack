@@ -115,3 +115,9 @@ If the PR should publish CIE-V1 to GHCR, include:
 2. **Dockerfile labels**: add `org.opencontainers.image.source` and related metadata
    (`description`, `licenses`) once a service Dockerfile exists.
 3. **Optional**: multi-arch build steps and README usage notes for `docker login`/`docker pull`.
+
+### GHCR Authentication Notes
+- Prefer `GITHUB_TOKEN` for publishing packages tied to the workflow repository.
+- Use a **personal access token (classic)** only when installing or publishing packages that
+  require cross-repo access; ensure it has the minimum scopes (`read:packages` or
+  `write:packages`).

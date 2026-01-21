@@ -27,7 +27,16 @@ import vertexai
 from google.cloud import resourcemanager_v3
 from google.iam.v1 import iam_policy_pb2, policy_pb2
 from vertexai._genai import _agent_engines_utils
-from vertexai._genai.types import AgentEngine, AgentEngineConfig, IdentityType{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
+{%- if cookiecutter.is_adk_live %}
+from vertexai._genai.types import (
+    AgentEngine,
+    AgentEngineConfig,
+    AgentServerMode,
+    IdentityType,
+)
+{%- else %}
+from vertexai._genai.types import AgentEngine, AgentEngineConfig, IdentityType
+{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists

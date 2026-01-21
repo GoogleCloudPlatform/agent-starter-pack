@@ -141,22 +141,18 @@ def print_deployment_success(
 
 
 def grant_agent_identity_roles(agent: Any, project: str) -> None:
-    """Grant required IAM roles to the agent identity principal.
-
-    Uses get-modify-set pattern with etag for optimistic concurrency control.
-    The policy object returned by get_iam_policy includes an etag that is
-    automatically validated by set_iam_policy to prevent race conditions.
-    """
+    """Grant required IAM roles to the agent identity principal."""
     roles = [
         "roles/aiplatform.expressUser",
         "roles/serviceusage.serviceUsageConsumer",
         "roles/browser",
+        "roles/cloudapiregistry.viewer",
+        "roles/logging.logWriter",
+        "roles/monitoring.metricWriter",
     ]
     principal = f"principal://{agent.api_resource.spec.effective_identity}"
     click.echo(f"\n🔐 Granting IAM roles to agent identity: {principal}")
     proj_client = resourcemanager_v3.ProjectsClient()
-    # Policy includes etag for optimistic locking - set_iam_policy will fail
-    # if policy was modified between get and set operations
     policy = proj_client.get_iam_policy(
         request=iam_policy_pb2.GetIamPolicyRequest(resource=f"projects/{project}")
     )
@@ -317,18 +313,22 @@ def deploy_agent_engine_app(
 
     # Log deployment parameters
     click.echo("\n📋 Deployment Parameters:")
-    click.echo(f"  Project: {project}")
-    click.echo(f"  Location: {location}")
-    click.echo(f"  Display Name: {display_name}")
-    click.echo(f"  Min Instances: {min_instances}")
-    click.echo(f"  Max Instances: {max_instances}")
-    click.echo(f"  CPU: {cpu}")
-    click.echo(f"  Memory: {memory}")
-    click.echo(f"  Container Concurrency: {container_concurrency}")
+    params = [
+        ("Project", project),
+        ("Location", location),
+        ("Display Name", display_name),
+        ("Min Instances", min_instances),
+        ("Max Instances", max_instances),
+        ("CPU", cpu),
+        ("Memory", memory),
+        ("Container Concurrency", container_concurrency),
+    ]
     if service_account:
-        click.echo(f"  Service Account: {service_account}")
+        params.append(("Service Account", service_account))
     if agent_identity:
-        click.echo("  Agent Identity: Enabled (Preview)")
+        params.append(("Agent Identity", "Enabled (Preview)"))
+    for name, value in params:
+        click.echo(f"  {name}: {value}")
     if env_vars:
         click.echo("\n🌍 Environment Variables:")
         for key, value in sorted(env_vars.items()):
@@ -388,11 +388,6 @@ def deploy_agent_engine_app(
         resource_limits={"cpu": cpu, "memory": memory},
         identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
     )
-
-    agent_config = {
-        "agent": agent_instance,
-        "config": config,
-    }
 {%- else %}
     # Generate class methods spec from register_operations
     class_methods_list = generate_class_methods_from_agent(agent_instance)
@@ -438,11 +433,10 @@ def deploy_agent_engine_app(
         grant_agent_identity_roles(matching_agents[0], project)
 
     # Deploy the agent (create or update)
+    action = "Updating" if matching_agents else "Creating"
+    click.echo(f"\n🚀 {action} agent: {display_name} (this can take 3-5 minutes)...")
+
     if matching_agents:
-        click.echo(f"\n📝 Updating agent: {display_name}")
-        click.echo(
-            "🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)..."
-        )
 {%- if cookiecutter.is_adk_live %}
         remote_agent = client.agent_engines.update(
             name=matching_agents[0].api_resource.name,
@@ -455,10 +449,6 @@ def deploy_agent_engine_app(
         )
 {%- endif %}
     else:
-        click.echo(f"\n🚀 Creating new agent: {display_name}")
-        click.echo(
-            "🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)..."
-        )
 {%- if cookiecutter.is_adk_live %}
         remote_agent = client.agent_engines.create(
             agent=agent_instance,

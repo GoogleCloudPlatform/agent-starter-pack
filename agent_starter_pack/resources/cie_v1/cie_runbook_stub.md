@@ -42,6 +42,13 @@ Define the inputs for the first official **CIE-V1** audit run before executing t
 - **Seed lineage**: record the fixed seed(s) used across both modules for reproducibility.
 - **Receipts path**: confirm `ledger/cie_v1/neutrality_receipts.jsonl` is writable and versioned.
 
+## Zap Intent (Audit Lifecycle)
+The webhook payload should represent a CIE-V1 audit lifecycle event so downstream steps can:
+
+- **Index/update Airtable** with audit state, module outputs, and timestamps.
+- **Route Path A/B** based on status (e.g., `verified`, `failed`, `drift_detected`).
+- **Open a remediation PR** when drift or packaging/provenance issues are detected.
+
 ## Zapier Runtime Payload (Draft)
 Use the webhook to emit CIE-V1 audit events into your Zap. The payload should include:
 

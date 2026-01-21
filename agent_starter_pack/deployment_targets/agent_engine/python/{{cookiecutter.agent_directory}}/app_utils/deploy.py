@@ -24,8 +24,19 @@ from typing import Any
 import click
 import google.auth
 import vertexai
+from google.cloud import resourcemanager_v3
+from google.iam.v1 import iam_policy_pb2, policy_pb2
 from vertexai._genai import _agent_engines_utils
-from vertexai._genai.types import AgentEngine, AgentEngineConfig{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
+{%- if cookiecutter.is_adk_live %}
+from vertexai._genai.types import (
+    AgentEngine,
+    AgentEngineConfig,
+    AgentServerMode,
+    IdentityType,
+)
+{%- else %}
+from vertexai._genai.types import AgentEngine, AgentEngineConfig, IdentityType
+{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
@@ -129,6 +140,36 @@ def print_deployment_success(
 {%- endif %}
 
 
+def grant_agent_identity_roles(agent: Any, project: str) -> None:
+    """Grant required IAM roles to the agent identity principal.
+
+    Uses get-modify-set pattern with etag for optimistic concurrency control.
+    The policy object returned by get_iam_policy includes an etag that is
+    automatically validated by set_iam_policy to prevent race conditions.
+    """
+    roles = [
+        "roles/aiplatform.expressUser",
+        "roles/serviceusage.serviceUsageConsumer",
+        "roles/browser",
+    ]
+    principal = f"principal://{agent.api_resource.spec.effective_identity}"
+    click.echo(f"\n🔐 Granting IAM roles to agent identity: {principal}")
+    proj_client = resourcemanager_v3.ProjectsClient()
+    # Policy includes etag for optimistic locking - set_iam_policy will fail
+    # if policy was modified between get and set operations
+    policy = proj_client.get_iam_policy(
+        request=iam_policy_pb2.GetIamPolicyRequest(resource=f"projects/{project}")
+    )
+    for role in roles:
+        policy.bindings.append(policy_pb2.Binding(role=role, members=[principal]))
+    proj_client.set_iam_policy(
+        request=iam_policy_pb2.SetIamPolicyRequest(
+            resource=f"projects/{project}", policy=policy
+        )
+    )
+    click.echo("  ✅ Granted IAM roles")
+
+
 @click.command()
 @click.option(
     "--project",
@@ -220,6 +261,12 @@ def print_deployment_success(
     default=1,
     help="Number of worker processes (default: 1)",
 )
+@click.option(
+    "--agent-identity",
+    is_flag=True,
+    default=False,
+    help="Enable agent identity for per-agent IAM access control (Preview feature)",
+)
 def deploy_agent_engine_app(
     project: str | None,
     location: str,
@@ -238,6 +285,7 @@ def deploy_agent_engine_app(
     memory: str,
     container_concurrency: int,
     num_workers: int,
+    agent_identity: bool,
 ) -> AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
@@ -279,6 +327,8 @@ def deploy_agent_engine_app(
     click.echo(f"  Container Concurrency: {container_concurrency}")
     if service_account:
         click.echo(f"  Service Account: {service_account}")
+    if agent_identity:
+        click.echo("  Agent Identity: Enabled (Preview)")
     if env_vars:
         click.echo("\n🌍 Environment Variables:")
         for key, value in sorted(env_vars.items()):
@@ -287,9 +337,12 @@ def deploy_agent_engine_app(
     source_packages_list = list(source_packages)
 
     # Initialize vertexai client
+    # Use v1beta1 API when agent identity is enabled (required for identity_type)
+    http_options = {"api_version": "v1beta1"} if agent_identity else None
     client = vertexai.Client(
         project=project,
         location=location,
+        http_options=http_options,
     )
     vertexai.init(project=project, location=location)
 
@@ -333,6 +386,7 @@ def deploy_agent_engine_app(
         gcs_dir_name=display_name,
         agent_server_mode=AgentServerMode.EXPERIMENTAL,  # Enable bidi streaming
         resource_limits={"cpu": cpu, "memory": memory},
+        identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
     )
 
     agent_config = {
@@ -361,6 +415,7 @@ def deploy_agent_engine_app(
 {%- if cookiecutter.is_adk and not cookiecutter.is_a2a and not cookiecutter.is_adk_live %}
         agent_framework="google-adk",
 {%- endif %}
+        identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
     )
 {%- endif %}
 
@@ -372,32 +427,44 @@ def deploy_agent_engine_app(
         if agent.api_resource.display_name == display_name
     ]
 
+    # Handle agent identity: create empty agent if needed, then grant roles
+    if agent_identity:
+        if not matching_agents:
+            click.echo(f"\n🔧 Creating agent identity for: {display_name}")
+            empty_agent = client.agent_engines.create(
+                config={"identity_type": IdentityType.AGENT_IDENTITY}
+            )
+            matching_agents = [empty_agent]
+        grant_agent_identity_roles(matching_agents[0], project)
+
     # Deploy the agent (create or update)
     if matching_agents:
-        click.echo(f"\n📝 Updating existing agent: {display_name}")
-    else:
-        click.echo(f"\n🚀 Creating new agent: {display_name}")
-
-    click.echo("🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)...")
-
+        click.echo(f"\n📝 Updating agent: {display_name}")
+        click.echo(
+            "🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)..."
+        )
 {%- if cookiecutter.is_adk_live %}
-    if matching_agents:
         remote_agent = client.agent_engines.update(
             name=matching_agents[0].api_resource.name,
             agent=agent_instance,
             config=config,
         )
+{%- else %}
+        remote_agent = client.agent_engines.update(
+            name=matching_agents[0].api_resource.name, config=config
+        )
+{%- endif %}
     else:
+        click.echo(f"\n🚀 Creating new agent: {display_name}")
+        click.echo(
+            "🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)..."
+        )
+{%- if cookiecutter.is_adk_live %}
         remote_agent = client.agent_engines.create(
             agent=agent_instance,
             config=config,
         )
 {%- else %}
-    if matching_agents:
-        remote_agent = client.agent_engines.update(
-            name=matching_agents[0].api_resource.name, config=config
-        )
-    else:
         remote_agent = client.agent_engines.create(config=config)
 {%- endif %}
 

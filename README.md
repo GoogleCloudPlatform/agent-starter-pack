@@ -99,7 +99,7 @@ The `agent-starter-pack` offers key features to accelerate and simplify the deve
 
 This starter pack covers all aspects of Agent development, from prototyping and evaluation to deployment and monitoring.
 
-![High Level Architecture](docs/images/ags_high_level_architecture.png "Architecture")
+![High Level Architecture](docs/images/asp_high_level_architecture.png "Architecture")
 
 ---
 

@@ -1630,6 +1630,7 @@ def process_template(
             # Apply conditional file logic (Windows-compatible replacement for Jinja2 filenames)
             conditional_config = {
                 "agent_name": agent_name,
+                "deployment_target": deployment_target,
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,

@@ -140,8 +140,13 @@ def print_deployment_success(
 {%- endif %}
 
 
-def grant_agent_identity_roles(agent: Any, project: str) -> None:
-    """Grant required IAM roles to the agent identity principal."""
+def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
+    """Create agent with identity and grant required IAM roles."""
+    click.echo(f"\n🔧 Creating agent identity for: {display_name}")
+    agent = client.agent_engines.create(
+        config={"identity_type": IdentityType.AGENT_IDENTITY}
+    )
+
     roles = [
         "roles/aiplatform.expressUser",
         "roles/serviceusage.serviceUsageConsumer",
@@ -151,7 +156,7 @@ def grant_agent_identity_roles(agent: Any, project: str) -> None:
         "roles/monitoring.metricWriter",
     ]
     principal = f"principal://{agent.api_resource.spec.effective_identity}"
-    click.echo(f"\n🔐 Granting IAM roles to agent identity: {principal}")
+    click.echo(f"🔐 Granting IAM roles to: {principal}")
     proj_client = resourcemanager_v3.ProjectsClient()
     policy = proj_client.get_iam_policy(
         request=iam_policy_pb2.GetIamPolicyRequest(resource=f"projects/{project}")
@@ -163,7 +168,8 @@ def grant_agent_identity_roles(agent: Any, project: str) -> None:
             resource=f"projects/{project}", policy=policy
         )
     )
-    click.echo("  ✅ Granted IAM roles")
+    click.echo("  ✅ Agent identity ready")
+    return agent
 
 
 @click.command()
@@ -422,15 +428,9 @@ def deploy_agent_engine_app(
         if agent.api_resource.display_name == display_name
     ]
 
-    # Handle agent identity: create empty agent if needed, then grant roles
-    if agent_identity:
-        if not matching_agents:
-            click.echo(f"\n🔧 Creating agent identity for: {display_name}")
-            empty_agent = client.agent_engines.create(
-                config={"identity_type": IdentityType.AGENT_IDENTITY}
-            )
-            matching_agents = [empty_agent]
-        grant_agent_identity_roles(matching_agents[0], project)
+    # Setup agent identity on first deployment
+    if agent_identity and not matching_agents:
+        matching_agents = [setup_agent_identity(client, project, display_name)]
 
     # Deploy the agent (create or update)
     action = "Updating" if matching_agents else "Creating"

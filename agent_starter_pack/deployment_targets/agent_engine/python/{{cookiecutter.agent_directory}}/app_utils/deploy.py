@@ -24,15 +24,14 @@ from typing import Any
 import click
 import google.auth
 import vertexai
+from google.cloud import resourcemanager_v3
+from google.iam.v1 import iam_policy_pb2, policy_pb2
 from vertexai._genai import _agent_engines_utils
 from vertexai._genai.types import AgentEngine, AgentEngineConfig, IdentityType{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
 {%- endif %}
-
-from google.cloud import resourcemanager_v3
-from google.iam.v1 import iam_policy_pb2, policy_pb2
 
 # Suppress google-cloud-storage version compatibility warning
 warnings.filterwarnings(
@@ -133,14 +132,32 @@ def print_deployment_success(
 
 
 def grant_agent_identity_roles(agent: Any, project: str) -> None:
-    """Grant required IAM roles to the agent identity principal."""
+    """Grant required IAM roles to the agent identity principal.
+
+    Uses get-modify-set pattern with etag for optimistic concurrency control.
+    The policy object returned by get_iam_policy includes an etag that is
+    automatically validated by set_iam_policy to prevent race conditions.
+    """
+    roles = [
+        "roles/aiplatform.expressUser",
+        "roles/serviceusage.serviceUsageConsumer",
+        "roles/browser",
+    ]
     principal = f"principal://{agent.api_resource.spec.effective_identity}"
     click.echo(f"\n🔐 Granting IAM roles to agent identity: {principal}")
     proj_client = resourcemanager_v3.ProjectsClient()
-    policy = proj_client.get_iam_policy(request=iam_policy_pb2.GetIamPolicyRequest(resource=f"projects/{project}"))
-    for role in ["roles/aiplatform.expressUser", "roles/serviceusage.serviceUsageConsumer", "roles/browser"]:
+    # Policy includes etag for optimistic locking - set_iam_policy will fail
+    # if policy was modified between get and set operations
+    policy = proj_client.get_iam_policy(
+        request=iam_policy_pb2.GetIamPolicyRequest(resource=f"projects/{project}")
+    )
+    for role in roles:
         policy.bindings.append(policy_pb2.Binding(role=role, members=[principal]))
-    proj_client.set_iam_policy(request=iam_policy_pb2.SetIamPolicyRequest(resource=f"projects/{project}", policy=policy))
+    proj_client.set_iam_policy(
+        request=iam_policy_pb2.SetIamPolicyRequest(
+            resource=f"projects/{project}", policy=policy
+        )
+    )
     click.echo("  ✅ Granted IAM roles")
 
 
@@ -405,14 +422,18 @@ def deploy_agent_engine_app(
     if agent_identity:
         if not matching_agents:
             click.echo(f"\n🔧 Creating agent identity for: {display_name}")
-            empty_agent = client.agent_engines.create(config={"identity_type": IdentityType.AGENT_IDENTITY})
+            empty_agent = client.agent_engines.create(
+                config={"identity_type": IdentityType.AGENT_IDENTITY}
+            )
             matching_agents = [empty_agent]
         grant_agent_identity_roles(matching_agents[0], project)
 
     # Deploy the agent (create or update)
     if matching_agents:
         click.echo(f"\n📝 Updating agent: {display_name}")
-        click.echo("🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)...")
+        click.echo(
+            "🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)..."
+        )
 {%- if cookiecutter.is_adk_live %}
         remote_agent = client.agent_engines.update(
             name=matching_agents[0].api_resource.name,
@@ -426,7 +447,9 @@ def deploy_agent_engine_app(
 {%- endif %}
     else:
         click.echo(f"\n🚀 Creating new agent: {display_name}")
-        click.echo("🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)...")
+        click.echo(
+            "🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)..."
+        )
 {%- if cookiecutter.is_adk_live %}
         remote_agent = client.agent_engines.create(
             agent=agent_instance,

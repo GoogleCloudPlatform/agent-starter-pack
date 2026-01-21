@@ -263,6 +263,8 @@ build-inspector-if-needed:
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 # Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+{%- elif cookiecutter.deployment_target == 'agent_engine' %}
+# Usage: make deploy [AGENT_IDENTITY=true] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
 {%- endif %}
 deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -291,7 +293,8 @@ deploy:
 		--source-packages=./{{cookiecutter.agent_directory}} \
 		--entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
 		--entrypoint-object=agent_engine \
-		--requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt
+		--requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
+		$(if $(AGENT_IDENTITY),--agent-identity)
 {%- endif %}
 
 # Alias for 'make deploy' for backward compatibility

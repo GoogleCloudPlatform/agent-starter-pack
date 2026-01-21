@@ -148,7 +148,7 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
     )
 
     roles = [
-        "roles/aiplatform.expressUser",
+        "roles/aiplatform.user",
         "roles/serviceusage.serviceUsageConsumer",
         "roles/browser",
         "roles/cloudapiregistry.viewer",

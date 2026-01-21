@@ -1,8 +1,14 @@
 # Video Tutorials
 
-## Exploring Agent Starter Pack (April 2025)
+## From Demo to Production with Agent Starter Pack (January 2026)
 
-This comprehensive tutorial demonstrates how to rapidly deploy AI Agents using the Agent Starter Pack. We cover the architecture, detail the templates and their usage, showcase a live demo, and guide you through template-based deployment from start to finish.
+Building an agent demo is easy—shipping it is the nightmare. This video by AI with Surya shows how the Agent Starter Pack acts as an Automated Architect, building the professional "outer shell" for your AI project in seconds. Covers the 60-second demo, why most AI projects fail at deployment, and how ASP automates Terraform, CI/CD, and observability.
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/mtJMYgJkTt8?si=K4kHS0G463VBGons" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+## Agent Starter Pack Deep Dive (April 2025)
+
+A comprehensive tutorial demonstrating how to rapidly deploy AI Agents using the Agent Starter Pack, covering architecture, templates, and step-by-step deployment.
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/9zqwym-N3lg?si=K4kHS0G463VBGons" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 

@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: vector-validator
+  labels:
+    app: vector-validator
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app: vector-validator
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: validator
+              image: your-registry/vector-validator:1.0.0
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: ROLE
+                  value: "semantic_scribe_validation"
+                - name: QDRANT_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: qdrant-conn
+                      key: url
+                - name: QDRANT_API_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: qdrant-conn
+                      key: apiKey
+                - name: QDRANT_COLLECTION
+                  value: "document_chunks"
+                - name: SAMPLE_N
+                  value: "250"
+                - name: REDIS_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: redis-conn
+                      key: url
+                - name: ALERTS_ENABLED
+                  value: "true"
+                - name: PUSHGATEWAY_URL
+                  value: "http://pushgateway.monitoring.svc:9091"
+                - name: PROM_JOB_NAME
+                  value: "vector-validator"
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
+          securityContext:
+            fsGroup: 2000

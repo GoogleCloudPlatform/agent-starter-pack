@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vector-validator
+  labels:
+    app: vector-validator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vector-validator
+  template:
+    metadata:
+      labels:
+        app: vector-validator
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: validator
+          image: your-registry/vector-validator:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: metrics
+              containerPort: 8000
+          env:
+            - name: ROLE
+              value: "semantic_scribe_validation"
+            - name: QDRANT_URL
+              valueFrom:
+                secretKeyRef:
+                  name: qdrant-conn
+                  key: url
+            - name: QDRANT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: qdrant-conn
+                  key: apiKey
+            - name: QDRANT_COLLECTION
+              value: "document_chunks"
+            - name: SAMPLE_N
+              value: "250"
+            - name: LOOP_INTERVAL_SECONDS
+              value: "300"
+            - name: REDIS_URL
+              valueFrom:
+                secretKeyRef:
+                  name: redis-conn
+                  key: url
+            - name: ALERTS_ENABLED
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /metrics
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vector-validator
+  labels:
+    app: vector-validator
+spec:
+  selector:
+    app: vector-validator
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: 8000

@@ -18,6 +18,23 @@ Define the operational flow for the Content Integrity Evaluation Service (CIE-V1
    - Acceptable drift thresholds
    - Pass/fail criteria
 
+## Next Operational Step (First Audit Run Definition)
+Complete and record the following input manifest before executing the first audit:
+
+```
+run_id:
+operator:
+content_sources:
+snapshot_hash:
+seed:
+seed_rotation_policy:
+drift_thresholds:
+pass_fail_criteria:
+approval_required_by:
+```
+
+Store the manifest alongside the run artifacts to preserve auditability.
+
 ## Execution Steps
 1. **Ingest** the immutable content snapshot and record its hash.
 2. **Run** `synthetic.noise.injector.v1` with the selected seed to produce `noised_content`.

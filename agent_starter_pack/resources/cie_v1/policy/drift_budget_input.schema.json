@@ -1,0 +1,54 @@
+{
+  "$id": "DriftBudgetInput.v1",
+  "type": "object",
+  "required": [
+    "timestamp_utc",
+    "role",
+    "collection",
+    "sample_n",
+    "drift_counts",
+    "last_success_age_seconds",
+    "run_duration_seconds"
+  ],
+  "properties": {
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "role": {
+      "type": "string"
+    },
+    "collection": {
+      "type": "string"
+    },
+    "sample_n": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "drift_counts": {
+      "type": "object",
+      "required": ["MISSING_POINT", "SCHEMA_DRIFT", "MISMATCH_PAYLOAD"],
+      "properties": {
+        "MISSING_POINT": { "type": "integer", "minimum": 0 },
+        "SCHEMA_DRIFT": { "type": "integer", "minimum": 0 },
+        "MISMATCH_PAYLOAD": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "last_success_age_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "run_duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "window_counts_1h": {
+      "type": "object",
+      "properties": {
+        "MISSING_POINT": { "type": "integer", "minimum": 0 },
+        "SCHEMA_DRIFT": { "type": "integer", "minimum": 0 },
+        "MISMATCH_PAYLOAD": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

@@ -8,8 +8,12 @@ from typing import Any
 
 def _normalize_preimage(preimage: Any) -> str:
     """Normalize payloads into a deterministic UTF-8 string preimage."""
-    if isinstance(preimage, (bytes, bytearray)):
-        return bytes(preimage).decode("utf-8")
+    if isinstance(preimage, (bytes, bytearray, memoryview)):
+        try:
+            return bytes(preimage).decode("utf-8")
+        except UnicodeDecodeError as exc:
+            msg = "preimage bytes must be valid UTF-8"
+            raise ValueError(msg) from exc
     if isinstance(preimage, str):
         return preimage
     try:

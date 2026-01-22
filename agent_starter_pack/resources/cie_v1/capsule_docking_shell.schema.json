@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "adk://schema/capsule_docking_shell.v0.1.0-alpha",
+  "title": "Capsule Docking Shell",
+  "type": "object",
+  "additionalProperties": false,
+  "@context": {
+    "@vocab": "adk://vocab/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "capsule_ref": { "@type": "@id" },
+    "foundation_ref": { "@type": "@id" },
+    "model_ref": { "@type": "@id" },
+    "h_static": "xsd:string",
+    "h_temporal": "xsd:string",
+    "h_actuator": "xsd:string",
+    "hirr_target": "xsd:number",
+    "manifold_status": "xsd:string",
+    "docking_status": "xsd:string",
+    "constraints": { "@type": "@id" },
+    "safety_envelope": { "@type": "@id" }
+  },
+  "required": [
+    "capsule_ref",
+    "foundation_ref",
+    "model_ref",
+    "h_static",
+    "h_temporal",
+    "h_actuator",
+    "constraints",
+    "safety_envelope"
+  ],
+  "properties": {
+    "capsule_ref": {
+      "type": "string",
+      "pattern": "^adk://capsule/"
+    },
+    "foundation_ref": {
+      "type": "string",
+      "pattern": "^adk://foundation/"
+    },
+    "model_ref": {
+      "type": "string",
+      "pattern": "^adk://model/"
+    },
+    "h_static": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Immutable geometry + version hash"
+    },
+    "h_temporal": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "Runtime config + replay parameters hash"
+    },
+    "h_actuator": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "LoRA/PEFT influence hash"
+    },
+    "constraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "manifold": { "type": "string" },
+        "allowed_region": { "type": "string" },
+        "forbidden_region": { "type": "string" }
+      }
+    },
+    "safety_envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_velocity": { "type": "number" },
+        "max_torque": { "type": "number" },
+        "max_accel": { "type": "number" }
+      }
+    }
+  }
+}

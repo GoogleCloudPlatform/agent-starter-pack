@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "adk://event/capsule_docking.v0.1.0-alpha",
+  "title": "Capsule Docking Event",
+  "type": "object",
+  "additionalProperties": false,
+  "@context": {
+    "@vocab": "adk://vocab/",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "event_type": "xsd:string",
+    "timestamp_ms": "xsd:integer",
+    "capsule_ref": { "@type": "@id" },
+    "foundation_ref": { "@type": "@id" },
+    "model_ref": { "@type": "@id" },
+    "triple_hash": { "@type": "@id" },
+    "manifold_status": "xsd:string",
+    "docking_status": "xsd:string",
+    "reason": "xsd:string"
+  },
+  "required": [
+    "event_type",
+    "timestamp_ms",
+    "capsule_ref",
+    "foundation_ref",
+    "model_ref",
+    "triple_hash",
+    "docking_status"
+  ],
+  "properties": {
+    "event_type": { "const": "CAPSULE_DOCKING" },
+    "timestamp_ms": { "type": "integer" },
+    "capsule_ref": { "type": "string" },
+    "foundation_ref": { "type": "string" },
+    "model_ref": { "type": "string" },
+    "triple_hash": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "h_static": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "h_temporal": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "h_actuator": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    },
+    "manifold_status": {
+      "type": "string",
+      "enum": ["INSIDE_BOUNDS", "OUT_OF_BOUNDS"]
+    },
+    "docking_status": {
+      "type": "string",
+      "enum": ["ACCEPT", "REJECT"]
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 512
+    }
+  }
+}

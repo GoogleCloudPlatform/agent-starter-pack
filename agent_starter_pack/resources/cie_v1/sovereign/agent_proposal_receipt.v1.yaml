@@ -1,0 +1,23 @@
+schema_version: AgentProposalReceipt.v1
+receipt_id: "{{uuid}}"
+proposal_id: "{{proposal_id}}"
+timestamp_utc: "{{timestamp}}"
+
+provenance:
+  github_run_id: "{{github_run_id}}"
+  oidc_identity: "https://github.com/{{org}}/{{repo}}/.github/workflows/agent-pr.yml@refs/heads/main"
+  validator_version: "pydantic-sovereign-suite-1.0.2"
+
+logic_proof:
+  s1_structural_pass: true
+  p1_air_gap_pass: true
+  b1_offline_mode: true
+  h1_gate_seal: "GOLDEN_SNAPSHOT_VERIFIED"
+  validation_summary: "Payload satisfies all 4 Sovereign Invariants. KCT 64-D projection within safety bounds."
+
+attestation:
+  kct_hash: "sha256:{{sha256_of_kernel_control_token}}"
+  snapshot_ref: "fossil://{{golden_snapshot_id}}"
+  signer_address: "{{metamask_public_address}}"
+
+digest: "{{sha256_of_canonical_receipt_without_digest}}"

@@ -1,0 +1,10 @@
+services:
+  multimodalliveapiwebconsole:
+    image: multimodalliveapiwebconsole
+    build:
+      context: agent_starter_pack/frontends/adk_live_react/frontend
+      dockerfile: ./Dockerfile
+    environment:
+      NODE_ENV: production
+    ports:
+      - 3000:3000

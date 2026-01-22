@@ -38,6 +38,50 @@ No matter which method you choose, the `create` command will:
 *   Let you select a deployment target (e.g., `cloud_run`, `agent_engine`).
 *   Generate a complete project structure (backend, optional frontend, deployment infra).
 
+### Internal Onboarding: Q.Bot for New Engineers
+
+**Q.Bot** is a production-ready agent starter pack for building GenAI agents on Google Cloud. It provides templates, infrastructure scaffolding, and tooling so you can ship quickly without assembling everything from scratch.
+
+**What you’ll use most**
+- **Agent templates:** Pre-built patterns for ReAct, RAG, and multi-agent systems.
+- **CLI:** `agent-starter-pack` for scaffolding and enhancement.
+- **CI/CD:** Automated GitHub Actions and Cloud Build configurations.
+- **Observability:** Built-in hooks for monitoring agent performance.
+
+**First 15 minutes**
+
+```bash
+# 1. Scaffolding
+uvx agent-starter-pack create
+cd <new-project>
+
+# 2. Infrastructure
+# Explore the generated directories:
+# /agents   -> The actual logic (Vertex AI, LangGraph, etc.)
+# /infra    -> Terraform scripts for Google Cloud deployment
+# /frontend -> Streamlit/React UI for testing
+```
+
+**If you already have an agent**
+
+```bash
+uvx agent-starter-pack enhance
+```
+
+This retrofits deployment, CI/CD, and monitoring without changing core agent logic.
+
+**Mental model**
+
+> “Q.Bot gives you the rails. You build the agent.”
+
+**Available templates**
+- `adk`: Base ReAct agent using Google’s Agent Development Kit.
+- `agentic_rag`: RAG with Vertex AI Search.
+- `adk_live`: Real-time multimodal RAG (audio/video/text).
+
+**Documentation & support**
+- **Primary reference:** Internal Docs Portal.
+
 **Examples:**
 
 ```bash

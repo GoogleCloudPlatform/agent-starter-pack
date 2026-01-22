@@ -11,6 +11,11 @@
     "description": "Runtime invariant enforcement with fail-closed routing.",
     "fail_closed": true
   },
+  "envelope": {
+    "schema": "ValidationJobEnvelope.v1",
+    "anchor_schema": "BatchAnchor.v1",
+    "tick": "Tick.v1(kind=VALIDATION)"
+  },
   "modules": [
     {
       "id": "synthetic.noise.injector.v1",

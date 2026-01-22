@@ -34,6 +34,8 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from agent_starter_pack.cli.utils.generation_metadata import metadata_to_cli_args
+
 
 def load_asp_metadata(pyproject_path: pathlib.Path) -> dict[str, Any]:
     """Load agent-starter-pack metadata from pyproject.toml.
@@ -583,50 +585,6 @@ class TestMetadataEnablesIdenticalRecreation:
             )
 
         return differences
-
-
-def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
-    """Convert metadata dictionary to CLI arguments.
-
-    This function maps the pyproject.toml metadata back to CLI arguments
-    that could be used to recreate the project.
-
-    Args:
-        metadata: Dictionary from [tool.agent-starter-pack] section
-
-    Returns:
-        List of CLI arguments
-    """
-    args: list[str] = []
-
-    # Required mappings from metadata
-    if "base_template" in metadata:
-        args.extend(["--agent", metadata["base_template"]])
-
-    if "agent_directory" in metadata and metadata["agent_directory"] != "app":
-        args.extend(["--agent-directory", metadata["agent_directory"]])
-
-    # Get create_params for the rest
-    create_params = metadata.get("create_params", {})
-
-    # Add all create_params dynamically
-    for key, value in create_params.items():
-        # Skip None, "none", "None", False, and empty values
-        if (
-            value is None
-            or value is False
-            or str(value).lower() == "none"
-            or value == ""
-        ):
-            continue
-
-        arg_name = f"--{key.replace('_', '-')}"
-        if value is True:
-            args.append(arg_name)
-        else:
-            args.extend([arg_name, str(value)])
-
-    return args
 
 
 if __name__ == "__main__":

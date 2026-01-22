@@ -1,0 +1,131 @@
+{
+  "$id": "DriftReceipt.v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "drift_id",
+    "timestamp_utc",
+    "store",
+    "collection",
+    "drift_class",
+    "sample_size",
+    "counts",
+    "budget",
+    "metrics_ref",
+    "qdrant_ref",
+    "replay_court_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "DriftReceipt.v1"
+    },
+    "drift_id": {
+      "type": "string",
+      "description": "UUID for this specific drift incident."
+    },
+    "timestamp_utc": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this drift was detected and sealed."
+    },
+    "store": {
+      "type": "string",
+      "description": "Logical name of the vector store (e.g. qdrant-prod-us-east-1)."
+    },
+    "collection": {
+      "type": "string",
+      "description": "Vector collection / index name."
+    },
+    "drift_class": {
+      "type": "string",
+      "enum": ["MISSING_POINT", "SCHEMA_DRIFT", "MISMATCH_PAYLOAD"],
+      "description": "Primary drift taxonomy class for this incident."
+    },
+    "sample_size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of points sampled in this validation cycle."
+    },
+    "counts": {
+      "type": "object",
+      "required": ["missing_point", "schema_drift", "mismatch_payload"],
+      "properties": {
+        "missing_point": { "type": "integer", "minimum": 0 },
+        "schema_drift": { "type": "integer", "minimum": 0 },
+        "mismatch_payload": { "type": "integer", "minimum": 0 }
+      },
+      "description": "Raw counts per drift class in this cycle."
+    },
+    "budget": {
+      "type": "object",
+      "required": ["violated", "severity", "message"],
+      "properties": {
+        "violated": {
+          "type": "boolean",
+          "description": "True if Drift Budget policy was violated."
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["OK", "INFO", "HIGH", "CRITICAL"],
+          "description": "Policy-evaluated severity of this incident."
+        },
+        "message": {
+          "type": "string",
+          "description": "Human-readable summary from the Drift Budget policy."
+        }
+      },
+      "description": "Snapshot of the Drift Budget policy evaluation."
+    },
+    "metrics_ref": {
+      "type": "object",
+      "required": ["prometheus_series", "scrape_timestamp"],
+      "properties": {
+        "prometheus_series": {
+          "type": "string",
+          "description": "Labelset / selector that reproduces the metrics context (e.g. collection, store)."
+        },
+        "scrape_timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Prometheus scrape time associated with this receipt."
+        }
+      },
+      "description": "Link back to the metrics surface that observed this drift."
+    },
+    "qdrant_ref": {
+      "type": "object",
+      "required": ["endpoint", "collection", "sample_ids"],
+      "properties": {
+        "endpoint": {
+          "type": "string",
+          "description": "Base URL of the Qdrant instance."
+        },
+        "collection": {
+          "type": "string",
+          "description": "Redundant copy of collection name for direct replay."
+        },
+        "sample_ids": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Subset of point IDs involved in this drift incident."
+        }
+      },
+      "description": "Minimal handle to reconstruct the Qdrant state involved."
+    },
+    "replay_court_ref": {
+      "type": "object",
+      "required": ["batch_anchor_id", "collapse_id"],
+      "properties": {
+        "batch_anchor_id": {
+          "type": "string",
+          "description": "ID of the BatchAnchor / epoch this receipt belongs to."
+        },
+        "collapse_id": {
+          "type": "string",
+          "description": "Optional link to a CollapseReceipt if this drift triggered a collapse."
+        }
+      },
+      "description": "Lineage hook into Replay Court and batch-level proofs."
+    }
+  }
+}

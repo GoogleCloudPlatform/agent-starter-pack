@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Environment files
+.env
+{{cookiecutter.agent_directory}}/.env
+
+# Git
+.git
+.gitignore
+
+# Build artifacts
+dist
+
+# Tests
+tests
+
+# Terraform
+deployment/.terraform*
+
+# Logs
+*.log
+npm-debug.log
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode
+.idea

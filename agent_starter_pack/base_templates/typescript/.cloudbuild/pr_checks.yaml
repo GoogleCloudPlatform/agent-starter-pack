@@ -1,0 +1,66 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+steps:
+  # Install dependencies
+  - name: "node:20-slim"
+    id: install-dependencies
+    dir: {{cookiecutter.agent_directory}}
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        npm ci
+
+  # Build TypeScript
+  - name: "node:20-slim"
+    id: build
+    dir: {{cookiecutter.agent_directory}}
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        npm run build
+
+  # Run unit tests
+  - name: "node:20-slim"
+    id: unit-tests
+    dir: {{cookiecutter.agent_directory}}
+    entrypoint: /bin/bash
+    env:
+      - "GOOGLE_GENAI_USE_VERTEXAI=true"
+      - "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+      - "GOOGLE_CLOUD_LOCATION=us-central1"
+    args:
+      - "-c"
+      - |
+        npx vitest run ../tests/unit
+
+  # Run integration tests
+  - name: "node:20-slim"
+    id: integration-tests
+    dir: {{cookiecutter.agent_directory}}
+    entrypoint: /bin/bash
+    env:
+      - "GOOGLE_GENAI_USE_VERTEXAI=true"
+      - "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
+      - "GOOGLE_CLOUD_LOCATION=us-central1"
+    args:
+      - "-c"
+      - |
+        npx vitest run ../tests/integration
+
+logsBucket: gs://${PROJECT_ID}-{{cookiecutter.project_name}}-logs/build-logs
+options:
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET

@@ -6,7 +6,7 @@ This guide quickly walks you through setting up your first agent project.
 
 ### Prerequisites
 
-**Python 3.10+** (or **Go 1.21+** for Go templates) | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (Optional, Recommended for Python)** [Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
+**Python 3.10+** (or **Go 1.21+** for Go templates, or **Node.js 20+** for TypeScript templates) | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (Optional, Recommended for Python)** [Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### 1. Create Your Agent Project
 
@@ -34,7 +34,7 @@ uvx agent-starter-pack create
 :::
 
 No matter which method you choose, the `create` command will:
-*   Let you choose an agent template (e.g., `adk`, `adk_go`, `agentic_rag`).
+*   Let you choose an agent template (e.g., `adk`, `adk_go`, `adk_ts`, `agentic_rag`).
 *   Let you select a deployment target (e.g., `cloud_run`, `agent_engine`).
 *   Generate a complete project structure (backend, optional frontend, deployment infra).
 
@@ -46,6 +46,9 @@ agent-starter-pack create my-adk-agent -a adk -d agent_engine
 
 # Go agent with Cloud Run
 agent-starter-pack create my-go-agent -a adk_go -d cloud_run
+
+# TypeScript agent with Cloud Run
+agent-starter-pack create my-ts-agent -a adk_ts -d cloud_run
 ```
 
 ### 2. Explore and Run Locally
@@ -58,9 +61,9 @@ cd <your-project> && make install && make playground
 
 Inside your new project directory, you'll find:
 
-*   `app/` (Python) or `agent/` (Go): Backend agent code.
+*   `app/` (Python/TypeScript) or `agent/` (Go): Backend agent code.
 *   `deployment/`: Terraform infrastructure code.
-*   `tests/` (Python) or `e2e/` (Go): Unit and integration tests.
+*   `tests/` (Python/TypeScript) or `e2e/` (Go): Unit and integration tests.
 *   `notebooks/`: (Python only) Jupyter notebooks for evaluation.
 *   `frontend/`: (If applicable) Web UI for interacting with your agent.
 *   `README.md`: **Project-specific instructions for running locally and deploying.**

@@ -68,10 +68,30 @@ def _run_agent_test(
 
         # Detect language based on generated files
         is_go = (project_path / "go.mod").exists()
+        is_ts = (
+            (project_path / "package.json").exists()
+            and not (project_path / "pyproject.toml").exists()
+        )
 
         # Verify essential files based on language
         if is_go:
             essential_files = ["go.mod", "main.go", "agent/agent.go", "Makefile"]
+        elif is_ts:
+            # Determine agent directory from extra_params
+            agent_directory = "app"  # default
+            if extra_params:
+                for i, param in enumerate(extra_params):
+                    if param in ["-dir", "--agent-directory"] and i + 1 < len(
+                        extra_params
+                    ):
+                        agent_directory = extra_params[i + 1]
+                        break
+            essential_files = [
+                "package.json",
+                "tsconfig.json",
+                f"{agent_directory}/agent.ts",
+                "Makefile",
+            ]
         else:
             # Determine agent directory from extra_params
             agent_directory = "app"  # default

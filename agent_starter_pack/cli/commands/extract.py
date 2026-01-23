@@ -111,6 +111,24 @@ LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
         "strip_dependencies": False,
         "display_name": "Go",
     },
+    "typescript": {
+        "detection_files": ["package.json", "tsconfig.json"],
+        "config_file": ".asp.toml",
+        "config_path": ["project"],
+        "project_files": [
+            "package.json",
+            "package-lock.json",
+            "tsconfig.json",
+            "vitest.config.ts",
+            "eslint.config.mjs",
+            ".asp.toml",
+        ],
+        "lock_file": "package-lock.json",
+        "lock_command": ["npm", "install", "--package-lock-only"],
+        "lock_command_name": "npm install --package-lock-only",
+        "strip_dependencies": False,
+        "display_name": "TypeScript",
+    },
 }
 
 
@@ -152,18 +170,26 @@ def detect_agent_directory(
     if asp_config and asp_config.get("agent_directory"):
         return asp_config["agent_directory"]
 
-    # Try common patterns
+    # Try common patterns (check for Python, TypeScript, and Go agent files)
     for candidate in ["app", "agent", "src"]:
         candidate_path = project_dir / candidate
-        if candidate_path.is_dir() and (candidate_path / "agent.py").exists():
+        if candidate_path.is_dir() and (
+            (candidate_path / "agent.py").exists()
+            or (candidate_path / "agent.ts").exists()
+            or (candidate_path / "agent.go").exists()
+        ):
             return candidate
 
-    # Fallback: look for any directory with agent.py
+    # Fallback: look for any directory with agent.py, agent.ts, or agent.go
     for item in project_dir.iterdir():
         if (
             item.is_dir()
             and not item.name.startswith(".")
-            and (item / "agent.py").exists()
+            and (
+                (item / "agent.py").exists()
+                or (item / "agent.ts").exists()
+                or (item / "agent.go").exists()
+            )
         ):
             return item.name
 
@@ -198,17 +224,22 @@ def detect_language(project_dir: pathlib.Path) -> str:
 
     # Check each language's detection files (non-Python first to avoid false positives)
     # Python has pyproject.toml which is common, so check other languages first
-    for lang in ["go", "python"]:  # Order matters: more specific first
+    # TypeScript also needs to be checked before Python since both can coexist
+    for lang in ["go", "typescript", "python"]:  # Order matters: more specific first
         config = LANGUAGE_CONFIGS.get(lang)
         if config:
-            for detection_file in config.get("detection_files", []):
-                if (project_dir / detection_file).exists():
-                    # For Python, also need to check it's not just a pyproject.toml
-                    # for a Go project (Go projects don't have pyproject.toml)
-                    if lang == "python":
-                        # Only return python if no other language indicators exist
-                        return lang
+            detection_files = config.get("detection_files", [])
+            # For TypeScript, require both package.json AND tsconfig.json
+            if lang == "typescript":
+                if all((project_dir / f).exists() for f in detection_files):
                     return lang
+            else:
+                for detection_file in detection_files:
+                    if (project_dir / detection_file).exists():
+                        # For Python, only return python if no other language indicators exist
+                        if lang == "python":
+                            return lang
+                        return lang
 
     # Default to Python
     return "python"

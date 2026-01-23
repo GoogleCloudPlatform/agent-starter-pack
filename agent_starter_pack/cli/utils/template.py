@@ -345,7 +345,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine"]
-SUPPORTED_LANGUAGES = ["python", "go"]
+SUPPORTED_LANGUAGES = ["python", "go", "typescript"]
 DEFAULT_FRONTEND = "None"
 
 
@@ -366,6 +366,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "agentic_rag": 3,
         "langgraph": 0,
         "adk_go": 0,
+        "adk_ts": 0,
     }
 
     agents_list = []
@@ -415,11 +416,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                 except Exception as e:
                     logging.warning(f"Could not load agent from {agent_dir}: {e}")
 
-    # Define group order: Python ADK, Python LangGraph, Go ADK, Other
+    # Define group order: Python ADK, Python LangGraph, Go ADK, TypeScript ADK, Other
     GROUP_ORDER = {
         ("python", "adk"): 0,
         ("python", "langgraph"): 1,
         ("go", "adk"): 2,
+        ("typescript", "adk"): 3,
     }
 
     def sort_key(agent: dict) -> tuple:
@@ -1278,15 +1280,9 @@ def process_template(
                 "llm_txt": llm_txt_content,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
-                    "*.json",  # Don't render JSON files
-                    "*.tsx",  # Don't render TypeScript React files
-                    "*.ts",  # Don't render TypeScript files
-                    "*.jsx",  # Don't render JavaScript React files
-                    "*.js",  # Don't render JavaScript files
-                    "*.css",  # Don't render CSS files
                     "*.sum",  # Don't render Go sum files
                     "e2e/**/*",  # Don't render Go e2e test files (contain Go {{ }} syntax)
-                    "frontend/**/*",  # Don't render frontend directory recursively
+                    "frontend/**/*",  # Don't render frontend directory (covers all JS/TS/CSS/JSON files)
                     "notebooks/*",  # Don't render notebooks directory
                     ".git/*",  # Don't render git directory
                     "__pycache__/*",  # Don't render cache

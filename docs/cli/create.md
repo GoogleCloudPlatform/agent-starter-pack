@@ -188,6 +188,9 @@ uvx agent-starter-pack create my-agent -a adk -d cloud_run
 
 # Create a Go agent (Cloud Run only)
 uvx agent-starter-pack create my-go-agent -a adk_go
+
+# Create a TypeScript agent (Cloud Run only)
+uvx agent-starter-pack create my-ts-agent -a adk_ts
 ```
 
 ### Remote Templates

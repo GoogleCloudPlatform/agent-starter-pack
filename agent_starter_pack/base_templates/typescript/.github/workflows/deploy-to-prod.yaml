@@ -1,0 +1,64 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # This job targets the 'production' environment, which is automatically
+    # created by the Terraform setup in `deployment/terraform/github.tf`.
+    # To enable manual approval for deployments, you must add a protection
+    # rule to this environment in your GitHub repository settings.
+    #
+    # 1. Go to your repository's Settings > Environments.
+    # 2. Select the 'production' environment.
+    # 3. Under 'Protection rules', check the 'Required reviewers' box.
+    # 4. Add the specific users or teams who must approve the deployment.
+    #
+    # Once configured, the workflow will pause at this step and wait for an
+    # authorized user to approve it before proceeding.
+    environment:
+      name: production
+    concurrency: production
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/{% raw %}${{ vars.GCP_PROJECT_NUMBER }}{% endraw %}/locations/global/workloadIdentityPools/{% raw %}${{ secrets.WIF_POOL_ID }}{% endraw %}/providers/{% raw %}${{ secrets.WIF_PROVIDER_ID }}{% endraw %}'
+          service_account: '{% raw %}${{ secrets.GCP_SERVICE_ACCOUNT }}{% endraw %}'
+          create_credentials_file: true
+          project_id: {% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Deploy to Production (Cloud Run)
+        run: |
+          gcloud run deploy {{cookiecutter.project_name}} \
+            --image {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
+            --region {% raw %}${{ vars.REGION }}{% endraw %} \
+            --project {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}

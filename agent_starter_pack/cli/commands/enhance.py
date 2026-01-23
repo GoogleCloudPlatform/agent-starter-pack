@@ -733,13 +733,18 @@ def enhance(
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
 
-        # Detect if this is a Go project from base_template or config
+        # Detect if this is a Go or TypeScript project from base_template or config
         is_go_project = base_template and base_template.endswith("_go")
+        is_ts_project = base_template and base_template.endswith("_ts")
         asp_config = get_project_asp_config(current_dir)
-        if asp_config and asp_config.get("language") == "go":
-            is_go_project = True
+        if asp_config:
+            if asp_config.get("language") == "go":
+                is_go_project = True
+            elif asp_config.get("language") == "typescript":
+                is_ts_project = True
 
         # Determine agent directory: CLI param > config detection > language default
+        # Go uses "agent", Python and TypeScript use "app"
         detected_agent_directory = "agent" if is_go_project else "app"
         if not agent_directory:  # Only try to detect if not provided via CLI
             # First check .asp.toml/pyproject.toml config
@@ -846,15 +851,23 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for agent files (supports both Python and Go)
+            # Check for agent files (supports Python, Go, and TypeScript)
             root_agent_yaml = agent_folder / "root_agent.yaml"
             agent_py = agent_folder / "agent.py"
             agent_go = agent_folder / "agent.go"
+            agent_ts = agent_folder / "agent.ts"
 
-            # Determine if this is a Go project (prioritize Python if both exist)
+            # Determine if this is a Go or TypeScript project (prioritize Python if multiple exist)
             is_go = (base_template and base_template.endswith("_go")) or (
                 agent_go.exists()
                 and not agent_py.exists()
+                and not agent_ts.exists()
+                and not root_agent_yaml.exists()
+            )
+            is_ts = (base_template and base_template.endswith("_ts")) or (
+                agent_ts.exists()
+                and not agent_py.exists()
+                and not agent_go.exists()
                 and not root_agent_yaml.exists()
             )
             is_adk = base_template and "adk" in base_template.lower()
@@ -872,6 +885,11 @@ def enhance(
                     console.print(
                         "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/agents/agent-config/]ADK Agent Config guide[/link][/cyan]"
                     )
+            elif agent_ts.exists():
+                # TypeScript agent detected
+                console.print(
+                    f"✅ Found [cyan]/{final_agent_directory}/agent.ts[/cyan]"
+                )
             elif agent_go.exists():
                 # Go agent detected
                 console.print(
@@ -933,7 +951,15 @@ def enhance(
                     )
             else:
                 # Suggest the appropriate file based on context
-                if is_go:
+                if is_ts:
+                    agent_file = "agent.ts"
+                    console.print(
+                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.ts not found[/yellow]"
+                    )
+                    console.print(
+                        f"   Create {final_agent_directory}/agent.ts with your agent logic"
+                    )
+                elif is_go:
                     agent_file = "agent.go"
                     console.print(
                         f"⚠️  [yellow]Warning: {final_agent_directory}/agent.go not found[/yellow]"

@@ -79,6 +79,8 @@ When both you and ASP have modified a file, you'll be prompted:
 
 ## Dependency Handling
 
+### Python Projects
+
 The upgrade command intelligently merges dependencies in `pyproject.toml`:
 
 - **ASP dependencies updated** → Automatically update version
@@ -88,10 +90,27 @@ The upgrade command intelligently merges dependencies in `pyproject.toml`:
 
 Version constraints are respected, and your custom additions are never removed.
 
+### Go Projects
+
+For Go projects, dependencies in `go.mod` and `go.sum` are categorized as project dependencies and handled during 3-way comparison. The upgrade command does not perform automatic dependency merging for Go projects - Go's module system handles this natively.
+
+## Language Support
+
+The upgrade command supports both Python and Go projects:
+
+| Language | Config File | Version Key | Dependency Handling |
+|----------|-------------|-------------|---------------------|
+| Python | `pyproject.toml` | `asp_version` | Automatic merge |
+| Go | `.asp.toml` | `version` | 3-way compare |
+
+Language is auto-detected from project files.
+
 ## Requirements
 
 - **uvx**: Required for re-generating templates at specific versions
-- **Project metadata**: Your `pyproject.toml` must have `[tool.agent-starter-pack]` with `asp_version`
+- **Project metadata**:
+  - Python: `pyproject.toml` must have `[tool.agent-starter-pack]` with `asp_version`
+  - Go: `.asp.toml` must have `[project]` with `version`
 
 ## How It Works
 
@@ -145,11 +164,13 @@ grep asp_version pyproject.toml
 ## Troubleshooting
 
 **"No agent-starter-pack metadata found"**
-- Ensure `pyproject.toml` has `[tool.agent-starter-pack]` section
+- Python: Ensure `pyproject.toml` has `[tool.agent-starter-pack]` section
+- Go: Ensure `.asp.toml` has `[project]` section
 - This project may not have been created with agent-starter-pack
 
 **"No asp_version found"**
-- Add `asp_version = "X.Y.Z"` to `[tool.agent-starter-pack]` in `pyproject.toml`
+- Python: Add `asp_version = "X.Y.Z"` to `[tool.agent-starter-pack]` in `pyproject.toml`
+- Go: Add `version = "X.Y.Z"` to `[project]` in `.asp.toml`
 - Use the version you originally created the project with
 
 **"Failed to generate old template"**

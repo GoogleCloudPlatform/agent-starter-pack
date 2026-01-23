@@ -39,6 +39,15 @@ class TestCategorizeFile:
         assert categorize_file("app/tools/search.py") == "agent_code"
         assert categorize_file("app/prompts/main.py") == "agent_code"
 
+    def test_go_agent_code_patterns(self) -> None:
+        """Test that Go agent code files are correctly categorized."""
+        assert categorize_file("agent/agent.go", "agent") == "agent_code"
+        assert categorize_file("agent/tools/search.go", "agent") == "agent_code"
+        assert categorize_file("agent/handlers/main.go", "agent") == "agent_code"
+        # Default app directory
+        assert categorize_file("app/agent.go") == "agent_code"
+        assert categorize_file("app/utils/helper.go") == "agent_code"
+
     def test_config_files(self) -> None:
         """Test that config files are correctly categorized."""
         assert categorize_file("deployment/vars/dev.tfvars") == "config_files"
@@ -47,6 +56,12 @@ class TestCategorizeFile:
     def test_dependencies(self) -> None:
         """Test that pyproject.toml is categorized as dependencies."""
         assert categorize_file("pyproject.toml") == "dependencies"
+
+    def test_go_dependencies(self) -> None:
+        """Test that Go dependency files are correctly categorized."""
+        assert categorize_file("go.mod") == "dependencies"
+        assert categorize_file("go.sum") == "dependencies"
+        assert categorize_file(".asp.toml") == "dependencies"
 
     def test_scaffolding_files(self) -> None:
         """Test that scaffolding files are correctly categorized."""
@@ -61,6 +76,13 @@ class TestCategorizeFile:
         assert categorize_file("my_agent/tools/custom.py", "my_agent") == "agent_code"
         # Default app directory should not match
         assert categorize_file("app/agent.py", "my_agent") == "scaffolding"
+
+    def test_custom_agent_directory_go(self) -> None:
+        """Test categorization with custom agent directory for Go."""
+        assert categorize_file("my_agent/agent.go", "my_agent") == "agent_code"
+        assert categorize_file("my_agent/handlers/api.go", "my_agent") == "agent_code"
+        # Default agent directory should not match
+        assert categorize_file("agent/agent.go", "my_agent") == "scaffolding"
 
 
 class TestThreeWayCompare:

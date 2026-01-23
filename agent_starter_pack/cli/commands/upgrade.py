@@ -17,7 +17,6 @@
 import difflib
 import logging
 import pathlib
-import re
 import shlex
 import shutil
 import subprocess
@@ -28,6 +27,10 @@ from rich.console import Console
 from rich.prompt import Prompt
 
 from ..utils.generation_metadata import metadata_to_cli_args
+from ..utils.language import (
+    get_language_config,
+    update_asp_version,
+)
 from ..utils.logging import handle_cli_error
 from ..utils.upgrade import (
     DependencyChange,
@@ -349,32 +352,6 @@ def _apply_changes(
     return counts
 
 
-def _update_pyproject_metadata(
-    project_dir: pathlib.Path,
-    new_version: str,
-) -> None:
-    """Update the asp_version in pyproject.toml.
-
-    Args:
-        project_dir: Path to project directory
-        new_version: New ASP version
-    """
-    pyproject_path = project_dir / "pyproject.toml"
-    if not pyproject_path.exists():
-        return
-
-    try:
-        content = pyproject_path.read_text(encoding="utf-8")
-        content = re.sub(
-            r'(asp_version\s*=\s*")[^"]*(")',
-            rf"\g<1>{new_version}\g<2>",
-            content,
-        )
-        pyproject_path.write_text(content, encoding="utf-8")
-    except Exception as e:
-        logging.warning(f"Could not update asp_version: {e}")
-
-
 @click.command()
 @click.argument(
     "project_path",
@@ -427,17 +404,26 @@ def upgrade(
         console.print(
             "[bold red]Error:[/bold red] No agent-starter-pack metadata found."
         )
-        console.print("Ensure pyproject.toml has \\[tool.agent-starter-pack] section.")
+        console.print(
+            "Ensure pyproject.toml has \\[tool.agent-starter-pack] section "
+            "or .asp.toml has \\[project] section."
+        )
         raise SystemExit(1)
+
+    # Get language from metadata for language-aware operations
+    language = metadata.get("language", "python")
 
     old_version = metadata.get("asp_version")
     if not old_version:
         console.print(
             "[bold red]Error:[/bold red] No asp_version found in project metadata."
         )
+        lang_config = get_language_config(language)
+        config_file = lang_config.get("config_file", "pyproject.toml")
+        version_key = lang_config.get("version_key", "asp_version")
         console.print(
-            "The project metadata is missing the version. "
-            "Please ensure pyproject.toml has asp_version in \\[tool.agent-starter-pack]."
+            f"The project metadata is missing the version. "
+            f"Please ensure {config_file} has {version_key} set."
         )
         raise SystemExit(1)
 
@@ -514,17 +500,20 @@ def upgrade(
         # Group by action
         groups = group_results_by_action(results)
 
-        # Handle dependency merging
-        dep_result = merge_pyproject_dependencies(
-            project_dir / "pyproject.toml",
-            old_template_project / "pyproject.toml",
-            new_template_project / "pyproject.toml",
-        )
+        # Handle dependency merging (only for languages that strip dependencies)
+        lang_config = get_language_config(language)
+        dep_result = None
+        if lang_config.get("strip_dependencies", True):
+            dep_result = merge_pyproject_dependencies(
+                project_dir / "pyproject.toml",
+                old_template_project / "pyproject.toml",
+                new_template_project / "pyproject.toml",
+            )
 
         console.print()
 
         # Display results
-        _display_results(groups, dep_result.changes, dry_run)
+        _display_results(groups, dep_result.changes if dep_result else [], dry_run)
 
         # Check if there's anything to do
         total_changes = (
@@ -534,7 +523,8 @@ def upgrade(
             + len(groups["conflict"])
         )
 
-        if total_changes == 0 and not dep_result.changes:
+        has_dep_changes = dep_result and dep_result.changes
+        if total_changes == 0 and not has_dep_changes:
             console.print("[bold green]✅[/bold green] No changes needed!")
             return
 
@@ -561,16 +551,16 @@ def upgrade(
             dry_run,
         )
 
-        # Apply dependency changes
-        if not dry_run and dep_result.changes:
+        # Apply dependency changes (Python only)
+        if not dry_run and dep_result and dep_result.changes:
             write_merged_dependencies(
                 project_dir / "pyproject.toml",
                 dep_result.merged_deps,
             )
 
-        # Update metadata version
+        # Update metadata version using language-aware utility
         if not dry_run:
-            _update_pyproject_metadata(project_dir, new_version)
+            update_asp_version(project_dir, language, new_version)
 
         # Summary
         console.print()

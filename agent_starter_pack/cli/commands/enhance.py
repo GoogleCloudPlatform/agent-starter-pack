@@ -29,6 +29,10 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from ..utils.language import (
+    detect_language,
+    get_asp_config_for_language,
+)
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.template import (
     get_available_agents,
@@ -66,6 +70,8 @@ _EXCLUDED_DIRS = {
 def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
     """Read agent-starter-pack config from project's .asp.toml or pyproject.toml.
 
+    Uses shared language utilities for config detection.
+
     For Go projects, config is stored in .asp.toml under [project].
     For Python projects, config is stored in pyproject.toml under [tool.agent-starter-pack].
 
@@ -77,44 +83,30 @@ def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
         The returned dict has a consistent structure with keys:
         - base_template, asp_version, agent_directory, create_params, language
     """
-    # First, check for .asp.toml (Go projects)
-    asp_toml_path = project_dir / ".asp.toml"
-    if asp_toml_path.exists():
-        try:
-            with open(asp_toml_path, "rb") as f:
-                asp_data = tomllib.load(f)
+    # Detect language first
+    language = detect_language(project_dir)
 
-            # Config is stored under [project] in .asp.toml
-            project_config = asp_data.get("project", {})
-            if project_config:
-                # Normalize to match pyproject.toml structure
-                return {
-                    "base_template": project_config.get("base_template"),
-                    "asp_version": project_config.get("version"),
-                    "agent_directory": project_config.get("agent_directory", "agent"),
-                    "language": project_config.get("language", "go"),
-                    "create_params": {
-                        "deployment_target": project_config.get("deployment_target"),
-                        "cicd_runner": project_config.get("cicd_runner"),
-                    },
-                }
-        except Exception as e:
-            logging.debug(f"Could not read config from .asp.toml: {e}")
-
-    # Fall back to pyproject.toml (Python projects)
-    pyproject_path = project_dir / "pyproject.toml"
-    if not pyproject_path.exists():
+    # Get config using shared utility
+    config = get_asp_config_for_language(project_dir, language)
+    if not config:
         return None
 
-    try:
-        with open(pyproject_path, "rb") as f:
-            pyproject_data = tomllib.load(f)
+    # For Go projects, normalize the config structure
+    if language == "go":
+        return {
+            "base_template": config.get("base_template"),
+            "asp_version": config.get("version"),
+            "agent_directory": config.get("agent_directory", "agent"),
+            "language": config.get("language", "go"),
+            "create_params": {
+                "deployment_target": config.get("deployment_target"),
+                "cicd_runner": config.get("cicd_runner"),
+            },
+        }
 
-        # Config is stored under [tool.agent-starter-pack]
-        return pyproject_data.get("tool", {}).get("agent-starter-pack")
-    except Exception as e:
-        logging.debug(f"Could not read config from pyproject.toml: {e}")
-        return None
+    # For Python, add language key and return as-is
+    config["language"] = language
+    return config
 
 
 def _should_skip_config_value(value: Any) -> bool:

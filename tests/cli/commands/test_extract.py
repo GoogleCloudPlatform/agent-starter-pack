@@ -20,18 +20,20 @@ from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.extract import (
-    LANGUAGE_CONFIGS,
     SCAFFOLDING_DEPENDENCIES,
     SCAFFOLDING_DIRS,
     SCAFFOLDING_FILES_IN_AGENT_DIR,
     detect_agent_directory,
-    detect_language,
     extract,
     get_asp_config,
-    get_asp_config_for_language,
     is_core_dependency,
     is_scaffolding_dependency,
     process_pyproject_toml,
+)
+from agent_starter_pack.cli.utils.language import (
+    LANGUAGE_CONFIGS,
+    detect_language,
+    get_asp_config_for_language,
 )
 
 

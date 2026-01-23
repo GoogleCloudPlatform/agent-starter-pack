@@ -37,6 +37,11 @@ import click
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from rich.console import Console
 
+from ..utils.language import (
+    LANGUAGE_CONFIGS,
+    detect_language,
+    get_asp_config_for_language,
+)
 from ..utils.logging import handle_cli_error
 
 # Path to base templates directory
@@ -81,36 +86,6 @@ CORE_DEPENDENCIES = {
     "google-genai",
     "langchain",
     "langgraph",
-}
-
-# =============================================================================
-# Language Configuration
-# =============================================================================
-# To add a new language, add an entry with the required keys.
-
-LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
-    "python": {
-        "detection_files": ["pyproject.toml"],
-        "config_file": "pyproject.toml",
-        "config_path": ["tool", "agent-starter-pack"],
-        "project_files": ["pyproject.toml"],
-        "lock_file": "uv.lock",
-        "lock_command": ["uv", "lock"],
-        "lock_command_name": "uv lock",
-        "strip_dependencies": True,
-        "display_name": "Python",
-    },
-    "go": {
-        "detection_files": ["go.mod"],
-        "config_file": ".asp.toml",
-        "config_path": ["project"],
-        "project_files": ["go.mod", "go.sum", ".asp.toml"],
-        "lock_file": "go.sum",
-        "lock_command": ["go", "mod", "tidy"],
-        "lock_command_name": "go mod tidy",
-        "strip_dependencies": False,
-        "display_name": "Go",
-    },
 }
 
 
@@ -168,98 +143,6 @@ def detect_agent_directory(
             return item.name
 
     return "app"  # Default fallback
-
-
-def detect_language(project_dir: pathlib.Path) -> str:
-    """Detect the project language using LANGUAGE_CONFIGS.
-
-    Detection order:
-    1. Check .asp.toml for explicit language field
-    2. Check for language-specific detection files (go.mod, pyproject.toml, etc.)
-    3. Default to Python
-
-    Args:
-        project_dir: Path to the project directory
-
-    Returns:
-        Language key (e.g., 'python', 'go')
-    """
-    # First, check .asp.toml for explicit language declaration
-    asp_toml_path = project_dir / ".asp.toml"
-    if asp_toml_path.exists():
-        try:
-            with open(asp_toml_path, "rb") as f:
-                asp_data = tomllib.load(f)
-            language = asp_data.get("project", {}).get("language")
-            if language and language in LANGUAGE_CONFIGS:
-                return language
-        except Exception:
-            pass
-
-    # Check each language's detection files (non-Python first to avoid false positives)
-    # Python has pyproject.toml which is common, so check other languages first
-    for lang in ["go", "python"]:  # Order matters: more specific first
-        config = LANGUAGE_CONFIGS.get(lang)
-        if config:
-            for detection_file in config.get("detection_files", []):
-                if (project_dir / detection_file).exists():
-                    # For Python, also need to check it's not just a pyproject.toml
-                    # for a Go project (Go projects don't have pyproject.toml)
-                    if lang == "python":
-                        # Only return python if no other language indicators exist
-                        return lang
-                    return lang
-
-    # Default to Python
-    return "python"
-
-
-def get_asp_config_for_language(
-    project_dir: pathlib.Path, language: str
-) -> dict[str, Any] | None:
-    """Read ASP config based on language configuration.
-
-    Uses LANGUAGE_CONFIGS to determine where to look for config.
-
-    Args:
-        project_dir: Path to the project directory
-        language: Language key (e.g., 'python', 'go')
-
-    Returns:
-        The ASP config dict if found, None otherwise
-    """
-    lang_config = LANGUAGE_CONFIGS.get(language)
-    if not lang_config:
-        return None
-
-    config_file = lang_config.get("config_file")
-    config_path = lang_config.get("config_path", [])
-
-    if not config_file:
-        return None
-
-    config_file_path = project_dir / config_file
-    if not config_file_path.exists():
-        return None
-
-    try:
-        with open(config_file_path, "rb") as f:
-            data = tomllib.load(f)
-
-        # Navigate to the config path (e.g., ["tool", "agent-starter-pack"])
-        result = data
-        for key in config_path:
-            if isinstance(result, dict):
-                result = result.get(key)
-            else:
-                return None
-            if result is None:
-                return None
-
-        return result if isinstance(result, dict) else None
-    except Exception as e:
-        logging.debug(f"Could not read config from {config_file}: {e}")
-        return None
 
 
 def copy_project_files(

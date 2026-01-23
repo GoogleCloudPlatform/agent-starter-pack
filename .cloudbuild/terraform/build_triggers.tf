@@ -121,6 +121,10 @@ locals {
       value = "adk_java,cloud_run"
     },
     {
+      name  = "adk_ts-cloud_run"
+      value = "adk_ts,cloud_run"
+    },
+    {
       name  = "adk-cloud_run-bq-analytics"
       value = "adk,cloud_run,--bq-analytics"
     },
@@ -171,21 +175,45 @@ locals {
     ]
   }
 
+  # TypeScript-specific included files (different paths from Python)
+  # Only triggers when TypeScript-specific template files change
+  ts_agent_testing_included_files = {
+    "adk_ts-cloud_run" = [
+      # TypeScript agent-specific files
+      "agent_starter_pack/agents/adk_ts/**",
+      # Shared base template (affects all languages)
+      "agent_starter_pack/base_templates/_shared/**",
+      # TypeScript base template
+      "agent_starter_pack/base_templates/typescript/**",
+      # TypeScript deployment target (Cloud Run only for TypeScript)
+      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
+      "agent_starter_pack/deployment_targets/cloud_run/typescript/**",
+      # Common files
+      "agent_starter_pack/cli/**",
+      "tests/integration/test_template_linting.py",
+      "tests/integration/test_templated_patterns.py",
+      "agent_starter_pack/resources/locks/**",
+      "pyproject.toml",
+      "uv.lock",
+    ]
+  }
+
   agent_testing_included_files = {
-    # Python agents use Python-specific paths only, Go/Java have their own
+    # Python agents use Python-specific paths only, Go/Java/TypeScript have their own
     for combo in local.agent_testing_combinations :
     combo.name => (
       endswith(split(",", combo.value)[0], "_go") ? local.go_agent_testing_included_files[combo.name] :
       endswith(split(",", combo.value)[0], "_java") ? local.java_agent_testing_included_files[combo.name] :
+      endswith(split(",", combo.value)[0], "_ts") ? local.ts_agent_testing_included_files[combo.name] :
       [
         # Only include files for the specific agent being tested
         "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
         # Common files that affect all agents
         "agent_starter_pack/cli/**",
-        # Shared and Python base templates only (not Go/Java)
+        # Shared and Python base templates only (not Go/Java/TypeScript)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
-        # Python deployment targets only (not Go/Java)
+        # Python deployment targets only (not Go/Java/TypeScript)
         "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
         "agent_starter_pack/deployment_targets/agent_engine/python/**",
         "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
@@ -263,6 +291,10 @@ locals {
       name  = "adk_java-cloud_run"
       value = "adk_java,cloud_run"
     },
+    {
+      name  = "adk_ts-cloud_run"
+      value = "adk_ts,cloud_run"
+    },
   ]
 
   # Go-specific E2E included files
@@ -310,6 +342,29 @@ locals {
     ]
   }
 
+  # TypeScript-specific E2E included files
+  # Only triggers when TypeScript-specific template files change
+  ts_e2e_agent_deployment_included_files = {
+    "adk_ts-cloud_run" = [
+      # TypeScript agent-specific files
+      "agent_starter_pack/agents/adk_ts/**",
+      # Shared base template
+      "agent_starter_pack/base_templates/_shared/**",
+      # TypeScript base template
+      "agent_starter_pack/base_templates/typescript/**",
+      # TypeScript deployment target (Cloud Run only for TypeScript)
+      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
+      "agent_starter_pack/deployment_targets/cloud_run/typescript/**",
+      # Common files
+      "agent_starter_pack/cli/**",
+      "tests/cicd/test_e2e_deployment.py",
+      "agent_starter_pack/resources/locks/**",
+      "pyproject.toml",
+      "uv.lock",
+      ".cloudbuild/**",
+    ]
+  }
+
   # Create a safe trigger name by replacing underscores with hyphens and dots with hyphens
   # This ensures we have valid trigger names that don't exceed character limits
   trigger_name_safe = { for combo in local.agent_testing_combinations :
@@ -325,6 +380,7 @@ locals {
     combo.name => (
       endswith(split(",", combo.value)[0], "_go") ? local.go_e2e_agent_deployment_included_files[combo.name] :
       endswith(split(",", combo.value)[0], "_java") ? local.java_e2e_agent_deployment_included_files[combo.name] :
+      endswith(split(",", combo.value)[0], "_ts") ? local.ts_e2e_agent_deployment_included_files[combo.name] :
       combo.name == "adk-cloud_run-cloud_sql" ? [
         # Cloud SQL is Python Cloud Run only
         "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
@@ -342,11 +398,11 @@ locals {
         "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
         # Common files that affect all agents
         "agent_starter_pack/cli/**",
-        # Shared and Python base templates only (not Go/Java)
+        # Shared and Python base templates only (not Go/Java/TypeScript)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
         "agent_starter_pack/data_ingestion/**",
-        # Python deployment targets only (not Go/Java)
+        # Python deployment targets only (not Go/Java/TypeScript)
         "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
         "agent_starter_pack/deployment_targets/agent_engine/python/**",
         "agent_starter_pack/deployment_targets/cloud_run/_shared/**",

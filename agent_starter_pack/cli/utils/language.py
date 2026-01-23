@@ -14,8 +14,8 @@
 
 """Shared language configuration and utilities for CLI commands.
 
-This module centralizes language-specific configuration (Python, Go, Java) used by
-extract, enhance, and upgrade commands. It provides:
+This module centralizes language-specific configuration (Python, Go, Java, TypeScript)
+used by extract, enhance, and upgrade commands. It provides:
 
 - LANGUAGE_CONFIGS: Configuration dict for each supported language
 - detect_language(): Detect project language from files
@@ -90,6 +90,28 @@ LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
         "agent_variable": "ROOT_AGENT",
         "agent_in_subdirectory": True,  # Java uses package subdirectories
     },
+    "typescript": {
+        "detection_files": ["package.json", "tsconfig.json"],
+        "config_file": ".asp.toml",
+        "config_path": ["project"],
+        "version_key": "version",
+        "project_files": [
+            "package.json",
+            "package-lock.json",
+            "tsconfig.json",
+            "vitest.config.ts",
+            "eslint.config.mjs",
+            ".asp.toml",
+        ],
+        "lock_file": "package-lock.json",
+        "lock_command": ["npm", "install", "--package-lock-only"],
+        "lock_command_name": "npm install --package-lock-only",
+        "strip_dependencies": False,
+        "display_name": "TypeScript",
+        "agent_file": "agent.ts",
+        "agent_variable": "rootAgent",
+        "agent_in_subdirectory": False,
+    },
 }
 
 
@@ -147,9 +169,9 @@ def detect_language(project_dir: pathlib.Path) -> str:
         project_dir: Path to the project directory
 
     Returns:
-        Language key (e.g., 'python', 'go', 'java')
+        Language key (e.g., 'python', 'go', 'java', 'typescript')
     """
-    # First, check .asp.toml for explicit language declaration (Go uses this)
+    # First, check .asp.toml for explicit language declaration (Go, TypeScript use this)
     asp_toml_path = project_dir / ".asp.toml"
     if asp_toml_path.exists():
         try:
@@ -170,17 +192,24 @@ def detect_language(project_dir: pathlib.Path) -> str:
 
     # Check each language's detection files (non-Python first to avoid false positives)
     # Python has pyproject.toml which is common, so check other languages first
-    for lang in ["go", "java", "python"]:  # Order matters: more specific first
+    # TypeScript also needs to be checked before Python since both can coexist
+    for lang in [
+        "go",
+        "java",
+        "typescript",
+        "python",
+    ]:  # Order matters: more specific first
         config = LANGUAGE_CONFIGS.get(lang)
         if config:
-            for detection_file in config.get("detection_files", []):
-                if (project_dir / detection_file).exists():
-                    # For Python, also need to check it's not just a pyproject.toml
-                    # for a Go project (Go projects don't have pyproject.toml)
-                    if lang == "python":
-                        # Only return python if no other language indicators exist
-                        return lang
+            detection_files = config.get("detection_files", [])
+            # For TypeScript, require both package.json AND tsconfig.json
+            if lang == "typescript":
+                if all((project_dir / f).exists() for f in detection_files):
                     return lang
+            else:
+                for detection_file in detection_files:
+                    if (project_dir / detection_file).exists():
+                        return lang
 
     # Default to Python
     return "python"
@@ -369,10 +398,11 @@ def find_agent_file(
     For Python: {agent_directory}/agent.py
     For Go: {agent_directory}/agent.go
     For Java: {agent_directory}/**/Agent.java (searches package subdirectories)
+    For TypeScript: {agent_directory}/agent.ts
 
     Args:
         project_dir: Project root directory
-        language: Language key ('python', 'go', 'java')
+        language: Language key ('python', 'go', 'java', 'typescript')
         agent_directory: Agent directory relative to project root
 
     Returns:
@@ -462,6 +492,10 @@ def get_agent_file_hint(
     # Check for Go agent.go
     if (dir_path / "agent.go").exists():
         return " (has agent.go)"
+
+    # Check for TypeScript agent.ts
+    if (dir_path / "agent.ts").exists():
+        return " (has agent.ts)"
 
     # Check for Python agent.py
     if (dir_path / "agent.py").exists():

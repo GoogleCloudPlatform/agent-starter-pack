@@ -121,6 +121,19 @@ def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
             },
         }
 
+    # For TypeScript projects, normalize the config structure (same as Go)
+    if language == "typescript":
+        return {
+            "base_template": config.get("base_template"),
+            "asp_version": config.get("version"),
+            "agent_directory": config.get("agent_directory", "app"),
+            "language": config.get("language", "typescript"),
+            "create_params": {
+                "deployment_target": config.get("deployment_target"),
+                "cicd_runner": config.get("cicd_runner"),
+            },
+        }
+
     # For Python, add language key and return as-is
     config["language"] = language
     return config
@@ -802,15 +815,18 @@ def enhance(
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
 
-        # Detect if this is a Go or Java project from base_template or config
+        # Detect if this is a Go, Java, or TypeScript project from base_template or config
         is_go_project = base_template and base_template.endswith("_go")
         is_java_project = base_template and base_template.endswith("_java")
+        is_ts_project = base_template and base_template.endswith("_ts")
         asp_config = get_project_asp_config(current_dir)
         if asp_config:
             if asp_config.get("language") == "go":
                 is_go_project = True
             elif asp_config.get("language") == "java":
                 is_java_project = True
+            elif asp_config.get("language") == "typescript":
+                is_ts_project = True
 
         # Determine agent directory: CLI param > config detection > language default
         if is_go_project:
@@ -930,6 +946,8 @@ def enhance(
                 language = "go"
             elif is_java_project:
                 language = "java"
+            elif is_ts_project:
+                language = "typescript"
 
             lang_config = get_language_config(language)
             is_adk = base_template and "adk" in base_template.lower()

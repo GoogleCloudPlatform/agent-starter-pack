@@ -19,6 +19,7 @@ import "./App.scss";
 import { LiveAPIProvider } from "./contexts/LiveAPIContext";
 import SidePanel from "./components/side-panel/SidePanel";
 import cn from "classnames";
+import { RomLauncher } from "./components/rom/RomLauncher";
 
 // In development mode (frontend on :8501), connect to backend on :8000
 const isDevelopment = window.location.port === '8501';
@@ -54,6 +55,9 @@ function App() {
                 autoPlay
                 playsInline
               />
+            </div>
+            <div style={{ padding: "24px 16px" }}>
+              <RomLauncher />
             </div>
           </main>
         </div>

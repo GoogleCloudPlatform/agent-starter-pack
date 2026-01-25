@@ -11,7 +11,7 @@ resolution-markers = [
 
 [[package]]
 name = "agent-starter-pack"
-version = "0.31.5"
+version = "0.31.8"
 source = { editable = "." }
 dependencies = [
     { name = "backoff" },

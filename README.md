@@ -99,7 +99,7 @@ The `agent-starter-pack` offers key features to accelerate and simplify the deve
 
 This starter pack covers all aspects of Agent development, from prototyping and evaluation to deployment and monitoring.
 
-![High Level Architecture](docs/images/ags_high_level_architecture.png "Architecture")
+![High Level Architecture](docs/images/asp_high_level_architecture.png "Architecture")
 
 ---
 
@@ -126,7 +126,7 @@ Visit our [documentation site](https://googlecloudplatform.github.io/agent-start
 
 ### Video Walkthrough:
 
-- **[Exploring the Agent Starter Pack](https://www.youtube.com/watch?v=9zqwym-N3lg)**: A comprehensive tutorial demonstrating how to rapidly deploy AI Agents using the Agent Starter Pack, covering architecture, templates, and step-by-step deployment.
+- **[From Demo to Production with Agent Starter Pack](https://www.youtube.com/watch?v=mtJMYgJkTt8)**: Learn how the Agent Starter Pack acts as an Automated Architect, building the professional infrastructure for your AI project in seconds. Covers why most AI projects fail at deployment and how ASP automates Terraform, CI/CD, and observability.
 
 - **[6-minute introduction](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791)** (April 2024): Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 

@@ -78,6 +78,7 @@ build-inspector-if-needed:
 # ==============================================================================
 
 # Deploy the agent remotely
+# Usage: make deploy [AGENT_IDENTITY=true] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
 deploy:
 	# Export dependencies to requirements file using uv export.
 	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_a2a/app_utils/.requirements.txt 2>/dev/null || \
@@ -86,7 +87,8 @@ deploy:
 		--source-packages=./test_a2a \
 		--entrypoint-module=test_a2a.agent_engine_app \
 		--entrypoint-object=agent_engine \
-		--requirements-file=test_a2a/app_utils/.requirements.txt
+		--requirements-file=test_a2a/app_utils/.requirements.txt \
+		$(if $(AGENT_IDENTITY),--agent-identity)
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy

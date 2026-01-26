@@ -31,9 +31,13 @@ else:
 # Patterns use {agent_directory} placeholder replaced at runtime
 FILE_CATEGORIES = {
     "agent_code": [  # Never modified
+        # Python agent code
         "{agent_directory}/agent.py",
         "{agent_directory}/tools/**/*.py",
         "{agent_directory}/prompts/**/*.py",
+        # Go agent code
+        "{agent_directory}/agent.go",
+        "{agent_directory}/**/*.go",
     ],
     "config_files": [  # Never overwritten
         "deployment/vars/*.tfvars",
@@ -41,7 +45,13 @@ FILE_CATEGORIES = {
         "*.env",
     ],
     "dependencies": [  # Special merge handling
+        # Python dependencies
         "pyproject.toml",
+        # Go dependencies
+        "go.mod",
+        "go.sum",
+        # Go ASP config
+        ".asp.toml",
     ],
     # Everything else is "scaffolding" (3-way compare)
 }

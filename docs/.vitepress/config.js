@@ -111,6 +111,8 @@ export default defineConfig({
         items: [
           { text: 'create', link: '/cli/create' },
           { text: 'enhance', link: '/cli/enhance' },
+          { text: 'extract', link: '/cli/extract' },
+          { text: 'upgrade', link: '/cli/upgrade' },
           { text: 'list', link: '/cli/list' },
           { text: 'register-gemini-enterprise', link: '/cli/register_gemini_enterprise' },
           { text: 'setup-cicd', link: '/cli/setup_cicd' }

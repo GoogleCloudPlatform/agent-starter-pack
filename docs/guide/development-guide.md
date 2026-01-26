@@ -177,7 +177,26 @@ Track your agent's performance using integrated observability tools. OpenTelemet
 
 ➡️ For complete setup instructions, example queries, and testing in dev, see the [Observability Guide](./observability.md).
 
-## 4. Advanced Customization
+## 4. Keeping Your Project Up-to-Date
+
+As agent-starter-pack evolves with new features, security fixes, and best practices, you can upgrade your existing projects to newer versions using the `upgrade` command.
+
+```bash
+# Preview what would change
+uvx agent-starter-pack upgrade --dry-run
+
+# Apply the upgrade
+uvx agent-starter-pack upgrade
+```
+
+The upgrade uses an intelligent 3-way merge:
+- **Auto-updates** scaffolding files you haven't modified
+- **Preserves** your customizations when ASP hasn't changed those files
+- **Prompts** you to resolve conflicts when both have changed
+
+➡️ See the [`upgrade` CLI reference](../cli/upgrade.md) for detailed usage.
+
+## 5. Advanced Customization
 
 Tailor the starter pack further to meet your specific requirements.
 

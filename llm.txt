@@ -127,6 +127,81 @@ uvx agent-starter-pack enhance . \
 
 ---
 
+### `agent-starter-pack extract` Command
+
+Creates a minimal, shareable version of an agent by stripping deployment scaffolding while preserving core agent logic.
+
+**Usage:**
+```bash
+agent-starter-pack extract OUTPUT_PATH [OPTIONS]
+```
+
+**Key Options:**
+*   `OUTPUT_PATH`: Required destination directory for extracted agent
+*   `--source, -s`: Source project directory (default: `.`)
+*   `--dry-run`: Preview what would be extracted without making changes
+*   `--force, -f`: Overwrite output directory if it exists
+
+**What Gets Extracted:**
+- Agent directory (e.g., `app/`) with `agent.py` and custom modules
+- `pyproject.toml` (scaffolding dependencies removed)
+- Minimal `Makefile` and `README.md`
+
+**What Gets Removed:**
+- `deployment/`, `.github/`, `.cloudbuild/`, `frontend/`, `data_ingestion/`, `notebooks/`, `tests/`
+- Scaffolding files: `fast_api_app.py`, `agent_engine_app.py`, `app_utils/`
+
+**Example:**
+```bash
+# Extract current project to shareable form
+uvx agent-starter-pack extract ../my-agent-share
+
+# Preview changes first
+uvx agent-starter-pack extract ../my-agent-share --dry-run
+```
+
+**Workflow:** Use `extract` to share agents, then recipients use `enhance` to add their own deployment infrastructure.
+
+---
+
+### `agent-starter-pack upgrade` Command
+
+Upgrades projects to newer ASP versions using intelligent 3-way merge.
+
+**Usage:**
+```bash
+agent-starter-pack upgrade [PROJECT_PATH] [OPTIONS]
+```
+
+**Key Options:**
+*   `PROJECT_PATH`: Project to upgrade (default: `.`)
+*   `--dry-run`: Preview changes without applying them
+*   `--auto-approve, -y`: Auto-apply non-conflicting changes without prompts
+
+**3-Way Merge Logic:**
+- **You unchanged, ASP updated** → Auto-update the file
+- **You modified, ASP unchanged** → Preserve your version
+- **Both changed** → Prompt to resolve conflict
+- **New ASP file** → Prompt to add
+- **Removed in ASP** → Prompt to remove
+
+**Files Never Modified:**
+- Agent code (`app/agent.py`, custom modules)
+- Configuration files (`.env`, secrets)
+
+**Example:**
+```bash
+# Preview upgrade changes
+uvx agent-starter-pack upgrade --dry-run
+
+# Apply upgrade with auto-approve for non-conflicts
+uvx agent-starter-pack upgrade -y
+```
+
+**Requirements:** Requires `uvx` and project must have `asp_version` in `[tool.agent-starter-pack]` section of `pyproject.toml`.
+
+---
+
 ### Available Agent Templates
 
 Templates for the `create` command (via `-a` or `--agent`):

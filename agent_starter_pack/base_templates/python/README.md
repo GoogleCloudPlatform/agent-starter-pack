@@ -348,4 +348,14 @@ The application provides two levels of observability:
 {%- endif %}
 
 See the [observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html) for detailed instructions, example queries, and visualization options.
+
+## Keeping Up-to-Date
+
+To upgrade this project to the latest agent-starter-pack version:
+
+```bash
+uvx agent-starter-pack upgrade
+```
+
+This intelligently merges updates while preserving your customizations. Use `--dry-run` to preview changes first. See the [upgrade CLI reference](https://googlecloudplatform.github.io/agent-starter-pack/cli/upgrade.html) for details.
 {%- endif %}

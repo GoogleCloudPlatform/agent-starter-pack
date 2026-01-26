@@ -219,7 +219,6 @@ from locust import HttpUser, between, task
 {%- elif cookiecutter.is_adk %}
 import uuid
 
-import requests
 from locust import HttpUser, between, task
 {%- else %}
 
@@ -287,12 +286,10 @@ class ChatStreamUser(HttpUser):
         user_id = f"user_{uuid.uuid4()}"
         session_data = {"state": {"preferred_language": "English", "visit_count": 1}}
 
-        session_url = f"{self.client.base_url}/apps/{{cookiecutter.agent_directory}}/users/{user_id}/sessions"
-        session_response = requests.post(
-            session_url,
+        session_response = self.client.post(
+            f"/apps/{{cookiecutter.agent_directory}}/users/{user_id}/sessions",
             headers=headers,
             json=session_data,
-            timeout=10,
         )
 
         # Get session_id from response

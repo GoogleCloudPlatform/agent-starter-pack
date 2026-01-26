@@ -79,6 +79,26 @@ def parse_key_value_pairs(kv_string: str | None) -> dict[str, str]:
     return result
 
 
+def parse_secrets(secrets_string: str | None) -> dict[str, dict[str, str]]:
+    """Parse secrets from ENV_VAR=SECRET_ID or ENV_VAR=SECRET_ID:VERSION format."""
+    raw = parse_key_value_pairs(secrets_string)
+    result: dict[str, dict[str, str]] = {}
+    for key, spec in raw.items():
+        if ":" not in spec:
+            secret_id, version = spec, "latest"
+        else:
+            secret_id, _, version = spec.rpartition(":")
+        result[key] = {"secret": secret_id, "version": version}
+    return result
+
+
+def format_env_value(value: Any) -> str:
+    """Format an env var value for display, masking secrets."""
+    if isinstance(value, dict) and "secret" in value and "version" in value:
+        return f"[secret:{value['secret']}:{value['version']}]"
+    return str(value)
+
+
 def write_deployment_metadata(
     remote_agent: Any,
     metadata_file: str = "deployment_metadata.json",
@@ -220,6 +240,11 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
     help="Comma-separated list of environment variables in KEY=VALUE format",
 )
 @click.option(
+    "--set-secrets",
+    default=None,
+    help="Comma-separated secrets: ENV_VAR=SECRET_ID or ENV_VAR=SECRET_ID:VERSION",
+)
+@click.option(
     "--labels",
     default=None,
     help="Comma-separated list of labels in KEY=VALUE format",
@@ -279,6 +304,7 @@ def deploy_agent_engine_app(
     entrypoint_object: str,
     requirements_file: str,
     set_env_vars: str | None,
+    set_secrets: str | None,
     labels: str | None,
     service_account: str | None,
     min_instances: int,
@@ -294,9 +320,13 @@ def deploy_agent_engine_app(
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    # Parse CLI environment variables and labels
-    env_vars = parse_key_value_pairs(set_env_vars)
+    # Parse CLI environment variables, secrets, and labels
+    env_vars: dict[str, Any] = parse_key_value_pairs(set_env_vars)
+    secrets = parse_secrets(set_secrets)
     labels_dict = parse_key_value_pairs(labels)
+
+    # Merge secrets into env_vars (secrets override plain env vars)
+    env_vars.update(secrets)  # type: ignore[arg-type]
 
     # Set deployment-specific environment variables
     env_vars["GOOGLE_CLOUD_REGION"] = location
@@ -338,7 +368,7 @@ def deploy_agent_engine_app(
     if env_vars:
         click.echo("\n🌍 Environment Variables:")
         for key, value in sorted(env_vars.items()):
-            click.echo(f"  {key}: {value}")
+            click.echo(f"  {key}: {format_env_value(value)}")
 
     source_packages_list = list(source_packages)
 

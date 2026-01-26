@@ -84,16 +84,17 @@ def parse_secrets(secrets_string: str | None) -> dict[str, dict[str, str]]:
     raw = parse_key_value_pairs(secrets_string)
     result: dict[str, dict[str, str]] = {}
     for key, spec in raw.items():
-        secret_id, _, version = spec.rpartition(":")
-        if not secret_id:  # No colon found, spec is the secret_id
+        if ":" not in spec:
             secret_id, version = spec, "latest"
+        else:
+            secret_id, _, version = spec.rpartition(":")
         result[key] = {"secret": secret_id, "version": version}
     return result
 
 
 def format_env_value(value: Any) -> str:
     """Format an env var value for display, masking secrets."""
-    if isinstance(value, dict) and "secret" in value:
+    if isinstance(value, dict) and "secret" in value and "version" in value:
         return f"[secret:{value['secret']}:{value['version']}]"
     return str(value)
 
@@ -325,7 +326,7 @@ def deploy_agent_engine_app(
     labels_dict = parse_key_value_pairs(labels)
 
     # Merge secrets into env_vars (secrets override plain env vars)
-    env_vars.update(secrets)
+    env_vars.update(secrets)  # type: ignore[arg-type]
 
     # Set deployment-specific environment variables
     env_vars["GOOGLE_CLOUD_REGION"] = location

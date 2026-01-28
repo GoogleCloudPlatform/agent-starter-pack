@@ -43,6 +43,7 @@ from ..utils.language import (
     get_asp_config_for_language,
 )
 from ..utils.logging import handle_cli_error
+from ..utils.template import generate_java_package_vars
 
 # Path to base templates directory
 BASE_TEMPLATES_DIR = pathlib.Path(__file__).parent.parent.parent / "base_templates"
@@ -130,17 +131,31 @@ def detect_agent_directory(
     # Try common patterns
     for candidate in ["app", "agent", "src"]:
         candidate_path = project_dir / candidate
-        if candidate_path.is_dir() and (candidate_path / "agent.py").exists():
-            return candidate
+        if candidate_path.is_dir():
+            # Check for Python agent
+            if (candidate_path / "agent.py").exists():
+                return candidate
+            # Check for Go agent
+            if (candidate_path / "agent.go").exists():
+                return candidate
+            # Check for Java Maven structure
+            java_main_path = candidate_path / "main" / "java"
+            if java_main_path.is_dir():
+                return candidate
 
-    # Fallback: look for any directory with agent.py
+    # Fallback: look for any directory with agent.py or agent.go
     for item in project_dir.iterdir():
-        if (
-            item.is_dir()
-            and not item.name.startswith(".")
-            and (item / "agent.py").exists()
-        ):
-            return item.name
+        if item.is_dir() and not item.name.startswith("."):
+            if (item / "agent.py").exists():
+                return item.name
+            if (item / "agent.go").exists():
+                return item.name
+
+    # Check for Java project at root (src/main/java structure)
+    if (project_dir / "pom.xml").exists():
+        src_main_java = project_dir / "src" / "main" / "java"
+        if src_main_java.is_dir():
+            return "src/main/java"
 
     return "app"  # Default fallback
 
@@ -680,9 +695,10 @@ def extract(
         copy_project_files(source_dir, output_dir, language)
 
     console.print("  • Generating minimal Makefile...")
+    project_name = asp_config.get("name", "agent") if asp_config else "agent"
     template_context = {
         "agent_directory": agent_directory,
-        "project_name": asp_config.get("name", "agent") if asp_config else "agent",
+        "project_name": project_name,
         "is_adk": is_adk,
         "is_adk_live": asp_config.get("is_adk_live", False) if asp_config else False,
         "is_a2a": asp_config.get("is_a2a", False) if asp_config else False,
@@ -693,6 +709,10 @@ def extract(
         ),
         "settings": {},  # Required by template for command overrides
     }
+    # Add Java-specific template vars
+    if language == "java":
+        java_vars = generate_java_package_vars(project_name)
+        template_context.update(java_vars)
     try:
         makefile_content = render_makefile_template(language, template_context)
     except Exception as e:

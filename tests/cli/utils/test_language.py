@@ -54,6 +54,20 @@ class TestLanguageConfigs:
         assert go_config["strip_dependencies"] is False
         assert go_config["display_name"] == "Go"
 
+    def test_java_config_exists(self) -> None:
+        """Test that Java configuration exists and is complete."""
+        assert "java" in LANGUAGE_CONFIGS
+        java_config = LANGUAGE_CONFIGS["java"]
+        assert java_config["detection_files"] == ["pom.xml"]
+        assert java_config["config_file"] == "pom.xml"
+        assert java_config["config_format"] == "maven_properties"
+        assert java_config["config_path"] == []
+        assert java_config["version_key"] == "asp.version"
+        assert java_config["lock_command"] == ["mvn", "dependency:resolve"]
+        assert java_config["strip_dependencies"] is False
+        assert java_config["display_name"] == "Java"
+        assert java_config["lock_file"] is None
+
     def test_all_configs_have_required_keys(self) -> None:
         """Test that all language configs have consistent structure."""
         required_keys = [
@@ -89,6 +103,15 @@ class TestDetectLanguage:
 
         result = detect_language(tmp_path)
         assert result == "go"
+
+    def test_detect_java_from_pom_xml(self, tmp_path: pathlib.Path) -> None:
+        """Test detection of Java project from pom.xml."""
+        (tmp_path / "pom.xml").write_text(
+            '<?xml version="1.0"?><project><artifactId>test</artifactId></project>'
+        )
+
+        result = detect_language(tmp_path)
+        assert result == "java"
 
     def test_detect_from_asp_toml_language_field(self, tmp_path: pathlib.Path) -> None:
         """Test detection from explicit language field in .asp.toml."""
@@ -159,6 +182,33 @@ deployment_target = "cloud_run"
         assert config["base_template"] == "adk_go"
         assert config["version"] == "0.31.0"
 
+    def test_read_java_config(self, tmp_path: pathlib.Path) -> None:
+        """Test reading ASP config from pom.xml Maven properties for Java."""
+        pom_content = """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-agent</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-agent</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.version>0.31.0</asp.version>
+    <asp.deployment_target>cloud_run</asp.deployment_target>
+  </properties>
+</project>
+"""
+        (tmp_path / "pom.xml").write_text(pom_content)
+
+        config = get_asp_config_for_language(tmp_path, "java")
+
+        assert config is not None
+        assert config["name"] == "test-java-agent"
+        assert config["language"] == "java"
+        assert config["base_template"] == "adk_java"
+        assert config["version"] == "0.31.0"
+
     def test_missing_config_file_returns_none(self, tmp_path: pathlib.Path) -> None:
         """Test that missing config file returns None."""
         config = get_asp_config_for_language(tmp_path, "python")
@@ -192,6 +242,12 @@ class TestGetLanguageConfig:
         config = get_language_config("go")
         assert config["display_name"] == "Go"
         assert config["config_file"] == ".asp.toml"
+
+    def test_returns_java_config(self) -> None:
+        """Test getting Java configuration."""
+        config = get_language_config("java")
+        assert config["display_name"] == "Java"
+        assert config["config_file"] == "pom.xml"
 
     def test_returns_python_for_unknown(self) -> None:
         """Test that unknown language falls back to Python config."""
@@ -236,6 +292,29 @@ version = "0.30.0"
         assert result is True
         content = (tmp_path / ".asp.toml").read_text()
         assert 'version = "0.31.0"' in content
+        assert "0.30.0" not in content
+
+    def test_update_java_version(self, tmp_path: pathlib.Path) -> None:
+        """Test updating version in pom.xml Maven properties for Java."""
+        pom_content = """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java</asp.name>
+    <asp.version>0.30.0</asp.version>
+  </properties>
+</project>
+"""
+        (tmp_path / "pom.xml").write_text(pom_content)
+
+        result = update_asp_version(tmp_path, "java", "0.31.0")
+
+        assert result is True
+        content = (tmp_path / "pom.xml").read_text()
+        assert "<asp.version>0.31.0</asp.version>" in content
         assert "0.30.0" not in content
 
     def test_update_single_quoted_version(self, tmp_path: pathlib.Path) -> None:

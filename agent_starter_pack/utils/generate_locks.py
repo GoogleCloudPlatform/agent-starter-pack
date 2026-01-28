@@ -197,8 +197,8 @@ def main(template: pathlib.Path) -> None:
 
     # Generate Python lock files
     for agent_name, config in agent_configs.items():
-        # Skip Go agents (they use go.sum, not uv.lock)
-        if config.get("language") == "go":
+        # Skip Go and Java agents (they use their own dependency management)
+        if config.get("language") in ("go", "java"):
             continue
 
         for target in config["deployment_targets"]:

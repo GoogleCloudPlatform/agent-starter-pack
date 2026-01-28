@@ -266,15 +266,19 @@ def add_base_template_dependencies_interactively(
         return False
 
 
-def validate_agent_directory_name(agent_dir: str, allow_dot: bool = False) -> None:
-    """Validate that an agent directory name is a valid Python identifier.
+def validate_agent_directory_name(
+    agent_dir: str, allow_dot: bool = False, language: str = "python"
+) -> None:
+    """Validate that an agent directory name is a valid identifier for the language.
 
     Args:
         agent_dir: The agent directory name to validate
         allow_dot: If True, allows "." as a special value indicating flat structure
+        language: The project language (python, go, java). Validation rules are
+            only enforced for Python projects since they need valid module names.
 
     Raises:
-        ValueError: If the agent directory name is not a valid Python identifier
+        ValueError: If the agent directory name is not valid for the language
 
     Note:
         The special value "." indicates flat structure - agent code is in the
@@ -288,6 +292,11 @@ def validate_agent_directory_name(agent_dir: str, allow_dot: bool = False) -> No
             "Agent directory '.' is not valid in this context. "
             "Use '.' only to indicate flat structure templates."
         )
+
+    # Only validate Python identifier rules for Python projects
+    # Go and Java have different directory structure requirements
+    if language != "python":
+        return
 
     if "-" in agent_dir:
         raise ValueError(
@@ -345,8 +354,36 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine"]
-SUPPORTED_LANGUAGES = ["python", "go"]
+SUPPORTED_LANGUAGES = ["python", "go", "java"]
 DEFAULT_FRONTEND = "None"
+
+
+def generate_java_package_vars(project_name: str) -> dict[str, str]:
+    """Generate Java package variables from project name.
+
+    Args:
+        project_name: The project name (e.g., "my-agent", "myAgent")
+
+    Returns:
+        Dict with java_package and java_package_path
+    """
+    # Sanitize for Java conventions: lowercase, no hyphens, no dots
+    sanitized = project_name.lower().replace("-", "_").replace(".", "_")
+
+    # Remove leading digits if any
+    if sanitized and sanitized[0].isdigit():
+        sanitized = "_" + sanitized
+
+    # Package name is just the sanitized project name
+    java_package = sanitized
+
+    # Package path is the same (single-level package)
+    java_package_path = sanitized
+
+    return {
+        "java_package": java_package,
+        "java_package_path": java_package_path,
+    }
 
 
 def get_available_agents(deployment_target: str | None = None) -> dict:
@@ -366,6 +403,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "agentic_rag": 3,
         "langgraph": 0,
         "adk_go": 0,
+        "adk_java": 0,
     }
 
     agents_list = []
@@ -415,11 +453,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                 except Exception as e:
                     logging.warning(f"Could not load agent from {agent_dir}: {e}")
 
-    # Define group order: Python ADK, Python LangGraph, Go ADK, Other
+    # Define group order: Python ADK, Python LangGraph, Go ADK, Java ADK, Other
     GROUP_ORDER = {
         ("python", "adk"): 0,
         ("python", "langgraph"): 1,
         ("go", "adk"): 2,
+        ("java", "adk"): 3,
     }
 
     def sort_key(agent: dict) -> tuple:
@@ -945,7 +984,9 @@ def process_template(
     console = Console()
 
     def get_agent_directory(
-        template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
+        template_config: dict[str, Any],
+        cli_overrides: dict[str, Any] | None = None,
+        language: str = "python",
     ) -> str:
         """Get agent directory with CLI override support.
 
@@ -978,8 +1019,8 @@ def process_template(
                 logging.debug("Flat structure (-dir .): using 'app' as fallback")
                 agent_dir = "app"
 
-        # Validate agent directory is a valid Python identifier
-        validate_agent_directory_name(agent_dir)
+        # Validate agent directory is valid for the language
+        validate_agent_directory_name(agent_dir, language=language)
 
         return agent_dir
 
@@ -1047,8 +1088,9 @@ def process_template(
             else:
                 template_path = pathlib.Path(template_dir)
                 early_config = load_template_config(template_path)
-            agent_directory = get_agent_directory(early_config, cli_overrides)
+            # Get language first so we can pass it to get_agent_directory
             language = get_agent_language(agent_name, remote_config)
+            agent_directory = get_agent_directory(early_config, cli_overrides, language)
 
             # Base paths for template structure
             base_templates_path = (
@@ -1171,7 +1213,9 @@ def process_template(
 
             # 6. Copy agent-specific files to override base template (using final config)
             if agent_path.exists():
-                agent_directory = get_agent_directory(template_config, cli_overrides)
+                agent_directory = get_agent_directory(
+                    template_config, cli_overrides, language
+                )
 
                 # For remote/local templates with base_template override, always use "app"
                 # as the source directory since base templates store agent code in "app/"
@@ -1246,6 +1290,11 @@ def process_template(
             with open(llm_txt_path, encoding="utf-8") as txt_file:
                 llm_txt_content = txt_file.read()
 
+            # Generate Java package variables if language is Java
+            java_vars = (
+                generate_java_package_vars(project_name) if language == "java" else {}
+            )
+
             cookiecutter_config = {
                 "project_name": project_name,
                 "agent_name": agent_name,
@@ -1268,7 +1317,9 @@ def process_template(
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
-                "agent_directory": get_agent_directory(template_config, cli_overrides),
+                "agent_directory": get_agent_directory(
+                    template_config, cli_overrides, language
+                ),
                 "agent_garden": agent_garden,
                 "agent_sample_id": agent_sample_id or "",
                 "agent_sample_publisher": agent_sample_publisher or "",
@@ -1276,6 +1327,9 @@ def process_template(
                 "google_cloud_project": google_cloud_project or "your-gcp-project-id",
                 "adk_cheatsheet": adk_cheatsheet_content,
                 "llm_txt": llm_txt_content,
+                # Java package variables (only populated for Java projects)
+                "java_package": java_vars.get("java_package", ""),
+                "java_package_path": java_vars.get("java_package_path", ""),
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files
@@ -1611,7 +1665,9 @@ def process_template(
             )
 
             # Delete appropriate files based on ADK tag
-            agent_directory = get_agent_directory(template_config, cli_overrides)
+            agent_directory = get_agent_directory(
+                template_config, cli_overrides, language
+            )
 
             # Handle YAML config agents for in-folder mode
             # This runs after all files have been copied to the final destination

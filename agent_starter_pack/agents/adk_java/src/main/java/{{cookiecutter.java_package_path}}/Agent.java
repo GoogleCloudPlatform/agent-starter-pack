@@ -19,20 +19,19 @@ import com.google.adk.agents.LlmAgent;
 import com.google.adk.tools.Annotations.Schema;
 import com.google.adk.tools.FunctionTool;
 import com.google.adk.webservice.A2ARemoteConfiguration;
+import java.util.List;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
-
-/**
- * Agent implementation with weather tool.
- *
- * <p>Includes A2A protocol support via Spring configuration.
- * A2A endpoint: /a2a/remote/v1/message:send
- */
 @Configuration
 @Import(A2ARemoteConfiguration.class)
+@ComponentScan(basePackages = "{{cookiecutter.java_package}}")
 public class Agent {
 
     public static final BaseAgent ROOT_AGENT =
@@ -47,25 +46,37 @@ public class Agent {
             .tools(FunctionTool.create(Agent.class, "getWeather"))
             .build();
 
-    /**
-     * Provides the root agent as a Spring bean for A2A protocol support.
-     */
+    /** Exposes ROOT_AGENT as a Spring bean for A2A protocol support. */
     @Bean
     public BaseAgent rootAgent() {
         return ROOT_AGENT;
     }
 
-    /**
-     * Get the current weather for a city.
-     *
-     * @param city The city to get weather for
-     * @return A map containing status and weather report
-     */
     public static Map<String, String> getWeather(
         @Schema(name = "city", description = "The city to get weather for")
         String city) {
         return Map.of(
             "status", "success",
             "report", "The weather in " + city + " is sunny with a high of 75°F.");
+    }
+
+    @RestController
+    public static class AgentCardController {
+
+        @Value("${APP_URL:http://localhost:8080}")
+        private String appUrl;
+
+        @GetMapping("/.well-known/agent-card.json")
+        public Map<String, Object> getAgentCard() {
+            return Map.of(
+                "name", ROOT_AGENT.name(),
+                "description", ROOT_AGENT.description(),
+                "url", appUrl + "/a2a/remote/v1",
+                "version", "1.0.0",
+                "capabilities", Map.of("streaming", false),
+                "defaultInputModes", List.of("text/plain"),
+                "defaultOutputModes", List.of("application/json")
+            );
+        }
     }
 }

@@ -35,11 +35,16 @@ install:
 # ==============================================================================
 
 # Launch local dev playground with web UI
+# Endpoints:
+#   - Dev UI:     http://localhost:8080/dev-ui/
+#   - A2A:        http://localhost:8080/a2a/remote/v1/message:send
+#   - AgentCard:  http://localhost:8080/.well-known/agent-card.json
 playground:
 	@echo "==============================================================================="
 	@echo "| Starting your agent playground...                                           |"
 	@echo "|                                                                             |"
 	@echo "| Open: http://localhost:8080/dev-ui/                                         |"
+	@echo "| AgentCard: http://localhost:8080/.well-known/agent-card.json                |"
 	@echo "| Try asking: What's the weather in San Francisco?                            |"
 	@echo "==============================================================================="
 	mvn compile exec:java

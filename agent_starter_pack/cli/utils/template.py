@@ -368,7 +368,7 @@ def generate_java_package_vars(project_name: str) -> dict[str, str]:
         Dict with java_package and java_package_path
     """
     # Sanitize for Java conventions: lowercase, no hyphens, no dots
-    sanitized = project_name.lower().replace("-", "_").replace(".", "_")
+    sanitized =  "".join(c for c in project_name.lower() if c.isalnum())
 
     # Remove leading digits if any
     if sanitized and sanitized[0].isdigit():
@@ -1244,6 +1244,22 @@ def process_template(
                         overwrite=True,
                         agent_directory=agent_directory,
                     )
+
+                # For Java templates, also copy src/test if it exists
+                if language == "java":
+                    source_test_folder = agent_path / "src" / "test"
+                    target_test_folder = project_template / "src" / "test"
+                    if source_test_folder.exists():
+                        logging.debug(
+                            f"6b. Copying Java test folder src/test with override"
+                        )
+                        copy_files(
+                            source_test_folder,
+                            target_test_folder,
+                            agent_name,
+                            overwrite=True,
+                            agent_directory=agent_directory,
+                        )
 
                 # Copy other folders (frontend, tests, notebooks)
                 other_folders = ["frontend", "tests", "notebooks"]

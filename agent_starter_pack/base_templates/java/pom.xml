@@ -64,13 +64,6 @@
       <artifactId>google-adk-a2a-webservice</artifactId>
       <version>${adk.version}</version>
     </dependency>
-    <!-- Logging -->
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>2.0.17</version>
-    </dependency>
-
     <!-- Test dependencies -->
     <dependency>
       <groupId>org.junit.jupiter</groupId>

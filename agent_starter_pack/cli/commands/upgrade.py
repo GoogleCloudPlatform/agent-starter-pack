@@ -413,6 +413,7 @@ def upgrade(
     # Get language from metadata for language-aware operations
     language = metadata.get("language", "python")
 
+    # Version is normalized to asp_version by get_project_asp_config
     old_version = metadata.get("asp_version")
     if not old_version:
         console.print(

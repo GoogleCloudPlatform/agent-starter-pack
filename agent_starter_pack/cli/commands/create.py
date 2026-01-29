@@ -884,9 +884,13 @@ def create(
                 console.print(
                     "> Continuing with template processing...", style="yellow"
                 )
-        elif skip_checks and not google_api_key and final_agent.endswith("_go"):
-            # For Go templates, try to get project ID from gcloud config even when skipping checks
-            # This is needed because Go's .env requires a valid project ID for local development
+        elif (
+            skip_checks
+            and not google_api_key
+            and (final_agent.endswith("_go") or final_agent.endswith("_java"))
+        ):
+            # For Go/Java templates, try to get project ID from gcloud config even when skipping checks
+            # This is needed because Go/Java's .env requires a valid project ID for local development
             try:
                 result = subprocess.run(
                     ["gcloud", "config", "get-value", "project"],
@@ -1073,9 +1077,10 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
 
     # Group headers for display
     GROUP_HEADERS = {
-        ("python", "adk"): "🐍 Python (ADK)",
-        ("python", "langgraph"): "🦜 Python (LangGraph)",
-        ("go", "adk"): "🔵 Go (ADK)",
+        ("python", "adk"): "\U0001F40D Python (ADK)",
+        ("python", "langgraph"): "\U0001F99C Python (LangGraph)",
+        ("go", "adk"): "\U0001F535 Go (ADK)",
+        ("java", "adk"): "\u2615\uFE0F Java (ADK)",
     }
 
     console.print("\n> Please select an agent to get started:")

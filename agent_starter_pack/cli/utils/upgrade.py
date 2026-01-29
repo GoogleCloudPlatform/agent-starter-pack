@@ -38,6 +38,8 @@ FILE_CATEGORIES = {
         # Go agent code
         "{agent_directory}/agent.go",
         "{agent_directory}/**/*.go",
+        # Java agent code
+        "{agent_directory}/**/*.java",
     ],
     "config_files": [  # Never overwritten
         "deployment/vars/*.tfvars",
@@ -52,6 +54,8 @@ FILE_CATEGORIES = {
         "go.sum",
         # Go ASP config
         ".asp.toml",
+        # Java dependencies (ASP config is in pom.xml properties)
+        "pom.xml",
     ],
     # Everything else is "scaffolding" (3-way compare)
 }

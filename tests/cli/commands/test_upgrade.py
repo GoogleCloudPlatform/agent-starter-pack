@@ -713,5 +713,471 @@ version = "0.30.0"
         assert "0.30.0" not in updated_content
 
 
+class TestJavaProjectUpgrade:
+    """Test upgrade command for Java projects."""
+
+    def test_java_project_missing_version(self, tmp_path: pathlib.Path) -> None:
+        """Test error when Java project has no asp.version in pom.xml."""
+        # Create pom.xml without asp.version property
+        (tmp_path / "pom.xml").write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-project</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-project</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+  </properties>
+</project>
+"""
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path)])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 1
+        assert "No asp_version found" in output
+        # Should mention Java-specific config
+        assert "pom.xml" in output or "version" in output
+
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_already_at_latest(
+        self, mock_version, tmp_path: pathlib.Path
+    ) -> None:
+        """Test message when Java project is already at latest version."""
+        mock_version.return_value = "0.31.0"
+
+        # Create Java project with matching version in pom.xml
+        (tmp_path / "pom.xml").write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-project</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-project</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.version>0.31.0</asp.version>
+  </properties>
+</project>
+"""
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path)])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        assert "already at version 0.31.0" in output
+
+    @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
+    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_dry_run(
+        self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that dry-run doesn't modify Java project files."""
+        mock_version.return_value = "0.31.0"
+        mock_uvx.return_value = True
+
+        def create_template(_args, output_dir, project_name, version=None):
+            del _args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            v = version or "0.31.0"
+            (template_dir / "pom.xml").write_text(
+                f"""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>{v}</asp.version>
+  </properties>
+</project>
+"""
+            )
+            # Create different Makefile content to trigger changes
+            if version == "0.30.0":
+                (template_dir / "Makefile").write_text("# Old Makefile")
+            else:
+                (template_dir / "Makefile").write_text("# New Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        # Create Java project with older version in pom.xml
+        original_pom = """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-project</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-project</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.30.0</asp.version>
+  </properties>
+</project>
+"""
+        pom_file = tmp_path / "pom.xml"
+        pom_file.write_text(original_pom)
+        makefile = tmp_path / "Makefile"
+        original_makefile = "# Old Makefile"
+        makefile.write_text(original_makefile)
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path), "--dry-run"])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        assert "Dry run complete" in output
+        # Verify files weren't modified
+        assert pom_file.read_text() == original_pom
+        assert makefile.read_text() == original_makefile
+
+    @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
+    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_auto_update_unchanged_files(
+        self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that unchanged Java files are auto-updated."""
+        mock_version.return_value = "0.31.0"
+        mock_uvx.return_value = True
+
+        def create_template(_args, output_dir, project_name, version=None):
+            del _args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            v = version or "0.31.0"
+            (template_dir / "pom.xml").write_text(
+                f"""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>{v}</asp.version>
+  </properties>
+</project>
+"""
+            )
+            if version == "0.30.0":
+                (template_dir / "Makefile").write_text("# Old Makefile")
+            else:
+                (template_dir / "Makefile").write_text("# New Makefile with updates")
+            return True
+
+        mock_create.side_effect = create_template
+
+        # Create Java project with file matching old template
+        (tmp_path / "pom.xml").write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.30.0</asp.version>
+  </properties>
+</project>
+"""
+        )
+        makefile = tmp_path / "Makefile"
+        makefile.write_text("# Old Makefile")  # Same as old template
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path), "--auto-approve"])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        assert "Upgrade complete" in output
+        # Verify file was updated
+        assert "New Makefile with updates" in makefile.read_text()
+
+    @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
+    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_preserve_user_modified_files(
+        self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that user-modified Java files are preserved when ASP didn't change."""
+        mock_version.return_value = "0.31.0"
+        mock_uvx.return_value = True
+
+        def create_template(_args, output_dir, project_name, _version=None):
+            del _args, _version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pom.xml").write_text(
+                """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.31.0</asp.version>
+  </properties>
+</project>
+"""
+            )
+            # Same content in old and new template
+            (template_dir / "Makefile").write_text("# Template Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        # Create Java project with user-modified file
+        (tmp_path / "pom.xml").write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.30.0</asp.version>
+  </properties>
+</project>
+"""
+        )
+        makefile = tmp_path / "Makefile"
+        makefile.write_text("# My custom Java Makefile")  # User modified
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path), "--auto-approve"])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        # Verify user's file was preserved
+        assert "My custom Java Makefile" in makefile.read_text()
+        assert "Preserving" in output or "preserve" in output.lower()
+
+    @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
+    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_detects_conflict(
+        self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that conflicts are detected in Java projects."""
+        mock_version.return_value = "0.31.0"
+        mock_uvx.return_value = True
+
+        def create_template(_args, output_dir, project_name, version=None):
+            del _args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            v = version or "0.31.0"
+            (template_dir / "pom.xml").write_text(
+                f"""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>{v}</asp.version>
+  </properties>
+</project>
+"""
+            )
+            if version == "0.30.0":
+                (template_dir / "Makefile").write_text("# Old template")
+            else:
+                (template_dir / "Makefile").write_text("# New template")
+            return True
+
+        mock_create.side_effect = create_template
+
+        # Create Java project with user-modified file (different from both templates)
+        (tmp_path / "pom.xml").write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.30.0</asp.version>
+  </properties>
+</project>
+"""
+        )
+        makefile = tmp_path / "Makefile"
+        makefile.write_text("# User modified Java Makefile")
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path), "--auto-approve"])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        assert "Conflict" in output
+        # With auto-approve, user's version is kept
+        assert "User modified Java Makefile" in makefile.read_text()
+
+    @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
+    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_skips_agent_code(
+        self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that Java agent code files are never modified."""
+        mock_version.return_value = "0.31.0"
+        mock_uvx.return_value = True
+
+        def create_template(_args, output_dir, project_name, _version=None):
+            del _args, _version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pom.xml").write_text(
+                """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.31.0</asp.version>
+    <asp.agent_directory>src/main/java</asp.agent_directory>
+  </properties>
+</project>
+"""
+            )
+            (template_dir / "src/main/java/myagent").mkdir(parents=True)
+            (template_dir / "src/main/java/myagent/RootAgent.java").write_text(
+                "// Template agent"
+            )
+            return True
+
+        mock_create.side_effect = create_template
+
+        # Create Java project with agent code
+        (tmp_path / "pom.xml").write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-project</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-project</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.version>0.30.0</asp.version>
+    <asp.agent_directory>src/main/java</asp.agent_directory>
+  </properties>
+</project>
+"""
+        )
+        agent_dir = tmp_path / "src/main/java/myagent"
+        agent_dir.mkdir(parents=True)
+        agent_file = agent_dir / "RootAgent.java"
+        agent_file.write_text("// My custom Java agent code")
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path), "--auto-approve"])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        assert "Skipping" in output
+        # Verify Java agent code was NOT modified
+        assert "My custom Java agent code" in agent_file.read_text()
+
+    @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
+    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
+    def test_java_project_updates_version_in_pom_xml(
+        self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that Java project version is updated in pom.xml."""
+        mock_version.return_value = "0.31.0"
+        mock_uvx.return_value = True
+
+        def create_template(_args, output_dir, project_name, version=None):
+            del _args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            v = version or "0.31.0"
+            (template_dir / "pom.xml").write_text(
+                f"""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>{v}</asp.version>
+  </properties>
+</project>
+"""
+            )
+            (template_dir / "Makefile").write_text(
+                "# Template Makefile" if version == "0.30.0" else "# Updated Makefile"
+            )
+            return True
+
+        mock_create.side_effect = create_template
+
+        # Create Java project
+        pom_file = tmp_path / "pom.xml"
+        pom_file.write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-project</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-project</asp.name>
+    <asp.language>java</asp.language>
+    <asp.version>0.30.0</asp.version>
+  </properties>
+</project>
+"""
+        )
+        (tmp_path / "Makefile").write_text("# Template Makefile")
+
+        runner = CliRunner()
+        result = runner.invoke(upgrade, [str(tmp_path), "--auto-approve"])
+        output = strip_ansi(result.output)
+
+        assert result.exit_code == 0
+        assert "Upgrade complete" in output
+
+        # Verify pom.xml was updated with new version
+        updated_content = pom_file.read_text()
+        assert "<asp.version>0.31.0</asp.version>" in updated_content
+        assert "0.30.0" not in updated_content
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -68,12 +68,13 @@ _EXCLUDED_DIRS = {
 
 
 def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
-    """Read agent-starter-pack config from project's .asp.toml or pyproject.toml.
+    """Read agent-starter-pack config from project config files.
 
     Uses shared language utilities for config detection.
 
-    For Go projects, config is stored in .asp.toml under [project].
-    For Python projects, config is stored in pyproject.toml under [tool.agent-starter-pack].
+    For Python projects: config in pyproject.toml under [tool.agent-starter-pack]
+    For Go projects: config in .asp.toml under [project]
+    For Java projects: config in pom.xml as asp.* Maven properties
 
     Args:
         project_dir: Path to the project directory
@@ -98,6 +99,19 @@ def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
             "asp_version": config.get("version"),
             "agent_directory": config.get("agent_directory", "agent"),
             "language": config.get("language", "go"),
+            "create_params": {
+                "deployment_target": config.get("deployment_target"),
+                "cicd_runner": config.get("cicd_runner"),
+            },
+        }
+
+    # For Java projects, normalize the config structure (same as Go)
+    if language == "java":
+        return {
+            "base_template": config.get("base_template"),
+            "asp_version": config.get("version"),
+            "agent_directory": config.get("agent_directory", "src/main/java"),
+            "language": config.get("language", "java"),
             "create_params": {
                 "deployment_target": config.get("deployment_target"),
                 "cicd_runner": config.get("cicd_runner"),
@@ -725,20 +739,29 @@ def enhance(
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
 
-        # Detect if this is a Go project from base_template or config
+        # Detect if this is a Go or Java project from base_template or config
         is_go_project = base_template and base_template.endswith("_go")
+        is_java_project = base_template and base_template.endswith("_java")
         asp_config = get_project_asp_config(current_dir)
-        if asp_config and asp_config.get("language") == "go":
-            is_go_project = True
+        if asp_config:
+            if asp_config.get("language") == "go":
+                is_go_project = True
+            elif asp_config.get("language") == "java":
+                is_java_project = True
 
         # Determine agent directory: CLI param > config detection > language default
-        detected_agent_directory = "agent" if is_go_project else "app"
+        if is_go_project:
+            detected_agent_directory = "agent"
+        elif is_java_project:
+            detected_agent_directory = "src/main/java"
+        else:
+            detected_agent_directory = "app"
         if not agent_directory:  # Only try to detect if not provided via CLI
             # First check .asp.toml/pyproject.toml config
             config_agent_dir = asp_config.get("agent_directory") if asp_config else None
             if config_agent_dir and isinstance(config_agent_dir, str):
                 detected_agent_directory = config_agent_dir
-            elif not is_go_project:
+            elif not is_go_project and not is_java_project:
                 # For Python, also try to detect from hatch config
                 pyproject_path = current_dir / "pyproject.toml"
                 if pyproject_path.exists():

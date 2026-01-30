@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "ReAct agent with A2A protocol"
+display_name: "custom_a2a"
+description: "Bring your own framework, A2A-ready"
 settings:
   requires_data_ingestion: false
   deployment_targets: ["agent_engine", "cloud_run"]

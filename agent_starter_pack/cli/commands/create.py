@@ -1074,7 +1074,7 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
     # Group headers for display
     GROUP_HEADERS = {
         ("python", "adk"): "🐍 Python (ADK)",
-        ("python", "langgraph"): "🦜 Python (LangGraph)",
+        ("python", "langgraph"): "🐍 Python (A2A)",
         ("go", "adk"): "🔵 Go (ADK)",
     }
 
@@ -1090,8 +1090,9 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
             header = GROUP_HEADERS.get(agent_group, "Other")
             console.print(f"\n  [bold cyan]{header}[/]")
 
-        # Align agent names for cleaner display
-        name_padded = agent["name"].ljust(14)
+        # Align agent names for cleaner display (use display_name if available)
+        display_name = agent.get("display_name", agent["name"])
+        name_padded = display_name.ljust(14)
         console.print(
             f"     {num}. [bold]{name_padded}[/] [dim]{agent['description']}[/]"
         )

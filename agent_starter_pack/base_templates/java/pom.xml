@@ -58,7 +58,7 @@
       <artifactId>google-adk-dev</artifactId>
       <version>${adk.version}</version>
     </dependency>
-    <!-- A2A Protocol Support (EXPERIMENTAL) -->
+    <!-- ADK + A2A -->
     <dependency>
       <groupId>com.google.adk</groupId>
       <artifactId>google-adk-a2a-webservice</artifactId>
@@ -71,7 +71,6 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- Spring Boot Test for integration tests -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>

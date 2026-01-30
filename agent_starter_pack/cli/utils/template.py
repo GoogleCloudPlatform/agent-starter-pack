@@ -56,6 +56,8 @@ from .remote_template import (
 AGENT_ALIASES: dict[str, str] = {
     "adk_base": "adk",
     "langgraph_base": "langgraph",
+    "custom": "langgraph",
+    "custom_a2a": "langgraph",
     "adk_a2a_base": "adk_a2a",
     "adk_base_go": "adk_go",
 }
@@ -441,10 +443,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                         framework = "other"
 
                     description = config.get("description", "No description available")
+                    display_name = config.get("display_name", agent_name)
                     priority = PRIORITY_ORDER.get(agent_name, 100)
 
                     agent_info = {
                         "name": agent_name,
+                        "display_name": display_name,
                         "description": description,
                         "language": language,
                         "framework": framework,

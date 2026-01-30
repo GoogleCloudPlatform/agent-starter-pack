@@ -164,7 +164,10 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
     """Create agent with identity and grant required IAM roles."""
     click.echo(f"\n🔧 Creating agent identity for: {display_name}")
     agent = client.agent_engines.create(
-        config={"identity_type": IdentityType.AGENT_IDENTITY}
+        config={
+            "identity_type": IdentityType.AGENT_IDENTITY,
+            "display_name": display_name,
+        }
     )
 
     roles = [

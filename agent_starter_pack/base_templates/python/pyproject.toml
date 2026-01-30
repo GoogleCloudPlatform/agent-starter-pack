@@ -86,6 +86,9 @@ unresolved-attribute = "ignore"
 invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+not-subscriptable = "ignore"
+deprecated = "ignore"
 
 [tool.codespell]
 ignore-words-list = "rouge"

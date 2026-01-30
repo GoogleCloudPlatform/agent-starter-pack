@@ -1077,22 +1077,21 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
 
     # Group headers for display
     GROUP_HEADERS = {
-        ("python", "adk"): "\U0001f40d Python (ADK)",
-        ("python", "langgraph"): "\U0001f99c Python (LangGraph)",
-        ("go", "adk"): "\U0001f535 Go (ADK)",
-        ("java", "adk"): "\u2615\ufe0f Java (ADK)",
+        "python": "\U0001f40d Python",
+        "go": "\U0001f535 Go",
+        "java": "\u2615\ufe0f Java",
     }
 
     console.print("\n> Please select an agent to get started:")
 
     current_group = None
     for num, agent in agents.items():
-        agent_group = (agent["language"], agent["framework"])
+        agent_group = agent["language"]
 
         # Print group header when transitioning to a new group
         if agent_group != current_group:
             current_group = agent_group
-            header = GROUP_HEADERS.get(agent_group, "Other")
+            header = GROUP_HEADERS.get(agent_group, "\U0001f527 Other")
             console.print(f"\n  [bold cyan]{header}[/]")
 
         # Align agent names for cleaner display (use display_name if available)

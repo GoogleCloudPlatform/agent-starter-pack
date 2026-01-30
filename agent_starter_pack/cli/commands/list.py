@@ -199,5 +199,6 @@ def list_agents(adk: bool, source: str | None) -> None:
     table.add_column("Description")
 
     for i, (_, agent) in enumerate(agents.items()):
-        table.add_row(str(i + 1), agent["name"], agent["description"])
+        display_name = agent.get("display_name", agent["name"])
+        table.add_row(str(i + 1), display_name, agent["description"])
     console.print(table)

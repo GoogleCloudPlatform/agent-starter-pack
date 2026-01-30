@@ -16,12 +16,12 @@ dependencies = [
 {%- endif %}
     "google-cloud-logging>=3.12.0,<4.0.0",
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-    "google-cloud-aiplatform[evaluation]>=1.118.0,<2.0.0",
+    "google-cloud-aiplatform[evaluation]==1.130.0",
     "fastapi~=0.115.8",
     "uvicorn~=0.34.0",
     "asyncpg>=0.30.0,<1.0.0",
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-    "google-cloud-aiplatform[evaluation,agent-engines]>=1.118.0,<2.0.0",
+    "google-cloud-aiplatform[evaluation,agent-engines]==1.130.0",
     "protobuf>=6.31.1,<7.0.0",
 {%- endif %}
 ]
@@ -86,6 +86,9 @@ unresolved-attribute = "ignore"
 invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-return-type = "ignore"
+possibly-missing-attribute = "ignore"
+not-subscriptable = "ignore"
+deprecated = "ignore"
 
 [tool.codespell]
 ignore-words-list = "rouge"

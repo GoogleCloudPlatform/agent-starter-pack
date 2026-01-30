@@ -23,7 +23,14 @@ steps:
   - name: "maven:3.9-eclipse-temurin-17"
     id: unit-tests
     entrypoint: mvn
-    args: ["test"]
+    args: ["test", "-Dtest=**/unit/**"]
+    waitFor: ["build"]
+
+  # Run integration tests
+  - name: "maven:3.9-eclipse-temurin-17"
+    id: integration-tests
+    entrypoint: mvn
+    args: ["test", "-Dtest=**/e2e/integration/**"]
     waitFor: ["build"]
     env:
       - "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"

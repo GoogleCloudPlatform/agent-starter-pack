@@ -85,7 +85,8 @@ jobs:
       - name: Get ID Token
         id: id-token
         run: |
-          TOKEN=$(gcloud auth print-identity-token -q)
+          TOKEN=$(gcloud auth print-identity-token --impersonate-service-account={% raw %}${{ secrets.GCP_SERVICE_ACCOUNT }}{% endraw %} -q)
+          echo "::add-mask::${TOKEN}"
           echo "token=$TOKEN" >> $GITHUB_OUTPUT
 
       - name: Run Load Tests
@@ -97,30 +98,10 @@ jobs:
           _ID_TOKEN: {% raw %}${{ steps.id-token.outputs.token }}{% endraw %}
           _STAGING_URL: {% raw %}${{ steps.staging-url.outputs.url }}{% endraw %}
 
-  trigger_prod_deployment:
+  call_production_workflow:
     needs: deploy_and_test_staging
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/deploy-to-prod.yaml
     permissions:
       contents: 'read'
       id-token: 'write'
-
-    steps:
-      - id: 'auth'
-        name: 'Authenticate to Google Cloud'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: 'projects/{% raw %}${{ vars.GCP_PROJECT_NUMBER }}{% endraw %}/locations/global/workloadIdentityPools/{% raw %}${{ secrets.WIF_POOL_ID }}{% endraw %}/providers/{% raw %}${{ secrets.WIF_PROVIDER_ID }}{% endraw %}'
-          service_account: '{% raw %}${{ secrets.GCP_SERVICE_ACCOUNT }}{% endraw %}'
-          create_credentials_file: true
-          project_id: {% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}
-
-      - name: Trigger Production Deployment
-        run: |
-          gcloud beta builds triggers run deploy-{{cookiecutter.project_name}} \
-            --region {% raw %}${{ vars.REGION }}{% endraw %} \
-            --project {% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %} \
-            --sha {% raw %}${{ github.sha }}{% endraw %}
-          echo "_________________________________________________________________________"
-          echo "Production deployment triggered. View progress on Cloud Build Console:"
-          echo "https://console.cloud.google.com/cloud-build/builds;region={% raw %}${{ vars.REGION }}{% endraw %}"
-          echo "_________________________________________________________________________"
+    secrets: inherit

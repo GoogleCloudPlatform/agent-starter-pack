@@ -100,16 +100,16 @@ class TestGenerateJavaPackageVars:
         assert result["java_package_path"] == "myagent"
 
     def test_hyphenated_project_name(self) -> None:
-        """Test that hyphens are replaced with underscores."""
+        """Test that hyphens are removed (Java convention: no separators)."""
         result = generate_java_package_vars("my-agent")
-        assert result["java_package"] == "my_agent"
-        assert result["java_package_path"] == "my_agent"
+        assert result["java_package"] == "myagent"
+        assert result["java_package_path"] == "myagent"
 
     def test_dotted_project_name(self) -> None:
-        """Test that dots are replaced with underscores."""
+        """Test that dots are removed (Java convention: no separators)."""
         result = generate_java_package_vars("my.agent")
-        assert result["java_package"] == "my_agent"
-        assert result["java_package_path"] == "my_agent"
+        assert result["java_package"] == "myagent"
+        assert result["java_package_path"] == "myagent"
 
     def test_uppercase_project_name(self) -> None:
         """Test that uppercase is converted to lowercase."""
@@ -124,10 +124,10 @@ class TestGenerateJavaPackageVars:
         assert result["java_package_path"] == "_123agent"
 
     def test_mixed_separators(self) -> None:
-        """Test project name with mixed hyphens and dots."""
+        """Test project name with mixed hyphens and dots are removed."""
         result = generate_java_package_vars("my-cool.agent")
-        assert result["java_package"] == "my_cool_agent"
-        assert result["java_package_path"] == "my_cool_agent"
+        assert result["java_package"] == "mycoolagent"
+        assert result["java_package_path"] == "mycoolagent"
 
 
 class TestCopyFlatStructureAgentFiles:

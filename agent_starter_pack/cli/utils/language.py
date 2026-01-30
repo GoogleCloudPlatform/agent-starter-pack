@@ -54,6 +54,9 @@ LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
         "lock_command_name": "uv lock",
         "strip_dependencies": True,
         "display_name": "Python",
+        "agent_file": "agent.py",
+        "agent_variable": "root_agent",
+        "agent_in_subdirectory": False,
     },
     "go": {
         "detection_files": ["go.mod"],
@@ -66,6 +69,9 @@ LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
         "lock_command_name": "go mod tidy",
         "strip_dependencies": False,
         "display_name": "Go",
+        "agent_file": "agent.go",
+        "agent_variable": "RootAgent",
+        "agent_in_subdirectory": False,
     },
     "java": {
         "detection_files": ["pom.xml"],
@@ -79,6 +85,10 @@ LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
         "lock_command_name": "mvn dependency:resolve",
         "strip_dependencies": False,
         "display_name": "Java",
+        "agent_file": "Agent.java",
+        "agent_file_pattern": "**/Agent.java",
+        "agent_variable": "ROOT_AGENT",
+        "agent_in_subdirectory": True,  # Java uses package subdirectories
     },
 }
 
@@ -347,3 +357,114 @@ def update_asp_version(
     except Exception as e:
         logging.warning(f"Could not update {version_key} in {config_file}: {e}")
         return False
+
+
+def find_agent_file(
+    project_dir: pathlib.Path,
+    language: str,
+    agent_directory: str,
+) -> pathlib.Path | None:
+    """Find the primary agent file for a language.
+
+    For Python: {agent_directory}/agent.py
+    For Go: {agent_directory}/agent.go
+    For Java: {agent_directory}/**/Agent.java (searches package subdirectories)
+
+    Args:
+        project_dir: Project root directory
+        language: Language key ('python', 'go', 'java')
+        agent_directory: Agent directory relative to project root
+
+    Returns:
+        Path to agent file if found, None otherwise
+    """
+    lang_config = get_language_config(language)
+    agent_folder = project_dir / agent_directory
+
+    if not agent_folder.exists():
+        return None
+
+    # Check for YAML config agent first (all languages)
+    yaml_agent = agent_folder / "root_agent.yaml"
+    if yaml_agent.exists():
+        return yaml_agent
+
+    agent_file_name = lang_config.get("agent_file")
+    if not agent_file_name:
+        return None
+
+    # For languages with agent in subdirectory (Java package structure)
+    if lang_config.get("agent_in_subdirectory"):
+        for found in agent_folder.rglob(agent_file_name):
+            return found
+        return None
+
+    # Standard case: agent file directly in agent directory
+    agent_file = agent_folder / agent_file_name
+    return agent_file if agent_file.exists() else None
+
+
+def validate_agent_file(
+    agent_file: pathlib.Path,
+    language: str,
+) -> tuple[bool, str | None]:
+    """Validate that the agent file contains the required variable.
+
+    Args:
+        agent_file: Path to the agent file
+        language: Language key
+
+    Returns:
+        Tuple of (is_valid, error_message). error_message is None if valid.
+    """
+    lang_config = get_language_config(language)
+    required_var = lang_config.get("agent_variable", "root_agent")
+
+    # YAML config agents are always valid
+    if agent_file.name == "root_agent.yaml":
+        return True, None
+
+    try:
+        content = agent_file.read_text(encoding="utf-8")
+
+        if required_var in content:
+            return True, None
+        else:
+            return False, f"Missing '{required_var}' variable in {agent_file.name}"
+    except Exception as e:
+        return False, f"Could not read {agent_file.name}: {e}"
+
+
+def get_agent_file_hint(
+    dir_path: pathlib.Path,
+    language: str | None = None,
+) -> str:
+    """Get hint string for directory selection.
+
+    Args:
+        dir_path: Directory to check
+        language: Optional language hint
+
+    Returns:
+        Hint string like ' (has Agent.java)' or ''
+    """
+    if not dir_path.is_dir():
+        return ""
+
+    # Check YAML config agent first
+    if (dir_path / "root_agent.yaml").exists():
+        return " (has root_agent.yaml)"
+
+    # Check for Java Agent.java (in subdirectories)
+    if any(dir_path.rglob("Agent.java")):
+        return " (has Agent.java)"
+
+    # Check for Go agent.go
+    if (dir_path / "agent.go").exists():
+        return " (has agent.go)"
+
+    # Check for Python agent.py
+    if (dir_path / "agent.py").exists():
+        return " (has agent.py)"
+
+    return ""

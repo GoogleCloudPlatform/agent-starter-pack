@@ -12,16 +12,22 @@ Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack
 {{cookiecutter.project_name}}/
 ├── pom.xml                  # Maven project file
 ├── src/
-│   ├── main/java/           # Java source files
-│   │   └── {{cookiecutter.java_package_path}}/
-│   │       ├── Main.java        # Application entry point
-│   │       └── Agent.java       # Agent implementation
-│   └── test/java/           # Test files
+│   ├── main/
+│   │   ├── java/{{cookiecutter.java_package_path}}/
+│   │   │   ├── Main.java    # Application entry point
+│   │   │   └── Agent.java   # Agent implementation
+│   │   └── resources/
+│   │       └── application.properties
+│   └── test/java/{{cookiecutter.java_package_path}}/
+│       └── unit/            # Unit tests
 {%- if not extracted|default(false) %}
+│       └── e2e/             # End-to-end tests
+│           ├── integration/ # Server integration tests
+│           └── load_test/   # Load tests
 ├── deployment/
 │   └── terraform/           # Infrastructure as Code
 ├── Dockerfile               # Container build
-├── GEMINI.md               # AI-assisted development guide
+├── GEMINI.md                # AI-assisted development guide
 {%- endif %}
 └── Makefile                 # {% if extracted|default(false) %}Development commands{% else %}Common commands{% endif %}
 ```
@@ -74,12 +80,18 @@ make install && make playground
 | Command | Description |
 |---------|-------------|
 | `make install` | Download Maven dependencies |
-| `make playground` | Launch local development environment |
-| `make test` | Run all tests |
+| `make playground` | Launch local development environment with web UI |
+| `make test` | Run unit and e2e integration tests |
+| `make build` | Build JAR file |
+| `make clean` | Clean build artifacts |
+| `make lint` | Run code quality checks |
 {%- if not extracted|default(false) %}
 | `make local-backend` | Start server on port 8080 |
-| `make build` | Build JAR file |
 | `make deploy` | Deploy to Cloud Run |
+| `make load-test` | Run load tests (requires running server) |
+| `make inspector` | Launch A2A Protocol Inspector |
+| `make setup-dev-env` | Set up Terraform infrastructure |
+| `make register-gemini-enterprise` | Register agent with Gemini Enterprise |
 {%- endif %}
 {%- if extracted|default(false) %}
 
@@ -114,9 +126,20 @@ See `deployment/README.md` for detailed deployment instructions.
 ## Testing
 
 ```bash
-# Run all tests
+# Run unit and e2e integration tests
 make test
+
+# Run load tests locally (start server first with `make local-backend`)
+make load-test
+
+# Run load tests against remote deployment
+make load-test URL=https://your-service.run.app
+
+# Run load tests with custom parameters
+make load-test DURATION=60 USERS=20 RAMP=5
 ```
+
+Use `make inspector` to launch the A2A Protocol Inspector for interactive testing.
 
 ## Keeping Up-to-Date
 

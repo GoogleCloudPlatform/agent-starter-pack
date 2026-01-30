@@ -15,7 +15,6 @@
 import logging
 import os
 import pathlib
-import re
 import subprocess
 import sys
 from typing import Any
@@ -31,7 +30,11 @@ else:
 
 from ..utils.language import (
     detect_language,
+    find_agent_file,
+    get_agent_file_hint,
     get_asp_config_for_language,
+    get_language_config,
+    validate_agent_file,
 )
 from ..utils.logging import display_welcome_banner, handle_cli_error
 from ..utils.template import (
@@ -460,16 +463,7 @@ def display_agent_directory_selection(
         for dir_name in available_dirs:
             directory_choices[choice_num] = dir_name
             # Check if this directory might contain agent code
-            agent_py_exists = (current_dir / dir_name / "agent.py").exists()
-            root_agent_yaml_exists = (
-                current_dir / dir_name / "root_agent.yaml"
-            ).exists()
-            if root_agent_yaml_exists:
-                hint = " (has root_agent.yaml)"
-            elif agent_py_exists:
-                hint = " (has agent.py)"
-            else:
-                hint = ""
+            hint = get_agent_file_hint(current_dir / dir_name, base_template)
             console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
             if (
                 default_choice is None
@@ -861,24 +855,24 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for agent files (supports both Python and Go)
-            root_agent_yaml = agent_folder / "root_agent.yaml"
-            agent_py = agent_folder / "agent.py"
-            agent_go = agent_folder / "agent.go"
+            # Detect language for proper agent file handling
+            language = "python"  # default
+            if is_go_project:
+                language = "go"
+            elif is_java_project:
+                language = "java"
 
-            # Determine if this is a Go project (prioritize Python if both exist)
-            is_go = (base_template and base_template.endswith("_go")) or (
-                agent_go.exists()
-                and not agent_py.exists()
-                and not root_agent_yaml.exists()
-            )
+            lang_config = get_language_config(language)
             is_adk = base_template and "adk" in base_template.lower()
-            required_object = "root_agent" if is_adk else "agent"
+            required_var = lang_config.get("agent_variable", "root_agent")
 
-            if root_agent_yaml.exists():
+            # Find agent file using shared utility
+            agent_file = find_agent_file(current_dir, language, final_agent_directory)
+
+            if agent_file and agent_file.name == "root_agent.yaml":
                 # YAML config agent detected
                 console.print(
-                    f"✅ Found [cyan]/{final_agent_directory}/root_agent.yaml[/cyan] (YAML config agent)"
+                    f"✅ Found [cyan]{agent_file.relative_to(current_dir)}[/cyan] (YAML config agent)"
                 )
                 console.print(
                     "   An agent.py shim will be generated automatically for deployment compatibility."
@@ -887,87 +881,56 @@ def enhance(
                     console.print(
                         "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/agents/agent-config/]ADK Agent Config guide[/link][/cyan]"
                     )
-            elif agent_go.exists():
-                # Go agent detected
+            elif agent_file:
+                # Agent file found
                 console.print(
-                    f"✅ Found [cyan]/{final_agent_directory}/agent.go[/cyan]"
-                )
-            elif agent_py.exists():
-                console.print(
-                    f"✅ Found [cyan]/{final_agent_directory}/agent.py[/cyan]"
+                    f"✅ Found [cyan]{agent_file.relative_to(current_dir)}[/cyan]"
                 )
 
-                try:
-                    content = agent_py.read_text(encoding="utf-8")
-
-                    # Look for the required object definition using static analysis
-                    patterns = [
-                        rf"^\s*{required_object}\s*=",  # assignment: root_agent = ...
-                        rf"^\s*def\s+{required_object}",  # function: def root_agent(...)
-                        rf"from\s+.*\s+import\s+.*{required_object}",  # import: from ... import root_agent
-                    ]
-
-                    found = any(
-                        re.search(pattern, content, re.MULTILINE)
-                        for pattern in patterns
-                    )
-
-                    if found:
-                        console.print(
-                            f"✅ Found '{required_object}' definition in {final_agent_directory}/agent.py"
-                        )
-                    else:
-                        console.print(
-                            f"⚠️  [yellow]Missing '{required_object}' variable in {final_agent_directory}/agent.py[/yellow]"
-                        )
-                        console.print(
-                            "   This variable should contain your main agent instance for deployment."
-                        )
-                        console.print(
-                            f"   Example: [cyan]{required_object} = YourAgentClass()[/cyan]"
-                        )
-                        # Show ADK docs link for ADK templates
-                        if is_adk:
-                            console.print(
-                                "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/get-started/quickstart/#agentpy]ADK agent.py guide[/link][/cyan]"
-                            )
-                        console.print()
-                        if not auto_approve:
-                            if not click.confirm(
-                                f"Continue enhancement? (You can add '{required_object}' later)",
-                                default=True,
-                            ):
-                                console.print(
-                                    "✋ [yellow]Enhancement cancelled.[/yellow]"
-                                )
-                                return
-
-                except Exception as e:
+                # Validate the agent file contains the required variable
+                is_valid, error_msg = validate_agent_file(agent_file, language)
+                if is_valid:
                     console.print(
-                        f"⚠️  [yellow]Warning: Could not read {final_agent_directory}/agent.py: {e}[/yellow]"
-                    )
-            else:
-                # Suggest the appropriate file based on context
-                if is_go:
-                    agent_file = "agent.go"
-                    console.print(
-                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.go not found[/yellow]"
-                    )
-                    console.print(
-                        f"   Create {final_agent_directory}/agent.go with your agent logic"
+                        f"✅ Found '{required_var}' definition in {agent_file.name}"
                     )
                 else:
-                    agent_file = "agent.py"
+                    console.print(f"⚠️  [yellow]{error_msg}[/yellow]")
                     console.print(
-                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.py not found[/yellow]"
+                        "   This variable should contain your main agent instance for deployment."
                     )
                     console.print(
-                        f"   Create {final_agent_directory}/agent.py with your agent logic and define: [cyan]{required_object} = your_agent_instance[/cyan]"
+                        f"   Example: [cyan]{required_var} = YourAgentClass()[/cyan]"
+                    )
+                    # Show ADK docs link for ADK templates
+                    if is_adk:
+                        console.print(
+                            "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/get-started/quickstart/#agentpy]ADK agent.py guide[/link][/cyan]"
+                        )
+                    console.print()
+                    if not auto_approve:
+                        if not click.confirm(
+                            f"Continue enhancement? (You can add '{required_var}' later)",
+                            default=True,
+                        ):
+                            console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
+                            return
+            else:
+                # No agent file found - suggest creating one
+                expected_file = lang_config.get("agent_file", "agent.py")
+                console.print(
+                    f"⚠️  [yellow]Warning: {expected_file} not found in {final_agent_directory}/[/yellow]"
+                )
+                console.print(
+                    f"   Create {final_agent_directory}/{expected_file} with your agent logic"
+                )
+                if language == "python":
+                    console.print(
+                        f"   and define: [cyan]{required_var} = your_agent_instance[/cyan]"
                     )
                 console.print()
                 if not auto_approve:
                     if not click.confirm(
-                        f"Continue enhancement? (An example {final_agent_directory}/{agent_file} will be created for you)",
+                        f"Continue enhancement? (An example {expected_file} will be created for you)",
                         default=True,
                     ):
                         console.print("✋ [yellow]Enhancement cancelled.[/yellow]")

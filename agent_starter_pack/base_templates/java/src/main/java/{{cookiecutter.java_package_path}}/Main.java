@@ -15,13 +15,15 @@
 package {{cookiecutter.java_package}};
 
 import com.google.adk.web.AdkWebServer;
+import org.springframework.boot.SpringApplication;
 
 /**
  * Application entry point.
  * Starts the ADK web server with API, A2A, and Web UI support.
  */
 public class Main {
-    public static void main(String[] args) {
-        AdkWebServer.start(Agent.ROOT_AGENT);
-    }
+  public static void main(String[] args) {
+    System.setProperty("adk.agents.loader", "static");
+    new SpringApplication(AdkWebServer.class, Agent.class).run(args);
+  }
 }

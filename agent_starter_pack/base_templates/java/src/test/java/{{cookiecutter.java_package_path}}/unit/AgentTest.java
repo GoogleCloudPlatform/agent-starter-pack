@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package {{cookiecutter.java_package}};
+package {{cookiecutter.java_package}}.unit;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,13 +20,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Unit tests for Agent.
+ * This file is overridden by agent templates with actual tests.
  */
 class AgentTest {
 
-    @Test
-    void testPlaceholder() {
-        // This test will be overridden by the agent template
-        // Placeholder test to ensure the test infrastructure works
-        assertNotNull("Test infrastructure is working");
-    }
+  @Test
+  void testPlaceholder() {
+    // This test will be overridden by the agent template
+    // Placeholder test to ensure the test infrastructure works
+    assertNotNull("Test infrastructure is working");
+  }
 }

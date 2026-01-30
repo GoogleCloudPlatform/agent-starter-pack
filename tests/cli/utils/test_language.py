@@ -21,9 +21,12 @@ import pytest
 from agent_starter_pack.cli.utils.language import (
     LANGUAGE_CONFIGS,
     detect_language,
+    find_agent_file,
+    get_agent_file_hint,
     get_asp_config_for_language,
     get_language_config,
     update_asp_version,
+    validate_agent_file,
 )
 
 
@@ -81,10 +84,28 @@ class TestLanguageConfigs:
             "lock_command_name",
             "strip_dependencies",
             "display_name",
+            "agent_file",
+            "agent_variable",
+            "agent_in_subdirectory",
         ]
         for lang, config in LANGUAGE_CONFIGS.items():
             for key in required_keys:
                 assert key in config, f"Language '{lang}' missing key '{key}'"
+
+    def test_agent_file_configs(self) -> None:
+        """Test agent file configuration for each language."""
+        assert LANGUAGE_CONFIGS["python"]["agent_file"] == "agent.py"
+        assert LANGUAGE_CONFIGS["python"]["agent_variable"] == "root_agent"
+        assert LANGUAGE_CONFIGS["python"]["agent_in_subdirectory"] is False
+
+        assert LANGUAGE_CONFIGS["go"]["agent_file"] == "agent.go"
+        assert LANGUAGE_CONFIGS["go"]["agent_variable"] == "RootAgent"
+        assert LANGUAGE_CONFIGS["go"]["agent_in_subdirectory"] is False
+
+        assert LANGUAGE_CONFIGS["java"]["agent_file"] == "Agent.java"
+        assert LANGUAGE_CONFIGS["java"]["agent_variable"] == "ROOT_AGENT"
+        assert LANGUAGE_CONFIGS["java"]["agent_in_subdirectory"] is True
+        assert LANGUAGE_CONFIGS["java"]["agent_file_pattern"] == "**/Agent.java"
 
 
 class TestDetectLanguage:
@@ -348,6 +369,203 @@ asp_version = '0.30.0'
 
         result = update_asp_version(tmp_path, "python", "0.31.0")
         assert result is False
+
+
+class TestFindAgentFile:
+    """Tests for find_agent_file function."""
+
+    def test_find_python_agent_file(self, tmp_path: pathlib.Path) -> None:
+        """Test finding agent.py in Python project."""
+        agent_dir = tmp_path / "app"
+        agent_dir.mkdir()
+        (agent_dir / "agent.py").write_text("root_agent = Agent()")
+
+        result = find_agent_file(tmp_path, "python", "app")
+
+        assert result is not None
+        assert result.name == "agent.py"
+        assert result.exists()
+
+    def test_find_go_agent_file(self, tmp_path: pathlib.Path) -> None:
+        """Test finding agent.go in Go project."""
+        agent_dir = tmp_path / "agent"
+        agent_dir.mkdir()
+        (agent_dir / "agent.go").write_text("var RootAgent Agent")
+
+        result = find_agent_file(tmp_path, "go", "agent")
+
+        assert result is not None
+        assert result.name == "agent.go"
+        assert result.exists()
+
+    def test_find_java_agent_file_in_subdirectory(self, tmp_path: pathlib.Path) -> None:
+        """Test finding Agent.java in Java package subdirectory."""
+        # Create Java package structure
+        java_dir = tmp_path / "src" / "main" / "java"
+        package_dir = java_dir / "com" / "example" / "agent"
+        package_dir.mkdir(parents=True)
+        (package_dir / "Agent.java").write_text("public static Agent ROOT_AGENT;")
+
+        result = find_agent_file(tmp_path, "java", "src/main/java")
+
+        assert result is not None
+        assert result.name == "Agent.java"
+        assert result.exists()
+
+    def test_find_yaml_agent_file(self, tmp_path: pathlib.Path) -> None:
+        """Test finding root_agent.yaml takes precedence."""
+        agent_dir = tmp_path / "app"
+        agent_dir.mkdir()
+        (agent_dir / "root_agent.yaml").write_text("name: my_agent")
+        (agent_dir / "agent.py").write_text("root_agent = Agent()")
+
+        result = find_agent_file(tmp_path, "python", "app")
+
+        assert result is not None
+        assert result.name == "root_agent.yaml"
+
+    def test_find_agent_file_missing_directory(self, tmp_path: pathlib.Path) -> None:
+        """Test that missing agent directory returns None."""
+        result = find_agent_file(tmp_path, "python", "app")
+        assert result is None
+
+    def test_find_agent_file_missing_file(self, tmp_path: pathlib.Path) -> None:
+        """Test that missing agent file returns None."""
+        agent_dir = tmp_path / "app"
+        agent_dir.mkdir()
+        # Directory exists but no agent file
+
+        result = find_agent_file(tmp_path, "python", "app")
+        assert result is None
+
+
+class TestValidateAgentFile:
+    """Tests for validate_agent_file function."""
+
+    def test_validate_python_agent_file_valid(self, tmp_path: pathlib.Path) -> None:
+        """Test validating Python agent file with root_agent."""
+        agent_file = tmp_path / "agent.py"
+        agent_file.write_text("root_agent = MyAgent()")
+
+        is_valid, error_msg = validate_agent_file(agent_file, "python")
+
+        assert is_valid is True
+        assert error_msg is None
+
+    def test_validate_python_agent_file_invalid(self, tmp_path: pathlib.Path) -> None:
+        """Test validating Python agent file without root_agent."""
+        agent_file = tmp_path / "agent.py"
+        agent_file.write_text("agent = MyAgent()")
+
+        is_valid, error_msg = validate_agent_file(agent_file, "python")
+
+        assert is_valid is False
+        assert error_msg is not None
+        assert "root_agent" in error_msg
+
+    def test_validate_go_agent_file_valid(self, tmp_path: pathlib.Path) -> None:
+        """Test validating Go agent file with RootAgent."""
+        agent_file = tmp_path / "agent.go"
+        agent_file.write_text("var RootAgent = NewAgent()")
+
+        is_valid, error_msg = validate_agent_file(agent_file, "go")
+
+        assert is_valid is True
+        assert error_msg is None
+
+    def test_validate_java_agent_file_valid(self, tmp_path: pathlib.Path) -> None:
+        """Test validating Java agent file with ROOT_AGENT."""
+        agent_file = tmp_path / "Agent.java"
+        agent_file.write_text("public static final Agent ROOT_AGENT = new Agent();")
+
+        is_valid, error_msg = validate_agent_file(agent_file, "java")
+
+        assert is_valid is True
+        assert error_msg is None
+
+    def test_validate_java_agent_file_invalid(self, tmp_path: pathlib.Path) -> None:
+        """Test validating Java agent file without ROOT_AGENT."""
+        agent_file = tmp_path / "Agent.java"
+        agent_file.write_text("public class Agent { }")
+
+        is_valid, error_msg = validate_agent_file(agent_file, "java")
+
+        assert is_valid is False
+        assert error_msg is not None
+        assert "ROOT_AGENT" in error_msg
+
+    def test_validate_yaml_agent_file_always_valid(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that YAML config agents are always valid."""
+        agent_file = tmp_path / "root_agent.yaml"
+        agent_file.write_text("name: my_agent")
+
+        is_valid, error_msg = validate_agent_file(agent_file, "python")
+
+        assert is_valid is True
+        assert error_msg is None
+
+
+class TestGetAgentFileHint:
+    """Tests for get_agent_file_hint function."""
+
+    def test_hint_for_python_agent(self, tmp_path: pathlib.Path) -> None:
+        """Test hint generation for Python agent.py."""
+        (tmp_path / "agent.py").write_text("root_agent = Agent()")
+
+        hint = get_agent_file_hint(tmp_path)
+
+        assert hint == " (has agent.py)"
+
+    def test_hint_for_go_agent(self, tmp_path: pathlib.Path) -> None:
+        """Test hint generation for Go agent.go."""
+        (tmp_path / "agent.go").write_text("var RootAgent Agent")
+
+        hint = get_agent_file_hint(tmp_path)
+
+        assert hint == " (has agent.go)"
+
+    def test_hint_for_java_agent_in_subdirectory(self, tmp_path: pathlib.Path) -> None:
+        """Test hint generation for Java Agent.java in subdirectory."""
+        package_dir = tmp_path / "com" / "example"
+        package_dir.mkdir(parents=True)
+        (package_dir / "Agent.java").write_text("public class Agent {}")
+
+        hint = get_agent_file_hint(tmp_path)
+
+        assert hint == " (has Agent.java)"
+
+    def test_hint_for_yaml_agent(self, tmp_path: pathlib.Path) -> None:
+        """Test hint generation for YAML config agent."""
+        (tmp_path / "root_agent.yaml").write_text("name: my_agent")
+
+        hint = get_agent_file_hint(tmp_path)
+
+        assert hint == " (has root_agent.yaml)"
+
+    def test_hint_yaml_takes_precedence(self, tmp_path: pathlib.Path) -> None:
+        """Test that YAML config takes precedence in hint."""
+        (tmp_path / "root_agent.yaml").write_text("name: my_agent")
+        (tmp_path / "agent.py").write_text("root_agent = Agent()")
+
+        hint = get_agent_file_hint(tmp_path)
+
+        assert hint == " (has root_agent.yaml)"
+
+    def test_hint_for_empty_directory(self, tmp_path: pathlib.Path) -> None:
+        """Test hint for directory without agent files."""
+        hint = get_agent_file_hint(tmp_path)
+        assert hint == ""
+
+    def test_hint_for_non_directory(self, tmp_path: pathlib.Path) -> None:
+        """Test hint for non-directory path returns empty."""
+        file_path = tmp_path / "some_file.txt"
+        file_path.write_text("content")
+
+        hint = get_agent_file_hint(file_path)
+
+        assert hint == ""
 
 
 if __name__ == "__main__":

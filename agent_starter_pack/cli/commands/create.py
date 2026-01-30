@@ -1077,10 +1077,10 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
 
     # Group headers for display
     GROUP_HEADERS = {
-        ("python", "adk"): "\U0001F40D Python (ADK)",
-        ("python", "langgraph"): "\U0001F99C Python (LangGraph)",
-        ("go", "adk"): "\U0001F535 Go (ADK)",
-        ("java", "adk"): "\u2615\uFE0F Java (ADK)",
+        ("python", "adk"): "\U0001f40d Python (ADK)",
+        ("python", "langgraph"): "\U0001f99c Python (LangGraph)",
+        ("go", "adk"): "\U0001f535 Go (ADK)",
+        ("java", "adk"): "\u2615\ufe0f Java (ADK)",
     }
 
     console.print("\n> Please select an agent to get started:")

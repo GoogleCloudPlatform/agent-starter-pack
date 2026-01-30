@@ -53,7 +53,10 @@ jobs:
         run: mvn package -DskipTests
 
       - name: Run unit tests
-        run: mvn test
+        run: mvn test -Dtest="**/unit/**"
+
+      - name: Run integration tests
+        run: mvn test -Dtest="**/e2e/integration/**"
         env:
           GOOGLE_CLOUD_PROJECT: {% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}
           GOOGLE_CLOUD_LOCATION: global

@@ -368,7 +368,8 @@ def generate_java_package_vars(project_name: str) -> dict[str, str]:
         Dict with java_package and java_package_path
     """
     # Sanitize for Java conventions: lowercase, no hyphens, no dots
-    sanitized =  "".join(c for c in project_name.lower() if c.isalnum())
+    # Java package names should be all lowercase with no separators
+    sanitized = "".join(c for c in project_name.lower() if c.isalnum())
 
     # Remove leading digits if any
     if sanitized and sanitized[0].isdigit():
@@ -1251,7 +1252,7 @@ def process_template(
                     target_test_folder = project_template / "src" / "test"
                     if source_test_folder.exists():
                         logging.debug(
-                            f"6b. Copying Java test folder src/test with override"
+                            "6b. Copying Java test folder src/test with override"
                         )
                         copy_files(
                             source_test_folder,

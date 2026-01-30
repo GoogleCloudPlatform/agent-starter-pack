@@ -40,7 +40,9 @@ from rich.console import Console
 from ..utils.language import (
     LANGUAGE_CONFIGS,
     detect_language,
+    find_agent_file,
     get_asp_config_for_language,
+    get_language_config,
 )
 from ..utils.logging import handle_cli_error
 from ..utils.template import generate_java_package_vars
@@ -611,10 +613,13 @@ def extract(
         )
         raise SystemExit(1)
 
-    agent_py_path = agent_dir_path / "agent.py"
-    if not agent_py_path.exists():
+    # Check for agent file using shared utility (supports Python, Go, Java)
+    agent_file = find_agent_file(source_dir, language, agent_directory)
+    if not agent_file:
+        lang_config = get_language_config(language)
+        agent_file_name = lang_config.get("agent_file", "agent.py")
         console.print(
-            f"⚠️  [yellow]Warning:[/yellow] No agent.py found in {agent_directory}/",
+            f"⚠️  [yellow]Warning:[/yellow] No {agent_file_name} found in {agent_directory}/",
         )
 
     if output_dir.exists():
@@ -633,16 +638,23 @@ def extract(
     if (source_dir / "tests").exists():
         existing_scaffolding.append("tests")
 
-    # Detect ADK from config or agent.py imports
+    # Detect ADK from config or agent file imports
     is_adk = False
     if asp_config:
         base_template = asp_config.get("base_template", "")
         is_adk = "adk" in base_template.lower()
-    else:
-        # Try to detect from agent.py imports (Python only)
-        if language == "python" and agent_py_path.exists():
-            agent_content = agent_py_path.read_text(encoding="utf-8")
-            is_adk = "google.adk" in agent_content or "from adk" in agent_content
+    elif agent_file and agent_file.exists():
+        # Try to detect from agent file imports
+        try:
+            agent_content = agent_file.read_text(encoding="utf-8")
+            if language == "python":
+                is_adk = "google.adk" in agent_content or "from adk" in agent_content
+            elif language == "java":
+                is_adk = (
+                    "google.adk" in agent_content or "com.google.adk" in agent_content
+                )
+        except Exception:
+            pass  # Ignore read errors for ADK detection
 
     if dry_run:
         console.print("[bold cyan]DRY RUN - No changes will be made[/bold cyan]")

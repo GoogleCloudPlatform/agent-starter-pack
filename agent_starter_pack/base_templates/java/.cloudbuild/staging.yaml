@@ -56,6 +56,30 @@ steps:
         echo $(gcloud run services describe {{cookiecutter.project_name}} \
         --region ${_REGION} --project ${_STAGING_PROJECT_ID} --format="value(status.url)") > staging_url.txt
 
+  # Fetch ID Token
+  - name: gcr.io/cloud-builders/gcloud
+    id: fetch-id-token
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        echo $(gcloud auth print-identity-token -q) > id_token.txt
+
+  # Load Testing (Maven failsafe)
+  - name: "maven:3.9-eclipse-temurin-17"
+    id: load_test
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        export _ID_TOKEN=$(cat id_token.txt)
+        export _STAGING_URL=$(cat staging_url.txt)
+        mvn test -Dtest="**/e2e/load_test/**" \
+          -Dstaging.url=$$_STAGING_URL \
+          -Dload.duration=30 \
+          -Dload.users=10 \
+          -Dload.ramp=2
+
   # Trigger Prod Deployment
   - name: gcr.io/cloud-builders/gcloud
     id: trigger-prod-deployment

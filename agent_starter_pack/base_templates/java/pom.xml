@@ -71,6 +71,13 @@
       <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
+    <!-- Spring Boot Test for integration tests -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <version>3.4.1</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
@@ -91,39 +98,71 @@
           <mainClass>{{cookiecutter.java_package}}.Main</mainClass>
         </configuration>
       </plugin>
+      <!-- Unit and E2E tests (run with: mvn test) -->
+      <!-- Runs unit/ and e2e/integration/ tests, excludes load tests -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.2</version>
+        <configuration>
+          <includes>
+            <include>**/unit/**/*Test.java</include>
+            <include>**/e2e/integration/**/*Test.java</include>
+          </includes>
+          <excludedGroups>load</excludedGroups>
+        </configuration>
       </plugin>
+      <!-- Load tests (run with: mvn test-compile failsafe:integration-test failsafe:verify) -->
+      <!-- Requires a running server, not run by default -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-shade-plugin</artifactId>
-        <version>3.6.0</version>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.5.2</version>
         <executions>
           <execution>
-            <phase>package</phase>
             <goals>
-              <goal>shade</goal>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
             </goals>
-            <configuration>
-              <transformers>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                  <mainClass>{{cookiecutter.java_package}}.Main</mainClass>
-                </transformer>
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
-              </transformers>
-              <filters>
-                <filter>
-                  <artifact>*:*</artifact>
-                  <excludes>
-                    <exclude>META-INF/*.SF</exclude>
-                    <exclude>META-INF/*.DSA</exclude>
-                    <exclude>META-INF/*.RSA</exclude>
-                  </excludes>
-                </filter>
-              </filters>
-            </configuration>
+          </execution>
+        </executions>
+        <configuration>
+          <includes>
+            <include>**/e2e/load_test/**/*Test.java</include>
+          </includes>
+          <groups>load</groups>
+          <systemPropertyVariables>
+            <staging.url>${staging.url}</staging.url>
+            <load.duration>${load.duration}</load.duration>
+            <load.users>${load.users}</load.users>
+            <load.ramp>${load.ramp}</load.ramp>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <!-- Checkstyle for code quality (run with: mvn checkstyle:check) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.6.0</version>
+        <configuration>
+          <configLocation>google_checks.xml</configLocation>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>true</failsOnError>
+          <linkXRef>false</linkXRef>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>3.4.1</version>
+        <configuration>
+          <mainClass>{{cookiecutter.java_package}}.Main</mainClass>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

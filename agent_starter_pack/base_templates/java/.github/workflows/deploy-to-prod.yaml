@@ -16,20 +16,34 @@ name: Deploy to Production
 
 on:
   workflow_dispatch:
-    inputs:
-      image_tag:
-        description: 'Docker image tag to deploy'
-        required: true
-        type: string
+  workflow_call:
 
 jobs:
-  deploy_prod:
+  deploy:
     runs-on: ubuntu-latest
+    # This job targets the 'production' environment, which is automatically
+    # created by the Terraform setup in `deployment/terraform/github.tf`.
+    # To enable manual approval for deployments, you must add a protection
+    # rule to this environment in your GitHub repository settings.
+    #
+    # 1. Go to your repository's Settings > Environments.
+    # 2. Select the 'production' environment.
+    # 3. Under 'Protection rules', check the 'Required reviewers' box.
+    # 4. Add the specific users or teams who must approve the deployment.
+    #
+    # Once configured, the workflow will pause at this step and wait for an
+    # authorized user to approve it before proceeding.
+    environment:
+      name: production
+    concurrency: production
     permissions:
       contents: 'read'
       id-token: 'write'
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - id: 'auth'
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v2'
@@ -42,9 +56,9 @@ jobs:
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
 
-      - name: Deploy to Cloud Run (Production)
+      - name: Deploy to Production (Cloud Run)
         run: |
           gcloud run deploy {{cookiecutter.project_name}} \
-            --image {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ inputs.image_tag }}{% endraw %} \
+            --image {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
             --region {% raw %}${{ vars.REGION }}{% endraw %} \
             --project {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}

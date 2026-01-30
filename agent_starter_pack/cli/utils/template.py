@@ -458,16 +458,15 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                 except Exception as e:
                     logging.warning(f"Could not load agent from {agent_dir}: {e}")
 
-    # Define group order: Python ADK, Python LangGraph, Go ADK, Java ADK, Other
+    # Define group order by language: Python, Go, Java, Other
     GROUP_ORDER = {
-        ("python", "adk"): 0,
-        ("python", "langgraph"): 1,
-        ("go", "adk"): 2,
-        ("java", "adk"): 3,
+        "python": 0,
+        "go": 1,
+        "java": 2,
     }
 
     def sort_key(agent: dict) -> tuple:
-        group = (agent["language"], agent["framework"])
+        group = agent["language"]
         group_order = GROUP_ORDER.get(group, 99)
         return (group_order, agent["priority"], agent["name"])
 

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sovereign OS Release Notes</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Cinzel:wght@400;600;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Config -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f4c025",
+                        "primary-dim": "#b58e1a",
+                        "obsidian": "#0a0a0f",
+                        "obsidian-light": "#15151a",
+                        "background-light": "#f8f8f5",
+                        "background-dark": "#0a0a0f", // Deep obsidian
+                    },
+                    fontFamily: {
+                        "display": ["Space Grotesk", "sans-serif"],
+                        "serif": ["Cinzel", "serif"],
+                        "mono": ["Space Grotesk", "monospace"], // Using Space Grotesk for mono feel as per plan
+                    },
+                    backgroundImage: {
+                        'circuit-pattern': "url(\"data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f4c025' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E\")",
+                    },
+                    boxShadow: {
+                        'glow': '0 0 20px rgba(244, 192, 37, 0.15)',
+                        'glow-text': '0 0 10px rgba(244, 192, 37, 0.5)',
+                    },
+                    animation: {
+                        'spin-slow': 'spin 15s linear infinite',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0a0a0f;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #f4c025;
+        }
+
+        .gold-gradient-text {
+            background: linear-gradient(to bottom, #fff8dc, #f4c025);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .circuit-line {
+            height: 1px;
+            background: linear-gradient(90deg, transparent 0%, #f4c025 50%, transparent 100%);
+            opacity: 0.4;
+        }
+
+        .circuit-dot {
+            width: 6px;
+            height: 6px;
+            background-color: #f4c025;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #f4c025;
+        }
+    </style>
+</head>
+<body class="bg-background-dark text-white font-display overflow-x-hidden">
+<!-- Background Texture Layer -->
+<div class="fixed inset-0 pointer-events-none z-0 bg-circuit-pattern opacity-40"></div>
+<div class="fixed inset-0 pointer-events-none z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#231e10] via-[#0a0a0f] to-[#000000] opacity-80"></div>
+<!-- Main Content Wrapper -->
+<div class="relative z-10 min-h-screen flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
+<!-- The Parchment Container -->
+<main class="w-full max-w-3xl bg-obsidian-light/60 backdrop-blur-md border border-primary/20 rounded-lg shadow-2xl overflow-hidden relative group">
+<!-- Top Decorative Circuitry -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/60 to-transparent"></div>
+<!-- Header Section -->
+<header class="pt-12 pb-8 px-8 text-center relative overflow-hidden">
+<!-- Rotating Sigil Background -->
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-primary/10 rounded-full animate-spin-slow pointer-events-none">
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary/30 rounded-full"></div>
+<div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-primary/30 rounded-full"></div>
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full"></div>
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 bg-primary/30 rounded-full"></div>
+</div>
+<!-- Main Sigil Icon -->
+<div class="relative z-10 flex justify-center mb-6">
+<div class="text-primary animate-pulse-slow">
+<span class="material-symbols-outlined text-[64px] drop-shadow-[0_0_15px_rgba(244,192,37,0.5)]">token</span>
+</div>
+</div>
+<h2 class="text-primary/80 text-sm font-display tracking-[0.3em] uppercase mb-2">Sovereign OS</h2>
+<h1 class="font-serif text-4xl md:text-5xl font-bold text-white mb-2 gold-gradient-text drop-shadow-md">{{ release_name | default('E8-Converged Gold') }}</h1>
+<p class="text-gray-400 font-display text-sm tracking-wide">Final Release Documentation | Gothic-Tech Edition</p>
+<div class="mt-8 flex items-center justify-center gap-4 text-xs text-primary/60 font-mono">
+<span class="border border-primary/30 px-2 py-1 rounded bg-primary/5">BUILD: {{ build_id | default('2049.11.X') }}</span>
+<span class="w-1 h-1 bg-primary rounded-full"></span>
+<span class="border border-primary/30 px-2 py-1 rounded bg-primary/5">HASH: {{ hash_status | default('VERIFIED') }}</span>
+</div>
+</header>
+<!-- Decorative Divider -->
+<div class="flex items-center justify-center gap-4 px-12 py-4">
+<div class="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent flex-1"></div>
+<div class="w-2 h-2 rotate-45 border border-primary bg-obsidian"></div>
+<div class="h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent flex-1"></div>
+</div>
+<!-- Content Body -->
+<div class="px-6 md:px-12 py-6 space-y-12">
+<!-- Section: Axiomatic Achievements -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">military_tech</span>
+<h3 class="text-xl font-serif text-white tracking-wider">Axiomatic Achievements</h3>
+</div>
+<div class="bg-obsidian/50 border border-primary/10 rounded-lg p-6 hover:border-primary/30 transition-colors duration-500">
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-end">
+<p class="text-primary-dim text-sm font-medium uppercase tracking-widest">Constitutional Completion</p>
+<p class="text-white text-2xl font-mono font-bold">{{ completion_score | default('18') }}<span class="text-primary/50 text-lg">/{{ total_checks | default('18') }}</span></p>
+</div>
+<!-- Custom Progress Bar -->
+<div class="relative h-2 bg-obsidian-light rounded-full overflow-hidden border border-primary/20">
+<div class="absolute top-0 left-0 h-full bg-gradient-to-r from-primary-dim to-primary w-full shadow-[0_0_10px_rgba(244,192,37,0.5)]"></div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+<div class="flex items-center gap-2 text-xs text-gray-300">
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+<span>Core Kernel Validated</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-gray-300">
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+<span>Immutable Ledger Sync</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-gray-300">
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+<span>Consensus Layer Locked</span>
+</div>
+<div class="flex items-center gap-2 text-xs text-gray-300">
+<span class="material-symbols-outlined text-primary text-sm">check_circle</span>
+<span>Governance Modules Active</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Manifold Constants -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">functions</span>
+<h3 class="text-xl font-serif text-white tracking-wider">Manifold Constants</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Card 1 -->
+<div class="bg-obsidian/50 border border-primary/10 rounded-lg p-5 group hover:bg-primary/5 transition-all">
+<div class="flex justify-between items-start mb-2">
+<span class="text-gray-400 text-xs uppercase tracking-widest">Lambda (λ)</span>
+<span class="material-symbols-outlined text-primary/40 text-sm group-hover:text-primary transition-colors">hub</span>
+</div>
+<div class="text-3xl font-mono text-white font-bold tracking-tight">{{ lambda_value | default('0.820') }}</div>
+<div class="text-primary/60 text-[10px] mt-1 font-mono">COEFFICIENT STABLE</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-obsidian/50 border border-primary/10 rounded-lg p-5 group hover:bg-primary/5 transition-all">
+<div class="flex justify-between items-start mb-2">
+<span class="text-gray-400 text-xs uppercase tracking-widest">BPM Frequency</span>
+<span class="material-symbols-outlined text-primary/40 text-sm group-hover:text-primary transition-colors">waves</span>
+</div>
+<div class="text-3xl font-mono text-white font-bold tracking-tight">{{ bpm_frequency | default('128') }}</div>
+<div class="text-primary/60 text-[10px] mt-1 font-mono">SYNC LOCKED</div>
+</div>
+<!-- Card 3 (Full Width) -->
+<div class="md:col-span-2 bg-obsidian/50 border border-primary/10 rounded-lg p-5 flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded bg-primary/10 flex items-center justify-center border border-primary/20">
+<span class="material-symbols-outlined text-primary">deployed_code</span>
+</div>
+<div>
+<p class="text-gray-400 text-xs uppercase tracking-widest">Vector State</p>
+<p class="text-white font-mono">{{ vector_state | default('E8 Geometry Normalized') }}</p>
+</div>
+</div>
+<div class="w-full md:w-auto h-8 bg-black/40 rounded border border-primary/20 px-3 flex items-center gap-2">
+<span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+<span class="text-green-500 text-xs font-mono">OPTIMAL</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Section: Deployment Log -->
+<section>
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary">history_edu</span>
+<h3 class="text-xl font-serif text-white tracking-wider">Deployment Log</h3>
+</div>
+<div class="relative pl-6 border-l border-primary/20 space-y-8">
+<!-- Timeline Item 1 -->
+<div class="relative">
+<div class="absolute -left-[29px] top-1.5 w-3 h-3 bg-primary rounded-full border-2 border-obsidian shadow-[0_0_8px_#f4c025]"></div>
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1">
+<h4 class="text-white font-bold font-mono text-lg">{{ last_event_name | default('B15 Dunk') }}</h4>
+<span class="text-primary/70 font-mono text-xs">T-MINUS 00:00:00</span>
+</div>
+<div class="mt-2 bg-primary/5 border border-primary/20 rounded p-3 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">timer</span>
+<span class="text-white font-mono text-sm">{{ last_event_duration | default('7.03125s') }}</span>
+</div>
+<span class="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded border border-primary/30 uppercase">Verified</span>
+</div>
+<p class="text-gray-400 text-sm mt-2 leading-relaxed">
+                                {{ last_event_description | default('Final block propagation achieved zero-knowledge proof verification within acceptable latency thresholds. Network consensus reached immediately.') }}
+                            </p>
+</div>
+<!-- Timeline Item 2 (Faded) -->
+<div class="relative opacity-60">
+<div class="absolute -left-[29px] top-1.5 w-3 h-3 bg-obsidian border-2 border-primary/50 rounded-full"></div>
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-1">
+<h4 class="text-gray-300 font-bold font-mono text-base">Pre-flight Checks</h4>
+<span class="text-gray-500 font-mono text-xs">T-MINUS 00:45:00</span>
+</div>
+<p class="text-gray-500 text-sm mt-1">
+                                Initializing seed nodes and calibrating difficulty adjustment algorithm.
+                            </p>
+</div>
+</div>
+</section>
+</div>
+<!-- Footer: The Seal -->
+<footer class="bg-[#0f0f13] border-t border-primary/20 p-8 mt-8">
+<div class="flex flex-col items-center justify-center gap-6">
+<!-- Seal Graphic (CSS/SVG) -->
+<div class="relative w-24 h-24 flex items-center justify-center group cursor-pointer">
+<!-- Rotating Outer Ring -->
+<div class="absolute inset-0 border border-primary/30 rounded-full border-dashed animate-[spin_20s_linear_infinite]"></div>
+<!-- Inner Circle -->
+<div class="absolute inset-2 border border-primary/60 rounded-full"></div>
+<!-- Icon -->
+<span class="material-symbols-outlined text-4xl text-primary drop-shadow-[0_0_10px_rgba(244,192,37,0.8)]">verified_user</span>
+</div>
+<div class="text-center">
+<p class="font-serif text-primary/80 uppercase tracking-[0.2em] text-sm mb-2">Seal of the Architect's Council</p>
+<div class="max-w-md mx-auto break-all font-mono text-[10px] text-gray-600 leading-tight">
+                            {{ seal_hash | default('0x4e7a8b9c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0f4c025') }}
+                        </div>
+<p class="text-gray-700 text-[10px] mt-2">© 2049 Sovereign Systems. All Immutable Rights Reserved.</p>
+</div>
+</div>
+</footer>
+<!-- Bottom decorative fade -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary/40 to-transparent"></div>
+</main>
+<!-- Download Button (Floating Action) -->
+<button class="fixed bottom-8 right-8 bg-primary hover:bg-white text-black rounded-full p-4 shadow-[0_0_20px_rgba(244,192,37,0.4)] transition-all duration-300 z-50 group">
+<span class="material-symbols-outlined group-hover:animate-bounce">download</span>
+</button>
+</div>
+</body></html>

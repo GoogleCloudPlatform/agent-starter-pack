@@ -1,203 +1,245 @@
-# Agent Starter Pack - Coding Agent Guide
+# Agent Starter Pack - AI Coding Agent Guide
+
+> **Scope**: This document is for AI coding agents contributing to the **Agent Starter Pack repository itself** (the template generator). For guidance on working with **generated projects**, see [llm.txt](./llm.txt).
 
 This document provides essential guidance, architectural insights, and best practices for AI coding agents tasked with modifying the Google Cloud Agent Starter Pack. Adhering to these principles is critical for making safe, consistent, and effective changes.
+
+---
 
 ## Core Principles for AI Agents
 
 1.  **Preserve and Isolate:** Your primary objective is surgical precision. Modify *only* the code segments directly related to the user's request. Preserve all surrounding code, comments, and formatting. Do not rewrite entire files or functions to make a small change.
 2.  **Follow Conventions:** This project relies heavily on established patterns. Before writing new code, analyze the surrounding files to understand and replicate existing conventions for naming, templating logic, and directory structure.
-3.  **Search Comprehensively:** A single change often requires updates in multiple places. When modifying configuration, variables, or infrastructure, you **must** search across the entire repository, including:
-    *   `agent-starter-pack/base_template/` (the core template)
-    *   `agent-starter-pack/deployment_targets/` (environment-specific overrides)
+3.  **Template-First Mindset:** ASP is a template generator. The CLI should remain lean with good defaults. Most features belong in templates, not CLI code.
+4.  **Search Comprehensively:** A single change often requires updates in multiple places. When modifying configuration, variables, or infrastructure, you **must** search across the entire repository, including:
+    *   `agent_starter_pack/base_templates/` (core templates by language)
+    *   `agent_starter_pack/deployment_targets/` (environment-specific overrides)
     *   `.github/` and `.cloudbuild/` (CI/CD workflows)
     *   `docs/` (user-facing documentation)
 
+---
+
 ## Project Architecture Overview
+
+### 4-Layer Template System
+
+Template processing follows this hierarchy (later layers override earlier ones):
+
+| Layer | Directory | Purpose |
+|-------|-----------|---------|
+| 1. Base | `agent_starter_pack/base_templates/<language>/` | Core Jinja scaffolding (Python, Go, more coming) |
+| 2. Deployment | `agent_starter_pack/deployment_targets/` | Environment overrides (cloud_run, agent_engine) |
+| 3. Frontend | `agent_starter_pack/frontends/` | UI-specific files |
+| 4. Agent | `agent_starter_pack/agents/*/` | Agent-specific logic and configurations |
+
+**Rule**: Always place changes in the correct layer. Check if deployment targets need corresponding updates.
+
+### Key Directory Structure
+
+```
+agent_starter_pack/
+├── agents/                    # Agent-specific files
+│   ├── adk/                   # Base ADK agent (Python)
+│   ├── adk_a2a/               # A2A-enabled ADK agent
+│   ├── adk_go/                # Base ADK agent (Go)
+│   ├── adk_live/              # Real-time multimodal agent
+│   ├── agentic_rag/           # RAG agent
+│   └── langgraph/             # LangGraph-based agent
+├── base_templates/            # Core Jinja templates by language
+│   ├── python/                # Python project template
+│   │   ├── {{cookiecutter.agent_directory}}/
+│   │   ├── deployment/
+│   │   ├── tests/
+│   │   └── Makefile
+│   └── go/                    # Go project template
+├── deployment_targets/        # Environment-specific overrides
+│   ├── agent_engine/          # Agent Engine deployment
+│   └── cloud_run/             # Cloud Run deployment
+├── frontends/                 # UI templates
+└── cli/                       # CLI implementation
+    ├── commands/              # create, setup-cicd, enhance, etc.
+    └── utils/                 # Template processing, helpers
+```
+
+### When to Modify What
+
+| Change Type | Where to Modify | Also Check |
+|-------------|-----------------|------------|
+| Affects ALL generated projects | `base_templates/<language>/` | Deployment targets for conflicts |
+| Deployment-specific logic | `deployment_targets/<target>/` | Base templates for shared code |
+| Agent-specific feature | `agents/<agent>/` | Other agents for consistency |
+| New CLI flag/command | `cli/commands/` | `cli/utils/` for shared logic |
+| CI/CD changes | Both `.github/` AND `.cloudbuild/` | Keep in sync |
+| Documentation | `docs/` | README.md for overview changes |
+
+### Template Processing Flow
+
+1.  **Variable resolution** from `cookiecutter.json`
+2.  **File copying** (base → deployment → frontend → agent overlays)
+3.  **Jinja2 rendering** of file content
+4.  **File/directory name rendering** (Jinja in filenames)
+
+### Cross-File Dependencies
+
+Changes often require coordinated updates:
+- **Configuration**: `templateconfig.yaml` → `cookiecutter.json` → rendered templates
+- **CI/CD**: `.github/workflows/` ↔ `.cloudbuild/` (must stay in sync)
+- **Infrastructure**: Base terraform → deployment target overrides
+
+---
+
+## Template Development Workflow
+
+Template changes require a specific workflow because you're modifying Jinja templates, not regular source files.
+
+> **Note:** This workflow applies to both Python and Go templates. Both use Jinja templating with the same patterns (`{{cookiecutter.*}}`, `{% if %}`, etc.).
+
+### Step-by-Step Process
+
+#### 1. Generate a Test Instance
+
+```bash
+uv run agent-starter-pack create mytest -p -s -y -d cloud_run --output-dir target
+```
+
+Flags explained:
+- `-p` / `--prototype`: Minimal project (no CI/CD or Terraform)
+- `-s` / `--skip-checks`: Skip GCP/Vertex AI verification
+- `-y` / `--auto-approve`: Skip all confirmation prompts
+- `-d`: Deployment target
+- `--output-dir target`: Output to target/ (gitignored)
+
+#### 2. Initialize Git in the Generated Project
+
+```bash
+cd target/mytest && git init && git add . && git commit -m "Initial"
+```
+
+This creates a baseline for tracking your changes with `git diff`.
+
+#### 3. Develop with Tight Feedback Loops
+
+- Make changes directly in `target/mytest/`
+- Test immediately: `make lint`, run the code, check output
+- Iterate until the change works correctly
+- Use `git diff` to see exactly what you changed
+
+#### 4. Backport Changes to Jinja Templates
+
+- Find the source template: `find agent_starter_pack -name "filename.py" -type f`
+- Apply your changes to the template file
+- Add Jinja conditionals if the change is conditional
+- Use `{%- -%}` whitespace control carefully
+
+#### 5. Validate Across Combinations
+
+```bash
+# Test your target combination
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
+
+# Test alternate agent with same deployment
+_TEST_AGENT_COMBINATION="adk_live,cloud_run" make lint-templated-agents
+
+# Test same agent with alternate deployment
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
+```
+
+### Why This Workflow?
+
+- Jinja templates are harder to debug than rendered code
+- Generated projects give immediate feedback on syntax errors
+- Backporting ensures you understand exactly what changed
+- Cross-combination testing catches conditional logic bugs
+
+### Language-Specific Notes
+
+The template development workflow above applies to all languages. Here are language-specific details:
+
+| Language | Agent(s) | Linter | Test Command | Status |
+|----------|----------|--------|--------------|--------|
+| Python | adk, adk_a2a, adk_live, agentic_rag, langgraph, custom_a2a | `ruff`, `ty` | `make lint` | Production |
+| Go | adk_go | `golangci-lint` | `make lint` | Production |
+| Java | (coming soon) | - | - | In development |
+| TypeScript | (coming soon) | - | - | In development |
+
+**Python example:**
+```bash
+uv run agent-starter-pack create mytest -a adk -d cloud_run -p -s -y --output-dir target
+```
+
+**Go example:**
+```bash
+uv run agent-starter-pack create mytest -a adk_go -d cloud_run -p -s -y --output-dir target
+```
+
+---
+
+## Jinja Templating Rules
+
+> **Note:** These rules apply to both Python and Go templates. Both languages use the same Jinja2 templating patterns.
 
 ### Templating Engine: Cookiecutter + Jinja2
 
-The starter pack uses **Cookiecutter** to generate project scaffolding from templates that are heavily customized with the **Jinja2** templating language. Understanding the rendering process is key to avoiding errors.
+The starter pack uses **Cookiecutter** to generate project scaffolding from templates customized with **Jinja2**. Understanding the rendering process is key to avoiding errors.
 
 **Multi-Phase Template Processing:**
 
-Templates are processed in a specific order. A failure at any stage will break the project generation.
+1.  **Cookiecutter Variable Substitution:** Replacement of `{{cookiecutter.variable_name}}` placeholders
+2.  **Jinja2 Logic Execution:** Conditional blocks (`{% if %}`), loops (`{% for %}`)
+3.  **File/Directory Name Templating:** Jinja2 in filenames is rendered
 
-1.  **Cookiecutter Variable Substitution:** Simple replacement of `{{cookiecutter.variable_name}}` placeholders with values from `cookiecutter.json`.
-2.  **Jinja2 Logic Execution:** Conditional blocks (`{% if %}`), loops (`{% for %}`), and other logic are executed. This is the most complex and error-prone stage.
-3.  **File/Directory Name Templating:** File and directory names containing Jinja2 blocks are rendered. For example, `{% if cookiecutter.cicd_runner == 'github_actions' %}.github{% else %}unused_github{% endif %}`.
+### Block Balancing (Critical)
 
-### Key Directory Structures
-
--   `agent-starter-pack/base_template/`: This is the **core template**. Most changes that should apply to all generated projects should start here.
--   `agent-starter-pack/deployment_targets/`: Contains files that **override or are added to** the `base_template` for a specific deployment target (e.g., `cloud_run`, `gke`, `agent_engine`). If a file exists in both `base_template` and a deployment target, the latter is typically used.
--   `agent-starter-pack/agents/`: Contains pre-packaged, self-contained agent examples. Each has its own `.template/templateconfig.yaml` to define its specific variables and dependencies.
--   `agent-starter-pack/cli/commands`: Contains the logic for the CLI commands, such as `create` and `setup-cicd`.
-
-### CLI Commands
-
--   `create.py`: Handles the creation of new agent projects. It orchestrates the template processing, configuration merging, and deployment target selection.
--   `setup_cicd.py`: Automates the setup of the CI/CD pipeline. It interacts with `gcloud` and `gh` to configure GitHub repositories, Cloud Build triggers, and Terraform backend.
-
-### Template Processing
-
--   `template.py`: Located in `agent-starter-pack/cli/utils`, this script contains the core logic for processing the templates. It copies the base template, overlays the deployment target files, and then applies the agent-specific files.
-
-## Critical Jinja Templating Rules
-
-Failure to follow these rules is the most common source of project generation errors.
-
-### 1. Block Balancing
-**Every opening Jinja block must have a corresponding closing block.** This is the most critical rule.
+**Every opening Jinja block must have a corresponding closing block.**
 
 -   `{% if ... %}` requires `{% endif %}`
 -   `{% for ... %}` requires `{% endfor %}`
 -   `{% raw %}` requires `{% endraw %}`
 
-**Correct:**
 ```jinja
 {% if cookiecutter.deployment_target == 'cloud_run' %}
   # Cloud Run specific content
 {% endif %}
 ```
 
-### 2. Variable Usage
+### Variable Usage
+
 Distinguish between substitution and logic:
 
--   **Substitution (in file content):** Use double curly braces: `{{ cookiecutter.project_name }}`
--   **Logic (in `if`/`for` blocks):** Use the variable directly: `{% if cookiecutter.session_type == 'cloud_sql' %}`
+-   **Substitution (in file content):** `{{ cookiecutter.project_name }}`
+-   **Logic (in `if`/`for` blocks):** `{% if cookiecutter.session_type == 'cloud_sql' %}`
 
-### 3. Whitespace Control
-Jinja is sensitive to whitespace. Use hyphens to control newlines and prevent unwanted blank lines in rendered files.
+### Whitespace Control
 
--   `{%-` removes whitespace before the block.
--   `-%}` removes whitespace after the block.
+Jinja is sensitive to whitespace. Use hyphens to control newlines:
 
-**Example:**
+-   `{%-` removes whitespace before the block
+-   `-%}` removes whitespace after the block
+-   `{%- -%}` removes whitespace on both sides
+
 ```jinja
 {%- if cookiecutter.some_option %}
 option = true
 {%- endif %}
 ```
 
-## Terraform Best Practices
-
-### Unified Service Account (`app_sa`)
-The project uses a single, unified application service account (`app_sa`) across all deployment targets to simplify IAM management.
-
--   **Do not** create target-specific service accounts (e.g., `cloud_run_sa`).
--   Define roles for this account in `app_sa_roles`.
--   Reference this account consistently in all Terraform and CI/CD files.
-
-### Resource Referencing
-Use consistent and clear naming for Terraform resources. When referencing resources, especially those created conditionally or with `for_each`, ensure the reference is also correctly keyed.
-
-**Example:**
-```hcl
-# Creation
-resource "google_service_account" "app_sa" {
-  for_each   = local.deploy_project_ids # e.g., {"staging" = "...", "prod" = "..."}
-  account_id = "${var.project_name}-app"
-  # ...
-}
-
-# Correct Reference
-# In a Cloud Run module for the staging environment
-service_account = google_service_account.app_sa["staging"].email
-```
-
-## CI/CD Integration (GitHub Actions & Cloud Build)
-
-The project maintains parallel CI/CD implementations. **Any change to CI/CD logic must be applied to both.**
-
--   **GitHub Actions:** Configured in `.github/workflows/`. Uses `${{ vars.VAR_NAME }}` for repository variables.
--   **Google Cloud Build:** Configured in `.cloudbuild/`. Uses `${_VAR_NAME}` for substitution variables.
-
-When adding a new variable or secret, ensure it is configured correctly for both systems in the Terraform scripts that manage them (e.g., `github_actions_variable` resource and Cloud Build trigger substitutions).
-
-## Advanced Template System Patterns
-
-### 4-Layer Architecture
-Template processing follows this hierarchy (later layers override earlier ones):
-1. **Base Template** (`agent-starter-pack/base_template/`) - Applied to ALL projects
-2. **Deployment Targets** (`agent-starter-pack/deployment_targets/`) - Environment overrides  
-3. **Frontend Types** (`agent-starter-pack/frontends/`) - UI-specific files
-4. **Agent Templates** (`agent-starter-pack/agents/*/`) - Individual agent logic
-
-**Rule**: Always place changes in the correct layer. Check if deployment targets need corresponding updates.
-
-### Template Processing Flow
-1. Variable resolution from `cookiecutter.json`
-2. File copying (base → overlays)
-3. Jinja2 rendering of content
-4. File/directory name rendering
-
-### Cross-File Dependencies
-Changes often require coordinated updates:
-- **Configuration**: `templateconfig.yaml` → `cookiecutter.json` → rendered templates
-- **CI/CD**: `.github/workflows/` ↔ `.cloudbuild/` (must stay in sync)
-- **Infrastructure**: Base terraform → deployment target overrides
-
 ### Conditional Logic Patterns
+
 ```jinja
 {%- if cookiecutter.agent_name == "adk_live" %}
 # Agent-specific logic
 {%- elif cookiecutter.deployment_target == "cloud_run" %}
-# Deployment-specific logic  
+# Deployment-specific logic
 {%- endif %}
 ```
 
-### Testing Strategy
-Test changes across multiple dimensions:
-- Agent types (adk_live, adk, etc.)
-- Deployment targets (cloud_run, agent_engine)
-- Feature combinations (data_ingestion, frontend_type)
-- Example command for testing the starter pack creation - from the root of the repo run: `uv run agent-starter-pack create myagent-$(date +%s) --output-dir target`
+---
 
-### Common Pitfalls
-- **Hardcoded URLs**: Use relative paths for frontend connections
-- **Missing Conditionals**: Wrap agent-specific code in proper `{% if %}` blocks
-- **Dependency Conflicts**: Some agents lack certain extras (e.g., adk_live + lint)
-
-## Linting and Testing Multiple Combinations
-
-**IMPORTANT:** Only run linting when explicitly requested by the user. Do not proactively lint unless asked.
-
-### Linting System
-
-The project uses **Ruff** for linting/formatting and **ty** for type checking. Use these commands to validate template combinations:
-
-**Linting:**
-```bash
-_TEST_AGENT_COMBINATION="agent,target,--param,value" make lint-templated-agents
-```
-
-**Testing:**
-```bash
-_TEST_AGENT_COMBINATION="agent,target,--param,value" make test-templated-agents
-```
-
-Both commands use the same `_TEST_AGENT_COMBINATION` environment variable to control which agent combination to validate.
-
-### Testing Methodology
-
-**Critical Principle:** Template changes can affect MULTIPLE agent/deployment combinations. Test across combinations when making template modifications.
-
-**Common Combinations:**
-```bash
-# Linting examples
-_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
-_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
-
-# Testing examples
-_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make test-templated-agents
-_TEST_AGENT_COMBINATION="langgraph,agent_engine" make test-templated-agents
-```
-
-### Critical Whitespace Control Patterns
+## Critical Whitespace Control Patterns
 
 Jinja2 whitespace control is the #1 source of linting failures. Understanding these patterns is essential.
 
-#### Pattern 1: Conditional Imports with Blank Line Separation
+### Pattern 1: Conditional Imports with Blank Line Separation
 
 **Problem:** Python requires blank lines to separate third-party imports from project imports. Conditional imports must handle this correctly.
 
@@ -230,7 +272,7 @@ from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_
 - The blank line AFTER the conditional import goes INSIDE the if block when needed
 - Test BOTH when condition is true AND false
 
-#### Pattern 2: Long Import Lines
+### Pattern 2: Long Import Lines
 
 **Problem:** Ruff enforces line length limits. Long import statements must be split.
 
@@ -250,9 +292,9 @@ from app.app_utils.typing import (
 )
 ```
 
-#### Pattern 3: File End Newlines
+### Pattern 3: File End Newlines
 
-**Problem:** Ruff requires exactly ONE newline at the end of every file, no more, no less.
+**Problem:** Ruff requires exactly ONE newline at the end of every file.
 
 **Wrong - No newline:**
 ```jinja
@@ -287,9 +329,119 @@ import logging
 
 Notice `{%- endif -%}` to prevent blank line before the else block.
 
-### Debugging Linting Failures
+### Whitespace Control Cheat Sheet
 
-**Step 1: Identify the exact error**
+```jinja
+# Remove whitespace BEFORE the tag
+{%- if condition %}
+
+# Remove whitespace AFTER the tag
+{% if condition -%}
+
+# Remove whitespace on BOTH sides
+{%- if condition -%}
+
+# Typical pattern for conditional imports
+{% if condition -%}
+import something
+{% endif %}
+
+# Typical pattern for conditional code blocks with blank line before
+{%- if condition %}
+
+some_code()
+{%- endif %}
+
+# Pattern for preventing blank line between consecutive conditionals
+{%- endif -%}
+{%- if next_condition %}
+```
+
+---
+
+## Testing Strategy
+
+### Testing Coverage Matrix
+
+**Critical Principle:** Template changes can affect MULTIPLE agent/deployment combinations. Test across combinations when making template modifications.
+
+| Dimension | Options |
+|-----------|---------|
+| Agents | adk, adk_a2a, adk_go, adk_live, agentic_rag, langgraph |
+| Deployments | cloud_run, agent_engine |
+| Session types | in_memory, cloud_sql, agent_engine |
+| Features | data_ingestion, frontend_type |
+
+### Minimum Coverage Before PR
+
+- [ ] Your target combination
+- [ ] One alternate agent with same deployment target
+- [ ] One alternate deployment target with same agent
+
+### Linting Commands
+
+**IMPORTANT:** Only run linting when explicitly requested by the user. Do not proactively lint unless asked.
+
+```bash
+# Linting a specific combination
+_TEST_AGENT_COMBINATION="agent,target,--param,value" make lint-templated-agents
+
+# Testing a specific combination
+_TEST_AGENT_COMBINATION="agent,target,--param,value" make test-templated-agents
+```
+
+### Common Test Combinations
+
+```bash
+# Cloud Run combinations (Python)
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
+
+# Agent Engine combinations (Python)
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="langgraph,agent_engine" make lint-templated-agents
+
+# Go template testing
+_TEST_AGENT_COMBINATION="adk_go,cloud_run" make lint-templated-agents
+
+# With session type variations
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,agent_engine" make lint-templated-agents
+```
+
+### Testing Workflow for Template Changes
+
+**Before committing ANY template change:**
+
+```bash
+# 1. Test the specific combination you're working on
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
+
+# 2. Test related combinations (same deployment, different agents)
+_TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
+
+# 3. Test alternate code paths (different deployment, session types)
+_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
+
+# 4. If modifying deployment target files, test all agents with that target
+# For agent_engine changes:
+_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
+_TEST_AGENT_COMBINATION="langgraph,agent_engine" make lint-templated-agents
+```
+
+**Golden Rule:** After ANY template change affecting imports, conditionals, or file endings, test AT LEAST 3 combinations:
+1. The target combination
+2. An alternate agent with same deployment
+3. An alternate deployment with same agent
+
+---
+
+## Debugging Linting Failures
+
+### Step 1: Identify the Exact Error
+
 ```bash
 # Look for the diff output in the error message
 --- app/fast_api_app.py
@@ -303,19 +455,22 @@ Notice `{%- endif -%}` to prevent blank line before the else block.
 
 The `+` line shows what Ruff WANTS to add. In this case, it wants a blank line after `agent_engines`.
 
-**Step 2: Find the generated file**
+### Step 2: Find the Generated File
+
 ```bash
 # Generated files are in target/
 cat target/project-name/app/fast_api_app.py | head -30
 ```
 
-**Step 3: Trace back to template**
+### Step 3: Trace Back to Template
+
 ```bash
 # Find the template source
 find agent_starter_pack -name "fast_api_app.py" -type f
 ```
 
-**Step 4: Check BOTH branches of conditionals**
+### Step 4: Check BOTH Branches of Conditionals
+
 - If `{% if condition %}` exists, test with condition true AND false
 - Use different agent combinations to toggle different conditions
 
@@ -344,74 +499,52 @@ find agent_starter_pack -name "fast_api_app.py" -type f
    - Different agents trigger different code paths
    - Must test multiple agent types
 
-### Testing Workflow for Template Changes
+---
 
-**Before committing ANY template change:**
+## CI/CD Integration
 
-```bash
-# 1. Test the specific combination you're working on
-_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,in_memory" make lint-templated-agents
+The project maintains parallel CI/CD implementations. **Any change to CI/CD logic must be applied to both.**
 
-# 2. Test related combinations (same deployment, different agents)
-_TEST_AGENT_COMBINATION="adk_live,cloud_run,--session-type,in_memory" make lint-templated-agents
+-   **GitHub Actions:** Configured in `.github/workflows/`. Uses `${{ vars.VAR_NAME }}` for repository variables.
+-   **Google Cloud Build:** Configured in `.cloudbuild/`. Uses `${_VAR_NAME}` for substitution variables.
 
-# 3. Test alternate code paths (different deployment, session types)
-_TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,agent_engine" make lint-templated-agents
-_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
+When adding a new variable or secret, ensure it is configured correctly for both systems in the Terraform scripts that manage them (e.g., `github_actions_variable` resource and Cloud Build trigger substitutions).
 
-# 4. If modifying deployment target files, test all agents with that target
-# For agent_engine changes:
-_TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
-_TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
-_TEST_AGENT_COMBINATION="langgraph,agent_engine" make lint-templated-agents
+---
+
+## Terraform Best Practices
+
+### Unified Service Account (`app_sa`)
+
+The project uses a single, unified application service account (`app_sa`) across all deployment targets to simplify IAM management.
+
+-   **Do not** create target-specific service accounts (e.g., `cloud_run_sa`)
+-   Define roles for this account in `app_sa_roles`
+-   Reference this account consistently in all Terraform and CI/CD files
+
+### Resource Referencing
+
+Use consistent and clear naming for Terraform resources. When referencing resources, especially those created conditionally or with `for_each`, ensure the reference is also correctly keyed.
+
+```hcl
+# Creation
+resource "google_service_account" "app_sa" {
+  for_each   = local.deploy_project_ids # e.g., {"staging" = "...", "prod" = "..."}
+  account_id = "${var.project_name}-app"
+  # ...
+}
+
+# Correct Reference
+# In a Cloud Run module for the staging environment
+service_account = google_service_account.app_sa["staging"].email
 ```
 
-### Quick Reference: Whitespace Control Cheat Sheet
-
-```jinja
-# Remove whitespace BEFORE the tag
-{%- if condition %}
-
-# Remove whitespace AFTER the tag
-{% if condition -%}
-
-# Remove whitespace on BOTH sides
-{%- if condition -%}
-
-# Typical pattern for conditional imports
-{% if condition -%}
-import something
-{% endif %}
-
-# Typical pattern for conditional code blocks with blank line before
-{%- if condition %}
-
-some_code()
-{%- endif %}
-
-# Pattern for preventing blank line between consecutive conditionals
-{%- endif -%}
-{%- if next_condition %}
-```
-
-**Golden Rule:** After ANY template change affecting imports, conditionals, or file endings, test AT LEAST 3 combinations:
-1. The target combination
-2. An alternate agent with same deployment
-3. An alternate deployment with same agent
-
-## File Modification Checklist
-
--   [ ] **Jinja Syntax:** All `{% if %}` and `{% for %}` blocks correctly closed?
--   [ ] **Variable Consistency:** `cookiecutter.` variables spelled correctly?
--   [ ] **Cross-Target Impact:** Base template changes checked against deployment targets?
--   [ ] **CI/CD Parity:** Changes applied to both GitHub Actions and Cloud Build?
--   [ ] **Multi-Agent Testing:** Tested with different agent types and configurations?
+---
 
 ## Pull Request Best Practices
 
-When creating pull requests for this repository, follow these guidelines for clear, professional commits and PR descriptions.
-
 ### Commit Message Format
+
 ```
 <type>: <concise summary in imperative mood>
 
@@ -488,17 +621,24 @@ before creating the connection.
 ```
 
 ### Key Principles
+
 - **Concise but complete**: Provide enough context for reviewers
 - **Problem-first**: Explain the "why" before the "what"
 - **Professional tone**: Avoid mentions of AI tools or assistants
 
-### Key Tooling
+---
 
--   **`uv` for Python:** Primary tool for dependency management and CLI execution
+## File Modification Checklist
 
-## Quick Testing Commands
+-   [ ] **Jinja Syntax:** All `{% if %}` and `{% for %}` blocks correctly closed?
+-   [ ] **Variable Consistency:** `cookiecutter.` variables spelled correctly?
+-   [ ] **Cross-Target Impact:** Base template changes checked against deployment targets?
+-   [ ] **CI/CD Parity:** Changes applied to both GitHub Actions and Cloud Build?
+-   [ ] **Multi-Agent Testing:** Tested with different agent types and configurations?
 
-When developing or testing CLI changes, use these shortcuts for fast iteration:
+---
+
+## Quick Reference
 
 ### Fast Project Creation
 
@@ -527,14 +667,29 @@ uv run agent-starter-pack create test-$(date +%s) -p -s -y -d cloud_run --sessio
 uv run agent-starter-pack create test-$(date +%s) -s -y -d agent_engine --cicd-runner google_cloud_build --output-dir target
 ```
 
-## Key Files Reference
+### Key Files Reference
 
 | File | Purpose |
 |------|---------|
 | `agent_starter_pack/cli/commands/create.py` | Main create command, CLI flags, shared options |
 | `agent_starter_pack/cli/utils/template.py` | Template processing, `process_template()`, CI/CD runner prompt |
-| `agent_starter_pack/base_template/pyproject.toml` | Generated project metadata, `[tool.agent-starter-pack]` section |
-| `agent_starter_pack/base_template/Makefile` | Generated project Makefile targets |
+| `agent_starter_pack/base_templates/python/pyproject.toml` | Generated project metadata, `[tool.agent-starter-pack]` section |
+| `agent_starter_pack/base_templates/python/Makefile` | Generated project Makefile targets |
+
+### Key Tooling
+
+-   **`uv` for Python:** Primary tool for dependency management and CLI execution
+
+---
+
+## Common Pitfalls
+
+- **Hardcoded URLs**: Use relative paths for frontend connections
+- **Missing Conditionals**: Wrap agent-specific code in proper `{% if %}` blocks
+- **Dependency Conflicts**: Some agents lack certain extras (e.g., adk_live + lint)
+- **makefile_hashes.json**: Can cause merge conflicts during active development - regenerate if needed
+
+---
 
 ## Project Metadata Structure
 

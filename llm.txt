@@ -1,5 +1,6 @@
 ---
-**llm.txt** - Guide for AI agents working with **generated projects** (projects created by Agent Starter Pack).
+# Starter Pack Guidance
+Guide for AI agents working with **generated projects** (projects created by Agent Starter Pack).
 
 > **Scope**: This document is for developing, testing, and deploying **generated agent projects**. For contributing to the **Agent Starter Pack repository itself** (the template generator), see [GEMINI.md](./GEMINI.md).
 ---

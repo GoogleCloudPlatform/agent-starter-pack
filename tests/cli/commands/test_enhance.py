@@ -117,6 +117,8 @@ class TestEnhanceCommand:
                     [
                         ".",
                         "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
                     ],  # Use auto-approve to skip confirmation prompts
                     input="y\n",  # Confirm enhancement
                 )
@@ -136,7 +138,14 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph", "--auto-approve"],
+                    [
+                        ".",
+                        "--base-template",
+                        "langgraph",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # Should call create with the specified base template
@@ -156,7 +165,14 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--agent-directory", "chatbot", "--auto-approve"],
+                    [
+                        ".",
+                        "--agent-directory",
+                        "chatbot",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # Should call create with the specified agent directory in cli_overrides
@@ -193,7 +209,7 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--auto-approve"],
+                    [".", "--auto-approve", "--cicd-runner", "skip"],
                 )
 
                 # Should call create and detect 'my_agent' from pyproject.toml
@@ -224,7 +240,14 @@ packages = ["detected_agent", "frontend"]
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--agent-directory", "cli_agent", "--auto-approve"],
+                    [
+                        ".",
+                        "--agent-directory",
+                        "cli_agent",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # CLI parameter should override auto-detection
@@ -244,7 +267,14 @@ packages = ["detected_agent", "frontend"]
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
                     enhance,
-                    [".", "--agent-directory", "missing_agent", "--auto-approve"],
+                    [
+                        ".",
+                        "--agent-directory",
+                        "missing_agent",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # Should show warning about missing directory but still proceed
@@ -271,6 +301,8 @@ packages = ["detected_agent", "frontend"]
                         "--agent-directory",
                         "my_chatbot",
                         "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
                     ],
                 )
 
@@ -296,7 +328,7 @@ packages = ["detected_agent", "frontend"]
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--adk", "--auto-approve"],
+                    [".", "--adk", "--auto-approve", "--cicd-runner", "skip"],
                 )
 
                 # Should call create with base_template set to adk
@@ -315,7 +347,15 @@ packages = ["detected_agent", "frontend"]
 
             result = runner.invoke(
                 enhance,
-                [".", "--adk", "--base-template", "langgraph", "--auto-approve"],
+                [
+                    ".",
+                    "--adk",
+                    "--base-template",
+                    "langgraph",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                ],
             )
 
             # Should fail with an error about conflicting options
@@ -377,6 +417,8 @@ agent = RunnablePassthrough()
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -453,6 +495,8 @@ app = App(root_agent=root_agent, name="app")
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -586,6 +630,8 @@ root_agent = Agent(
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -722,6 +768,8 @@ root_agent = Agent(
                     "--include-data-ingestion",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -803,6 +851,8 @@ instruction: You are a helpful assistant.
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -872,6 +922,8 @@ instruction: You are a helpful assistant.
                     "cloud_run",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -922,6 +974,8 @@ model: gemini-2.0-flash-001
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -963,6 +1017,8 @@ model: gemini-2.0-flash-001
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -999,6 +1055,8 @@ model: gemini-2.0-flash-001
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1069,6 +1127,8 @@ root_agent = Agent(
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1115,6 +1175,8 @@ agent = RunnablePassthrough()
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1164,6 +1226,8 @@ app = App(root_agent=root_agent, name="my_agent")
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 

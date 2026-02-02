@@ -599,6 +599,13 @@ def enhance(
         console.print("> Debug mode enabled")
         logging.debug("Starting enhance command in debug mode")
 
+    # Validate required options for programmatic invocation
+    if auto_approve and not cicd_runner:
+        raise click.ClickException(
+            "When using --auto-approve (-y), you must specify --cicd-runner.\n"
+            "Example: uvx agent-starter-pack enhance . -y --cicd-runner github_actions"
+        )
+
     # Handle --adk shortcut
     if adk:
         if base_template:
@@ -706,6 +713,9 @@ def enhance(
                     f"✅ Selected base template: [cyan]{selected_base_template}[/cyan]"
                 )
                 console.print()
+        elif not base_template and auto_approve:
+            # Auto-select the detected base template when auto-approving
+            base_template = original_base_template_name
 
         # Reload config with potential base template override
         if cli_overrides.get("base_template"):

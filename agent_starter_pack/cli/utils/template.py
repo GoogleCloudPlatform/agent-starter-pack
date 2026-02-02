@@ -1832,26 +1832,6 @@ GOOGLE_API_KEY={google_api_key}
                         "for Google AI Studio"
                     )
 
-            # Generate .env file for Java templates with Vertex AI config (when not using Google API Key)
-            if language == "java" and not google_api_key:
-                env_file_path = final_destination / ".env"
-                env_content = f"""# Local development configuration
-# For deployment, these are set via Terraform/Makefile
-
-# Vertex AI Configuration
-GOOGLE_GENAI_USE_VERTEXAI=true
-GOOGLE_CLOUD_PROJECT={google_cloud_project or "your-gcp-project-id"}
-GOOGLE_CLOUD_LOCATION=global
-
-# Alternatively, for Gemini API (comment out above and set):
-# GEMINI_API_KEY=your-api-key-here
-"""
-                env_file_path.write_text(env_content)
-                logging.debug(f"Generated .env file at {env_file_path}")
-                console.print(
-                    "📝 Generated [cyan].env[/cyan] file for Vertex AI configuration"
-                )
-
         except Exception as e:
             logging.error(f"Failed to process template: {e!s}")
             raise

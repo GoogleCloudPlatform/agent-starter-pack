@@ -114,19 +114,28 @@ def _should_skip_config_value(value: Any) -> bool:
     return value is None or value is False or str(value).lower() in ("none", "skip", "")
 
 
-def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
+def build_args_from_config(
+    project_config: dict[str, Any],
+    auto_approve: bool = False,
+    cli_overrides: dict[str, str] | None = None,
+) -> list[str]:
     """Build CLI arguments from project config.
 
     Args:
         project_config: The [tool.agent-starter-pack] config dict
+        auto_approve: If True, add --auto-approve to args
+        cli_overrides: Additional CLI args to merge (e.g., from original command)
 
     Returns:
         List of CLI arguments to pass to enhance command
     """
     # --skip-deps is added because dependencies were already installed on first run
     # --skip-welcome avoids showing the banner twice
-    # Note: we don't add --auto-approve so user still gets interactive prompts for CI/CD etc.
     args = ["enhance", "--skip-deps", "--skip-welcome"]
+
+    # Pass through auto-approve if it was set on the original command
+    if auto_approve:
+        args.append("--auto-approve")
 
     # Add base template from metadata
     base_template = project_config.get("base_template")
@@ -150,6 +159,29 @@ def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
             args.append(arg_name)
         else:
             args.extend([arg_name, str(value)])
+
+    # Merge CLI overrides (these take precedence over saved config)
+    # This ensures user-provided args like --cicd-runner are passed through
+    if cli_overrides:
+        for arg_name, value in cli_overrides.items():
+            # Convert to CLI format
+            cli_arg = f"--{arg_name.replace('_', '-')}"
+            # Remove existing arg if present (to override)
+            # Find and remove any existing occurrence
+            i = 0
+            while i < len(args):
+                if args[i] == cli_arg:
+                    # Remove the arg and its value if present
+                    args.pop(i)
+                    if i < len(args) and not args[i].startswith("--"):
+                        args.pop(i)
+                else:
+                    i += 1
+            # Add the override
+            if value is True:
+                args.append(cli_arg)
+            elif value is not False and value is not None:
+                args.extend([cli_arg, str(value)])
 
     return args
 
@@ -291,7 +323,9 @@ def _execute_with_saved_config(
 
 
 def check_and_execute_with_saved_config(
-    project_dir: pathlib.Path, auto_approve: bool = False
+    project_dir: pathlib.Path,
+    auto_approve: bool = False,
+    cli_overrides: dict[str, Any] | None = None,
 ) -> bool:
     """Check for saved config and offer to reuse it.
 
@@ -301,6 +335,7 @@ def check_and_execute_with_saved_config(
     Args:
         project_dir: Path to the project directory
         auto_approve: If True, skip confirmation prompt and use saved config
+        cli_overrides: CLI args to pass through (e.g., cicd_runner from original command)
 
     Returns:
         True if config was used and executed, False otherwise
@@ -338,7 +373,7 @@ def check_and_execute_with_saved_config(
             return False
 
     # Build and execute the command
-    args = build_args_from_config(project_config)
+    args = build_args_from_config(project_config, auto_approve, cli_overrides)
     return _execute_with_saved_config(args, project_version, use_different_version)
 
 
@@ -589,7 +624,29 @@ def enhance(
     # Check for saved config and offer to reuse it
     # This handles both version locking AND reusing previous settings
     current_dir = pathlib.Path.cwd()
-    if check_and_execute_with_saved_config(current_dir, auto_approve=auto_approve):
+
+    # Build CLI overrides from explicitly provided args to pass through
+    cli_override_args: dict[str, Any] = {}
+    if cicd_runner:
+        cli_override_args["cicd_runner"] = cicd_runner
+    if deployment_target:
+        cli_override_args["deployment_target"] = deployment_target
+    if session_type:
+        cli_override_args["session_type"] = session_type
+    if datastore:
+        cli_override_args["datastore"] = datastore
+    if base_template:
+        cli_override_args["base_template"] = base_template
+    if agent_directory:
+        cli_override_args["agent_directory"] = agent_directory
+    if include_data_ingestion:
+        cli_override_args["include_data_ingestion"] = include_data_ingestion
+    if prototype:
+        cli_override_args["prototype"] = prototype
+
+    if check_and_execute_with_saved_config(
+        current_dir, auto_approve=auto_approve, cli_overrides=cli_override_args
+    ):
         # Successfully executed with saved config, exit this process
         return
 

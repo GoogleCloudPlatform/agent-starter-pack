@@ -5,7 +5,7 @@ Coding Agent guidance:
 {%- endif %}
 
 For further reading on ADK, see: https://google.github.io/adk-docs/llms.txt
-{%- elif cookiecutter.language == "go" %}
+{%- elif cookiecutter.language in ["go", "java"] %}
 
 For ADK documentation, see: https://google.github.io/adk-docs/llms.txt
 {%- endif %}

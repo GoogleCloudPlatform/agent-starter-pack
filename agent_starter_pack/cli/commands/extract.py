@@ -40,9 +40,12 @@ from rich.console import Console
 from ..utils.language import (
     LANGUAGE_CONFIGS,
     detect_language,
+    find_agent_file,
     get_asp_config_for_language,
+    get_language_config,
 )
 from ..utils.logging import handle_cli_error
+from ..utils.template import generate_java_package_vars
 
 # Path to base templates directory
 BASE_TEMPLATES_DIR = pathlib.Path(__file__).parent.parent.parent / "base_templates"
@@ -130,17 +133,31 @@ def detect_agent_directory(
     # Try common patterns
     for candidate in ["app", "agent", "src"]:
         candidate_path = project_dir / candidate
-        if candidate_path.is_dir() and (candidate_path / "agent.py").exists():
-            return candidate
+        if candidate_path.is_dir():
+            # Check for Python agent
+            if (candidate_path / "agent.py").exists():
+                return candidate
+            # Check for Go agent
+            if (candidate_path / "agent.go").exists():
+                return candidate
+            # Check for Java Maven structure
+            java_main_path = candidate_path / "main" / "java"
+            if java_main_path.is_dir():
+                return candidate
 
-    # Fallback: look for any directory with agent.py
+    # Fallback: look for any directory with agent.py or agent.go
     for item in project_dir.iterdir():
-        if (
-            item.is_dir()
-            and not item.name.startswith(".")
-            and (item / "agent.py").exists()
-        ):
-            return item.name
+        if item.is_dir() and not item.name.startswith("."):
+            if (item / "agent.py").exists():
+                return item.name
+            if (item / "agent.go").exists():
+                return item.name
+
+    # Check for Java project at root (src/main/java structure)
+    if (project_dir / "pom.xml").exists():
+        src_main_java = project_dir / "src" / "main" / "java"
+        if src_main_java.is_dir():
+            return "src/main/java"
 
     return "app"  # Default fallback
 
@@ -596,10 +613,13 @@ def extract(
         )
         raise SystemExit(1)
 
-    agent_py_path = agent_dir_path / "agent.py"
-    if not agent_py_path.exists():
+    # Check for agent file using shared utility (supports Python, Go, Java)
+    agent_file = find_agent_file(source_dir, language, agent_directory)
+    if not agent_file:
+        lang_config = get_language_config(language)
+        agent_file_name = lang_config.get("agent_file", "agent.py")
         console.print(
-            f"⚠️  [yellow]Warning:[/yellow] No agent.py found in {agent_directory}/",
+            f"⚠️  [yellow]Warning:[/yellow] No {agent_file_name} found in {agent_directory}/",
         )
 
     if output_dir.exists():
@@ -618,16 +638,23 @@ def extract(
     if (source_dir / "tests").exists():
         existing_scaffolding.append("tests")
 
-    # Detect ADK from config or agent.py imports
+    # Detect ADK from config or agent file imports
     is_adk = False
     if asp_config:
         base_template = asp_config.get("base_template", "")
         is_adk = "adk" in base_template.lower()
-    else:
-        # Try to detect from agent.py imports (Python only)
-        if language == "python" and agent_py_path.exists():
-            agent_content = agent_py_path.read_text(encoding="utf-8")
-            is_adk = "google.adk" in agent_content or "from adk" in agent_content
+    elif agent_file and agent_file.exists():
+        # Try to detect from agent file imports
+        try:
+            agent_content = agent_file.read_text(encoding="utf-8")
+            if language == "python":
+                is_adk = "google.adk" in agent_content or "from adk" in agent_content
+            elif language == "java":
+                is_adk = (
+                    "google.adk" in agent_content or "com.google.adk" in agent_content
+                )
+        except Exception:
+            pass  # Ignore read errors for ADK detection
 
     if dry_run:
         console.print("[bold cyan]DRY RUN - No changes will be made[/bold cyan]")
@@ -680,9 +707,10 @@ def extract(
         copy_project_files(source_dir, output_dir, language)
 
     console.print("  • Generating minimal Makefile...")
+    project_name = asp_config.get("name", "agent") if asp_config else "agent"
     template_context = {
         "agent_directory": agent_directory,
-        "project_name": asp_config.get("name", "agent") if asp_config else "agent",
+        "project_name": project_name,
         "is_adk": is_adk,
         "is_adk_live": asp_config.get("is_adk_live", False) if asp_config else False,
         "is_a2a": asp_config.get("is_a2a", False) if asp_config else False,
@@ -693,6 +721,10 @@ def extract(
         ),
         "settings": {},  # Required by template for command overrides
     }
+    # Add Java-specific template vars
+    if language == "java":
+        java_vars = generate_java_package_vars(project_name)
+        template_context.update(java_vars)
     try:
         makefile_content = render_makefile_template(language, template_context)
     except Exception as e:

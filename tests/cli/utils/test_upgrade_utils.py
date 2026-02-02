@@ -48,6 +48,24 @@ class TestCategorizeFile:
         assert categorize_file("app/agent.go") == "agent_code"
         assert categorize_file("app/utils/helper.go") == "agent_code"
 
+    def test_java_agent_code_patterns(self) -> None:
+        """Test that Java agent code files are correctly categorized."""
+        assert (
+            categorize_file("src/main/java/myagent/RootAgent.java", "src/main/java")
+            == "agent_code"
+        )
+        assert (
+            categorize_file("src/main/java/myagent/tools/Search.java", "src/main/java")
+            == "agent_code"
+        )
+        assert (
+            categorize_file("src/main/java/myagent/Main.java", "src/main/java")
+            == "agent_code"
+        )
+        # Default app directory
+        assert categorize_file("app/Main.java") == "agent_code"
+        assert categorize_file("app/utils/Helper.java") == "agent_code"
+
     def test_config_files(self) -> None:
         """Test that config files are correctly categorized."""
         assert categorize_file("deployment/vars/dev.tfvars") == "config_files"
@@ -61,6 +79,11 @@ class TestCategorizeFile:
         """Test that Go dependency files are correctly categorized."""
         assert categorize_file("go.mod") == "dependencies"
         assert categorize_file("go.sum") == "dependencies"
+        assert categorize_file(".asp.toml") == "dependencies"
+
+    def test_java_dependencies(self) -> None:
+        """Test that Java dependency files are correctly categorized."""
+        assert categorize_file("pom.xml") == "dependencies"
         assert categorize_file(".asp.toml") == "dependencies"
 
     def test_scaffolding_files(self) -> None:
@@ -83,6 +106,19 @@ class TestCategorizeFile:
         assert categorize_file("my_agent/handlers/api.go", "my_agent") == "agent_code"
         # Default agent directory should not match
         assert categorize_file("agent/agent.go", "my_agent") == "scaffolding"
+
+    def test_custom_agent_directory_java(self) -> None:
+        """Test categorization with custom agent directory for Java."""
+        assert (
+            categorize_file("src/main/java/RootAgent.java", "src/main/java")
+            == "agent_code"
+        )
+        assert (
+            categorize_file("src/main/java/myagent/tools/Search.java", "src/main/java")
+            == "agent_code"
+        )
+        # Default app directory should not match when using custom
+        assert categorize_file("app/Main.java", "src/main/java") == "scaffolding"
 
 
 class TestThreeWayCompare:

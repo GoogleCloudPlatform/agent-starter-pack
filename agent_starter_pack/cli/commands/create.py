@@ -884,9 +884,13 @@ def create(
                 console.print(
                     "> Continuing with template processing...", style="yellow"
                 )
-        elif skip_checks and not google_api_key and final_agent.endswith("_go"):
-            # For Go templates, try to get project ID from gcloud config even when skipping checks
-            # This is needed because Go's .env requires a valid project ID for local development
+        elif (
+            skip_checks
+            and not google_api_key
+            and (final_agent.endswith("_go") or final_agent.endswith("_java"))
+        ):
+            # For Go/Java templates, try to get project ID from gcloud config even when skipping checks
+            # This is needed because Go/Java's .env requires a valid project ID for local development
             try:
                 result = subprocess.run(
                     ["gcloud", "config", "get-value", "project"],
@@ -1073,21 +1077,21 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
 
     # Group headers for display
     GROUP_HEADERS = {
-        ("python", "adk"): "🐍 Python (ADK)",
-        ("python", "langgraph"): "🐍 Python (A2A)",
-        ("go", "adk"): "🔵 Go (ADK)",
+        "python": "\U0001f40d Python",
+        "go": "\U0001f535 Go",
+        "java": "\u2615\ufe0f Java",
     }
 
     console.print("\n> Please select an agent to get started:")
 
     current_group = None
     for num, agent in agents.items():
-        agent_group = (agent["language"], agent["framework"])
+        agent_group = agent["language"]
 
         # Print group header when transitioning to a new group
         if agent_group != current_group:
             current_group = agent_group
-            header = GROUP_HEADERS.get(agent_group, "Other")
+            header = GROUP_HEADERS.get(agent_group, "\U0001f527 Other")
             console.print(f"\n  [bold cyan]{header}[/]")
 
         # Align agent names for cleaner display (use display_name if available)

@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import backoff
@@ -211,17 +212,21 @@ def prompt_for_git_provider() -> str:
 
 def validate_working_directory() -> None:
     """Ensure we're in the project root directory."""
-    # Accept either pyproject.toml (Python) or .asp.toml (Go)
-    if not Path("pyproject.toml").exists() and not Path(".asp.toml").exists():
+    # Accept pyproject.toml (Python), .asp.toml (Go), or pom.xml (Java)
+    if (
+        not Path("pyproject.toml").exists()
+        and not Path(".asp.toml").exists()
+        and not Path("pom.xml").exists()
+    ):
         raise click.UsageError(
             "This command must be run from the project root directory containing "
-            "pyproject.toml (Python) or .asp.toml (Go). "
+            "pyproject.toml (Python), .asp.toml (Go), or pom.xml (Java). "
             "Make sure you are in the folder created by agent-starter-pack."
         )
 
 
 def get_project_name_from_config() -> str | None:
-    """Get project name from pyproject.toml or .asp.toml.
+    """Get project name from pyproject.toml, .asp.toml, or pom.xml.
 
     Returns:
         Project name if found, None otherwise.
@@ -243,6 +248,29 @@ def get_project_name_from_config() -> str | None:
                 for line in f:
                     if line.strip().startswith("name ="):
                         return line.split("=")[1].strip().strip("\"'")
+        except Exception:
+            pass
+
+    # Try pom.xml (Java projects)
+    if Path("pom.xml").exists():
+        try:
+            tree = ET.parse("pom.xml")
+            root = tree.getroot()
+
+            # Handle Maven namespace
+            ns = ""
+            if root.tag.startswith("{"):
+                ns = root.tag.split("}")[0] + "}"
+
+            # Try <name> element first
+            name_elem = root.find(f"{ns}name")
+            if name_elem is not None and name_elem.text:
+                return name_elem.text.strip()
+
+            # Fallback to <artifactId>
+            artifact_id = root.find(f"{ns}artifactId")
+            if artifact_id is not None and artifact_id.text:
+                return artifact_id.text.strip()
         except Exception:
             pass
 

@@ -97,7 +97,6 @@ make install && make playground
 | `uvx agent-starter-pack extract` | Extract minimal, shareable version of your agent |
 
 ---
-{%- endif %}
 {%- if not extracted|default(false) %}
 
 ## Development

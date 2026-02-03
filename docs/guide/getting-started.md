@@ -6,72 +6,78 @@ This guide quickly walks you through setting up your first agent project.
 
 ### Prerequisites
 
-**Python 3.10+** (or **Go 1.21+** for Go templates) | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (Optional, Recommended for Python)** [Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
+**Python 3.10+** (or **Go 1.21+** for Go templates) | **Google Cloud SDK** [Install Guide](https://cloud.google.com/sdk/docs/install) | **Terraform** [Install Guide](https://developer.hashicorp.com/terraform/downloads) | **`uv` (Recommended)** [Install Guide](https://docs.astral.sh/uv/getting-started/installation/)
 
 ### 1. Create Your Agent Project
 
-You can use the `pip` workflow for a traditional setup, or `uvx` to create a project in a single command without a permanent install. Choose your preferred method below.
-
 ::: code-group
 
-```bash [pip]
-# 1. Create and activate a virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# 2. Install the package
-pip install agent-starter-pack
-
-# 3. Run the create command
-agent-starter-pack create
+```bash [⚡ uvx (Recommended)]
+# Single command - no install needed
+uvx agent-starter-pack create
 ```
 
-```bash [⚡ uvx]
-# This single command downloads and runs the latest version
-uvx agent-starter-pack create
+```bash [pip]
+# Create and activate a virtual environment
+python -m venv .venv && source .venv/bin/activate
+
+# Install and run
+pip install agent-starter-pack
+agent-starter-pack create
 ```
 
 :::
 
-No matter which method you choose, the `create` command will:
-*   Let you choose an agent template (e.g., `adk`, `adk_go`, `agentic_rag`).
-*   Let you select a deployment target (e.g., `cloud_run`, `agent_engine`).
-*   Generate a complete project structure (backend, optional frontend, deployment infra).
-
-**Examples:**
-
-```bash
-# Python agent with Agent Engine
-agent-starter-pack create my-adk-agent -a adk -d agent_engine
-
-# Go agent with Cloud Run
-agent-starter-pack create my-go-agent -a adk_go -d cloud_run
-```
-
-### 2. Explore and Run Locally
-
-Now, navigate into your new project and run its setup commands.
+### 2. Run Locally
 
 ```bash
 cd <your-project> && make install && make playground
 ```
 
-Inside your new project directory, you'll find:
-
-*   `app/` (Python) or `agent/` (Go): Backend agent code.
-*   `deployment/`: Terraform infrastructure code.
-*   `tests/` (Python) or `e2e/` (Go): Unit and integration tests.
-*   `notebooks/`: (Python only) Jupyter notebooks for evaluation.
-*   `frontend/`: (If applicable) Web UI for interacting with your agent.
-*   `README.md`: **Project-specific instructions for running locally and deploying.**
-
-➡️ **Follow the instructions in *your new project's* `README.md` to run it locally.**
-
 ### Next Steps
 
-You're ready to go! See the [Development Guide](/guide/development-guide) for detailed instructions on extending, customizing and deploying your agent.
+See the [Development Guide](/guide/development-guide) for the full workflow, or jump to:
+- [Data Ingestion](/guide/data-ingestion) - Add RAG capabilities
+- [Deployment Guide](/guide/deployment) - Deploy to Google Cloud
+- [Observability](/guide/observability) - Monitor your agent
 
-- **Add Data (RAG):** Configure [Data Ingestion](/guide/data-ingestion) for knowledge-based agents.
-- **Monitor Performance:** Explore [Observability](/guide/observability) features for production monitoring.
-- **Deploy to Production:** Follow the [Deployment Guide](/guide/deployment) to deploy your agent to Google Cloud.
-- **Explore the Code:** Use [CodeWiki](https://codewiki.google/github.com/googlecloudplatform/agent-starter-pack) for AI-powered code navigation and understanding.
+---
+
+## Command Cheatsheet
+
+Quick reference for all available commands.
+
+### Project Setup
+
+| Command | What It Does |
+|---------|--------------|
+| `uvx agent-starter-pack create` | **Scaffold a production-ready AI agent** in seconds (Python/Go/TypeScript/Java) |
+| `uvx agent-starter-pack enhance` | **Add CI/CD pipelines** and Terraform infrastructure to existing projects |
+| `uvx agent-starter-pack setup-cicd` | **One-command setup** of entire CI/CD pipeline + infrastructure |
+
+### Development Workflow
+
+| Command | What It Does |
+|---------|--------------|
+| `make install` | Install all dependencies |
+| `make playground` | **Launch interactive local playground** with live reload |
+| `make lint` | Run code quality checks |
+| `make test` | Run unit + integration tests |
+
+### Deployment
+
+| Command | What It Does |
+|---------|--------------|
+| `make deploy` | **Deploy your agent to Google Cloud** (Agent Engine or Cloud Run) in one command |
+| `make setup-dev-env` | **Provision infrastructure** using Terraform |
+| `make register-gemini-enterprise` | **Integrate with Gemini Enterprise** - make your agent available to your org |
+
+### Maintenance & Sharing
+
+| Command | What It Does |
+|---------|--------------|
+| `uvx agent-starter-pack upgrade` | **Auto-upgrade to latest version** while preserving your customizations |
+| `uvx agent-starter-pack extract` | **Extract a minimal, shareable agent** from your project |
+| `uvx agent-starter-pack list` | Browse available templates |
+
+See [Agent Templates Overview](/agents/overview) for all available templates.

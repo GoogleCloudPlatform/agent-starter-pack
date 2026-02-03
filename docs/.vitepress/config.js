@@ -78,7 +78,6 @@ export default defineConfig({
       },
       {
         text: 'Development',
-        collapsed: true,
         items: [
           { text: 'Development Guide', link: '/guide/development-guide' },
           { text: 'Data Ingestion', link: '/guide/data-ingestion' },
@@ -88,7 +87,6 @@ export default defineConfig({
       },
       {
         text: 'Deployment & Operations',
-        collapsed: true,
         items: [
           { text: 'Deployment', link: '/guide/deployment' },
           { text: 'Observability', link: '/guide/observability' }
@@ -96,7 +94,6 @@ export default defineConfig({
       },
       {
         text: 'Templates',
-        collapsed: true,
         items: [
           { text: 'Agent Templates', link: '/agents/overview' },
           { text: 'Remote Templates', link: '/remote-templates/' },
@@ -107,7 +104,6 @@ export default defineConfig({
       },
       {
         text: 'CLI Commands',
-        collapsed: true,
         items: [
           { text: 'create', link: '/cli/create' },
           { text: 'enhance', link: '/cli/enhance' },

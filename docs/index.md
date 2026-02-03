@@ -46,7 +46,7 @@ Help us spread the word by giving us a star on GitHub!
 
 ## Quick Links
 
-- **New Users:** [Getting Started Guide](/guide/getting-started)
+- **New Users:** [Getting Started Guide](/guide/getting-started) (includes Command Cheatsheet)
 - **Setup:** [Installation Guide](/guide/installation)
 - **Going Live:** [Deployment Guide](/guide/deployment)
 - **Explore Templates:** [Agent Templates Overview](/agents/overview)

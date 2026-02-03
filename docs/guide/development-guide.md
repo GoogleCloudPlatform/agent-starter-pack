@@ -2,6 +2,10 @@
 
 This guide walks you through the entire lifecycle of creating, developing, deploying, and monitoring your agent project.
 
+::: tip Quick Reference
+Need a command reminder? Check the [Command Cheatsheet](/guide/getting-started#command-cheatsheet) for quick access to all available commands.
+:::
+
 ::: tip Our Philosophy: "Bring Your Own Agent"
 This starter pack provides the scaffolding for UI, infrastructure, deployment, and monitoring. You focus on building your unique agent logic, and we handle the rest.
 :::

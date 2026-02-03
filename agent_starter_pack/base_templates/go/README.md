@@ -83,56 +83,36 @@ make install && make playground
 | `make build` | Build binary |
 | `make deploy` | Deploy to Cloud Run |
 {%- endif %}
+
+## 🛠️ Project Management
+
+| Command | What It Does |
+|---------|--------------|
 {%- if extracted|default(false) %}
+| `uvx agent-starter-pack enhance` | Add CI/CD pipelines and Terraform infrastructure |
+{%- else %}
+| `uvx agent-starter-pack setup-cicd` | One-command setup of entire CI/CD pipeline + infrastructure |
+{%- endif %}
+| `uvx agent-starter-pack upgrade` | Auto-upgrade to latest version while preserving customizations |
+| `uvx agent-starter-pack extract` | Extract minimal, shareable version of your agent |
 
-## Adding Deployment Capabilities
-
-This is a minimal extracted agent. To add deployment infrastructure (CI/CD, Terraform, Cloud Run support) and testing scaffolding, run:
-
-```bash
-agent-starter-pack enhance
-```
-
-This will restore the full project structure with deployment capabilities.
+---
 {%- endif %}
 {%- if not extracted|default(false) %}
 
+## Development
+
+Edit your agent logic in `agent/agent.go` and test with `make playground` - it auto-reloads on save.
+See the [development guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/development-guide) for the full workflow.
+
 ## Deployment
 
-### Quick Deploy
-
 ```bash
+gcloud config set project <your-project-id>
 make deploy
 ```
 
-### CI/CD Pipeline
-
-This project includes CI/CD configuration for:
-- **Cloud Build**: `.cloudbuild/` directory
-- **GitHub Actions**: `.github/workflows/` directory
-
-See `deployment/README.md` for detailed deployment instructions.
-
-## Testing
-
-```bash
-# Run all tests
-make test
-
-# Run load tests (requires server on port 8000)
-make local-backend  # In one terminal
-make load-test      # In another terminal
-```
-
-## Keeping Up-to-Date
-
-To upgrade this project to the latest agent-starter-pack version:
-
-```bash
-uvx agent-starter-pack upgrade
-```
-
-This intelligently merges updates while preserving your customizations. Use `--dry-run` to preview changes first. See the [upgrade CLI reference](https://googlecloudplatform.github.io/agent-starter-pack/cli/upgrade.html) for details.
+See the [deployment guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/deployment) for production CI/CD setup.
 
 ## Learn More
 

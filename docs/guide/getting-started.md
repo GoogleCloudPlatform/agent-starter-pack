@@ -19,6 +19,7 @@ uvx agent-starter-pack create
 
 ```bash [pip]
 # Create and activate a virtual environment
+# On Windows use: .venv\Scripts\activate
 python -m venv .venv && source .venv/bin/activate
 
 # Install and run

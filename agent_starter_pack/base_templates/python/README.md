@@ -169,7 +169,7 @@ See the [deployment guide](https://googlecloudplatform.github.io/agent-starter-p
 ## Observability
 
 Built-in telemetry exports to Cloud Trace, BigQuery, and Cloud Logging.
-See the [observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability.html) for queries and dashboards.
+See the [observability guide](https://googlecloudplatform.github.io/agent-starter-pack/guide/observability) for queries and dashboards.
 {%- if cookiecutter.is_a2a %}
 
 ## A2A Inspector

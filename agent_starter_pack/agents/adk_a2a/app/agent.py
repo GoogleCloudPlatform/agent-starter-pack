@@ -86,7 +86,11 @@ root_agent = Agent(
     ),
     description="An agent that can provide information about the weather and time.",
     instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time, LongRunningFunctionTool(func=request_user_input)],
+    tools=[
+        get_weather,
+        get_current_time,
+        LongRunningFunctionTool(func=request_user_input),
+    ],
 )
 
 app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")

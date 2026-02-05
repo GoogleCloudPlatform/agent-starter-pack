@@ -134,11 +134,11 @@ uvx agent-starter-pack create my-agent -a adk@data-science --base-template adk_a
 ✓ Base template override: Using 'adk_a2a' as foundation
   This requires adding the following dependencies:
     • google-adk>=1.16.0,<2.0.0
-    • a2a-sdk~=0.3.9
+    • a2a-sdk~=0.3.22
 
 ? Add these dependencies automatically? [Y/n] y
 
-✓ Running: uv add 'google-adk>=1.16.0,<2.0.0' 'a2a-sdk~=0.3.9'
+✓ Running: uv add 'google-adk>=1.16.0,<2.0.0' 'a2a-sdk~=0.3.22'
   Resolved 111 packages in 1.2s
 ✓ Dependencies added successfully
 ```
@@ -158,7 +158,7 @@ When you override the base template, the CLI:
 ⚠️  Skipped dependency installation.
    To add them manually later, run:
        cd my-agent
-       uv add 'google-adk>=1.16.0,<2.0.0' 'a2a-sdk~=0.3.9'
+       uv add 'google-adk>=1.16.0,<2.0.0' 'a2a-sdk~=0.3.22'
 ```
 
 **Automatic installation with `--auto-approve`:**
@@ -166,7 +166,7 @@ When you override the base template, the CLI:
 uvx agent-starter-pack create my-agent -a template --base-template adk_a2a --auto-approve
 
 ✓ Base template override: Using 'adk_a2a' as foundation
-✓ Auto-installing dependencies: google-adk>=1.16.0,<2.0.0, a2a-sdk~=0.3.9
+✓ Auto-installing dependencies: google-adk>=1.16.0,<2.0.0, a2a-sdk~=0.3.22
   Resolved 111 packages in 1.2s
 ✓ Dependencies added successfully
 ```

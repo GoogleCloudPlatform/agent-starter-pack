@@ -404,7 +404,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "adk_a2a": 1,
         "adk_live": 2,
         "agentic_rag": 3,
-        "langgraph": 0,
+        "langgraph": 4,  # displayed as "custom_a2a"
         "adk_go": 0,
         "adk_java": 0,
     }

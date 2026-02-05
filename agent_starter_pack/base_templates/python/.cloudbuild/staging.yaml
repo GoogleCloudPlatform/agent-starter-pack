@@ -210,7 +210,7 @@ steps:
       - |
         export _ID_TOKEN=$(cat id_token.txt)
         export _STAGING_URL=$(cat staging_url.txt)
-        pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.9{%- endif %} --user
+        pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.22{%- endif %} --user
         locust -f tests/load_test/load_test.py \
         --headless \
         -H $$_STAGING_URL \

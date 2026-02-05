@@ -172,9 +172,11 @@ agent_engine = AgentEngineApp.create(
 {%- else %}
 agent_engine = AgentEngineApp(
     app=adk_app,
-    artifact_service_builder=lambda: GcsArtifactService(bucket_name=logs_bucket_name)
-    if logs_bucket_name
-    else InMemoryArtifactService(),
+    artifact_service_builder=lambda: (
+        GcsArtifactService(bucket_name=logs_bucket_name)
+        if logs_bucket_name
+        else InMemoryArtifactService()
+    ),
 )
 {%- endif -%}
 {% else %}

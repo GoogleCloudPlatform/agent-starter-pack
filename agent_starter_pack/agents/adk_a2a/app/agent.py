@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
+from google.adk.tools import LongRunningFunctionTool
 from google.genai import types
 {%- if not cookiecutter.use_google_api_key %}
 
@@ -65,6 +66,18 @@ def get_current_time(query: str) -> str:
     return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
 
 
+def request_user_input(message: str) -> dict:
+    """Request additional input from the user.
+
+    Use this tool when you need more information from the user to complete a task.
+    Calling this tool will pause execution until the user responds.
+
+    Args:
+        message: The question or clarification request to show the user.
+    """
+    return {"status": "pending", "message": message}
+
+
 root_agent = Agent(
     name="root_agent",
     model=Gemini(
@@ -73,7 +86,11 @@ root_agent = Agent(
     ),
     description="An agent that can provide information about the weather and time.",
     instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
+    tools=[
+        get_weather,
+        get_current_time,
+        LongRunningFunctionTool(func=request_user_input),
+    ],
 )
 
 app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")

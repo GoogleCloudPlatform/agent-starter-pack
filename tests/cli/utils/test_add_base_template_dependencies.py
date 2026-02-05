@@ -37,7 +37,7 @@ class TestAddBaseTemplateDependencies:
         )
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9"]
+        base_deps = ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=True
@@ -45,7 +45,7 @@ class TestAddBaseTemplateDependencies:
 
         assert result is True
         mock_subprocess.assert_called_once_with(
-            ["uv", "add", "google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9"],
+            ["uv", "add", "google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.22"],
             cwd=project_path,
             capture_output=True,
             text=True,
@@ -68,7 +68,7 @@ class TestAddBaseTemplateDependencies:
         )
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=False
@@ -87,7 +87,7 @@ class TestAddBaseTemplateDependencies:
         mock_confirm.return_value = False
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=False
@@ -109,7 +109,7 @@ class TestAddBaseTemplateDependencies:
         )
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=True
@@ -125,7 +125,7 @@ class TestAddBaseTemplateDependencies:
     def test_uv_not_found(self, mock_console: MagicMock) -> None:
         """Test handling when uv is not installed."""
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         with patch(
             "agent_starter_pack.cli.utils.template.subprocess.run"

@@ -111,7 +111,7 @@ uvx agent-starter-pack create my-agent -a github.com/user/template --base-templa
 ✓ Base template override: Using 'adk_a2a' as foundation
   This requires adding the following dependencies:
     • google-adk>=1.16.0,<2.0.0
-    • a2a-sdk~=0.3.9
+    • a2a-sdk~=0.3.22
 
 ? Add these dependencies automatically? [Y/n]
 ```

@@ -40,7 +40,7 @@ cd <your-project> && make install && make playground
 See the [Development Guide](/guide/development-guide) for the full workflow, or jump to:
 - [Data Ingestion](/guide/data-ingestion) - Add RAG capabilities
 - [Deployment Guide](/guide/deployment) - Deploy to Google Cloud
-- [Observability](/guide/observability) - Monitor your agent
+- [Observability](/guide/observability/) - Monitor your agent
 
 ---
 

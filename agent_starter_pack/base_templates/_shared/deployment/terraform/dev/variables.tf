@@ -60,6 +60,10 @@ variable "app_sa_roles" {
     "roles/cloudsql.client",
     "roles/secretmanager.secretAccessor",
 {%- endif %}
+{%- if cookiecutter.bq_analytics %}
+    "roles/bigquery.dataOwner",
+    "roles/bigquery.jobUser",
+{%- endif %}
   ]
 }
 {% if cookiecutter.data_ingestion %}

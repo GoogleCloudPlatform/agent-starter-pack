@@ -169,6 +169,93 @@ def apply_conditional_files(
             logging.debug(f"Conditional file '{rel_path}' condition True, keeping")
 
 
+def _add_dependencies_interactively(
+    project_path: pathlib.Path,
+    dependencies: list[str],
+    success_message: str,
+    auto_approve: bool = False,
+) -> bool:
+    """Helper function to interactively add dependencies using uv add.
+
+    Args:
+        project_path: Path to the project directory
+        dependencies: List of dependencies to install
+        success_message: Message to show upon success
+        auto_approve: Whether to skip confirmation and auto-install
+
+    Returns:
+        True if dependencies were added successfully, False otherwise
+    """
+    if not dependencies:
+        return True
+
+    console = Console()
+    deps_str = " ".join(f"'{dep}'" for dep in dependencies)
+
+    should_add = True
+    if not auto_approve:
+        should_add = Confirm.ask(
+            "\n? Add these dependencies automatically?", default=True
+        )
+
+    if not should_add:
+        console.print("\n⚠️  Skipped dependency installation.", style="yellow")
+        console.print("   To add them manually later, run:", style="dim")
+        console.print(f"       cd {project_path.name}", style="dim")
+        console.print(f"       uv add {deps_str}\n", style="dim")
+        return False
+
+    # Run uv add
+    try:
+        if auto_approve:
+            console.print(
+                f"✓ Auto-installing dependencies: {', '.join(dependencies)}",
+                style="bold cyan",
+            )
+        else:
+            console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
+
+        # Run uv add in the project directory
+        cmd = ["uv", "add", *dependencies]
+        result = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Show success message
+        if not auto_approve:
+            # Show a summary line from uv output
+            output_lines = result.stderr.strip().split("\n")
+            for line in output_lines:
+                if "Resolved" in line or "Installed" in line:
+                    console.print(f"  {line}", style="dim")
+                    break
+
+        console.print(f"✓ {success_message}\n", style="bold green")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"\n✗ Failed to add dependencies: {e.stderr.strip()}", style="bold red"
+        )
+        console.print("  You can add them manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
+    except FileNotFoundError:
+        console.print(
+            "\n✗ uv command not found. Please install uv first.", style="bold red"
+        )
+        console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
+        console.print("\n  To add dependencies manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
+
+
 def add_base_template_dependencies_interactively(
     project_path: pathlib.Path,
     base_dependencies: list[str],
@@ -191,9 +278,6 @@ def add_base_template_dependencies_interactively(
 
     console = Console()
 
-    # Construct dependency string once for reuse
-    deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
-
     # Show what dependencies will be added
     console.print(
         f"\n✓ Base template override: Using '{base_template_name}' as foundation",
@@ -203,69 +287,41 @@ def add_base_template_dependencies_interactively(
     for dep in base_dependencies:
         console.print(f"    • {dep}", style="yellow")
 
-    # Ask for confirmation unless auto-approve
-    should_add = True
+    return _add_dependencies_interactively(
+        project_path=project_path,
+        dependencies=base_dependencies,
+        success_message="Dependencies added successfully",
+        auto_approve=auto_approve,
+    )
+
+
+def add_bq_analytics_dependencies(
+    project_path: pathlib.Path,
+    auto_approve: bool = False,
+) -> bool:
+    """Add BigQuery Agent Analytics Plugin dependencies using uv add.
+
+    Args:
+        project_path: Path to the project directory
+        auto_approve: Whether to skip confirmation and auto-install
+
+    Returns:
+        True if dependencies were added successfully, False otherwise
+    """
+    dependencies = ["fastapi~=0.123.0", "google-adk[bigquery-analytics]>=1.21.0"]
+
     if not auto_approve:
-        should_add = Confirm.ask(
-            "\n? Add these dependencies automatically?", default=True
-        )
-
-    if not should_add:
-        console.print("\n⚠️  Skipped dependency installation.", style="yellow")
-        console.print("   To add them manually later, run:", style="dim")
-        console.print(f"       cd {project_path.name}", style="dim")
-        console.print(f"       uv add {deps_str}\n", style="dim")
-        return False
-
-    # Run uv add
-    try:
-        if auto_approve:
-            console.print(
-                f"✓ Auto-installing dependencies: {', '.join(base_dependencies)}",
-                style="bold cyan",
-            )
-        else:
-            console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
-
-        # Run uv add in the project directory
-        cmd = ["uv", "add", *base_dependencies]
-        result = subprocess.run(
-            cmd,
-            cwd=project_path,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-
-        # Show success message
-        if not auto_approve:
-            # Show a summary line from uv output
-            output_lines = result.stderr.strip().split("\n")
-            for line in output_lines:
-                if "Resolved" in line or "Installed" in line:
-                    console.print(f"  {line}", style="dim")
-                    break
-
-        console.print("✓ Dependencies added successfully\n", style="bold green")
-        return True
-
-    except subprocess.CalledProcessError as e:
+        console = Console()
         console.print(
-            f"\n✗ Failed to add dependencies: {e.stderr.strip()}", style="bold red"
+            "\nℹ️  Adding BigQuery Agent Analytics Plugin dependencies...", style="cyan"
         )
-        console.print("  You can add them manually:", style="yellow")
-        console.print(f"      cd {project_path.name}", style="dim")
-        console.print(f"      uv add {deps_str}\n", style="dim")
-        return False
-    except FileNotFoundError:
-        console.print(
-            "\n✗ uv command not found. Please install uv first.", style="bold red"
-        )
-        console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
-        console.print("\n  To add dependencies manually:", style="yellow")
-        console.print(f"      cd {project_path.name}", style="dim")
-        console.print(f"      uv add {deps_str}\n", style="dim")
-        return False
+
+    return _add_dependencies_interactively(
+        project_path=project_path,
+        dependencies=dependencies,
+        success_message="BQ Analytics dependencies added successfully",
+        auto_approve=auto_approve,
+    )
 
 
 def validate_agent_directory_name(
@@ -958,6 +1014,7 @@ def process_template(
     remote_spec: Any | None = None,
     google_api_key: str | None = None,
     google_cloud_project: str | None = None,
+    bq_analytics: bool = False,
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -978,6 +1035,7 @@ def process_template(
         agent_garden: Whether this deployment is from Agent Garden
         google_api_key: Optional Google AI Studio API key to generate .env file
         google_cloud_project: Optional GCP project ID to populate .env file
+        bq_analytics: Whether to include BigQuery Agent Analytics Plugin
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
@@ -1350,6 +1408,7 @@ def process_template(
                 # Java package variables (only populated for Java projects)
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),
+                "bq_analytics": bq_analytics,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.json",  # Don't render JSON files

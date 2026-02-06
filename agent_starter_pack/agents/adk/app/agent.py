@@ -65,6 +65,45 @@ def get_current_time(query: str) -> str:
     return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
 
 
+_plugins = []
+{%- if cookiecutter.bq_analytics %}
+import logging
+{%- if cookiecutter.use_google_api_key %}
+import os
+{%- endif %}
+from google.adk.plugins.bigquery_agent_analytics_plugin import (
+    BigQueryAgentAnalyticsPlugin,
+    BigQueryLoggerConfig,
+)
+from google.cloud import bigquery
+
+# Initialize BigQuery Analytics if configured
+_project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+_dataset_id = os.environ.get("BQ_ANALYTICS_DATASET_ID", "adk_agent_analytics")
+_location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+if _project_id:
+    try:
+        # Best effort auto-provisioning for local development
+        bq = bigquery.Client(project=_project_id)
+        bq.create_dataset(f"{_project_id}.{_dataset_id}", exists_ok=True)
+
+        _plugins.append(
+            BigQueryAgentAnalyticsPlugin(
+                project_id=_project_id,
+                dataset_id=_dataset_id,
+                location=_location,
+                config=BigQueryLoggerConfig(
+                    gcs_bucket_name=os.environ.get("BQ_ANALYTICS_GCS_BUCKET"),
+                    connection_id=os.environ.get("BQ_ANALYTICS_CONNECTION_ID"),
+                ),
+            )
+        )
+    except Exception as e:
+        logging.warning(f"Failed to initialize BigQuery Analytics: {e}")
+{%- endif %}
+
+
 root_agent = Agent(
     name="root_agent",
     model=Gemini(
@@ -75,4 +114,10 @@ root_agent = Agent(
     tools=[get_weather, get_current_time],
 )
 
-app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")
+app = App(
+    root_agent=root_agent,
+    name="{{cookiecutter.agent_directory}}",
+{%- if cookiecutter.bq_analytics %}
+    plugins=_plugins,
+{%- endif %}
+)

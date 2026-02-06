@@ -196,6 +196,21 @@ resource "google_cloud_run_v2_service" "app" {
         name  = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
         value = "NO_CONTENT"
       }
+{%- if cookiecutter.bq_analytics %}
+      env {
+        name  = "BQ_ANALYTICS_DATASET_ID"
+        value = google_bigquery_dataset.telemetry_dataset.dataset_id
+      }
+      env {
+        name  = "BQ_ANALYTICS_GCS_BUCKET"
+        value = google_storage_bucket.logs_data_bucket.name
+      }
+      env {
+        name  = "BQ_ANALYTICS_CONNECTION_ID"
+        # Format: {location}.{connection_id}
+        value = "${var.region}.${google_bigquery_connection.genai_telemetry_connection.connection_id}"
+      }
+{%- endif %}
     }
 
     service_account = google_service_account.app_sa.email

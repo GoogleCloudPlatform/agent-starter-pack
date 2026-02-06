@@ -89,7 +89,15 @@ export default defineConfig({
         text: 'Deployment & Operations',
         items: [
           { text: 'Deployment', link: '/guide/deployment' },
-          { text: 'Observability', link: '/guide/observability' }
+          {
+            text: 'Observability',
+            collapsed: false,
+            items: [
+              { text: 'Overview', link: '/guide/observability/' },
+              { text: 'Cloud Trace', link: '/guide/observability/cloud-trace' },
+              { text: 'BigQuery Plugin', link: '/guide/observability/bq-agent-analytics' }
+            ]
+          }
         ]
       },
       {

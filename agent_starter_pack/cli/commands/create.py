@@ -39,6 +39,7 @@ from ..utils.remote_template import (
 )
 from ..utils.template import (
     add_base_template_dependencies_interactively,
+    add_bq_analytics_dependencies,
     get_agent_language,
     get_available_agents,
     get_deployment_targets,
@@ -143,6 +144,12 @@ def shared_template_options(f: Callable) -> Callable:
         "--agent-directory",
         "-dir",
         help="Name of the agent directory (overrides template default)",
+    )(f)
+    f = click.option(
+        "--bq-analytics",
+        is_flag=True,
+        help="Include BigQuery Agent Analytics Plugin for observability",
+        default=False,
     )(f)
     f = click.option(
         "--base-template",
@@ -311,6 +318,7 @@ def create(
     locked: bool = False,
     cli_overrides: dict | None = None,
     google_api_key: str | None = None,
+    bq_analytics: bool = False,
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
@@ -948,6 +956,7 @@ def create(
                 remote_spec=remote_spec,
                 google_api_key=google_api_key,
                 google_cloud_project=creds_info.get("project"),
+                bq_analytics=bq_analytics,
             )
 
             # Replace region in all files if a different region was specified
@@ -985,6 +994,26 @@ def create(
                         base_template,
                         auto_approve=auto_approve,
                     )
+
+            # Add BQ Analytics dependencies if the flag was set
+            if bq_analytics:
+                console.print(
+                    "\\n[bold blue]Adding BigQuery Agent Analytics Plugin dependencies...[/]"
+                )
+                try:
+                    # Assuming add_bq_analytics_dependencies is imported from template.py
+                    add_bq_analytics_dependencies(
+                        project_path=project_path,  # Path to the newly created agent project
+                        auto_approve=auto_approve,
+                    )
+                except Exception as e:
+                    logging.warning(
+                        f"Could not add BigQuery Analytics dependencies: {e}"
+                    )
+                    console.print(
+                        f"⚠️  [yellow]Warning: Failed to add BigQuery Analytics dependencies: {e}[/yellow]"
+                    )
+
         finally:
             # Clean up the temporary directory if one was created
             if temp_dir_to_clean:

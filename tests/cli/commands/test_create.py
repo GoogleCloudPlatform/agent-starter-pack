@@ -129,6 +129,13 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
                 "framework": "adk",
                 "priority": 100,
             },
+            3: {
+                "name": "adk",
+                "description": "ADK Agent",
+                "language": "python",
+                "framework": "adk",
+                "priority": 1,
+            },
         }
         yield mock
 
@@ -526,3 +533,126 @@ class TestCreateCommand:
         assert call_kwargs["agent_name"] == "adk"
         assert call_kwargs["deployment_target"] == "agent_engine"
         assert call_kwargs["cicd_runner"] == "skip"  # prototype mode
+
+    def test_create_with_bq_analytics_flag(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command with --bq-analytics flag"""
+        runner = CliRunner()
+
+        # Configure available agents to include 'adk'
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "adk",
+                "description": "ADK Base Agent",
+                "language": "python",
+                "framework": "adk",
+            },
+        }
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "adk",
+                    "--bq-analytics",
+                    "--auto-approve",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is True
+
+    def test_create_without_bq_analytics_flag(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command defaults bq_analytics to False"""
+        runner = CliRunner()
+
+        # Configure available agents to include 'adk'
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "adk",
+                "description": "ADK Base Agent",
+                "language": "python",
+                "framework": "adk",
+            },
+        }
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                ["test-project", "--agent", "adk", "--auto-approve"],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is False
+
+    def test_create_bq_analytics_with_non_adk_agent(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test --bq-analytics flag with non-ADK agent logic"""
+        runner = CliRunner()
+
+        # Configure available agents to include 'langgraph'
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "langgraph",
+                "description": "LangGraph Agent",
+                "language": "python",
+                "framework": "langgraph",
+            },
+        }
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "langgraph",
+                    "--bq-analytics",
+                    "--auto-approve",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is True

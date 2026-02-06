@@ -120,6 +120,10 @@ locals {
       name  = "adk_java-cloud_run"
       value = "adk_java,cloud_run"
     },
+    {
+      name  = "adk-cloud_run-bq-analytics"
+      value = "adk,cloud_run,--bq-analytics"
+    },
   ]
 
   # Go-specific included files (different paths from Python)

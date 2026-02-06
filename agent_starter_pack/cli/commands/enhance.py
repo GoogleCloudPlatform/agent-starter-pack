@@ -606,6 +606,7 @@ def enhance(
     agent_directory: str | None,
     skip_welcome: bool = False,
     google_api_key: str | None = None,
+    bq_analytics: bool = False,
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -1040,4 +1041,5 @@ def enhance(
         skip_welcome=True,  # Skip welcome message since enhance shows its own
         cli_overrides=final_cli_overrides if final_cli_overrides else None,
         google_api_key=google_api_key,
+        bq_analytics=bq_analytics,
     )

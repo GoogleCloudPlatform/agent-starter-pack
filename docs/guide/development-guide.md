@@ -179,7 +179,7 @@ Track your agent's performance using integrated observability tools. OpenTelemet
 *   **Cloud Trace**: Inspect request flows and analyze latencies for GenAI operations at: `https://console.cloud.google.com/traces/list?project=YOUR_PROJECT_ID`
 *   **Visualization** (Optional): Connect your BigQuery data to BI tools for custom dashboards.
 
-➡️ For complete setup instructions, example queries, and testing in dev, see the [Observability Guide](./observability.md).
+➡️ For complete setup instructions, example queries, and testing in dev, see the [Observability Guide](./observability/).
 
 ## 4. Keeping Your Project Up-to-Date
 

@@ -32,7 +32,7 @@ function App() {
   const [userId, setUserId] = useState<string>("user1");
 
   return (
-    <div className="App">
+    <div className="App" data-surface-id="main-app-container">
       <LiveAPIProvider url={serverUrl} userId={userId}>
         <div className="streaming-console">
           <SidePanel

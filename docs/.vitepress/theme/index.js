@@ -7,7 +7,7 @@ export default {
   extends: DefaultTheme,
   Layout() {
     return h(DefaultTheme.Layout, null, {
-      'doc-before': () => h('div', { class: 'copy-markdown-container' }, [
+      'doc-before': () => h('div', { class: 'copy-markdown-container', 'data-surface-id': 'docs-container' }, [
         h(CopyMarkdown)
       ])
     })

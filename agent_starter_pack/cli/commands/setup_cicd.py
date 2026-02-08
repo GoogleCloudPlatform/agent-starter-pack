@@ -637,7 +637,9 @@ def setup_cicd(
 
     # Auto-detect CI/CD runner based on Terraform files (moved earlier)
     if cicd_runner is None:
-        is_github_actions = (tf_dir / "wif.tf").exists() and (tf_dir / "github.tf").exists()
+        is_github_actions = (tf_dir / "wif.tf").exists() and (
+            tf_dir / "github.tf"
+        ).exists()
         cicd_runner = "github_actions" if is_github_actions else "google_cloud_build"
 
     display_intro_message()

@@ -61,6 +61,32 @@ test:
 	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
 
+# ==============================================================================
+# Agent Evaluation
+# ==============================================================================
+
+# Run agent evaluation using ADK eval
+# Usage: make eval [EVALSET=tests/eval/evalsets/basic.evalset.json]
+eval:
+	@echo "==============================================================================="
+	@echo "| Running Agent Evaluation                                                    |"
+	@echo "==============================================================================="
+	uv sync --dev --extra eval
+	uv run adk eval ./test_adk $${EVALSET:-tests/eval/evalsets/basic.evalset.json}
+
+# Run evaluation with all evalsets
+eval-all:
+	@echo "==============================================================================="
+	@echo "| Running All Evalsets                                                        |"
+	@echo "==============================================================================="
+	@for evalset in tests/eval/evalsets/*.evalset.json; do \
+		echo ""; \
+		echo "▶ Running: $$evalset"; \
+		$(MAKE) eval EVALSET=$$evalset || exit 1; \
+	done
+	@echo ""
+	@echo "✅ All evalsets completed"
+
 # Run code quality checks (codespell, ruff, ty)
 lint:
 	uv sync --dev --extra lint

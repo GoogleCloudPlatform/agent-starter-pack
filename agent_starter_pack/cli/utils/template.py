@@ -624,7 +624,7 @@ def prompt_deployment_target(
         },
         "none": {
             "display_name": "none",
-            "description": "Local development only (no cloud deployment)",
+            "description": "No Cloud deployment",
         },
     }
 
@@ -1391,7 +1391,9 @@ def process_template(
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
-                "requires_data_ingestion": settings.get("requires_data_ingestion", False),
+                "requires_data_ingestion": settings.get(
+                    "requires_data_ingestion", False
+                ),
                 "language": language,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
@@ -1835,7 +1837,7 @@ def process_template(
                     if remote_uv_lock.exists():
                         shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
                         logging.debug("Used uv.lock from remote template")
-                elif deployment_target:
+                elif deployment_target and deployment_target != "none":
                     # For local templates, use the existing logic
                     lock_path = (
                         pathlib.Path(__file__).parent.parent.parent

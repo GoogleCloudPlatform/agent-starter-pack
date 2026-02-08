@@ -27,8 +27,9 @@ playground: build-frontend-if-needed
 # ==============================================================================
 
 # Launch local development server with hot-reload
+# Usage: make local-backend [PORT=8000] - Specify PORT for parallel scenario testing
 local-backend:
-	uv run python -m test_adk_live.app_utils.expose_app --mode local --port 8000  --local-agent test_adk_live.agent.root_agent
+	uv run python -m test_adk_live.app_utils.expose_app --mode local --port $(or $(PORT),8000) --local-agent test_adk_live.agent.root_agent
 
 # ==============================================================================
 # ADK Live Commands

@@ -1115,13 +1115,13 @@ The agent should recall details from the first conversation.
 ```bash
 # Check Cloud Run service logs for successful DB connection
 gcloud run services logs read {{cookiecutter.project_name}} \
-  --project={{cookiecutter.dev_project_id}} \
-  --region={{cookiecutter.region}} \
+  --project=YOUR_DEV_PROJECT_ID \
+  --region=YOUR_REGION \
   --limit=50 | grep -i "database\|cloud_sql"
 
 # Verify Cloud SQL instance is running
 gcloud sql instances describe {{cookiecutter.project_name}}-db-dev \
-  --project={{cookiecutter.dev_project_id}}
+  --project=YOUR_DEV_PROJECT_ID
 ```
 
 **3. Common Cloud SQL Issues:**

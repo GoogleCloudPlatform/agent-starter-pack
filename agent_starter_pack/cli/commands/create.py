@@ -1066,7 +1066,12 @@ def create(
         )
 
         # Show enhance hint for prototype mode
-        if final_cicd_runner == "skip":
+        if final_deployment == "none":
+            console.print(
+                "\n[bold cyan]💡 Tip[/]\n"
+                "   Add a deployment target later with: [cyan]uvx agent-starter-pack enhance[/]"
+            )
+        elif final_cicd_runner == "skip":
             console.print(
                 "\n[bold cyan]💡 Tip[/]\n"
                 "   Once ready for production, run: [cyan]uvx agent-starter-pack enhance[/]"

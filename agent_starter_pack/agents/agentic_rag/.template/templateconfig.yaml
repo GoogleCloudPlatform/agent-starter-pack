@@ -17,7 +17,7 @@ example_question: "How to save a pandas dataframe to CSV?"
 settings:
   requires_data_ingestion: true
   requires_session: true
-  deployment_targets: ["agent_engine", "cloud_run"]
+  deployment_targets: ["agent_engine", "cloud_run", "none"]
   extra_dependencies: [
     "google-adk>=1.15.0,<2.0.0",
     "langchain-google-vertexai~=2.0.7",

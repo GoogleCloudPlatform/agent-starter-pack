@@ -137,7 +137,7 @@ def shared_template_options(f: Callable) -> Callable:
     f = click.option(
         "--deployment-target",
         "-d",
-        type=click.Choice(["agent_engine", "cloud_run"]),
+        type=click.Choice(["agent_engine", "cloud_run", "none"]),
         help="Deployment target name",
     )(f)
     f = click.option(
@@ -843,6 +843,15 @@ def create(
             final_cicd_runner = "skip"
             if debug:
                 logging.debug("Prototype mode: setting cicd_runner to 'skip'")
+        elif final_deployment == "none":
+            if cicd_runner and cicd_runner != "skip":
+                console.print(
+                    f"Info: --cicd-runner '{cicd_runner}' ignored for deployment_target='none'.",
+                    style="yellow",
+                )
+            final_cicd_runner = "skip"
+            if debug:
+                logging.debug("deployment_target='none': setting cicd_runner to 'skip'")
         elif cicd_runner:
             final_cicd_runner = cicd_runner
         elif auto_approve:

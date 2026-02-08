@@ -126,11 +126,12 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 # ==============================================================================
 
 # Launch local development server with hot-reload
+# Usage: make local-backend [PORT=8000] - Specify PORT for parallel scenario testing
 local-backend:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
+	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port $(or $(PORT),8000) --reload
 {%- else %}
-	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --port 8000  --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
+	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --port $(or $(PORT),8000) --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
 {%- endif %}
 {%- endif %}
 {%- if cookiecutter.is_adk_live %}
@@ -346,6 +347,34 @@ data-ingestion:
 test:
 	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
+{%- endif %}
+{%- if cookiecutter.is_adk and not cookiecutter.is_adk_live %}
+
+# ==============================================================================
+# Agent Evaluation
+# ==============================================================================
+
+# Run agent evaluation using ADK eval
+# Usage: make eval [EVALSET=tests/eval/evalsets/basic.evalset.json]
+eval:
+	@echo "==============================================================================="
+	@echo "| Running Agent Evaluation                                                    |"
+	@echo "==============================================================================="
+	uv sync --dev --extra eval
+	uv run adk eval ./{{cookiecutter.agent_directory}} $${EVALSET:-tests/eval/evalsets/basic.evalset.json}
+
+# Run evaluation with all evalsets
+eval-all:
+	@echo "==============================================================================="
+	@echo "| Running All Evalsets                                                        |"
+	@echo "==============================================================================="
+	@for evalset in tests/eval/evalsets/*.evalset.json; do \
+		echo ""; \
+		echo "▶ Running: $$evalset"; \
+		$(MAKE) eval EVALSET=$$evalset || exit 1; \
+	done
+	@echo ""
+	@echo "✅ All evalsets completed"
 {%- endif %}
 
 # Run code quality checks (codespell, ruff, ty)

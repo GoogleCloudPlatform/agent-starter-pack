@@ -561,6 +561,11 @@ console = Console()
     help="Flag indicating whether to create a new repository",
 )
 @click.option(
+    "--cicd-runner",
+    type=click.Choice(["google_cloud_build", "github_actions"]),
+    help="CI/CD runner to use",
+)
+@click.option(
     "--use-existing-repository",
     is_flag=True,
     default=False,
@@ -588,6 +593,7 @@ def setup_cicd(
     auto_approve: bool,
     create_repository: bool,
     use_existing_repository: bool,
+    cicd_runner: str | None = None,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
 
@@ -626,10 +632,13 @@ def setup_cicd(
     else:
         console.print(f"Using provided region: {region}")
 
-    # Auto-detect CI/CD runner based on Terraform files (moved earlier)
+    # Define tf_dir unconditionally (used later)
     tf_dir = Path("deployment/terraform")
-    is_github_actions = (tf_dir / "wif.tf").exists() and (tf_dir / "github.tf").exists()
-    cicd_runner = "github_actions" if is_github_actions else "google_cloud_build"
+
+    # Auto-detect CI/CD runner based on Terraform files (moved earlier)
+    if cicd_runner is None:
+        is_github_actions = (tf_dir / "wif.tf").exists() and (tf_dir / "github.tf").exists()
+        cicd_runner = "github_actions" if is_github_actions else "google_cloud_build"
 
     display_intro_message()
 
@@ -653,12 +662,6 @@ def setup_cicd(
     if debug:
         logging.basicConfig(level=logging.DEBUG)
         console.print("> Debug mode enabled")
-
-    # Auto-detect CI/CD runner based on Terraform files
-    tf_dir = Path("deployment/terraform")
-    is_github_actions = (tf_dir / "wif.tf").exists() and (tf_dir / "github.tf").exists()
-    cicd_runner = "github_actions" if is_github_actions else "google_cloud_build"
-    if debug:
         logging.debug(f"Detected CI/CD runner: {cicd_runner}")
 
     # Ensure GitHub CLI is available and authenticated

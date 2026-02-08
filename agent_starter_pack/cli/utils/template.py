@@ -411,7 +411,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
-DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine"]
+DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine", "none"]
 SUPPORTED_LANGUAGES = ["python", "go", "java"]
 DEFAULT_FRONTEND = "None"
 
@@ -621,6 +621,10 @@ def prompt_deployment_target(
         "cloud_run": {
             "display_name": "cloud_run",
             "description": "GCP serverless containers",
+        },
+        "none": {
+            "display_name": "none",
+            "description": "Local development only (no cloud deployment)",
         },
     }
 
@@ -1352,7 +1356,7 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
-            # Load adk-cheatsheet.md and llm.txt for injection
+            # Load adk-cheatsheet.md for injection
             adk_cheatsheet_path = (
                 pathlib.Path(__file__).parent.parent.parent
                 / "resources"
@@ -1387,6 +1391,7 @@ def process_template(
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
+                "requires_data_ingestion": settings.get("requires_data_ingestion", False),
                 "language": language,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",

@@ -13,7 +13,7 @@
         }
       ],
       "session_input": {
-        "app_name": "test_app",
+        "app_name": "app",
         "user_id": "eval_user",
         "state": {}
       }
@@ -24,19 +24,11 @@
         {
           "user_content": {
             "parts": [{"text": "What's the weather like in San Francisco?"}]
-          },
-          "intermediate_data": {
-            "tool_uses": [
-              {
-                "name": "get_weather",
-                "args": {"city": "San Francisco"}
-              }
-            ]
           }
         }
       ],
       "session_input": {
-        "app_name": "test_app",
+        "app_name": "app",
         "user_id": "eval_user",
         "state": {}
       }

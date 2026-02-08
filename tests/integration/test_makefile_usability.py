@@ -109,7 +109,9 @@ def validate_makefile_usability(
                     "clean",
                     "distclean",
                     "local-backend",
-                ]  # Skip common implicit targets and long-running servers
+                    "eval",
+                    "eval-all",
+                ]  # Skip common implicit targets, long-running servers, and eval targets
             ):
                 makefile_targets.append(target)
 

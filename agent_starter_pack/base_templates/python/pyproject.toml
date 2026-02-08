@@ -39,6 +39,9 @@ dev = [
 jupyter = [
     "jupyter>=1.0.0,<2.0.0",
 ]
+eval = [
+    "google-adk[eval]>=1.15.0,<2.0.0",
+]
 lint = [
     "ruff>=0.4.6,<1.0.0",
     "ty>=0.0.1a0",

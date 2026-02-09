@@ -1554,12 +1554,7 @@ Before finalizing any code replacement, verify:
 
 *   **Troubleshooting:**
     *   **Check the ADK cheatsheet in this file first** - it covers most common patterns
-    *   **Need more depth?** Use `get_docs` for full documentation:
-        ```
-        get_docs(action="search", source="adk", query="your error or concept")
-        get_docs(action="read", source="adk", doc="tools-custom/mcp-tools")
-        get_docs(action="read", source="asp", doc="guide/troubleshooting")
-        ```
+    *   **Need more depth?** Try checking documentation!
     *   For framework questions (ADK, LangGraph) or GCP products (Cloud Run), check official documentation
     *   When encountering persistent errors, a targeted Google Search often finds solutions faster
 

@@ -129,13 +129,6 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
                 "framework": "adk",
                 "priority": 100,
             },
-            3: {
-                "name": "adk",
-                "description": "ADK Agent",
-                "language": "python",
-                "framework": "adk",
-                "priority": 1,
-            },
         }
         yield mock
 

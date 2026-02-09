@@ -798,7 +798,9 @@ def create(
                     )
                     return
 
-                if final_deployment == "cloud_run":
+                if final_deployment == "none":
+                    final_session_type = "in_memory"
+                elif final_deployment == "cloud_run":
                     if deployment_agent_name in session_type_supported_agents:
                         # Allow session type selection for supported agents
                         if not session_type:
@@ -1007,10 +1009,9 @@ def create(
             # Add BQ Analytics dependencies if the flag was set
             if bq_analytics:
                 console.print(
-                    "\\n[bold blue]Adding BigQuery Agent Analytics Plugin dependencies...[/]"
+                    "\n[bold blue]Adding BigQuery Agent Analytics Plugin dependencies...[/]"
                 )
                 try:
-                    # Assuming add_bq_analytics_dependencies is imported from template.py
                     add_bq_analytics_dependencies(
                         project_path=project_path,  # Path to the newly created agent project
                         auto_approve=auto_approve,

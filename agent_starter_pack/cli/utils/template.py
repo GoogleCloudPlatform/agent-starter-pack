@@ -308,7 +308,7 @@ def add_bq_analytics_dependencies(
     Returns:
         True if dependencies were added successfully, False otherwise
     """
-    dependencies = ["fastapi~=0.123.0", "google-adk[bigquery-analytics]>=1.21.0"]
+    dependencies = ["google-adk[bigquery-analytics]>=1.21.0"]
 
     if not auto_approve:
         console = Console()
@@ -1366,12 +1366,6 @@ def process_template(
             with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
                 adk_cheatsheet_content = md_file.read()
 
-            llm_txt_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
-            )
-            with open(llm_txt_path, encoding="utf-8") as txt_file:
-                llm_txt_content = txt_file.read()
-
             # Generate Java package variables if language is Java
             java_vars = (
                 generate_java_package_vars(project_name) if language == "java" else {}
@@ -1411,7 +1405,6 @@ def process_template(
                 "use_google_api_key": bool(google_api_key),
                 "google_cloud_project": google_cloud_project or "your-gcp-project-id",
                 "adk_cheatsheet": adk_cheatsheet_content,
-                "llm_txt": llm_txt_content,
                 # Java package variables (only populated for Java projects)
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),

@@ -665,12 +665,13 @@ def enhance(
         console.print("> Debug mode enabled")
         logging.debug("Starting enhance command in debug mode")
 
-    # Validate required options for programmatic invocation
+    # Default cicd_runner to "skip" for programmatic invocation
     if auto_approve and not cicd_runner:
-        raise click.ClickException(
-            "When using --auto-approve (-y), you must specify --cicd-runner.\n"
-            "Example: uvx agent-starter-pack enhance . -y --cicd-runner github_actions"
+        console.print(
+            "[yellow]Warning: --cicd-runner not specified with --auto-approve. "
+            "Defaulting to 'skip'. Use --cicd-runner to configure CI/CD.[/yellow]"
         )
+        cicd_runner = "skip"
 
     # Handle --adk shortcut
     if adk:

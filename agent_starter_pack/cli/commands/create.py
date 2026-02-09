@@ -16,10 +16,12 @@ import datetime
 import logging
 import os
 import pathlib
+import random
 import shutil
 import subprocess
 import tempfile
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import click
 from click.core import ParameterSource
@@ -54,6 +56,15 @@ from ..utils.template import (
 )
 
 console = Console()
+
+
+@dataclass
+class AgentSelectionResult:
+    """Result of the interactive agent selection flow."""
+
+    agent: str
+    bq_analytics: bool = False
+
 
 # Export the shared decorator for use by other commands
 __all__ = ["create", "shared_template_options"]
@@ -562,10 +573,13 @@ def create(
                     style="yellow",
                 )
             else:
-                final_agent = display_agent_selection(deployment_target)
+                selection_result = display_agent_selection(deployment_target)
+                final_agent = selection_result.agent
+                if selection_result.bq_analytics:
+                    bq_analytics = True
 
             # If browse functionality returned a remote agent spec, process it like CLI input
-            if final_agent and final_agent.startswith("adk@"):
+            if final_agent and parse_agent_spec(final_agent) is not None:
                 # Set agent to the returned spec for remote processing
                 agent = final_agent
 
@@ -1108,9 +1122,20 @@ def prompt_region_confirmation(
     return new_region if new_region else default_region
 
 
-def display_agent_selection(deployment_target: str | None = None) -> str:
+def display_agent_selection(
+    deployment_target: str | None = None,
+    language: str | None = None,
+) -> AgentSelectionResult:
     """Display available agents grouped by language/framework and prompt for selection."""
     agents = get_available_agents(deployment_target=deployment_target)
+
+    # Filter by language if specified
+    if language:
+        agents = {
+            num: agent for num, agent in agents.items() if agent["language"] == language
+        }
+        # Re-number from 1
+        agents = {i + 1: agent for i, agent in enumerate(agents.values())}
 
     if not agents:
         if deployment_target:
@@ -1145,26 +1170,82 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
             f"     {num}. [bold]{name_padded}[/] [dim]{agent['description']}[/]"
         )
 
-    # Add special option for adk-samples
-    adk_samples_option = len(agents) + 1
-    console.print("\n  [bold cyan]🌐 Community[/]")
+    # Add "More Options" submenu entry
+    more_options_num = len(agents) + 1
+    console.print("\n  [bold cyan]\U0001f527 More Options[/]")
+    label = "Browse".ljust(14)
     console.print(
-        f"     {adk_samples_option}. [bold][link=https://github.com/google/adk-samples]google/adk-samples[/link][/] [dim]Browse community agents[/]"
+        f"     {more_options_num}. [bold]{label}[/] [dim]BQ agent analytics, community agents, custom templates[/]"
     )
+
+    # Random tips shown ~20% of the time
+    tips = [
+        "\U0001f4a1 [dim]New: use --bq-analytics to log agent events to BigQuery[/]",
+    ]
+    if random.random() < 0.2:
+        console.print(f"\n  {random.choice(tips)}")
 
     choice = IntPrompt.ask(
         "\nEnter the number of your template choice", default=1, show_default=True
     )
 
-    if choice == adk_samples_option:
-        return display_adk_samples_selection()
+    if choice == more_options_num:
+        return display_more_options_submenu(deployment_target)
     elif choice in agents:
-        return agents[choice]["name"]
+        return AgentSelectionResult(agent=agents[choice]["name"])
     else:
         raise ValueError(f"Invalid agent selection: {choice}")
 
 
-def display_adk_samples_selection() -> str:
+def display_more_options_submenu(
+    deployment_target: str | None = None,
+) -> AgentSelectionResult:
+    """Display the More Options submenu with additional agent sources."""
+    console.print("\n> Select an option:")
+    console.print(
+        "     1. [bold]bq-analytics[/]       [dim]Log agent events to BigQuery for monitoring and evaluation[/]"
+    )
+    console.print(
+        "     2. [bold][link=https://github.com/google/adk-samples]google/adk-samples[/link][/] [dim]Browse community agents[/]"
+    )
+    console.print(
+        "     3. [bold]Custom URL[/]         [dim]Enter a remote template URL[/]"
+    )
+    console.print(
+        "     4. [bold]\u2190 Back[/]             [dim]Return to agent selection[/]"
+    )
+
+    choice = IntPrompt.ask(
+        "\nEnter the number of your choice", default=1, show_default=True
+    )
+
+    if choice == 1:
+        console.print(
+            "\n[blue]BigQuery Agent Analytics will be enabled for the selected agent.[/]"
+        )
+        console.print(
+            "[dim]Tip: You can also pass --bq-analytics directly during creation.[/]"
+        )
+        result = display_agent_selection(deployment_target, language="python")
+        result.bq_analytics = True
+        return result
+    elif choice == 2:
+        return display_adk_samples_selection()
+    elif choice == 3:
+        url = Prompt.ask("\nEnter the remote template URL")
+        spec = parse_agent_spec(url)
+        if spec:
+            return AgentSelectionResult(agent=url)
+        else:
+            console.print(f"Invalid template URL: {url}", style="bold red")
+            return display_more_options_submenu(deployment_target)
+    elif choice == 4:
+        return display_agent_selection(deployment_target)
+    else:
+        raise ValueError(f"Invalid selection: {choice}")
+
+
+def display_adk_samples_selection() -> AgentSelectionResult:
     """Display adk-samples agents and prompt for selection."""
 
     from ..utils.remote_template import fetch_remote_template, parse_agent_spec
@@ -1209,7 +1290,7 @@ def display_adk_samples_selection() -> str:
         # Add option to go back to local agents
         back_option = len(adk_agents) + 1
         console.print(
-            f"{back_option}. [bold]← Back to built-in agents[/] - [dim]Return to local agent selection[/]"
+            f"{back_option}. [bold]\u2190 Back to built-in agents[/] - [dim]Return to local agent selection[/]"
         )
 
         choice = IntPrompt.ask(
@@ -1224,7 +1305,7 @@ def display_adk_samples_selection() -> str:
             console.print(
                 f"\n> Selected: [bold]{selected_agent['name']}[/] from adk-samples"
             )
-            return selected_agent["spec"]
+            return AgentSelectionResult(agent=selected_agent["spec"])
         else:
             raise ValueError(f"Invalid agent selection: {choice}")
 

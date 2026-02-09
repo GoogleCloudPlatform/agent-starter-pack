@@ -21,6 +21,14 @@ from google.adk.apps import App
 from google.adk.models import Gemini
 from google.adk.tools import LongRunningFunctionTool
 from google.genai import types
+{%- if cookiecutter.bq_analytics %}
+import logging
+from google.adk.plugins.bigquery_agent_analytics_plugin import (
+    BigQueryAgentAnalyticsPlugin,
+    BigQueryLoggerConfig,
+)
+from google.cloud import bigquery
+{%- endif %}
 {%- if not cookiecutter.use_google_api_key %}
 
 import os
@@ -78,26 +86,34 @@ def request_user_input(message: str) -> dict:
     return {"status": "pending", "message": message}
 
 
-_plugins = []
+root_agent = Agent(
+    name="root_agent",
+    model=Gemini(
+        model="gemini-3-flash-preview",
+        retry_options=types.HttpRetryOptions(attempts=3),
+    ),
+    description="An agent that can provide information about the weather and time.",
+    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
+    tools=[
+        get_weather,
+        get_current_time,
+        LongRunningFunctionTool(func=request_user_input),
+    ],
+)
+
 {%- if cookiecutter.bq_analytics %}
-import logging
 {%- if cookiecutter.use_google_api_key %}
 import os
 {%- endif %}
-from google.adk.plugins.bigquery_agent_analytics_plugin import (
-    BigQueryAgentAnalyticsPlugin,
-    BigQueryLoggerConfig,
-)
-from google.cloud import bigquery
 
-# Initialize BigQuery Analytics if configured
+# Initialize BigQuery Analytics
+_plugins = []
 _project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
 _dataset_id = os.environ.get("BQ_ANALYTICS_DATASET_ID", "adk_agent_analytics")
 _location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 if _project_id:
     try:
-        # Best effort auto-provisioning for local development
         bq = bigquery.Client(project=_project_id)
         bq.create_dataset(f"{_project_id}.{_dataset_id}", exists_ok=True)
 
@@ -115,22 +131,6 @@ if _project_id:
     except Exception as e:
         logging.warning(f"Failed to initialize BigQuery Analytics: {e}")
 {%- endif %}
-
-
-root_agent = Agent(
-    name="root_agent",
-    model=Gemini(
-        model="gemini-3-flash-preview",
-        retry_options=types.HttpRetryOptions(attempts=3),
-    ),
-    description="An agent that can provide information about the weather and time.",
-    instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[
-        get_weather,
-        get_current_time,
-        LongRunningFunctionTool(func=request_user_input),
-    ],
-)
 
 app = App(
     root_agent=root_agent,

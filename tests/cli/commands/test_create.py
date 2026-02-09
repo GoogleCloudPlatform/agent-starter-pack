@@ -20,8 +20,10 @@ import pytest
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.create import (
+    AgentSelectionResult,
     create,
     display_agent_selection,
+    display_more_options_submenu,
     normalize_project_name,
 )
 
@@ -399,8 +401,113 @@ class TestCreateCommand:
             mock_prompt.return_value = 1
             result = display_agent_selection()
 
-        assert result == "langgraph"
+        assert isinstance(result, AgentSelectionResult)
+        assert result.agent == "langgraph"
+        assert result.bq_analytics is False
         mock_get_available_agents.assert_called_once()
+
+    def test_display_agent_selection_more_options(
+        self, mock_get_available_agents: MagicMock, mock_console: MagicMock
+    ) -> None:
+        """Test selecting 'More Options' dispatches to submenu"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_more_options_submenu"
+            ) as mock_submenu,
+        ):
+            # Option 3 = More Options (2 agents + 1)
+            mock_prompt.return_value = 3
+            mock_submenu.return_value = AgentSelectionResult(agent="adk")
+            result = display_agent_selection()
+
+        assert result.agent == "adk"
+        mock_submenu.assert_called_once_with(None)
+
+    def test_more_options_bq_analytics(
+        self, mock_get_available_agents: MagicMock, mock_console: MagicMock
+    ) -> None:
+        """Test More Options bq-analytics flow sets bq_analytics=True"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_agent_selection"
+            ) as mock_agent_sel,
+        ):
+            mock_prompt.return_value = 1
+            mock_agent_sel.return_value = AgentSelectionResult(agent="adk")
+            result = display_more_options_submenu()
+
+        assert result.agent == "adk"
+        assert result.bq_analytics is True
+
+    def test_more_options_adk_samples(self, mock_console: MagicMock) -> None:
+        """Test More Options submenu dispatches to adk-samples"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_adk_samples_selection"
+            ) as mock_adk,
+        ):
+            mock_prompt.return_value = 2
+            mock_adk.return_value = AgentSelectionResult(agent="adk@some/agent")
+            result = display_more_options_submenu()
+
+        assert result.agent == "adk@some/agent"
+        mock_adk.assert_called_once()
+
+    def test_more_options_custom_url(self, mock_console: MagicMock) -> None:
+        """Test More Options custom URL flow"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_int_prompt,
+            patch("rich.prompt.Prompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.parse_agent_spec"
+            ) as mock_parse,
+        ):
+            mock_int_prompt.return_value = 3
+            mock_prompt.return_value = "https://github.com/user/repo"
+            mock_parse.return_value = MagicMock()  # Valid spec
+            result = display_more_options_submenu()
+
+        assert result.agent == "https://github.com/user/repo"
+        assert result.bq_analytics is False
+
+    def test_more_options_custom_url_invalid(self, mock_console: MagicMock) -> None:
+        """Test More Options custom URL with invalid URL retries"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_int_prompt,
+            patch("rich.prompt.Prompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.parse_agent_spec"
+            ) as mock_parse,
+        ):
+            # First call: select custom URL (3), second call: select back (4)
+            mock_int_prompt.side_effect = [3, 4]
+            mock_prompt.return_value = "not-a-url"
+            mock_parse.side_effect = [None, None]
+            with patch(
+                "agent_starter_pack.cli.commands.create.display_agent_selection"
+            ) as mock_agent_sel:
+                mock_agent_sel.return_value = AgentSelectionResult(agent="adk")
+                result = display_more_options_submenu()
+
+        assert result.agent == "adk"
+
+    def test_more_options_back(self, mock_console: MagicMock) -> None:
+        """Test More Options back navigation"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_agent_selection"
+            ) as mock_agent_sel,
+        ):
+            mock_prompt.return_value = 4
+            mock_agent_sel.return_value = AgentSelectionResult(agent="langgraph")
+            result = display_more_options_submenu()
+
+        assert result.agent == "langgraph"
+        mock_agent_sel.assert_called_once()
 
     def test_normalize_project_name(self, mock_console: MagicMock) -> None:
         """Test the normalize_project_name function directly"""

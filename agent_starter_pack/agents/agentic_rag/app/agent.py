@@ -20,6 +20,14 @@ from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
 from google.genai import types
+{%- if cookiecutter.bq_analytics %}
+import logging
+from google.adk.plugins.bigquery_agent_analytics_plugin import (
+    BigQueryAgentAnalyticsPlugin,
+    BigQueryLoggerConfig,
+)
+from google.cloud import bigquery
+{%- endif %}
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
@@ -112,23 +120,26 @@ Leverage the Tools you are provided to answer questions.
 If you already know the answer to a question, you can respond directly without using the tools."""
 
 
-_plugins = []
-{%- if cookiecutter.bq_analytics %}
-import logging
-from google.adk.plugins.bigquery_agent_analytics_plugin import (
-    BigQueryAgentAnalyticsPlugin,
-    BigQueryLoggerConfig,
+root_agent = Agent(
+    name="root_agent",
+    model=Gemini(
+        model="gemini-3-flash-preview",
+        retry_options=types.HttpRetryOptions(attempts=3),
+    ),
+    instruction=instruction,
+    tools=[retrieve_docs],
 )
-from google.cloud import bigquery
 
-# Initialize BigQuery Analytics if configured
+{%- if cookiecutter.bq_analytics %}
+
+# Initialize BigQuery Analytics
+_plugins = []
 _project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
 _dataset_id = os.environ.get("BQ_ANALYTICS_DATASET_ID", "adk_agent_analytics")
 _location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
 
 if _project_id:
     try:
-        # Best effort auto-provisioning for local development
         bq = bigquery.Client(project=_project_id)
         bq.create_dataset(f"{_project_id}.{_dataset_id}", exists_ok=True)
 
@@ -146,17 +157,6 @@ if _project_id:
     except Exception as e:
         logging.warning(f"Failed to initialize BigQuery Analytics: {e}")
 {%- endif %}
-
-
-root_agent = Agent(
-    name="root_agent",
-    model=Gemini(
-        model="gemini-3-flash-preview",
-        retry_options=types.HttpRetryOptions(attempts=3),
-    ),
-    instruction=instruction,
-    tools=[retrieve_docs],
-)
 
 app = App(
     root_agent=root_agent,

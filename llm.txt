@@ -232,93 +232,43 @@ uvx agent-starter-pack create my-rag-agent \
   -ds vertex_ai_search \
   --auto-approve
 ```
-**Post-creation:** Follow your new project's `data_ingestion/README.md` to deploy the necessary infrastructure.
+**Post-creation:** Follow your new project's `data_ingestion/README.md` and `GEMINI.md` for setup and deployment workflow.
 
 ---
-### Section 3: Development & Automated Deployment Workflow
+### Section 3: Key Features & Configuration Options
 ---
 
-This section describes the end-to-end lifecycle of an agent, with emphasis on automation.
+This section describes features available when creating projects. For post-creation workflow and commands, see `GEMINI.md` in your generated project.
 
+### Session Management Options
 
-### 1. Local Development & Iteration
+For stateful agents, the starter pack supports persistent sessions (configure at creation time):
 
-Once your project is created, navigate into its directory to begin development.
+*   **`in_memory`:** Ephemeral sessions (for testing/prototyping).
+*   **`cloud_sql`:** Durable PostgreSQL-backed sessions.
+*   **`agent_engine`:** Managed sessions (for Agent Engine deployment only).
 
-**First, install dependencies (run once):**
-```bash
-make install
-```
+Choose with `--session-type` flag during project creation.
 
-**Next, test your agent. The recommended method is to use a programmatic script.**
+### Deployment Targets
 
-#### Programmatic Testing (Recommended Workflow)
+*   **`cloud_run`:** Container-based deployment on Cloud Run. Supports all session types.
+*   **`agent_engine`:** Managed Vertex AI Agent Engine. Provides automatic session management.
 
-This method allows for quick, automated validation of your agent's logic.
+### CI/CD Runners
 
-1.  **Create a script:** In the project's root directory, create a Python script named `run_agent.py`.
-2.  **Invoke the agent:** In the script, write code to programmatically call your agent with sample input and `print()` the output for inspection.
-    *   **Guidance:** If you're unsure or no guidance exists, you can look at files in the `tests/` directory for examples of how to import and call the agent's main function.
-    *   **Important:** This script is for simple validation. **Assertions are not required**, and you should not create a formal `pytest` file.
-3.  **Run the test:** Execute your script from the terminal using `uv`.
-    ```bash
-    uv run python run_agent.py
-    ```
-You can keep the test file for future testing.
+*   **`google_cloud_build`:** Cloud Build triggers. Requires Cloud Build GitHub connection.
+*   **`github_actions`:** GitHub Actions workflows with Workload Identity Federation.
+*   **`skip`:** No CI/CD (manual deployments via `make deploy`).
 
-#### Manual Testing with the UI Playground (Optional)
+### Monitoring & Observability (Built-in)
 
-If the user needs to interact with your agent manually in a chat interface for debugging:
-
-1.  Run the following command to start the local web UI:
-    ```bash
-    make playground
-    ```
-    This is useful for human-in-the-loop testing and features hot-reloading.
-
-### 2. Deploying to a Cloud Development Environment
-Before setting up full CI/CD, you can deploy to a personal cloud dev environment.
-
-1.  **Set Project:** `gcloud config set project YOUR_DEV_PROJECT_ID`
-2.  **Provision Resources:** `make setup-dev-env` (uses Terraform).
-3.  **Deploy Backend:** `make deploy` (builds and deploys the agent).
-
-### 3. Automated Production-Ready Deployment with CI/CD
-For reliable deployments, the `setup-cicd` command streamlines the entire process. It creates a GitHub repo, connects it to your chosen CI/CD runner (Google Cloud Build or GitHub Actions), provisions staging/prod infrastructure, and configures deployment triggers.
-
-**Automated CI/CD Setup Example (Recommended):**
-```bash
-# Run from the project root. This command will guide you or can be automated with flags.
-uvx agent-starter-pack setup-cicd
-```
-
-**CI/CD Workflow Logic:**
-*   **On Pull Request:** CI pipeline runs tests.
-*   **On Merge to `main`:** CD pipeline deploys to staging.
-*   **Manual Approval:** A manual approval step triggers the production deployment.
+*   **Technology:** OpenTelemetry integration for Cloud Trace and Logging.
+*   **Custom Tracer:** Large payloads linked to GCS (overcoming service limits).
+*   **Infrastructure:** Log Router sinks data to BigQuery (provisioned by Terraform).
 
 ---
-### Section 4: Key Features & Customization
----
-
-### Deploying with a User Interface (UI)
-*   **Unified Deployment (for Dev/Test):** The backend and frontend can be packaged and served from a single Cloud Run service, secured with Identity-Aware Proxy (IAP).
-*   **Deploying with UI:** `make deploy IAP=true`
-*   **Access Control:** After deploying with IAP, grant users the `IAP-secured Web App User` role in IAM to give them access.
-
-### Session Management
-
-For stateful agents, the starter pack supports persistent sessions.
-*   **Cloud Run:** Choose between `in_memory` (for testing) and durable `cloud_sql` sessions using the `--session-type` flag.
-*   **Agent Engine:** Provides session management automatically.
-
-### Monitoring & Observability
-*   **Technology:** Uses OpenTelemetry to emit events to Google Cloud Trace and Logging.
-*   **Custom Tracer:** A custom tracer in `app/utils/tracing.py` (or a different agent directory instead of app) handles large payloads by linking to GCS, overcoming default service limits.
-*   **Infrastructure:** A Log Router to sink data to BigQuery is provisioned by Terraform.
-
----
-### Section 5: CLI Reference for CI/CD Setup
+### Section 4: CLI Reference for CI/CD Setup
 ---
 
 ### `agent-starter-pack setup-cicd`
@@ -329,7 +279,7 @@ Automates the complete CI/CD infrastructure setup for GitHub-based deployments. 
 uvx agent-starter-pack setup-cicd [OPTIONS]
 ```
 
-**Prerequisites:** 
+**Prerequisites:**
 - Run from the project root (directory with `pyproject.toml`)
 - Required tools: `gh` CLI (authenticated), `gcloud` CLI (authenticated), `terraform`
 - `Owner` role on GCP projects
@@ -369,72 +319,3 @@ git add . && git commit -m "Initial commit" && git push -u origin main
 
 * Note: For coding agents - ask user for required project IDs and repo details before running with `--auto-approve`.
 * Note: If user prefers different git provider, refer to `deployment/README.md` for manual deployment.
----
-### Section 6: Operational Guidelines for Coding Agents
-
-These guidelines are essential for interacting with the Agent Starter Pack project effectively.
-
----
-
-### Principle 1: Code Preservation & Isolation
-
-When executing code modifications using tools like `replace` or `write_file`, your paramount objective is surgical precision. You **must alter only the code segments directly targeted** by the user's request, while **strictly preserving all surrounding and unrelated code.**
-
-**Mandatory Pre-Execution Verification:**
-
-Before finalizing any `new_string` for a `replace` operation, meticulously verify the following:
-
-1.  **Target Identification:** Clearly define the exact lines or expressions to be changed, based *solely* on the user's explicit instructions.
-2.  **Preservation Check:** Compare your proposed `new_string` against the `old_string`. Ensure all code, configuration values (e.g., `model`, `version`, `api_key`), comments, and formatting *outside* the identified target remain identical and verbatim.
-
-**Example: Adhering to Preservation**
-
-*   **User Request:** "Change the agent's instruction to be a recipe suggester."
-*   **Original Code Snippet:**
-    ```python
-    root_agent = Agent(
-        name="root_agent",
-        model="gemini-3-flash-preview",
-        instruction="You are a helpful AI assistant."
-    )
-    ```
-*   **Incorrect Modification (VIOLATION):**
-    ```python
-    root_agent = Agent(
-        name="recipe_suggester",
-        model="gemini-1.5-flash", # UNINTENDED MUTATION - model was not requested to change
-        instruction="You are a recipe suggester."
-    )
-    ```
-*   **Correct Modification (COMPLIANT):**
-    ```python
-    root_agent = Agent(
-        name="recipe_suggester", # OK, related to new purpose
-        model="gemini-3-flash-preview", # MUST be preserved
-        instruction="You are a recipe suggester." # OK, the direct target
-    )
-    ```
-
-**Critical Error:** Failure to adhere to this preservation principle is a critical error. Always prioritize the integrity of existing, unchanged code over the convenience of rewriting entire blocks.
-
----
-
-### Principle 2: Workflow & Execution Best Practices
-
-*   **Standard Workflow:**
-    The validated end-to-end process is: `create` → `test` → `setup-cicd` → push to deploy. Trust this high-level workflow as the default for developing and shipping agents.
-
-*   **Agent Testing:**
-    *   **Avoid `make playground`** unless specifically instructed; it is designed for human interaction. Focus on programmatic testing.
-
-*   **Model Selection:**
-    *   **When using Gemini, prefer modern model families** for optimal performance and capabilities: "gemini-2.5-pro", "gemini-2.5-flash", and "gemini-3-flash-preview"
-
-*   **Running Python Commands:**
-    *   Always use `uv` to execute Python commands within this repository (e.g., `uv run run_agent.py`).
-    *   Ensure project dependencies are installed by running `make install` before executing scripts.
-    *   Consult the project's `Makefile` and `README.md` for other useful development commands.
-
-*   **Further Reading & Troubleshooting:**
-    *   For questions about specific frameworks (e.g., LangGraph) or Google Cloud products (e.g., Cloud Run), their official documentation and online resources are the best source of truth.
-    *   **When encountering persistent errors or if you're unsure how to proceed after initial troubleshooting, a targeted Google Search is strongly recommended.** It is often the fastest way to find relevant documentation, community discussions, or direct solutions to your problem.

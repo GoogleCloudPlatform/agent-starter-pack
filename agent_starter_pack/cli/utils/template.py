@@ -308,7 +308,7 @@ def add_bq_analytics_dependencies(
     Returns:
         True if dependencies were added successfully, False otherwise
     """
-    dependencies = ["fastapi~=0.123.0", "google-adk[bigquery-analytics]>=1.21.0"]
+    dependencies = ["google-adk[bigquery-analytics]>=1.21.0"]
 
     if not auto_approve:
         console = Console()
@@ -411,7 +411,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
-DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine"]
+DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine", "none"]
 SUPPORTED_LANGUAGES = ["python", "go", "java"]
 DEFAULT_FRONTEND = "None"
 
@@ -621,6 +621,10 @@ def prompt_deployment_target(
         "cloud_run": {
             "display_name": "cloud_run",
             "description": "GCP serverless containers",
+        },
+        "none": {
+            "display_name": "none",
+            "description": "No Cloud deployment",
         },
     }
 
@@ -1352,7 +1356,7 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
-            # Load adk-cheatsheet.md and llm.txt for injection
+            # Load adk-cheatsheet.md for injection
             adk_cheatsheet_path = (
                 pathlib.Path(__file__).parent.parent.parent
                 / "resources"
@@ -1361,12 +1365,6 @@ def process_template(
             )
             with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
                 adk_cheatsheet_content = md_file.read()
-
-            llm_txt_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
-            )
-            with open(llm_txt_path, encoding="utf-8") as txt_file:
-                llm_txt_content = txt_file.read()
 
             # Generate Java package variables if language is Java
             java_vars = (
@@ -1387,6 +1385,9 @@ def process_template(
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
+                "requires_data_ingestion": settings.get(
+                    "requires_data_ingestion", False
+                ),
                 "language": language,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
@@ -1404,7 +1405,6 @@ def process_template(
                 "use_google_api_key": bool(google_api_key),
                 "google_cloud_project": google_cloud_project or "your-gcp-project-id",
                 "adk_cheatsheet": adk_cheatsheet_content,
-                "llm_txt": llm_txt_content,
                 # Java package variables (only populated for Java projects)
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),
@@ -1830,7 +1830,7 @@ def process_template(
                     if remote_uv_lock.exists():
                         shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
                         logging.debug("Used uv.lock from remote template")
-                elif deployment_target:
+                elif deployment_target and deployment_target != "none":
                     # For local templates, use the existing logic
                     lock_path = (
                         pathlib.Path(__file__).parent.parent.parent

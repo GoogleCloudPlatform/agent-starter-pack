@@ -174,7 +174,7 @@ class TestAddBqAnalyticsDependencies:
 
         assert result is True
         mock_subprocess.assert_called_once_with(
-            ["uv", "add", "fastapi~=0.123.0", "google-adk[bigquery-analytics]>=1.21.0"],
+            ["uv", "add", "google-adk[bigquery-analytics]>=1.21.0"],
             cwd=project_path,
             capture_output=True,
             text=True,

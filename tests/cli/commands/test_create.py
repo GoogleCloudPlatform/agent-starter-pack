@@ -129,13 +129,6 @@ def mock_get_available_agents() -> Generator[MagicMock, None, None]:
                 "framework": "adk",
                 "priority": 100,
             },
-            3: {
-                "name": "adk",
-                "description": "ADK Agent",
-                "language": "python",
-                "framework": "adk",
-                "priority": 1,
-            },
         }
         yield mock
 
@@ -341,6 +334,47 @@ class TestCreateCommand:
         assert result.exit_code == 1
         assert "Invalid agent name or number: non_existent_agent" in result.output
 
+    def test_create_with_none_deployment_target(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command with 'none' deployment target skips CI/CD and shows enhance hint"""
+        runner = CliRunner()
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "1",
+                    "--deployment-target",
+                    "none",
+                    "--auto-approve",
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+
+        # Verify process_template was called with none deployment and skip CI/CD
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["deployment_target"] == "none"
+        assert call_kwargs["cicd_runner"] == "skip"
+
+        # Verify enhance hint is shown
+        assert "enhance" in result.output
+
     def test_create_with_invalid_deployment_target(self) -> None:
         """Test create command fails with invalid deployment target"""
         runner = CliRunner()
@@ -353,7 +387,7 @@ class TestCreateCommand:
         assert result.exit_code == 2
         assert "Invalid value for '--deployment-target'" in result.output
         assert (
-            "'invalid_target' is not one of 'agent_engine', 'cloud_run'"
+            "'invalid_target' is not one of 'agent_engine', 'cloud_run', 'none'"
             in result.output
         )
 

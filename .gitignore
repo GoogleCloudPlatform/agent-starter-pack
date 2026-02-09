@@ -197,6 +197,7 @@ Thumbs.db
 .saved_chats
 .aider*
 target
+target*/
 set_projects.sh
 delete_genai_repos.sh
 cleanup_e2e_projects.sh

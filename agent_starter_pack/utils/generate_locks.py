@@ -202,6 +202,8 @@ def main(template: pathlib.Path) -> None:
             continue
 
         for target in config["deployment_targets"]:
+            if target == "none":
+                continue
             print(f"Generating lock file for {agent_name} with {target}...")
 
             # Generate pyproject content

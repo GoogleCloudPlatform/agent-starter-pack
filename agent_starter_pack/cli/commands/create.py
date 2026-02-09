@@ -137,7 +137,7 @@ def shared_template_options(f: Callable) -> Callable:
     f = click.option(
         "--deployment-target",
         "-d",
-        type=click.Choice(["agent_engine", "cloud_run"]),
+        type=click.Choice(["agent_engine", "cloud_run", "none"]),
         help="Deployment target name",
     )(f)
     f = click.option(
@@ -798,7 +798,9 @@ def create(
                     )
                     return
 
-                if final_deployment == "cloud_run":
+                if final_deployment == "none":
+                    final_session_type = "in_memory"
+                elif final_deployment == "cloud_run":
                     if deployment_agent_name in session_type_supported_agents:
                         # Allow session type selection for supported agents
                         if not session_type:
@@ -843,6 +845,15 @@ def create(
             final_cicd_runner = "skip"
             if debug:
                 logging.debug("Prototype mode: setting cicd_runner to 'skip'")
+        elif final_deployment == "none":
+            if cicd_runner and cicd_runner != "skip":
+                console.print(
+                    f"Info: --cicd-runner '{cicd_runner}' ignored for deployment_target='none'.",
+                    style="yellow",
+                )
+            final_cicd_runner = "skip"
+            if debug:
+                logging.debug("deployment_target='none': setting cicd_runner to 'skip'")
         elif cicd_runner:
             final_cicd_runner = cicd_runner
         elif auto_approve:
@@ -998,10 +1009,9 @@ def create(
             # Add BQ Analytics dependencies if the flag was set
             if bq_analytics:
                 console.print(
-                    "\\n[bold blue]Adding BigQuery Agent Analytics Plugin dependencies...[/]"
+                    "\n[bold blue]Adding BigQuery Agent Analytics Plugin dependencies...[/]"
                 )
                 try:
-                    # Assuming add_bq_analytics_dependencies is imported from template.py
                     add_bq_analytics_dependencies(
                         project_path=project_path,  # Path to the newly created agent project
                         auto_approve=auto_approve,
@@ -1057,7 +1067,12 @@ def create(
         )
 
         # Show enhance hint for prototype mode
-        if final_cicd_runner == "skip":
+        if final_deployment == "none":
+            console.print(
+                "\n[bold cyan]💡 Tip[/]\n"
+                "   Add a deployment target later with: [cyan]uvx agent-starter-pack enhance[/]"
+            )
+        elif final_cicd_runner == "skip":
             console.print(
                 "\n[bold cyan]💡 Tip[/]\n"
                 "   Once ready for production, run: [cyan]uvx agent-starter-pack enhance[/]"

@@ -27,8 +27,9 @@ playground:
 # ==============================================================================
 
 # Launch local development server with hot-reload
+# Usage: make local-backend [PORT=8000] - Specify PORT for parallel scenario testing
 local-backend:
-	uv run uvicorn test_langgraph.fast_api_app:app --host localhost --port 8000 --reload
+	uv run uvicorn test_langgraph.fast_api_app:app --host localhost --port $(or $(PORT),8000) --reload
 
 # ==============================================================================
 # A2A Protocol Inspector

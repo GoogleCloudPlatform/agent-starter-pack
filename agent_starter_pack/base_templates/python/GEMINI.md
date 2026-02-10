@@ -841,6 +841,7 @@ Note: `setup-cicd` automatically initializes git if needed.
      --cicd-runner github_actions \
      -y -s
    ```
+   Or use the equivalent MCP tool call (`enhance_project`) if available.
 
 2. Ensure you're logged in to GitHub CLI:
    ```bash

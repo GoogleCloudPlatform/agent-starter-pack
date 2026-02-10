@@ -97,23 +97,31 @@ def validate_makefile_usability(
         target_pattern = r"^([a-zA-Z0-9_-]+):"
         matches = re.findall(target_pattern, makefile_content, re.MULTILINE)
 
+        # Targets to always skip
+        skip_targets = {
+            "all",
+            "clean",
+            "distclean",
+            "local-backend",
+            "eval",
+            "eval-all",
+        }
+        # adk_live has npm-dependent targets that require `npm install` first
+        if agent == "adk_live":
+            skip_targets.update({
+                "build-frontend",
+                "build-frontend-if-needed",
+                "playground",
+                "playground-remote",
+            })
+
         # Filter out any unwanted targets
         for target in matches:
             if (
                 target
                 and not target.startswith(".")
                 and "%" not in target  # Skip pattern rules
-                and target
-                not in [
-                    "all",
-                    "clean",
-                    "distclean",
-                    "local-backend",
-                    "eval",
-                    "eval-all",
-                    "build-frontend",
-                    "build-frontend-if-needed",
-                ]  # Skip common implicit targets, long-running servers, eval targets, and npm-dependent targets
+                and target not in skip_targets
             ):
                 makefile_targets.append(target)
 

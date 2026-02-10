@@ -140,6 +140,7 @@ def validate_makefile_usability(
                 dependency_errors = [
                     "command not found",
                     "npm ERR!",
+                    "npm error",
                     "Package not found",
                     "No such file or directory",
                     "ModuleNotFoundError",

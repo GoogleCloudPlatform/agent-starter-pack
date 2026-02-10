@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config();
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Runner, InMemorySessionService } from '@google/adk';
 import { rootAgent } from '../../{{cookiecutter.agent_directory}}/agent.js';

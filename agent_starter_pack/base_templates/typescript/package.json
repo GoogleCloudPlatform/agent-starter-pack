@@ -23,8 +23,8 @@
     "vitest": "^4.0.16"
   },
   "dependencies": {
-    "@google/adk": "^0.2.0",
-    "@google/adk-devtools": "^0.2.0",
+    "@google/adk": "^0.3.0",
+    "@google/adk-devtools": "^0.3.0",
     "zod": "^3.25.76"
   }
 }

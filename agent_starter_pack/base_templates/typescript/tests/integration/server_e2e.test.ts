@@ -1,3 +1,6 @@
+import { config } from 'dotenv';
+config();
+
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import { resolve, dirname } from 'path';

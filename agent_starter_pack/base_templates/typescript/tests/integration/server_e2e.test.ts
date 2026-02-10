@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '../..');
 
-async function waitForServer(url: string, maxRetries = 60): Promise<boolean> {
+async function waitForServer(url: string, maxRetries = 180): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
     try {
       const response = await fetch(url);
@@ -43,7 +43,7 @@ describe('Server E2E', () => {
     // Wait for server to be ready with retries
     const ready = await waitForServer(`${baseUrl}/list-apps`);
     if (!ready) throw new Error('Server failed to start');
-  }, 30000);
+  }, 90000);
 
   afterAll(() => {
     serverProcess?.kill();

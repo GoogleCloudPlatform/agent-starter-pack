@@ -1427,6 +1427,7 @@ def process_template(
                     ".pytest_cache/*",
                     ".venv/*",
                     "**/.venv/*",  # Don't render .venv at any depth
+                    "node_modules/**/*",  # Don't render node_modules (TS/JS deps contain {{ }} syntax)
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                 ],

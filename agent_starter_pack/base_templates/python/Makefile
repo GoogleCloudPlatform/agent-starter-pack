@@ -256,6 +256,7 @@ build-inspector-if-needed:
 		cd tools/a2a-inspector/frontend && npm run build; \
 	fi
 {%- endif %}
+{%- if cookiecutter.deployment_target != 'none' %}
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -296,13 +297,11 @@ deploy:
 		--entrypoint-object=agent_engine \
 		--requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
 		$(if $(AGENT_IDENTITY),--agent-identity)
-{%- elif cookiecutter.deployment_target == 'none' %}
-	@echo "No deployment target configured."
-	@echo "Run 'uvx agent-starter-pack enhance' to add a deployment target."
 {%- endif %}
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
+{%- endif %}
 
 {%- if cookiecutter.cicd_runner != 'skip' %}
 

@@ -163,10 +163,7 @@ def validate_makefile_usability(
                     console.print(f"[yellow]Error output: {error_output[:200]}...[/]")
                 else:
                     console.print(f"[bold red]Target '{target}' failed execution[/]")
-                    if e.stdout:
-                        console.print(e.stdout)
-                    if e.stderr:
-                        console.print(e.stderr)
+                    console.print(f"[bold red]Full error output:[/]\n{error_output}")
                     raise ValueError(
                         f"Target '{target}' is not valid in Makefile for {agent} with {deployment_target}"
                     ) from e

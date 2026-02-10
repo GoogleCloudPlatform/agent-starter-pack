@@ -103,17 +103,16 @@ def validate_makefile_usability(
             "clean",
             "distclean",
             "local-backend",
+            "playground",
+            "playground-remote",
             "eval",
             "eval-all",
+            # npm-dependent targets that require `npm install` first
+            "build-frontend",
+            "build-frontend-if-needed",
+            "build-inspector",
+            "build-inspector-if-needed",
         }
-        # adk_live has npm-dependent targets that require `npm install` first
-        if agent == "adk_live":
-            skip_targets.update({
-                "build-frontend",
-                "build-frontend-if-needed",
-                "playground",
-                "playground-remote",
-            })
 
         # Filter out any unwanted targets
         for target in matches:

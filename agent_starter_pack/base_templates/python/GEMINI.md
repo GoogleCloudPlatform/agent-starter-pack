@@ -954,7 +954,11 @@ gh run watch RUN_ID --repo OWNER/REPO
 {%- endif %}
 | `make lint` | Check code quality |
 | `make setup-dev-env` | Set up dev infrastructure (Terraform) |
-| `make deploy` | Deploy to dev (requires human approval) |
+{%- if cookiecutter.deployment_target != 'none' %}
+| `make deploy` | Deploy to dev |
+{%- else %}
+| `uvx agent-starter-pack enhance` (or equivalent) | Add a deployment target to enable `make deploy` |
+{%- endif %}
 
 ## Testing Your Deployed Agent
 
@@ -963,8 +967,6 @@ After deployment, you can test your agent. The method depends on your deployment
 ### Getting Deployment Info
 
 The deployment endpoint is stored in `deployment_metadata.json` after `make deploy` completes.
-
-{%- if cookiecutter.deployment_target == "agent_engine" %}
 
 ### Testing Agent Engine Deployment
 
@@ -1007,8 +1009,6 @@ async for event in agent.async_stream_query(message="Hello!", user_id="test"):
 make playground
 # Open http://localhost:8000 in your browser
 ```
-
-{%- elif cookiecutter.deployment_target == "cloud_run" %}
 
 ### Testing Cloud Run Deployment
 
@@ -1087,57 +1087,6 @@ gcloud beta iap web add-iam-policy-binding \
 ```
 
 **Note:** Use `iap web add-iam-policy-binding` for IAP access, not `run services add-iam-policy-binding` (which is for `roles/run.invoker`).
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
-
-### Testing Cloud SQL Session Persistence
-
-Your agent uses Cloud SQL (PostgreSQL) for session storage. To verify sessions persist correctly:
-
-**1. Test Session Creation and Resume:**
-
-```bash
-# First request - create session and have a conversation
-curl -X POST $SERVICE_URL/run \
-  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  -H "Content-Type: application/json" \
-  -d '{"input": "Qualify lead #123"}' | jq -r '.session_id'
-
-# Save the session_id from the response, then test resume:
-curl -X POST $SERVICE_URL/run \
-  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  -H "Content-Type: application/json" \
-  -d '{"input": "What was the lead score?", "session_id": "SESSION_ID_FROM_ABOVE"}'
-```
-
-The agent should recall details from the first conversation.
-
-**2. Verify Cloud SQL Connection:**
-
-```bash
-# Check Cloud Run service logs for successful DB connection
-gcloud run services logs read {{cookiecutter.project_name}} \
-  --project=YOUR_DEV_PROJECT_ID \
-  --region=YOUR_REGION \
-  --limit=50 | grep -i "database\|cloud_sql"
-
-# Verify Cloud SQL instance is running
-gcloud sql instances describe {{cookiecutter.project_name}}-db-dev \
-  --project=YOUR_DEV_PROJECT_ID
-```
-
-**3. Common Cloud SQL Issues:**
-
-| Issue | Symptom | Resolution |
-|-------|---------|------------|
-| Connection timeout | `Connection refused` errors | Check Cloud SQL instance is in same region as Cloud Run |
-| IAM auth failed | `Login failed` errors | Verify service account has `roles/cloudsql.client` |
-| Session not found | `Session does not exist` | Verify session_id matches and DB tables were created |
-| Volume mount failed | `cloudsql volume not found` | Check terraform applied Cloud SQL volume configuration |
-
-{%- endif %}
-
-{%- endif %}
-{%- if cookiecutter.is_a2a %}
 
 ### Testing A2A Protocol Agents
 
@@ -1198,7 +1147,6 @@ curl -X POST \
 curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
   "$SERVICE_URL/a2a/app/.well-known/agent-card.json"
 ```
-{%- endif %}
 
 ### Running Load Tests
 
@@ -1238,245 +1186,48 @@ Your agent currently runs as an interactive service. However, many use cases req
 
 ### Adding an /invoke Endpoint
 
-To enable batch/event processing, add an `/invoke` endpoint to your FastAPI app that auto-detects the input format:
+Add an `/invoke` endpoint to `{{cookiecutter.agent_directory}}/fast_api_app.py` for batch/event processing. The endpoint auto-detects the input format (BigQuery Remote Function, Pub/Sub, Eventarc, or direct HTTP).
+
+**Core pattern:** Create a `run_agent` helper using `Runner` + `InMemorySessionService` for stateless processing, with a semaphore for concurrency control. Then route by request shape:
 
 ```python
-# Add to {{cookiecutter.agent_directory}}/fast_api_app.py
-
-from typing import List, Any, Dict
-import asyncio
-import base64
-import json
-from pydantic import BaseModel
-
-# Request/Response models for different sources
-class BQResponse(BaseModel):
-    replies: List[str]
-
-# Concurrency control (module-level for reuse)
-MAX_CONCURRENT = 10
-semaphore = asyncio.Semaphore(MAX_CONCURRENT)
-
-
-async def run_agent(prompt: str) -> str:
-    """Run the agent with concurrency control.
-
-    Uses Runner + InMemorySessionService for stateless batch processing.
-    Each invocation creates a fresh session (no conversation history).
-    """
-    async with semaphore:
-        try:
-            from {{cookiecutter.agent_directory}}.agent import root_agent
-            from google.adk.runners import Runner
-            from google.adk.sessions import InMemorySessionService
-            from google.genai import types as genai_types
-
-            # Create ephemeral session for this request
-            session_service = InMemorySessionService()
-            await session_service.create_session(
-                app_name="app", user_id="invoke_user", session_id="invoke_session"
-            )
-            runner = Runner(
-                agent=root_agent, app_name="app", session_service=session_service
-            )
-
-            # Run agent and collect final response
-            final_response = ""
-            async for event in runner.run_async(
-                user_id="invoke_user",
-                session_id="invoke_session",
-                new_message=genai_types.Content(
-                    role="user",
-                    parts=[genai_types.Part.from_text(text=prompt)]
-                ),
-            ):
-                if event.is_final_response() and event.content and event.content.parts:
-                    final_response = event.content.parts[0].text
-            return final_response
-        except Exception as e:
-            return json.dumps({"error": str(e)})
-
-
 @app.post("/invoke")
 async def invoke(request: Dict[str, Any]):
-    """
-    Universal endpoint that auto-detects input format and routes accordingly.
-
-    Supported formats:
-    - BigQuery Remote Function: {"calls": [[row1], [row2], ...]}
-    - Pub/Sub Push: {"message": {"data": "base64...", "attributes": {...}}}
-    - Eventarc: {"data": {...}, "type": "google.cloud.storage.object.v1.finalized"}
-    - Direct HTTP: {"input": "your prompt here"}
-    """
-
-    # === BigQuery Remote Function ===
-    # Format: {"calls": [[col1, col2], [col1, col2], ...]}
-    if "calls" in request:
-        async def process_row(row_data: List[Any]) -> str:
-            prompt = f"Analyze: {row_data}"
-            return await run_agent(prompt)
-
-        results = await asyncio.gather(
-            *[process_row(row) for row in request["calls"]]
-        )
-        return BQResponse(replies=results)
-
-    # === Pub/Sub Push Subscription ===
-    # Format: {"message": {"data": "base64...", "attributes": {...}}, "subscription": "..."}
-    if "message" in request:
-        message = request["message"]
-        # Decode base64 data
-        data_b64 = message.get("data", "")
-        try:
-            data = base64.b64decode(data_b64).decode("utf-8")
-            payload = json.loads(data)
-        except Exception:
-            payload = data_b64  # Use raw if not JSON
-
-        attributes = message.get("attributes", {})
-        prompt = f"Process event: {payload}\nAttributes: {attributes}"
-
-        result = await run_agent(prompt)
-
-        # Pub/Sub expects 2xx response to acknowledge
-        return {"status": "success", "result": result}
-
-    # === Eventarc (Cloud Events) ===
-    # Format: {"data": {...}, "type": "google.cloud.storage.object.v1.finalized", ...}
-    if "type" in request and request.get("type", "").startswith("google.cloud."):
-        event_type = request["type"]
-        event_data = request.get("data", {})
-
-        # Example: Cloud Storage event
-        if "storage" in event_type:
-            bucket = event_data.get("bucket", "unknown")
-            name = event_data.get("name", "unknown")
-            prompt = f"Process file event: gs://{bucket}/{name}\nEvent type: {event_type}"
-        else:
-            prompt = f"Process GCP event: {event_type}\nData: {event_data}"
-
-        result = await run_agent(prompt)
-        return {"status": "success", "result": result}
-
-    # === Direct HTTP / Webhook ===
-    # Format: {"input": "your prompt"} or {"prompt": "your prompt"}
-    if "input" in request or "prompt" in request:
-        prompt = request.get("input") or request.get("prompt")
-        result = await run_agent(prompt)
-        return {"status": "success", "result": result}
-
-    # Unknown format
-    return {"status": "error", "message": "Unknown request format", "received_keys": list(request.keys())}
+    if "calls" in request:        # BigQuery: {"calls": [[row1], [row2]]}
+        results = await asyncio.gather(*[run_agent(f"Analyze: {row}") for row in request["calls"]])
+        return {"replies": results}
+    if "message" in request:      # Pub/Sub: {"message": {"data": "base64..."}}
+        payload = base64.b64decode(request["message"]["data"]).decode()
+        return {"status": "success", "result": await run_agent(payload)}
+    if "type" in request:         # Eventarc: {"type": "google.cloud...", "data": {...}}
+        return {"status": "success", "result": await run_agent(str(request["data"]))}
+    if "input" in request:        # Direct HTTP: {"input": "prompt"}
+        return {"status": "success", "result": await run_agent(request["input"])}
 ```
 
-### Local Testing (Before Deployment)
-
-**IMPORTANT:** Always test the `/invoke` endpoint locally before deploying. Unlike interactive chatbots, batch/event processing is harder to debug in production.
-
+**Test locally** with `make local-backend`, then curl each format:
 ```bash
-# Start local backend (default port 8000)
-make local-backend
-
-# Or specify a custom port (useful for parallel development)
-make local-backend PORT=8081
-```
-
-**Test BigQuery batch format:**
-```bash
-curl -X POST http://localhost:8000/invoke \
-  -H "Content-Type: application/json" \
+# BigQuery
+curl -X POST http://localhost:8000/invoke -H "Content-Type: application/json" \
   -d '{"calls": [["test input 1"], ["test input 2"]]}'
+# Direct
+curl -X POST http://localhost:8000/invoke -H "Content-Type: application/json" \
+  -d '{"input": "your prompt here"}'
 ```
 
-**Test Pub/Sub format (with base64 encoding):**
+**Connect to GCP services:**
 ```bash
-DATA=$(echo -n '{"key": "value"}' | base64)
-curl -X POST http://localhost:8000/invoke \
-  -H "Content-Type: application/json" \
-  -d "{\"message\": {\"data\": \"$DATA\"}}"
-```
-
-**Test Eventarc format:**
-```bash
-curl -X POST http://localhost:8000/invoke \
-  -H "Content-Type: application/json" \
-  -d '{
-    "type": "google.cloud.storage.object.v1.finalized",
-    "data": {"bucket": "my-bucket", "name": "file.pdf"}
-  }'
-```
-
-**What to verify:**
-- Correct format detection (check which branch handles your request)
-- Expected response format (`{"replies": [...]}` for BQ, `{"status": "success"}` for events)
-- Tool calls in logs (for side-effect mode)
-- Error handling for malformed inputs
-
-### Integration Examples
-
-**BigQuery Remote Function:**
-```sql
--- Create connection (one-time setup)
-CREATE EXTERNAL CONNECTION `project.region.bq_connection`
-OPTIONS (cloud_resource_id="//cloudresourcemanager.googleapis.com/projects/PROJECT_ID");
-
--- Create remote function
-CREATE FUNCTION dataset.analyze_customer(data STRING)
-RETURNS STRING
-REMOTE WITH CONNECTION `project.region.bq_connection`
-OPTIONS (endpoint = 'https://{{cookiecutter.project_name}}.run.app/invoke');
-
--- Process millions of rows
-SELECT customer_id, dataset.analyze_customer(customer_data) AS analysis
-FROM customers;
-```
-
-**Pub/Sub Push Subscription:**
-```bash
-# Create push subscription pointing to /invoke
-gcloud pubsub subscriptions create my-subscription \
-    --topic=my-topic \
+# Pub/Sub push subscription
+gcloud pubsub subscriptions create my-sub --topic=my-topic \
     --push-endpoint=https://{{cookiecutter.project_name}}.run.app/invoke
-```
-
-**Eventarc Trigger:**
-```bash
-# Trigger on Cloud Storage events
-gcloud eventarc triggers create storage-trigger \
+# Eventarc trigger
+gcloud eventarc triggers create my-trigger \
     --destination-run-service={{cookiecutter.project_name}} \
     --destination-run-path=/invoke \
-    --event-filters="type=google.cloud.storage.object.v1.finalized" \
-    --event-filters="bucket=my-bucket"
+    --event-filters="type=google.cloud.storage.object.v1.finalized"
 ```
 
-### Production Considerations
-
-**Rate Limiting & Retry:**
-- Use semaphores to limit concurrent Gemini calls (avoid 429 errors)
-- Implement exponential backoff for transient failures
-- For BigQuery: Raise `TransientError` on 429s to trigger automatic retries
-
-**Error Handling:**
-- Return per-row errors as JSON objects, don't fail entire batch
-- Log errors with trace IDs for debugging
-- Monitor error rates via Cloud Logging/Monitoring
-
-**Cost Control:**
-- Set Cloud Run `--max-instances` to cap concurrent executions
-- Monitor Gemini API usage and set budget alerts
-- Test with small batches before running on production data
-
-### Reference Implementation
-
-See complete production example with chunking, error handling, and monitoring:
-https://github.com/richardhe-fundamenta/practical-gcp-examples/blob/main/bq-remote-function-agent/customer-advisor/app/fast_api_app.py
-
-**Key patterns from reference:**
-- Async processing with semaphore throttling (`MAX_CONCURRENT_ROWS = 10`)
-- Chunk batching for memory efficiency (`CHUNK_SIZE = 10`)
-- Transient vs permanent error classification
-
-- Structured output extraction from agent responses
+**Production tips:** Use semaphores to limit concurrent Gemini calls (avoid 429s), set Cloud Run `--max-instances`, and return per-row errors instead of failing entire batches. See [reference implementation](https://github.com/richardhe-fundamenta/practical-gcp-examples/blob/main/bq-remote-function-agent/customer-advisor/app/fast_api_app.py) for production patterns.
 
 ---
 

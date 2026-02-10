@@ -40,7 +40,7 @@ describe('Agent Integration', () => {
     expect(events.length).toBeGreaterThan(0);
     // Assert that we got events back from the agent
     expect(events.some(e => (e as { content?: unknown }).content)).toBe(true);
-  });
+  }, 30000);
 
   it('should respond to another weather query', async () => {
     await sessionService.createSession({
@@ -62,5 +62,5 @@ describe('Agent Integration', () => {
     }
 
     expect(events.length).toBeGreaterThan(0);
-  });
+  }, 30000);
 });

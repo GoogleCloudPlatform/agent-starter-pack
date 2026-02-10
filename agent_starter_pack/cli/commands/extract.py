@@ -658,6 +658,8 @@ def extract(
                 is_adk = (
                     "google.adk" in agent_content or "com.google.adk" in agent_content
                 )
+            elif language == "typescript":
+                is_adk = "@google/adk" in agent_content or "google-adk" in agent_content
         except Exception:
             pass  # Ignore read errors for ADK detection
 

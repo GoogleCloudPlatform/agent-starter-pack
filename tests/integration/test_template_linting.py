@@ -30,6 +30,7 @@ AGENT_RUNTIME_REQUIREMENTS: dict[str, tuple[str, str]] = {
     # agent_suffix: (command_to_check, display_name)
     "_go": ("go", "Go"),
     "_java": ("mvn", "Maven"),
+    "_ts": ("node", "Node.js"),
 }
 
 

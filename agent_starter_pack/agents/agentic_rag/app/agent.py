@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{% if cookiecutter.bq_analytics -%}
+import logging
+{% endif -%}
 import os
 
 import google
@@ -19,15 +22,14 @@ import vertexai
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
-from google.genai import types
 {%- if cookiecutter.bq_analytics %}
-import logging
 from google.adk.plugins.bigquery_agent_analytics_plugin import (
     BigQueryAgentAnalyticsPlugin,
     BigQueryLoggerConfig,
 )
 from google.cloud import bigquery
 {%- endif %}
+from google.genai import types
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever

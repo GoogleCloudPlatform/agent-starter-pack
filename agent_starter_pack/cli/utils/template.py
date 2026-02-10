@@ -91,10 +91,14 @@ def resolve_agent_alias(name: str | None) -> str | None:
 # The config dict contains: agent_name, cicd_runner, is_adk, is_adk_live, is_a2a
 # =============================================================================
 
+
 # Helper: exclude service.tf only for adk_live + agent_engine combination
-_exclude_adk_live_agent_engine = lambda c: not (
-    c.get("agent_name") == "adk_live" and c.get("deployment_target") == "agent_engine"
-)
+def _exclude_adk_live_agent_engine(c: dict) -> bool:
+    return not (
+        c.get("agent_name") == "adk_live"
+        and c.get("deployment_target") == "agent_engine"
+    )
+
 
 CONDITIONAL_FILES = {
     # CI/CD runner conditional files (base_template)
@@ -412,7 +416,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
 DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine", "none"]
-SUPPORTED_LANGUAGES = ["python", "go", "java"]
+SUPPORTED_LANGUAGES = ["python", "go", "java", "typescript"]
 DEFAULT_FRONTEND = "None"
 
 
@@ -463,6 +467,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "langgraph": 4,  # displayed as "custom_a2a"
         "adk_go": 0,
         "adk_java": 0,
+        "adk_ts": 0,
     }
 
     agents_list = []
@@ -514,11 +519,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                 except Exception as e:
                     logging.warning(f"Could not load agent from {agent_dir}: {e}")
 
-    # Define group order by language: Python, Go, Java, Other
+    # Define group order by language: Python, Go, Java, TypeScript, Other
     GROUP_ORDER = {
         "python": 0,
         "go": 1,
         "java": 2,
+        "typescript": 3,
     }
 
     def sort_key(agent: dict) -> tuple:
@@ -1411,15 +1417,9 @@ def process_template(
                 "bq_analytics": bq_analytics,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
-                    "*.json",  # Don't render JSON files
-                    "*.tsx",  # Don't render TypeScript React files
-                    "*.ts",  # Don't render TypeScript files
-                    "*.jsx",  # Don't render JavaScript React files
-                    "*.js",  # Don't render JavaScript files
-                    "*.css",  # Don't render CSS files
                     "*.sum",  # Don't render Go sum files
                     "e2e/**/*",  # Don't render Go e2e test files (contain Go {{ }} syntax)
-                    "frontend/**/*",  # Don't render frontend directory recursively
+                    "frontend/**/*",  # Don't render frontend directory (covers all JS/TS/CSS/JSON files)
                     "notebooks/*",  # Don't render notebooks directory
                     ".git/*",  # Don't render git directory
                     "__pycache__/*",  # Don't render cache
@@ -1427,6 +1427,7 @@ def process_template(
                     ".pytest_cache/*",
                     ".venv/*",
                     "**/.venv/*",  # Don't render .venv at any depth
+                    "node_modules/**/*",  # Don't render node_modules (TS/JS deps contain {{ }} syntax)
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                 ],

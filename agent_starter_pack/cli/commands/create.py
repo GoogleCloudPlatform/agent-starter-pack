@@ -920,10 +920,14 @@ def create(
         elif (
             skip_checks
             and not google_api_key
-            and (final_agent.endswith("_go") or final_agent.endswith("_java"))
+            and (
+                final_agent.endswith("_go")
+                or final_agent.endswith("_java")
+                or final_agent.endswith("_ts")
+            )
         ):
-            # For Go/Java templates, try to get project ID from gcloud config even when skipping checks
-            # This is needed because Go/Java's .env requires a valid project ID for local development
+            # For Go/Java/TypeScript templates, try to get project ID from gcloud config even when skipping checks
+            # This is needed because their .env requires a valid project ID for local development
             try:
                 result = subprocess.run(
                     ["gcloud", "config", "get-value", "project"],

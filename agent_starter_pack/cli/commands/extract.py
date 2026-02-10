@@ -130,7 +130,7 @@ def detect_agent_directory(
     if asp_config and asp_config.get("agent_directory"):
         return asp_config["agent_directory"]
 
-    # Try common patterns
+    # Try common patterns (check for Python, TypeScript, and Go agent files)
     for candidate in ["app", "agent", "src"]:
         candidate_path = project_dir / candidate
         if candidate_path.is_dir():
@@ -140,17 +140,22 @@ def detect_agent_directory(
             # Check for Go agent
             if (candidate_path / "agent.go").exists():
                 return candidate
+            # Check for TypeScript agent
+            if (candidate_path / "agent.ts").exists():
+                return candidate
             # Check for Java Maven structure
             java_main_path = candidate_path / "main" / "java"
             if java_main_path.is_dir():
                 return candidate
 
-    # Fallback: look for any directory with agent.py or agent.go
+    # Fallback: look for any directory with agent.py, agent.go, or agent.ts
     for item in project_dir.iterdir():
         if item.is_dir() and not item.name.startswith("."):
             if (item / "agent.py").exists():
                 return item.name
             if (item / "agent.go").exists():
+                return item.name
+            if (item / "agent.ts").exists():
                 return item.name
 
     # Check for Java project at root (src/main/java structure)
@@ -653,6 +658,8 @@ def extract(
                 is_adk = (
                     "google.adk" in agent_content or "com.google.adk" in agent_content
                 )
+            elif language == "typescript":
+                is_adk = "@google/adk" in agent_content or "google-adk" in agent_content
         except Exception:
             pass  # Ignore read errors for ADK detection
 
@@ -731,7 +738,7 @@ def extract(
         console.print(
             f"❌ [bold red]Error:[/bold red] Failed to generate Makefile: {e}"
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     (output_dir / "Makefile").write_text(makefile_content, encoding="utf-8")
 
     console.print("  • Generating README.md...")
@@ -746,7 +753,7 @@ def extract(
         readme_content = render_readme_template(language, readme_context)
     except Exception as e:
         console.print(f"❌ [bold red]Error:[/bold red] Failed to generate README: {e}")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     (output_dir / "README.md").write_text(readme_content, encoding="utf-8")
 
     gitignore_path = source_dir / ".gitignore"

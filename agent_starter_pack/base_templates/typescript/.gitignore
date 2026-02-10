@@ -108,9 +108,6 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
-!agent_starter_pack/base_templates/go/.env
-!agent_starter_pack/base_templates/java/.env
 .venv
 .venv*
 env/
@@ -129,19 +126,13 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy (legacy, kept for compatibility)
+# mypy
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# ty (Astral's type checker)
-.ty/
-
 # Pyre type checker
 .pyre/
-
-# ruff
-.ruff_cache
 
 # macOS
 .DS_Store
@@ -160,6 +151,12 @@ tmp*
 **/node_modules
 npm-debug.log
 yarn-error.log
+
+# TypeScript
+dist/
+*.tsbuildinfo
+*.js.map
+*.d.ts.map
 
 # IDEs and editors
 .idea/
@@ -193,19 +190,16 @@ testem.log
 Thumbs.db
 *.vscode*
 
-.locust_env/
+# Starter pack specific
+.env
+.persist_vector_store
+tests/load_test/.results/*.html
+tests/load_test/.results/*.csv
+.locust_env
+my_env.tfvars
 .saved_chats
-.aider*
-target
-target*/
-set_projects.sh
-delete_genai_repos.sh
-cleanup_e2e_projects.sh
-docs/.vitepress/cache
-tests/cicd/delete_gcp_resources.sh
-tests/cicd/delete_agent_engines.py
-backup*
-.geminiignore
+.requirements.txt
+.useful_repos/
 
-# Private design documents
-docs/design/
+# A2A Inspector
+tools/a2a-inspector/

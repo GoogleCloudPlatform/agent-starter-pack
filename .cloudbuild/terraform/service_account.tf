@@ -18,9 +18,9 @@ locals {
   cicd_runner_roles = [
     "roles/owner",
   ]
-  
+
   e2e_project_roles = [
-    "roles/owner", 
+    "roles/owner",
   ]
 }
 

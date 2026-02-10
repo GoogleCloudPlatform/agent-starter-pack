@@ -31,6 +31,7 @@ AGENT_RUNTIME_REQUIREMENTS: dict[str, tuple[str, str]] = {
     # agent_suffix: (command_to_check, display_name)
     "_go": ("go", "Go"),
     "_java": ("mvn", "Maven"),
+    "_ts": ("node", "Node.js"),
 }
 
 
@@ -90,6 +91,9 @@ def _run_agent_test(
         # Detect language based on generated files
         is_go = (project_path / "go.mod").exists()
         is_java = (project_path / "pom.xml").exists()
+        is_ts = (project_path / "package.json").exists() and not (
+            project_path / "pyproject.toml"
+        ).exists()
 
         # Verify essential files based on language
         if is_go:
@@ -108,6 +112,22 @@ def _run_agent_test(
                 ]
             else:
                 essential_files = ["pom.xml", "Makefile"]
+        elif is_ts:
+            # Determine agent directory from extra_params
+            agent_directory = "app"  # default
+            if extra_params:
+                for i, param in enumerate(extra_params):
+                    if param in ["-dir", "--agent-directory"] and i + 1 < len(
+                        extra_params
+                    ):
+                        agent_directory = extra_params[i + 1]
+                        break
+            essential_files = [
+                "package.json",
+                "tsconfig.json",
+                f"{agent_directory}/agent.ts",
+                "Makefile",
+            ]
         else:
             # Determine agent directory from extra_params
             agent_directory = "app"  # default

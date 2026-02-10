@@ -16,6 +16,9 @@ RUN apt-get update && \
     # Terraform
     curl -fsSL https://apt.releases.hashicorp.com/gpg | gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg && \
     echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com bookworm main" > /etc/apt/sources.list.d/hashicorp.list && \
+    # Node.js 20 (Bookworm default is 18, too old for ESM-only deps in @google/adk)
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /usr/share/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" > /etc/apt/sources.list.d/nodesource.list && \
     # Clean up builder stage
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
@@ -35,8 +38,7 @@ RUN apt-get update && \
     google-cloud-cli \
     terraform \
     make \
-    nodejs \
-    npm && \
+    nodejs && \
     # Clean up apt cache
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

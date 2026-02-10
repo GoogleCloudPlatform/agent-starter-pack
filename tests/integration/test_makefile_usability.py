@@ -111,7 +111,9 @@ def validate_makefile_usability(
                     "local-backend",
                     "eval",
                     "eval-all",
-                ]  # Skip common implicit targets, long-running servers, and eval targets
+                    "build-frontend",
+                    "build-frontend-if-needed",
+                ]  # Skip common implicit targets, long-running servers, eval targets, and npm-dependent targets
             ):
                 makefile_targets.append(target)
 

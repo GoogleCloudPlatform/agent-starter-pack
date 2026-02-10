@@ -1,13 +1,17 @@
-import { config } from 'dotenv';
+import { config, parse } from 'dotenv';
 config();
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
+import { readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '../..');
+
+// Load .env vars to pass explicitly to the server subprocess
+const dotenvVars = parse(readFileSync(resolve(rootDir, '.env')));
 
 async function waitForServer(url: string, maxRetries = 180): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
@@ -36,13 +40,27 @@ describe('Server E2E', () => {
     // Pass agent.ts directly to avoid bundling test dependencies
     serverProcess = spawn('npx', ['@google/adk-devtools', 'api_server', '{{cookiecutter.agent_directory}}/agent.ts', '--port', '8000'], {
       cwd: rootDir,
-      env: { ...process.env },
+      env: { ...process.env, ...dotenvVars },
       stdio: 'pipe',
+    });
+
+    // Capture server output for debugging
+    const serverOutput: string[] = [];
+    serverProcess.stdout?.on('data', (data: Buffer) => serverOutput.push(data.toString()));
+    serverProcess.stderr?.on('data', (data: Buffer) => serverOutput.push(data.toString()));
+    serverProcess.on('exit', (code: number | null) => {
+      if (code !== null && code !== 0) {
+        console.log('Server exited with code:', code);
+        console.log('Server output:', serverOutput.join(''));
+      }
     });
 
     // Wait for server to be ready with retries
     const ready = await waitForServer(`${baseUrl}/list-apps`);
-    if (!ready) throw new Error('Server failed to start');
+    if (!ready) {
+      console.log('Server output:', serverOutput.join(''));
+      throw new Error('Server failed to start');
+    }
   }, 90000);
 
   afterAll(() => {

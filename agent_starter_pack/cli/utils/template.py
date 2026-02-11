@@ -1006,6 +1006,89 @@ app = App(root_agent=root_agent, name="{agent_directory}")
         )
 
 
+def merge_guidance_file(
+    output_path: pathlib.Path,
+    guidance_filename: str,
+    new_content: str,
+) -> None:
+    """Merge ASP-managed sections while preserving user content.
+
+    Args:
+        output_path: Path to the output directory
+        guidance_filename: Name of the guidance file (e.g., GEMINI.md, CLAUDE.md)
+        new_content: New content from the template
+    """
+    console = Console()
+    guidance_file = output_path / guidance_filename
+
+    if not guidance_file.exists():
+        # No existing file, just write new content
+        guidance_file.write_text(new_content)
+        console.print(f"✅ Created {guidance_filename}")
+        return
+
+    existing_content = guidance_file.read_text()
+
+    # Check if existing file has ASP-managed markers
+    asp_start_marker = "<!-- ASP-MANAGED-START:"
+    asp_end_marker = "<!-- ASP-MANAGED-END:"
+
+    if asp_start_marker not in existing_content:
+        # User's custom file without ASP sections - prepend ASP section
+        merged = new_content + "\n\n" + existing_content
+        guidance_file.write_text(merged)
+        console.print(f"✅ Updated {guidance_filename} (prepended ASP section)")
+        return
+
+    # Extract ASP-managed section from new content
+    new_start = new_content.find(asp_start_marker)
+    new_end = new_content.find(asp_end_marker)
+
+    if new_start == -1 or new_end == -1:
+        # New content doesn't have markers, just overwrite
+        logging.warning(f"New {guidance_filename} template is missing ASP markers")
+        guidance_file.write_text(new_content)
+        console.print(f"⚠️  Overwrote {guidance_filename} (no ASP markers in template)")
+        return
+
+    # Extract the ASP section from new content (including markers)
+    # Find the end of the end marker line
+    new_end_of_line = new_content.find("\n", new_end)
+    if new_end_of_line == -1:
+        new_end_of_line = len(new_content)
+    else:
+        new_end_of_line += 1  # Include the newline
+
+    asp_section = new_content[new_start:new_end_of_line]
+
+    # Replace ASP-managed section in existing content
+    existing_start = existing_content.find(asp_start_marker)
+    existing_end = existing_content.find(asp_end_marker)
+
+    if existing_start == -1 or existing_end == -1:
+        # Shouldn't happen since we checked earlier, but handle it
+        merged = new_content + "\n\n" + existing_content
+        guidance_file.write_text(merged)
+        console.print(f"✅ Updated {guidance_filename} (prepended ASP section)")
+        return
+
+    # Find the end of the end marker line in existing content
+    existing_end_of_line = existing_content.find("\n", existing_end)
+    if existing_end_of_line == -1:
+        existing_end_of_line = len(existing_content)
+    else:
+        existing_end_of_line += 1  # Include the newline
+
+    # Build merged content: before ASP section + new ASP section + after ASP section
+    before_asp = existing_content[:existing_start]
+    after_asp = existing_content[existing_end_of_line:]
+
+    merged = before_asp + asp_section + after_asp
+
+    guidance_file.write_text(merged)
+    console.print(f"✅ Updated {guidance_filename} (merged ASP section)")
+
+
 def process_template(
     agent_name: str,
     template_dir: pathlib.Path,
@@ -1025,6 +1108,7 @@ def process_template(
     google_api_key: str | None = None,
     google_cloud_project: str | None = None,
     bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -1415,6 +1499,7 @@ def process_template(
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),
                 "bq_analytics": bq_analytics,
+                "agent_guidance_filename": agent_guidance_filename,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.sum",  # Don't render Go sum files
@@ -1890,6 +1975,19 @@ GOOGLE_API_KEY={google_api_key}
                     console.print(
                         f"📝 Generated .env file at [cyan]{agent_directory}/.env[/cyan] "
                         "for Google AI Studio"
+                    )
+
+            # Merge guidance file if in enhance mode (in_folder=True)
+            if in_folder:
+                # Read the newly generated guidance file from the template
+                generated_guidance_path = final_destination / agent_guidance_filename
+                if generated_guidance_path.exists():
+                    new_guidance_content = generated_guidance_path.read_text()
+                    # Merge with existing content (preserving user sections)
+                    merge_guidance_file(
+                        final_destination,
+                        agent_guidance_filename,
+                        new_guidance_content,
                     )
 
         except Exception as e:

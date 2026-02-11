@@ -620,6 +620,7 @@ def enhance(
     skip_welcome: bool = False,
     google_api_key: str | None = None,
     bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -1061,4 +1062,5 @@ def enhance(
         cli_overrides=final_cli_overrides if final_cli_overrides else None,
         google_api_key=google_api_key,
         bq_analytics=bq_analytics,
+        agent_guidance_filename=agent_guidance_filename,
     )

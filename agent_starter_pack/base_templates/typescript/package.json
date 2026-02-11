@@ -25,6 +25,6 @@
   "dependencies": {
     "@google/adk": "^0.3.0",
     "@google/adk-devtools": "^0.3.0",
-    "zod": "^3.25.76"
+    "zod": "^4.2.1"
   }
 }

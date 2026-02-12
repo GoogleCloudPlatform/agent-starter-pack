@@ -181,10 +181,10 @@ def test_parse_agent_spec_ignores_local_prefix() -> None:
     assert spec is None
 
 
-def test_readme_and_pyproject_conflict_handling_in_folder_mode(
+def test_readme_and_pyproject_overwrite_in_folder_mode(
     tmp_path: pathlib.Path,
 ) -> None:
-    """Test conflict handling for in-folder updates - both README and pyproject.toml should be preserved."""
+    """Test that in-folder mode overwrites README and pyproject.toml without creating starter_pack_* copies."""
     import shutil
 
     # Set up directories
@@ -194,54 +194,27 @@ def test_readme_and_pyproject_conflict_handling_in_folder_mode(
     generated_project_dir.mkdir(parents=True)
 
     # Create existing README in destination
-    existing_readme_content = (
+    (final_destination / "README.md").write_text(
         "# Existing Project\n\nThis is my existing README content."
     )
-    (final_destination / "README.md").write_text(existing_readme_content)
 
     # Create existing pyproject.toml in destination
-    existing_pyproject_content = """[build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+    (final_destination / "pyproject.toml").write_text(
+        '[project]\nname = "existing-project"\n'
+    )
 
-[project]
-name = "existing-project"
-version = "0.1.0"
-"""
-    (final_destination / "pyproject.toml").write_text(existing_pyproject_content)
-
-    # Create templated README in generated project
+    # Create templated files in generated project
     templated_readme_content = "# Test Project\n\nThis is the templated README content."
     (generated_project_dir / "README.md").write_text(templated_readme_content)
 
-    # Create templated pyproject.toml in generated project
-    templated_pyproject_content = """[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
-name = "templated-project"
-version = "0.1.0"
-"""
+    templated_pyproject_content = '[project]\nname = "templated-project"\n'
     (generated_project_dir / "pyproject.toml").write_text(templated_pyproject_content)
 
-    # Also create a non-conflicting file
     (generated_project_dir / "other_file.py").write_text("# Other file content")
 
     # Simulate the in-folder copying logic from process_template (in_folder=True)
-    in_folder = True
     for item in generated_project_dir.iterdir():
         dest_item = final_destination / item.name
-
-        # Use the same logic as the updated process_template function
-        should_preserve_file = item.name.lower().startswith("readme") or (
-            item.name == "pyproject.toml" and in_folder
-        )
-        if should_preserve_file and (final_destination / item.name).exists():
-            # The existing file stays, save the templated one with a different name
-            base_name = item.stem
-            extension = item.suffix
-            dest_item = final_destination / f"starter_pack_{base_name}{extension}"
 
         if item.is_dir():
             if dest_item.exists():
@@ -250,32 +223,18 @@ version = "0.1.0"
         else:
             shutil.copy2(item, dest_item)
 
-    # Verify results
-    original_readme = final_destination / "README.md"
-    templated_readme = final_destination / "starter_pack_README.md"
-    original_pyproject = final_destination / "pyproject.toml"
-    templated_pyproject = final_destination / "starter_pack_pyproject.toml"
-    other_file = final_destination / "other_file.py"
+    # README and pyproject.toml should be overwritten with templated content
+    assert (final_destination / "README.md").read_text() == templated_readme_content
+    assert (
+        final_destination / "pyproject.toml"
+    ).read_text() == templated_pyproject_content
 
-    # Original README should be preserved with original content
-    assert original_readme.exists()
-    assert original_readme.read_text() == existing_readme_content
-
-    # Templated README should be saved with new name
-    assert templated_readme.exists()
-    assert templated_readme.read_text() == templated_readme_content
-
-    # Original pyproject.toml should be preserved with original content (in-folder mode)
-    assert original_pyproject.exists()
-    assert original_pyproject.read_text() == existing_pyproject_content
-
-    # Templated pyproject.toml should be saved with new name (in-folder mode)
-    assert templated_pyproject.exists()
-    assert templated_pyproject.read_text() == templated_pyproject_content
+    # No starter_pack_* files should be created
+    assert not (final_destination / "starter_pack_README.md").exists()
+    assert not (final_destination / "starter_pack_pyproject.toml").exists()
 
     # Other files should copy normally
-    assert other_file.exists()
-    assert other_file.read_text() == "# Other file content"
+    assert (final_destination / "other_file.py").read_text() == "# Other file content"
 
 
 @patch("agent_starter_pack.cli.commands.create.setup_gcp_environment")
@@ -323,10 +282,10 @@ def test_create_with_google_api_key(
     assert "GOOGLE_CLOUD_PROJECT" not in agent_content
 
 
-def test_readme_and_pyproject_conflict_handling_remote_template_mode(
+def test_readme_and_pyproject_overwrite_standard_mode(
     tmp_path: pathlib.Path,
 ) -> None:
-    """Test conflict handling for remote templates - README preserved, pyproject.toml should be overwritten."""
+    """Test that standard mode overwrites README and pyproject.toml without creating starter_pack_* copies."""
     import shutil
 
     # Set up directories
@@ -335,85 +294,36 @@ def test_readme_and_pyproject_conflict_handling_remote_template_mode(
     generated_project_dir = tmp_path / "generated"
     generated_project_dir.mkdir(parents=True)
 
-    # Create existing README in destination
-    existing_readme_content = (
-        "# Existing Project\n\nThis is my existing README content."
+    # Create existing files in destination
+    (final_destination / "README.md").write_text("# Existing Project\n")
+    (final_destination / "pyproject.toml").write_text(
+        '[project]\nname = "existing-project"\n'
     )
-    (final_destination / "README.md").write_text(existing_readme_content)
 
-    # Create existing pyproject.toml in destination
-    existing_pyproject_content = """[build-system]
-requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "existing-project"
-version = "0.1.0"
-"""
-    (final_destination / "pyproject.toml").write_text(existing_pyproject_content)
-
-    # Create templated README in generated project
+    # Create templated files in generated project
     templated_readme_content = "# Test Project\n\nThis is the templated README content."
     (generated_project_dir / "README.md").write_text(templated_readme_content)
 
-    # Create templated pyproject.toml in generated project
-    templated_pyproject_content = """[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[tool.poetry]
-name = "templated-project"
-version = "0.1.0"
-"""
+    templated_pyproject_content = '[project]\nname = "templated-project"\n'
     (generated_project_dir / "pyproject.toml").write_text(templated_pyproject_content)
 
-    # Also create a non-conflicting file
     (generated_project_dir / "other_file.py").write_text("# Other file content")
 
-    # Simulate the remote template copying logic from process_template (in_folder=False)
-    in_folder = False
-    for item in generated_project_dir.iterdir():
-        dest_item = final_destination / item.name
+    # Simulate the standard mode logic from process_template (in_folder=False)
+    if final_destination.exists():
+        shutil.rmtree(final_destination)
 
-        # Use the same logic as the updated process_template function
-        should_preserve_file = item.name.lower().startswith("readme") or (
-            item.name == "pyproject.toml" and in_folder
-        )
-        if should_preserve_file and (final_destination / item.name).exists():
-            # The existing file stays, save the templated one with a different name
-            base_name = item.stem
-            extension = item.suffix
-            dest_item = final_destination / f"starter_pack_{base_name}{extension}"
+    shutil.copytree(generated_project_dir, final_destination, dirs_exist_ok=True)
 
-        if item.is_dir():
-            if dest_item.exists():
-                shutil.rmtree(dest_item)
-            shutil.copytree(item, dest_item, dirs_exist_ok=True)
-        else:
-            shutil.copy2(item, dest_item)
+    # All files should be overwritten with templated content
+    assert (final_destination / "README.md").read_text() == templated_readme_content
+    assert (
+        final_destination / "pyproject.toml"
+    ).read_text() == templated_pyproject_content
 
-    # Verify results
-    original_readme = final_destination / "README.md"
-    templated_readme = final_destination / "starter_pack_README.md"
-    pyproject_file = final_destination / "pyproject.toml"
-    templated_pyproject_backup = final_destination / "starter_pack_pyproject.toml"
-    other_file = final_destination / "other_file.py"
-
-    # Original README should be preserved with original content
-    assert original_readme.exists()
-    assert original_readme.read_text() == existing_readme_content
-
-    # Templated README should be saved with new name
-    assert templated_readme.exists()
-    assert templated_readme.read_text() == templated_readme_content
-
-    # pyproject.toml should be overwritten with templated content (remote template mode)
-    assert pyproject_file.exists()
-    assert pyproject_file.read_text() == templated_pyproject_content
-
-    # No backup pyproject.toml should exist (remote template mode)
-    assert not templated_pyproject_backup.exists()
+    # No starter_pack_* files should be created
+    assert not (final_destination / "starter_pack_README.md").exists()
+    assert not (final_destination / "starter_pack_pyproject.toml").exists()
 
     # Other files should copy normally
-    assert other_file.exists()
-    assert other_file.read_text() == "# Other file content"
+    assert (final_destination / "other_file.py").read_text() == "# Other file content"

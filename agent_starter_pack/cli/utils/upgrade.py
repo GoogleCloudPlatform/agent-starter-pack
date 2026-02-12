@@ -313,6 +313,7 @@ def collect_all_files(
             "*.egg-info/**",
             "uv.lock",
             ".uv/**",
+            "starter_pack_*",
         ]
 
     all_files: set[str] = set()

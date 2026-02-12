@@ -156,6 +156,7 @@
         <version>3.4.1</version>
         <configuration>
           <mainClass>{{cookiecutter.java_package}}.Main</mainClass>
+          <finalName>app</finalName>
         </configuration>
         <executions>
           <execution>

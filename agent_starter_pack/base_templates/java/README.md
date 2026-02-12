@@ -116,10 +116,13 @@ make deploy
 ```
 
 ### CI/CD Pipeline
+{%- if cookiecutter.cicd_runner == 'google_cloud_build' %}
 
-This project includes CI/CD configuration for:
-- **Cloud Build**: `.cloudbuild/` directory
-- **GitHub Actions**: `.github/workflows/` directory
+This project includes CI/CD configuration using **Cloud Build** (`.cloudbuild/` directory).
+{%- elif cookiecutter.cicd_runner == 'github_actions' %}
+
+This project includes CI/CD configuration using **GitHub Actions** (`.github/workflows/` directory).
+{%- endif %}
 
 See `deployment/README.md` for detailed deployment instructions.
 

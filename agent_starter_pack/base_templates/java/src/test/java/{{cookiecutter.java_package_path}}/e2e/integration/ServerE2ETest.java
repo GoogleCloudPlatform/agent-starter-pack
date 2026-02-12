@@ -122,14 +122,10 @@ class ServerE2ETest {
 
     ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
 
-    // The endpoint should exist and respond
+    // The endpoint should respond successfully
     assertNotNull(response);
-    assertTrue(
-        response.getStatusCode() == HttpStatus.OK
-            || response.getStatusCode() == HttpStatus.BAD_REQUEST
-            || response.getStatusCode() == HttpStatus.INTERNAL_SERVER_ERROR,
-        "Expected a valid HTTP response from A2A endpoint"
-    );
+    assertEquals(HttpStatus.OK, response.getStatusCode(),
+        "Expected 200 OK from A2A endpoint, got " + response.getStatusCode());
   }
 
   /**

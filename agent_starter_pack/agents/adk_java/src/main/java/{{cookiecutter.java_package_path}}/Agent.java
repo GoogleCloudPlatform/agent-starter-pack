@@ -84,7 +84,7 @@ public class Agent {
   @RestController
   public static class AgentCardController {
 
-    @Value("${APP_URL:http://localhost:8080}")
+    @Value("${app.url}")
     private String appUrl;
 
     /**

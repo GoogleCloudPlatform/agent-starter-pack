@@ -31,7 +31,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Copy the shaded JAR from builder
-COPY --from=builder /app/target/{{cookiecutter.project_name}}-1.0.0.jar app.jar
+COPY --from=builder /app/target/app.jar app.jar
 
 ARG COMMIT_SHA=""
 ENV COMMIT_SHA=${COMMIT_SHA}

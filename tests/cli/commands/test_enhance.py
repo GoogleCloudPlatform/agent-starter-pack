@@ -1394,6 +1394,7 @@ class TestSmartMerge:
                     "--auto-approve",
                     "--cicd-runner",
                     "skip",
+                    "--skip-checks",
                 ],
             )
 
@@ -1447,6 +1448,7 @@ class TestSmartMerge:
                     "--auto-approve",
                     "--cicd-runner",
                     "skip",
+                    "--skip-checks",
                 ],
             )
 
@@ -1502,6 +1504,7 @@ class TestSmartMerge:
                     "--auto-approve",
                     "--cicd-runner",
                     "skip",
+                    "--skip-checks",
                 ],
             )
 
@@ -1556,6 +1559,7 @@ class TestSmartMerge:
                     "--auto-approve",
                     "--cicd-runner",
                     "skip",
+                    "--skip-checks",
                 ],
             )
 
@@ -1658,6 +1662,7 @@ class TestSmartMergeFallback:
                         "--auto-approve",
                         "--cicd-runner",
                         "skip",
+                        "--skip-checks",
                     ],
                 )
 
@@ -1688,6 +1693,7 @@ class TestSmartMergeFallback:
                         "--auto-approve",
                         "--cicd-runner",
                         "skip",
+                        "--skip-checks",
                     ],
                 )
 
@@ -1712,6 +1718,7 @@ class TestSmartMergeFallback:
                     "--auto-approve",
                     "--cicd-runner",
                     "skip",
+                    "--skip-checks",
                 ],
             )
 
@@ -1741,6 +1748,7 @@ class TestSmartMergeFallback:
                     "--auto-approve",
                     "--cicd-runner",
                     "skip",
+                    "--skip-checks",
                 ],
             )
 

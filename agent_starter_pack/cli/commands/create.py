@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
 import logging
 import os
 import pathlib
@@ -222,7 +221,7 @@ def get_standard_ignore_patterns() -> Callable[[str, list[str]], list[str]]:
     }
 
     def ignore_patterns(dir: str, files: list[str]) -> list[str]:
-        return [f for f in files if f in exclude_dirs or f.startswith(".backup_")]
+        return [f for f in files if f in exclude_dirs]
 
     return ignore_patterns
 
@@ -431,24 +430,15 @@ def create(
             # In-folder mode is permissive - we assume the user wants to enhance their existing repo
 
             # Create backup of entire directory before in-folder templating
-            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_dir = project_path / f".backup_{project_path.name}_{timestamp}"
-
-            console.print("📦 [blue]Creating backup before modification...[/blue]")
+            from ..utils.backup import create_project_backup
 
             try:
-                shutil.copytree(
-                    project_path, backup_dir, ignore=get_standard_ignore_patterns()
+                create_project_backup(
+                    project_path, console=console, auto_approve=auto_approve
                 )
-                console.print(f"Backup created: [cyan]{backup_dir.name}[/cyan]")
-            except Exception as e:
-                console.print(
-                    f"⚠️  [yellow]Warning: Could not create backup: {e}[/yellow]"
-                )
-                if not auto_approve:
-                    if not click.confirm("Continue without backup?", default=True):
-                        console.print("✋ [red]Operation cancelled.[/red]")
-                        return
+            except click.Abort:
+                console.print("✋ [red]Operation cancelled.[/red]")
+                return
 
             console.print()
         else:

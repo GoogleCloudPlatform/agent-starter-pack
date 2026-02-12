@@ -191,8 +191,8 @@ uvx agent-starter-pack enhance . --base-template langgraph
 
 The `enhance` command automatically creates a complete backup of your project before making any changes:
 
-- **Location:** `.backup_[dirname]_[timestamp]` in the parent directory
-- **Contents:** Complete copy of your entire project directory
+- **Location:** `~/.agent-starter-pack/backups/[dirname]_[timestamp]`
+- **Contents:** Complete copy of your project directory (excluding `.git`, `.venv`, `node_modules`, etc.)
 - **Timing:** Created before any template files are applied
 
 ## Best Practices

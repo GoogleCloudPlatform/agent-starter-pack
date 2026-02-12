@@ -30,6 +30,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from ..utils.backup import create_project_backup
 from ..utils.generation_metadata import metadata_to_cli_args
 from ..utils.language import (
     detect_language,
@@ -370,11 +371,12 @@ def check_and_execute_with_saved_config(
     project_dir: pathlib.Path,
     auto_approve: bool = False,
     cli_overrides: dict[str, Any] | None = None,
-) -> bool:
+) -> bool | dict[str, Any]:
     """Check for saved config and offer to reuse it.
 
     If config is found, displays it to the user and asks whether to use it.
     If yes, executes enhance with the saved parameters.
+    If user chooses "customize", returns interactive overrides dict.
 
     Args:
         project_dir: Path to the project directory
@@ -382,7 +384,9 @@ def check_and_execute_with_saved_config(
         cli_overrides: CLI args to pass through (e.g., cicd_runner from original command)
 
     Returns:
-        True if config was used and executed, False otherwise
+        True if config was used and executed successfully.
+        False if no saved config found or execution failed.
+        dict if user chose "customize" — contains only the changed parameters.
     """
     # Skip if already executing with saved config (prevents infinite loop)
     if os.environ.get(_ENV_USING_SAVED_CONFIG) == "1":
@@ -414,11 +418,82 @@ def check_and_execute_with_saved_config(
             default="y",
         )
         if use_saved != "y":
-            return False
+            return _prompt_customize_overrides(project_config)
 
     # Build and execute the command
     args = build_args_from_config(project_config, auto_approve, cli_overrides)
     return _execute_with_saved_config(args, project_version, use_different_version)
+
+
+def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any]:
+    """Prompt user to customize project settings interactively.
+
+    Shows each configurable parameter with the current saved value as default.
+    Returns only the parameters that were changed.
+
+    Args:
+        project_config: The saved project configuration
+
+    Returns:
+        Dict of only the changed parameter names to new values
+    """
+    create_params = project_config.get("create_params", {})
+    overrides: dict[str, Any] = {}
+
+    console.print()
+    console.print("[bold]Customize your project settings:[/bold]")
+    console.print("[dim](Press Enter to keep current value)[/dim]")
+    console.print()
+
+    # Deployment target
+    current_deployment = create_params.get("deployment_target", "agent_engine")
+    deployment_choices = ["agent_engine", "cloud_run", "none"]
+    new_deployment = Prompt.ask(
+        f"  Deployment target (current: {current_deployment})",
+        choices=deployment_choices,
+        default=current_deployment,
+    )
+    if new_deployment != current_deployment:
+        overrides["deployment_target"] = new_deployment
+
+    # Session type — only relevant for cloud_run
+    effective_deployment = new_deployment
+    if effective_deployment == "cloud_run":
+        current_session = create_params.get("session_type", "in_memory")
+        session_choices = ["in_memory", "cloud_sql", "agent_engine"]
+        new_session = Prompt.ask(
+            f"  Session type (current: {current_session})",
+            choices=session_choices,
+            default=current_session,
+        )
+        if new_session != current_session:
+            overrides["session_type"] = new_session
+
+    # CI/CD runner
+    current_cicd = create_params.get("cicd_runner", "skip")
+    cicd_choices = ["google_cloud_build", "github_actions", "skip"]
+    new_cicd = Prompt.ask(
+        f"  CI/CD runner (current: {current_cicd})",
+        choices=cicd_choices,
+        default=current_cicd,
+    )
+    if new_cicd != current_cicd:
+        overrides["cicd_runner"] = new_cicd
+
+    # Data ingestion
+    current_data_ingestion = create_params.get("include_data_ingestion", False)
+    current_data_ingestion_display = "y" if current_data_ingestion else "n"
+    new_data_ingestion = Prompt.ask(
+        f"  Include data ingestion (current: {current_data_ingestion_display})",
+        choices=["y", "n"],
+        default=current_data_ingestion_display,
+    )
+    new_data_ingestion_bool = new_data_ingestion == "y"
+    if new_data_ingestion_bool != current_data_ingestion:
+        overrides["include_data_ingestion"] = new_data_ingestion_bool
+
+    console.print()
+    return overrides
 
 
 def display_base_template_selection(current_base: str) -> str:
@@ -663,13 +738,12 @@ def _run_smart_merge(
     # Build args for the "new" template (with enhance overrides merged)
     new_args = _build_enhance_create_args(project_config, cli_overrides)
 
-    # Check if there's actually a difference
+    # Check if there's actually a difference in template params
     if old_args == new_args:
-        console.print(
-            "[bold green]✅[/bold green] No changes to apply - "
-            "enhance parameters match current configuration."
-        )
-        return True
+        # No template difference — fall through to interactive flow
+        # (user may want to add params like cicd_runner interactively)
+        logging.debug("Smart-merge: old_args == new_args, falling through")
+        return False
 
     # Create temp directories
     temp_base = pathlib.Path(tempfile.mkdtemp(prefix="asp_enhance_"))
@@ -757,6 +831,15 @@ def _run_smart_merge(
             if proceed != "y":
                 console.print("[yellow]Enhancement cancelled.[/yellow]")
                 return True  # Return True since user chose to cancel
+
+        # Back up before applying changes
+        if not dry_run:
+            try:
+                create_project_backup(
+                    project_dir, console=console, auto_approve=auto_approve
+                )
+            except click.Abort:
+                return True  # User cancelled
 
         # Apply changes
         counts = apply_changes(
@@ -910,46 +993,105 @@ def enhance(
     if prototype:
         cli_override_args["prototype"] = prototype
 
-    # Smart-merge: use 3-way comparison when metadata is available
-    # Skip if --force is set or if running nested with saved config
-    if not force and not os.environ.get(_ENV_USING_SAVED_CONFIG) == "1":
+    # Smart-merge is the default when saved config exists (unless --force).
+    # Skip if running in subprocess with saved config (subprocess re-execution
+    # replays the same params, so smart-merge would compare identical templates).
+    is_saved_config_subprocess = os.environ.get(_ENV_USING_SAVED_CONFIG) == "1"
+    has_cli_overrides = any(
+        not _should_skip_config_value(v) for v in cli_override_args.values()
+    )
+
+    if dry_run and force:
+        console.print(
+            "[bold red]Error:[/bold red] --dry-run is not compatible with --force mode."
+        )
+        return
+
+    if not force and not is_saved_config_subprocess:
         project_config = get_project_asp_config(current_dir)
         if project_config:
-            # Smart-merge available - use 3-way comparison
-            if _run_smart_merge(
-                current_dir,
-                project_config,
-                cli_override_args if cli_override_args else None,
-                auto_approve,
-                dry_run,
-            ):
+            # Determine overrides source: CLI flags or interactive customize
+            overrides: dict[str, Any] | None = None
+            if has_cli_overrides:
+                overrides = cli_override_args
+            elif not auto_approve:
+                # Show saved config, prompt y/customize
+                saved_config_result = check_and_execute_with_saved_config(
+                    current_dir,
+                    auto_approve=auto_approve,
+                    cli_overrides=cli_override_args,
+                )
+                if saved_config_result is True:
+                    return  # "y" → subprocess executed
+                elif isinstance(saved_config_result, dict):
+                    overrides = saved_config_result
+                    if not overrides:
+                        console.print(
+                            "[bold green]✅[/bold green] No changes selected. "
+                            "Project is already up to date."
+                        )
+                        return
+                # saved_config_result is False → no saved config (shouldn't happen
+                # since we already checked project_config above)
+            else:
+                # auto_approve with no CLI overrides
+                if dry_run:
+                    # Can't do anything non-interactively without overrides
+                    console.print(
+                        "[bold red]Error:[/bold red] --dry-run requires specifying what to change "
+                        "(e.g. --deployment-target cloud_run) or interactive customization."
+                    )
+                    return
+                # Use saved config subprocess
+                if check_and_execute_with_saved_config(
+                    current_dir,
+                    auto_approve=auto_approve,
+                    cli_overrides=cli_override_args,
+                ):
+                    return
+
+            if overrides:
+                if _run_smart_merge(
+                    current_dir,
+                    project_config,
+                    overrides,
+                    auto_approve,
+                    dry_run,
+                ):
+                    return
+                # If smart-merge returned False, fall through to brute-force
+                console.print(
+                    "[yellow]⚠️  Smart-merge failed, falling back to standard mode.[/yellow]"
+                )
+            elif dry_run:
+                # dry_run with auto_approve and no CLI overrides — nothing to do
+                console.print(
+                    "[bold red]Error:[/bold red] --dry-run requires specifying what to change "
+                    "(e.g. --deployment-target cloud_run) or interactive customization."
+                )
                 return
-            # If smart-merge returned False, fall through to brute-force
-            console.print(
-                "[yellow]⚠️  Smart-merge failed, falling back to standard mode.[/yellow]"
-            )
         elif dry_run:
             console.print(
                 "[bold red]Error:[/bold red] --dry-run requires saved project metadata "
                 "(pyproject.toml with [tool.agent-starter-pack] section)."
             )
             return
-        else:
+        elif has_cli_overrides:
             console.print(
                 "[dim]No saved metadata found - using standard overwrite mode.[/dim]"
             )
-
-    if dry_run:
-        console.print(
-            "[bold red]Error:[/bold red] --dry-run is not compatible with --force mode."
-        )
-        return
-
-    if check_and_execute_with_saved_config(
-        current_dir, auto_approve=auto_approve, cli_overrides=cli_override_args
-    ):
-        # Successfully executed with saved config, exit this process
-        return
+    else:
+        # --force or subprocess re-execution: try saved config subprocess
+        if not is_saved_config_subprocess:
+            saved_config_result = check_and_execute_with_saved_config(
+                current_dir,
+                auto_approve=auto_approve,
+                cli_overrides=cli_override_args,
+            )
+            if saved_config_result is True:
+                return
+            # If customize dict returned here (force mode), ignore it —
+            # force means brute-force overwrite
 
     # Setup debug logging if enabled
     if debug:
@@ -1011,7 +1153,9 @@ def enhance(
         console.print("[bold]What will happen:[/bold]")
         console.print("• New template files will be added to this directory")
         console.print("• Your existing files will be preserved")
-        console.print("• A backup will be created before any changes")
+        console.print(
+            "• A backup will be created in ~/.agent-starter-pack/backups/"
+        )
         console.print()
 
         if not click.confirm(

@@ -142,7 +142,7 @@ uvx agent-starter-pack create my-agent -a template --in-folder
 - Working within established repository structures
 - Containerized development environments
 
-**Automatic Backup:** When using `--in-folder`, a complete backup of your directory is automatically created as `.backup_[dirname]_[timestamp]` before any changes are made.
+**Automatic Backup:** When using `--in-folder`, a complete backup of your directory is automatically created at `~/.agent-starter-pack/backups/[dirname]_[timestamp]` before any changes are made.
 
 ## Automation Options
 

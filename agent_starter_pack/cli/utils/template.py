@@ -1462,52 +1462,6 @@ def process_template(
                     f"Copying remote template files from {remote_template_path} to {generated_project_dir}"
                 )
 
-                # Preserve base template README and pyproject.toml files before overwriting
-                preserve_files = ["README.md"]
-
-                # Only preserve pyproject.toml if the remote template doesn't have starter pack integration
-                remote_pyproject = remote_template_path / "pyproject.toml"
-                if remote_pyproject.exists():
-                    try:
-                        remote_pyproject_content = remote_pyproject.read_text()
-                        # Check for starter pack integration markers
-                        has_starter_pack_integration = (
-                            "[tool.agent-starter-pack]" in remote_pyproject_content
-                        )
-                        if not has_starter_pack_integration:
-                            preserve_files.append("pyproject.toml")
-                            logging.debug(
-                                "Remote pyproject.toml lacks starter pack integration - will preserve base template version"
-                            )
-                        else:
-                            logging.debug(
-                                "Remote pyproject.toml has starter pack integration - using remote version only"
-                            )
-                    except Exception as e:
-                        logging.warning(
-                            f"Could not read remote pyproject.toml: {e}. Will preserve base template version."
-                        )
-                        preserve_files.append("pyproject.toml")
-                else:
-                    preserve_files.append("pyproject.toml")
-
-                for preserve_file in preserve_files:
-                    base_file = generated_project_dir / preserve_file
-                    remote_file = remote_template_path / preserve_file
-
-                    if base_file.exists() and remote_file.exists():
-                        # Preserve the base template file with starter_pack prefix
-                        base_name = pathlib.Path(preserve_file).stem
-                        extension = pathlib.Path(preserve_file).suffix
-                        preserved_file = (
-                            generated_project_dir
-                            / f"starter_pack_{base_name}{extension}"
-                        )
-                        shutil.copy2(base_file, preserved_file)
-                        logging.debug(
-                            f"Preserved base template {preserve_file} as starter_pack_{base_name}{extension}"
-                        )
-
                 # Check if this is a flat structure template
                 # Flat structure can be detected via:
                 # 1. Auto-detection (is_flat_structure flag in remote_config)
@@ -1577,108 +1531,12 @@ def process_template(
                     for item in generated_project_dir.iterdir():
                         dest_item = final_destination / item.name
 
-                        # Special handling for README files - always preserve existing README
-                        # Special handling for pyproject.toml files - only preserve for in-folder updates
-                        should_preserve_file = item.name.lower().startswith(
-                            "readme"
-                        ) or (item.name == "pyproject.toml" and in_folder)
-                        if (
-                            should_preserve_file
-                            and (final_destination / item.name).exists()
-                        ):
-                            # The existing file stays, use base template file with starter_pack prefix
-                            base_name = item.stem
-                            extension = item.suffix
-                            dest_item = (
-                                final_destination
-                                / f"starter_pack_{base_name}{extension}"
-                            )
-
-                            # Try to use base template file instead of templated file
-                            # Use language-specific base path
-                            base_file = language_base_path / item.name
-                            if base_file.exists():
-                                logging.debug(
-                                    f"{item.name} conflict: preserving existing {item.name}, using base template {item.name} as starter_pack_{base_name}{extension}"
-                                )
-                                # Process the base template file through cookiecutter
-                                try:
-                                    import tempfile as tmp_module
-
-                                    with (
-                                        tmp_module.TemporaryDirectory() as temp_file_dir
-                                    ):
-                                        temp_file_path = pathlib.Path(temp_file_dir)
-
-                                        # Create a minimal cookiecutter structure for just the file
-                                        file_template_dir = (
-                                            temp_file_path / "file_template"
-                                        )
-                                        file_template_dir.mkdir()
-                                        file_project_dir = (
-                                            file_template_dir
-                                            / "{{cookiecutter.project_name}}"
-                                        )
-                                        file_project_dir.mkdir()
-
-                                        # Copy base file to template structure
-                                        shutil.copy2(
-                                            base_file, file_project_dir / item.name
-                                        )
-
-                                        # Create cookiecutter.json with same config as main template
-                                        with open(
-                                            file_template_dir / "cookiecutter.json",
-                                            "w",
-                                            encoding="utf-8",
-                                        ) as config_file:
-                                            json.dump(
-                                                cookiecutter_config,
-                                                config_file,
-                                                indent=4,
-                                            )
-
-                                        # Process the file template
-                                        cookiecutter(
-                                            str(file_template_dir),
-                                            no_input=True,
-                                            overwrite_if_exists=True,
-                                            output_dir=str(temp_file_path),
-                                            extra_context={
-                                                "project_name": project_name,
-                                                "agent_name": agent_name,
-                                            },
-                                        )
-
-                                        # Copy the processed file
-                                        processed_file = (
-                                            temp_file_path / project_name / item.name
-                                        )
-                                        if processed_file.exists():
-                                            shutil.copy2(processed_file, dest_item)
-                                        else:
-                                            # Fallback to original behavior if processing fails
-                                            shutil.copy2(item, dest_item)
-
-                                except Exception as e:
-                                    logging.warning(
-                                        f"Failed to process base template {item.name}: {e}. Using templated {item.name} instead."
-                                    )
-                                    shutil.copy2(item, dest_item)
-                            else:
-                                # Fallback to original behavior if base file doesn't exist
-                                logging.debug(
-                                    f"{item.name} conflict: preserving existing {item.name}, saving templated {item.name} as starter_pack_{base_name}{extension}"
-                                )
-                                shutil.copy2(item, dest_item)
+                        if item.is_dir():
+                            if dest_item.exists():
+                                shutil.rmtree(dest_item)
+                            shutil.copytree(item, dest_item, dirs_exist_ok=True)
                         else:
-                            # Normal file copying
-                            if item.is_dir():
-                                if dest_item.exists():
-                                    shutil.rmtree(dest_item)
-                                shutil.copytree(item, dest_item, dirs_exist_ok=True)
-                            else:
-                                shutil.copy2(item, dest_item)
+                            shutil.copy2(item, dest_item)
                     logging.debug(
                         f"Project files successfully copied to {final_destination}"
                     )
@@ -1690,34 +1548,12 @@ def process_template(
                 )
 
                 if generated_project_dir.exists():
-                    # Check for existing README and pyproject.toml files before removing destination
-                    existing_preserved_files = []
                     if final_destination.exists():
-                        for item in final_destination.iterdir():
-                            if item.is_file() and (
-                                item.name.lower().startswith("readme")
-                                or item.name == "pyproject.toml"
-                            ):
-                                existing_preserved_files.append(
-                                    (item.name, item.read_text())
-                                )
                         shutil.rmtree(final_destination)
 
                     shutil.copytree(
                         generated_project_dir, final_destination, dirs_exist_ok=True
                     )
-
-                    # Restore existing README and pyproject.toml files with starter_pack prefix
-                    for file_name, file_content in existing_preserved_files:
-                        base_name = pathlib.Path(file_name).stem
-                        extension = pathlib.Path(file_name).suffix
-                        preserved_file_path = (
-                            final_destination / f"starter_pack_{base_name}{extension}"
-                        )
-                        preserved_file_path.write_text(file_content)
-                        logging.debug(
-                            f"File preservation: existing {file_name} preserved as starter_pack_{base_name}{extension}"
-                        )
 
                     logging.debug(
                         f"Project successfully created at {final_destination}"

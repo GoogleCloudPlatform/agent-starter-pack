@@ -1625,6 +1625,223 @@ class TestSmartMerge:
             assert not pathlib.Path("Dockerfile").exists()
 
 
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_never_modifies_agent_code(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent code files are NEVER modified by smart-merge."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version, args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Template Makefile")
+            # Template has agent code that's different from user's
+            (template_dir / "app").mkdir()
+            (template_dir / "app/agent.py").write_text("# Template agent code")
+            (template_dir / "app/tools").mkdir()
+            (template_dir / "app/tools/search.py").write_text("# Template tool")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("# MY CUSTOM AGENT CODE")
+            pathlib.Path("app/tools").mkdir()
+            pathlib.Path("app/tools/search.py").write_text("# MY CUSTOM TOOL")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "Skipping" in output
+
+            # Verify agent code was NOT touched
+            assert "MY CUSTOM AGENT CODE" in pathlib.Path("app/agent.py").read_text()
+            assert "MY CUSTOM TOOL" in pathlib.Path("app/tools/search.py").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_preserves_config_files(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that config files (.env, config.yaml) are never auto-updated."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version, args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Makefile")
+            # Templates have config files
+            (template_dir / ".env").write_text("API_KEY=template_key")
+            (template_dir / "config.yaml").write_text("setting: template_value")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            # User has config files with secrets
+            pathlib.Path(".env").write_text("API_KEY=my_secret_key")
+            pathlib.Path("config.yaml").write_text("setting: my_custom_value")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+
+            # Verify config files were NOT modified (user secrets preserved)
+            assert "my_secret_key" in pathlib.Path(".env").read_text()
+            assert "my_custom_value" in pathlib.Path("config.yaml").read_text()
+            # Should not contain template values
+            assert "template_key" not in pathlib.Path(".env").read_text()
+            assert "template_value" not in pathlib.Path("config.yaml").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_preserves_user_dependencies(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that user's custom dependencies are kept when merging."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+
+            if "--deployment-target" in args and "cloud_run" in args:
+                # New template adds a new ASP dependency
+                (template_dir / "pyproject.toml").write_text(
+                    """[project]
+name = "test"
+dependencies = [
+    "google-cloud-aiplatform>=1.50.0",
+    "uvicorn>=0.30.0",
+]
+"""
+                )
+            else:
+                # Old template (original)
+                (template_dir / "pyproject.toml").write_text(
+                    """[project]
+name = "test"
+dependencies = [
+    "google-cloud-aiplatform>=1.50.0",
+]
+"""
+                )
+            (template_dir / "Makefile").write_text("# Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # User's project has custom dependencies
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                """[project]
+name = "test"
+dependencies = [
+    "google-cloud-aiplatform>=1.50.0",
+    "my-custom-library>=2.0.0",
+    "another-user-lib>=1.0.0",
+]
+
+[tool.agent-starter-pack]
+name = "test"
+base_template = "adk"
+asp_version = "0.30.0"
+
+[tool.agent-starter-pack.create_params]
+deployment_target = "agent_engine"
+"""
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+
+            # Verify dependencies were merged correctly
+            final_pyproject = pyproject.read_text()
+
+            # User's custom dependencies should be preserved
+            assert "my-custom-library>=2.0.0" in final_pyproject
+            assert "another-user-lib>=1.0.0" in final_pyproject
+
+            # New ASP dependency should be added
+            assert "uvicorn>=0.30.0" in final_pyproject
+
+            # Original ASP dependency should remain
+            assert "google-cloud-aiplatform>=1.50.0" in final_pyproject
+
+
 class TestSmartMergeFallback:
     """Test fallback behavior when smart-merge can't be used."""
 

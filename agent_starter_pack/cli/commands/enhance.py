@@ -613,14 +613,13 @@ def _build_enhance_create_args(
         arg_name = f"--{key.replace('_', '-')}"
 
         # Remove existing arg if present (to override)
-        i = 0
-        while i < len(args):
-            if args[i] == arg_name:
+        while arg_name in args:
+            i = args.index(arg_name)
+            # Remove the arg name
+            args.pop(i)
+            # If it had a value (i.e., the next item is not a flag), remove that too
+            if i < len(args) and not args[i].startswith("--"):
                 args.pop(i)
-                if i < len(args) and not args[i].startswith("--"):
-                    args.pop(i)
-            else:
-                i += 1
 
         # Add the override
         if value is True:

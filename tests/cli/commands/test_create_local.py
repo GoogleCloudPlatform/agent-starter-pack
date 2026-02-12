@@ -200,14 +200,14 @@ def test_readme_and_pyproject_overwrite_in_folder_mode(
 
     # Create existing pyproject.toml in destination
     (final_destination / "pyproject.toml").write_text(
-        "[project]\nname = \"existing-project\"\n"
+        '[project]\nname = "existing-project"\n'
     )
 
     # Create templated files in generated project
     templated_readme_content = "# Test Project\n\nThis is the templated README content."
     (generated_project_dir / "README.md").write_text(templated_readme_content)
 
-    templated_pyproject_content = "[project]\nname = \"templated-project\"\n"
+    templated_pyproject_content = '[project]\nname = "templated-project"\n'
     (generated_project_dir / "pyproject.toml").write_text(templated_pyproject_content)
 
     (generated_project_dir / "other_file.py").write_text("# Other file content")
@@ -297,14 +297,14 @@ def test_readme_and_pyproject_overwrite_standard_mode(
     # Create existing files in destination
     (final_destination / "README.md").write_text("# Existing Project\n")
     (final_destination / "pyproject.toml").write_text(
-        "[project]\nname = \"existing-project\"\n"
+        '[project]\nname = "existing-project"\n'
     )
 
     # Create templated files in generated project
     templated_readme_content = "# Test Project\n\nThis is the templated README content."
     (generated_project_dir / "README.md").write_text(templated_readme_content)
 
-    templated_pyproject_content = "[project]\nname = \"templated-project\"\n"
+    templated_pyproject_content = '[project]\nname = "templated-project"\n'
     (generated_project_dir / "pyproject.toml").write_text(templated_pyproject_content)
 
     (generated_project_dir / "other_file.py").write_text("# Other file content")

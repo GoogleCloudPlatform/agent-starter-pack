@@ -35,14 +35,10 @@ def project_dir(tmp_path: pathlib.Path) -> pathlib.Path:
 
 
 class TestCreateProjectBackup:
-    def test_success(
-        self, project_dir: pathlib.Path, tmp_path: pathlib.Path
-    ) -> None:
+    def test_success(self, project_dir: pathlib.Path, tmp_path: pathlib.Path) -> None:
         """Backup is created at the expected path and contains project files."""
         backup_base = tmp_path / "backups"
-        with patch(
-            "agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base
-        ):
+        with patch("agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base):
             result = create_project_backup(project_dir, auto_approve=True)
 
         assert result is not None
@@ -68,9 +64,7 @@ class TestCreateProjectBackup:
         (project_dir / "__pycache__" / "mod.pyc").write_bytes(b"\x00")
 
         backup_base = tmp_path / "backups"
-        with patch(
-            "agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base
-        ):
+        with patch("agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base):
             result = create_project_backup(project_dir, auto_approve=True)
 
         assert result is not None
@@ -88,9 +82,7 @@ class TestCreateProjectBackup:
         backup_base = tmp_path / "deep" / "nested" / "backups"
         assert not backup_base.exists()
 
-        with patch(
-            "agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base
-        ):
+        with patch("agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base):
             result = create_project_backup(project_dir, auto_approve=True)
 
         assert result is not None
@@ -102,9 +94,7 @@ class TestCreateProjectBackup:
         """When backup fails with auto_approve=True, returns None silently."""
         backup_base = tmp_path / "backups"
         with (
-            patch(
-                "agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base
-            ),
+            patch("agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base),
             patch(
                 "agent_starter_pack.cli.utils.backup.shutil.copytree",
                 side_effect=OSError("disk full"),
@@ -120,9 +110,7 @@ class TestCreateProjectBackup:
         """When backup fails and user says no, raises click.Abort."""
         backup_base = tmp_path / "backups"
         with (
-            patch(
-                "agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base
-            ),
+            patch("agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base),
             patch(
                 "agent_starter_pack.cli.utils.backup.shutil.copytree",
                 side_effect=OSError("disk full"),
@@ -141,9 +129,7 @@ class TestCreateProjectBackup:
         """When backup fails and user says yes, returns None."""
         backup_base = tmp_path / "backups"
         with (
-            patch(
-                "agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base
-            ),
+            patch("agent_starter_pack.cli.utils.backup.BACKUP_BASE_DIR", backup_base),
             patch(
                 "agent_starter_pack.cli.utils.backup.shutil.copytree",
                 side_effect=OSError("disk full"),

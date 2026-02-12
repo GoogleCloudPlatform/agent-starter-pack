@@ -204,7 +204,7 @@ cleanup_e2e_projects.sh
 docs/.vitepress/cache
 tests/cicd/delete_gcp_resources.sh
 tests/cicd/delete_agent_engines.py
-backup*
+backup*/
 .geminiignore
 
 # Private design documents

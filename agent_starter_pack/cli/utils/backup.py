@@ -15,6 +15,7 @@
 """Shared backup utility for project directories."""
 
 import datetime
+import fnmatch
 import pathlib
 import shutil
 
@@ -49,7 +50,11 @@ _BACKUP_IGNORE_NAMES = {
 
 def _backup_ignore_patterns(dir: str, files: list[str]) -> list[str]:
     """Return files to ignore when creating a backup."""
-    return [f for f in files if f in _BACKUP_IGNORE_NAMES]
+    return [
+        f
+        for f in files
+        if any(fnmatch.fnmatch(f, pattern) for pattern in _BACKUP_IGNORE_NAMES)
+    ]
 
 
 def create_project_backup(

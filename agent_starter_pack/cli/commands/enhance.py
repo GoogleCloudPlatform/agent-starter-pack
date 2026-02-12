@@ -1153,9 +1153,7 @@ def enhance(
         console.print("[bold]What will happen:[/bold]")
         console.print("• New template files will be added to this directory")
         console.print("• Your existing files will be preserved")
-        console.print(
-            "• A backup will be created in ~/.agent-starter-pack/backups/"
-        )
+        console.print("• A backup will be created in ~/.agent-starter-pack/backups/")
         console.print()
 
         if not click.confirm(

@@ -1399,7 +1399,6 @@ class TestSmartMerge:
                 ],
             )
 
-            strip_ansi(result.output)
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify Makefile was auto-updated
@@ -1453,7 +1452,6 @@ class TestSmartMerge:
                 ],
             )
 
-            strip_ansi(result.output)
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify user's Makefile was preserved
@@ -1738,7 +1736,6 @@ class TestSmartMerge:
                 ],
             )
 
-            strip_ansi(result.output)
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify config files were NOT modified (user secrets preserved)
@@ -1825,7 +1822,6 @@ deployment_target = "agent_engine"
                 ],
             )
 
-            strip_ansi(result.output)
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify dependencies were merged correctly

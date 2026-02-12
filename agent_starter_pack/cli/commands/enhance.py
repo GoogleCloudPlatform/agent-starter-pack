@@ -686,9 +686,7 @@ def _run_smart_merge(
             console.print(
                 "[bold red]Error:[/bold red] Failed to generate original template"
             )
-            console.print(
-                "[dim]Falling back to standard overwrite mode.[/dim]"
-            )
+            console.print("[dim]Falling back to standard overwrite mode.[/dim]")
             return False
 
         # Generate new template (with enhance params)
@@ -697,9 +695,7 @@ def _run_smart_merge(
             console.print(
                 "[bold red]Error:[/bold red] Failed to generate enhanced template"
             )
-            console.print(
-                "[dim]Falling back to standard overwrite mode.[/dim]"
-            )
+            console.print("[dim]Falling back to standard overwrite mode.[/dim]")
             return False
 
         # The templates are created in subdirectories named after the project
@@ -733,9 +729,7 @@ def _run_smart_merge(
         console.print()
 
         # Display results
-        display_results(
-            groups, dep_result.changes if dep_result else [], dry_run
-        )
+        display_results(groups, dep_result.changes if dep_result else [], dry_run)
 
         # Check if there's anything to do
         total_changes = (

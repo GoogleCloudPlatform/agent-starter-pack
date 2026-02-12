@@ -1347,6 +1347,7 @@ class TestSmartMerge:
         self, mock_create, tmp_path: pathlib.Path
     ) -> None:
         """Test that unchanged files are auto-updated via smart-merge."""
+
         def create_template(args, output_dir, project_name, version=None):
             del version
             template_dir = output_dir / project_name
@@ -1407,6 +1408,7 @@ class TestSmartMerge:
         self, mock_create, tmp_path: pathlib.Path
     ) -> None:
         """Test that user-modified files are preserved when template didn't change."""
+
         def create_template(args, output_dir, project_name, version=None):
             del version, args
             template_dir = output_dir / project_name
@@ -1459,6 +1461,7 @@ class TestSmartMerge:
         self, mock_create, tmp_path: pathlib.Path
     ) -> None:
         """Test that conflicts are detected when both user and template changed."""
+
         def create_template(args, output_dir, project_name, version=None):
             del version
             template_dir = output_dir / project_name
@@ -1513,6 +1516,7 @@ class TestSmartMerge:
         self, mock_create, tmp_path: pathlib.Path
     ) -> None:
         """Test that new files from the enhanced template are added."""
+
         def create_template(args, output_dir, project_name, version=None):
             del version
             template_dir = output_dir / project_name
@@ -1562,10 +1566,9 @@ class TestSmartMerge:
             assert pathlib.Path("Dockerfile").exists()
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
-    def test_smart_merge_dry_run(
-        self, mock_create, tmp_path: pathlib.Path
-    ) -> None:
+    def test_smart_merge_dry_run(self, mock_create, tmp_path: pathlib.Path) -> None:
         """Test that --dry-run shows changes without applying."""
+
         def create_template(args, output_dir, project_name, version=None):
             del version
             template_dir = output_dir / project_name
@@ -1621,7 +1624,9 @@ class TestSmartMerge:
 class TestSmartMergeFallback:
     """Test fallback behavior when smart-merge can't be used."""
 
-    @patch("agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config")
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
     def test_force_flag_skips_smart_merge(
         self, mock_saved_config, tmp_path: pathlib.Path
     ) -> None:
@@ -1644,9 +1649,7 @@ class TestSmartMergeFallback:
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").write_text("root_agent = None")
 
-            with patch(
-                "agent_starter_pack.cli.commands.enhance.create"
-            ) as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
                     enhance,
                     [
@@ -1661,7 +1664,9 @@ class TestSmartMergeFallback:
                 # With --force, should fall through to create command
                 mock_create.assert_called_once()
 
-    @patch("agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config")
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
     def test_no_metadata_falls_back_to_standard_mode(
         self, mock_saved_config, tmp_path: pathlib.Path
     ) -> None:
@@ -1675,9 +1680,7 @@ class TestSmartMergeFallback:
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").write_text("root_agent = None")
 
-            with patch(
-                "agent_starter_pack.cli.commands.enhance.create"
-            ) as mock_create:
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
                     enhance,
                     [
@@ -1693,9 +1696,7 @@ class TestSmartMergeFallback:
                 # Should fall through to create command
                 mock_create.assert_called_once()
 
-    def test_dry_run_without_metadata_shows_error(
-        self, tmp_path: pathlib.Path
-    ) -> None:
+    def test_dry_run_without_metadata_shows_error(self, tmp_path: pathlib.Path) -> None:
         """Test that --dry-run without metadata shows an error."""
         runner = CliRunner()
 
@@ -1717,9 +1718,7 @@ class TestSmartMergeFallback:
             output = strip_ansi(result.output)
             assert "--dry-run requires saved project metadata" in output
 
-    def test_dry_run_with_force_shows_error(
-        self, tmp_path: pathlib.Path
-    ) -> None:
+    def test_dry_run_with_force_shows_error(self, tmp_path: pathlib.Path) -> None:
         """Test that --dry-run with --force shows an error."""
         runner = CliRunner()
 
@@ -1748,7 +1747,9 @@ class TestSmartMergeFallback:
             output = strip_ansi(result.output)
             assert "--dry-run is not compatible with --force" in output
 
-    @patch("agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config")
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_failure_falls_back(
         self, mock_run_create, mock_saved_config, tmp_path: pathlib.Path
@@ -1797,6 +1798,7 @@ class TestSmartMergeFallback:
         self, mock_create, tmp_path: pathlib.Path
     ) -> None:
         """Test that smart-merge reports when no changes are needed."""
+
         def create_template(args, output_dir, project_name, version=None):
             del version, args
             template_dir = output_dir / project_name

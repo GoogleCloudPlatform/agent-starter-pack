@@ -22,6 +22,7 @@ import tempfile
 from typing import Any
 
 import click
+from packaging import version as pkg_version
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
@@ -371,6 +372,8 @@ def check_and_execute_with_saved_config(
     project_dir: pathlib.Path,
     auto_approve: bool = False,
     cli_overrides: dict[str, Any] | None = None,
+    force: bool = False,
+    dry_run: bool = False,
 ) -> bool | dict[str, Any]:
     """Check for saved config and offer to reuse it.
 
@@ -382,6 +385,8 @@ def check_and_execute_with_saved_config(
         project_dir: Path to the project directory
         auto_approve: If True, skip confirmation prompt and use saved config
         cli_overrides: CLI args to pass through (e.g., cicd_runner from original command)
+        force: If True, include --force in subprocess args (skipped for old versions)
+        dry_run: If True, include --dry-run in subprocess args (skipped for old versions)
 
     Returns:
         True if config was used and executed successfully.
@@ -422,6 +427,18 @@ def check_and_execute_with_saved_config(
 
     # Build and execute the command
     args = build_args_from_config(project_config, auto_approve, cli_overrides)
+    # --force and --dry-run were introduced in this version; strip them
+    # when re-executing against an older locked version to avoid crashes.
+    is_older_version = (
+        use_different_version
+        and project_version is not None
+        and pkg_version.parse(project_version) < pkg_version.parse(current_version)
+    )
+    if not is_older_version:
+        if force:
+            args.append("--force")
+        if dry_run:
+            args.append("--dry-run")
     return _execute_with_saved_config(args, project_version, use_different_version)
 
 
@@ -1020,6 +1037,7 @@ def enhance(
                     current_dir,
                     auto_approve=auto_approve,
                     cli_overrides=cli_override_args,
+                    dry_run=dry_run,
                 )
                 if saved_config_result is True:
                     return  # "y" → subprocess executed
@@ -1087,6 +1105,7 @@ def enhance(
                 current_dir,
                 auto_approve=auto_approve,
                 cli_overrides=cli_override_args,
+                force=force,
             )
             if saved_config_result is True:
                 return

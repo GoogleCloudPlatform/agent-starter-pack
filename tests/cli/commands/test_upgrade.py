@@ -142,7 +142,7 @@ class TestUpgradeDryRun:
     """Test dry-run mode."""
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_dry_run_no_changes_applied(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -197,7 +197,7 @@ class TestUpgradeE2E:
     """End-to-end tests for upgrade command."""
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_auto_update_unchanged_files(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -243,7 +243,7 @@ class TestUpgradeE2E:
         assert "New Makefile with updates" in makefile.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_preserve_user_modified_files_when_asp_unchanged(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -285,7 +285,7 @@ class TestUpgradeE2E:
         assert "Preserving" in output or "preserve" in output.lower()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_detects_conflict_when_both_changed(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -329,7 +329,7 @@ class TestUpgradeE2E:
         assert "User modified" in makefile.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_skips_agent_code(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -427,7 +427,7 @@ version = "0.31.0"
         assert "already at version 0.31.0" in output
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_go_project_dry_run(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -479,7 +479,7 @@ version = "0.30.0"
         assert makefile.read_text() == original_makefile
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_go_project_auto_update_unchanged_files(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -524,7 +524,7 @@ version = "0.30.0"
         assert "New Makefile with updates" in makefile.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_go_project_preserve_user_modified_files(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -566,7 +566,7 @@ version = "0.30.0"
         assert "Preserving" in output or "preserve" in output.lower()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_go_project_detects_conflict(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -611,7 +611,7 @@ version = "0.30.0"
         assert "User modified Go Makefile" in makefile.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_go_project_skips_agent_code(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -662,7 +662,7 @@ agent_directory = "agent"
         assert "My custom Go agent code" in agent_file.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_go_project_updates_version_in_asp_toml(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -777,7 +777,7 @@ class TestJavaProjectUpgrade:
         assert "already at version 0.31.0" in output
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_java_project_dry_run(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -846,7 +846,7 @@ class TestJavaProjectUpgrade:
         assert makefile.read_text() == original_makefile
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_java_project_auto_update_unchanged_files(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -912,7 +912,7 @@ class TestJavaProjectUpgrade:
         assert "New Makefile with updates" in makefile.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_java_project_preserve_user_modified_files(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -975,7 +975,7 @@ class TestJavaProjectUpgrade:
         assert "Preserving" in output or "preserve" in output.lower()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_java_project_detects_conflict(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -1041,7 +1041,7 @@ class TestJavaProjectUpgrade:
         assert "User modified Java Makefile" in makefile.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_java_project_skips_agent_code(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path
@@ -1111,7 +1111,7 @@ class TestJavaProjectUpgrade:
         assert "My custom Java agent code" in agent_file.read_text()
 
     @patch("agent_starter_pack.cli.commands.upgrade._ensure_uvx_available")
-    @patch("agent_starter_pack.cli.commands.upgrade._run_create_command")
+    @patch("agent_starter_pack.cli.commands.upgrade.run_create_command")
     @patch("agent_starter_pack.cli.commands.upgrade.get_current_version")
     def test_java_project_updates_version_in_pom_xml(
         self, mock_version, mock_create, mock_uvx, tmp_path: pathlib.Path

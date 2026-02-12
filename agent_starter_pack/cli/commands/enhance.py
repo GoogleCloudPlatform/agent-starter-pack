@@ -15,8 +15,10 @@
 import logging
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 import click
@@ -28,6 +30,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from ..utils.generation_metadata import metadata_to_cli_args
 from ..utils.language import (
     detect_language,
     find_agent_file,
@@ -37,10 +40,21 @@ from ..utils.language import (
     validate_agent_file,
 )
 from ..utils.logging import display_welcome_banner, handle_cli_error
+from ..utils.merge import (
+    apply_changes,
+    display_results,
+    run_create_command,
+)
 from ..utils.template import (
     get_available_agents,
     resolve_agent_alias,
     validate_agent_directory_name,
+)
+from ..utils.upgrade import (
+    compare_all_files,
+    group_results_by_action,
+    merge_pyproject_dependencies,
+    write_merged_dependencies,
 )
 from ..utils.version import get_current_version
 from .create import (
@@ -570,6 +584,229 @@ def display_agent_directory_selection(
             continue
 
 
+def _build_enhance_create_args(
+    project_config: dict[str, Any],
+    cli_overrides: dict[str, Any] | None = None,
+) -> list[str]:
+    """Build CLI args for create command from project config and enhance overrides.
+
+    Merges saved metadata with any CLI overrides provided by the user.
+
+    Args:
+        project_config: The saved project configuration
+        cli_overrides: CLI args from the enhance command to merge in
+
+    Returns:
+        List of CLI arguments for the create command
+    """
+    # Start with metadata-based args
+    args = metadata_to_cli_args(project_config)
+
+    if not cli_overrides:
+        return args
+
+    # Merge CLI overrides (these take precedence over saved config)
+    for key, value in cli_overrides.items():
+        if _should_skip_config_value(value):
+            continue
+
+        arg_name = f"--{key.replace('_', '-')}"
+
+        # Remove existing arg if present (to override)
+        i = 0
+        while i < len(args):
+            if args[i] == arg_name:
+                args.pop(i)
+                if i < len(args) and not args[i].startswith("--"):
+                    args.pop(i)
+            else:
+                i += 1
+
+        # Add the override
+        if value is True:
+            args.append(arg_name)
+        elif value is not False and value is not None:
+            args.extend([arg_name, str(value)])
+
+    return args
+
+
+def _run_smart_merge(
+    project_dir: pathlib.Path,
+    project_config: dict[str, Any],
+    cli_overrides: dict[str, Any] | None,
+    auto_approve: bool,
+    dry_run: bool,
+) -> bool:
+    """Run smart-merge using 3-way comparison.
+
+    Generates the "old" template (what was originally generated) and the "new"
+    template (with enhance params), then does a 3-way comparison to only
+    overwrite files the user hasn't modified.
+
+    Args:
+        project_dir: Path to the current project
+        project_config: Saved project configuration from metadata
+        cli_overrides: CLI arguments from the enhance command
+        auto_approve: If True, auto-apply non-conflicting changes
+        dry_run: If True, preview changes without applying
+
+    Returns:
+        True if smart-merge completed successfully, False otherwise
+    """
+    project_name = project_config.get("name", project_dir.name)
+    agent_directory = project_config.get("agent_directory", "app")
+    language = project_config.get("language", "python")
+
+    # Build args for the "old" template (original generation params)
+    old_args = metadata_to_cli_args(project_config)
+
+    # Build args for the "new" template (with enhance overrides merged)
+    new_args = _build_enhance_create_args(project_config, cli_overrides)
+
+    # Check if there's actually a difference
+    if old_args == new_args:
+        console.print(
+            "[bold green]✅[/bold green] No changes to apply - "
+            "enhance parameters match current configuration."
+        )
+        return True
+
+    # Create temp directories
+    temp_base = pathlib.Path(tempfile.mkdtemp(prefix="asp_enhance_"))
+    old_template_dir = temp_base / "old"
+    new_template_dir = temp_base / "new"
+
+    try:
+        console.print()
+        console.print("[dim]Generating templates for comparison...[/dim]")
+
+        # Generate old template (what was originally generated)
+        console.print("[dim]  - Original template...[/dim]")
+        if not run_create_command(old_args, old_template_dir, project_name):
+            console.print(
+                "[bold red]Error:[/bold red] Failed to generate original template"
+            )
+            console.print(
+                "[dim]Falling back to standard overwrite mode.[/dim]"
+            )
+            return False
+
+        # Generate new template (with enhance params)
+        console.print("[dim]  - Enhanced template...[/dim]")
+        if not run_create_command(new_args, new_template_dir, project_name):
+            console.print(
+                "[bold red]Error:[/bold red] Failed to generate enhanced template"
+            )
+            console.print(
+                "[dim]Falling back to standard overwrite mode.[/dim]"
+            )
+            return False
+
+        # The templates are created in subdirectories named after the project
+        old_template_project = old_template_dir / project_name
+        new_template_project = new_template_dir / project_name
+
+        console.print()
+
+        # Compare all files
+        console.print("[dim]Comparing files...[/dim]")
+        results = compare_all_files(
+            project_dir,
+            old_template_project,
+            new_template_project,
+            agent_directory,
+        )
+
+        # Group by action
+        groups = group_results_by_action(results)
+
+        # Handle dependency merging (only for Python projects)
+        lang_config = get_language_config(language)
+        dep_result = None
+        if lang_config.get("strip_dependencies", True):
+            dep_result = merge_pyproject_dependencies(
+                project_dir / "pyproject.toml",
+                old_template_project / "pyproject.toml",
+                new_template_project / "pyproject.toml",
+            )
+
+        console.print()
+
+        # Display results
+        display_results(
+            groups, dep_result.changes if dep_result else [], dry_run
+        )
+
+        # Check if there's anything to do
+        total_changes = (
+            len(groups["auto_update"])
+            + len(groups["new"])
+            + len(groups["removed"])
+            + len(groups["conflict"])
+        )
+
+        has_dep_changes = dep_result and dep_result.changes
+        if total_changes == 0 and not has_dep_changes:
+            console.print("[bold green]✅[/bold green] No file changes needed!")
+            return True
+
+        # Confirm before applying
+        if not auto_approve and not dry_run:
+            prompt_text = "\nProceed with enhancement?"
+            if groups["conflict"]:
+                prompt_text = "\nProceed? (you'll resolve conflicts next)"
+            proceed = Prompt.ask(
+                prompt_text,
+                choices=["y", "n"],
+                default="y",
+            )
+            if proceed != "y":
+                console.print("[yellow]Enhancement cancelled.[/yellow]")
+                return True  # Return True since user chose to cancel
+
+        # Apply changes
+        counts = apply_changes(
+            groups,
+            project_dir,
+            new_template_project,
+            auto_approve,
+            dry_run,
+        )
+
+        # Apply dependency changes (Python only)
+        if not dry_run and dep_result and dep_result.changes:
+            write_merged_dependencies(
+                project_dir / "pyproject.toml",
+                dep_result.merged_deps,
+            )
+
+        # Summary
+        console.print()
+        if dry_run:
+            console.print(
+                "[bold yellow]Dry run complete.[/bold yellow] "
+                "Run without --dry-run to apply changes."
+            )
+        else:
+            console.print(f"  Updated: {counts['updated']} files")
+            console.print(f"  Added: {counts['added']} files")
+            console.print(f"  Removed: {counts['removed']} files")
+            if counts["conflicts_kept"] or counts["conflicts_updated"]:
+                console.print(
+                    f"  Conflicts: {counts['conflicts_updated']} updated, "
+                    f"{counts['conflicts_kept']} kept yours"
+                )
+            console.print()
+            console.print("[bold green]✅ Enhance complete![/bold green]")
+
+        return True
+
+    finally:
+        # Cleanup temp directories
+        shutil.rmtree(temp_base, ignore_errors=True)
+
+
 @click.command()
 @click.pass_context
 @click.argument(
@@ -588,6 +825,18 @@ def display_agent_directory_selection(
     "--adk",
     is_flag=True,
     help="Shortcut for --base-template adk",
+    default=False,
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Force overwrite all files (skip smart-merge comparison)",
+    default=False,
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview changes without applying them (requires saved metadata)",
     default=False,
 )
 @click.option(
@@ -616,6 +865,8 @@ def enhance(
     agent_garden: bool,
     base_template: str | None,
     adk: bool,
+    force: bool,
+    dry_run: bool,
     agent_directory: str | None,
     skip_welcome: bool = False,
     google_api_key: str | None = None,
@@ -665,6 +916,41 @@ def enhance(
         cli_override_args["include_data_ingestion"] = include_data_ingestion
     if prototype:
         cli_override_args["prototype"] = prototype
+
+    # Smart-merge: use 3-way comparison when metadata is available
+    # Skip if --force is set or if running nested with saved config
+    if not force and not os.environ.get(_ENV_USING_SAVED_CONFIG) == "1":
+        project_config = get_project_asp_config(current_dir)
+        if project_config:
+            # Smart-merge available - use 3-way comparison
+            if _run_smart_merge(
+                current_dir,
+                project_config,
+                cli_override_args if cli_override_args else None,
+                auto_approve,
+                dry_run,
+            ):
+                return
+            # If smart-merge returned False, fall through to brute-force
+            console.print(
+                "[yellow]⚠️  Smart-merge failed, falling back to standard mode.[/yellow]"
+            )
+        elif dry_run:
+            console.print(
+                "[bold red]Error:[/bold red] --dry-run requires saved project metadata "
+                "(pyproject.toml with [tool.agent-starter-pack] section)."
+            )
+            return
+        else:
+            console.print(
+                "[dim]No saved metadata found - using standard overwrite mode.[/dim]"
+            )
+
+    if dry_run:
+        console.print(
+            "[bold red]Error:[/bold red] --dry-run is not compatible with --force mode."
+        )
+        return
 
     if check_and_execute_with_saved_config(
         current_dir, auto_approve=auto_approve, cli_overrides=cli_override_args

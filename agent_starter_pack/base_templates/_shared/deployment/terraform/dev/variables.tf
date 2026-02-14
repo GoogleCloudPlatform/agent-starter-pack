@@ -66,7 +66,7 @@ variable "app_sa_roles" {
 {%- endif %}
   ]
 }
-{% if cookiecutter.data_ingestion %}
+{% if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 variable "pipelines_roles" {
   description = "List of roles to assign to the Vertex AI runner service account"
@@ -85,13 +85,7 @@ variable "pipelines_roles" {
     "roles/resourcemanager.projectIamAdmin"
   ]
 }
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
-variable "data_store_region" {
-  type        = string
-  description = "Google Cloud region for resource deployment."
-  default     = "us"
-}
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+
 variable "vector_search_embedding_size" {
   type = number
   description = "The number of dimensions for the embeddings."
@@ -127,5 +121,4 @@ variable "vector_search_machine_type" {
   type = string
   default = "e2-standard-2"
 }
-{% endif %}
 {% endif %}

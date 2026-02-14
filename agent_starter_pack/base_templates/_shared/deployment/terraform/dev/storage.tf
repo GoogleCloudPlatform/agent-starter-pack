@@ -26,7 +26,7 @@ resource "google_storage_bucket" "logs_data_bucket" {
   depends_on = [resource.google_project_service.services]
 }
 
-{% if cookiecutter.data_ingestion %}
+{% if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 resource "google_storage_bucket" "data_ingestion_PIPELINE_GCS_ROOT" {
   name                        = "${var.dev_project_id}-${var.project_name}-rag"
   location                    = var.region
@@ -37,33 +37,6 @@ resource "google_storage_bucket" "data_ingestion_PIPELINE_GCS_ROOT" {
   depends_on = [resource.google_project_service.services]
 }
 
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
-resource "google_discovery_engine_data_store" "data_store_dev" {
-  location                    = var.data_store_region
-  project                     = var.dev_project_id
-  data_store_id               = "${var.project_name}-datastore"
-  display_name                = "${var.project_name}-datastore"
-  industry_vertical           = "GENERIC"
-  content_config              = "NO_CONTENT"
-  solution_types              = ["SOLUTION_TYPE_SEARCH"]
-  create_advanced_site_search = false
-  provider                    = google.dev_billing_override
-  depends_on             = [resource.google_project_service.services]
-}
-
-resource "google_discovery_engine_search_engine" "search_engine_dev" {
-  project        = var.dev_project_id
-  engine_id      = "${var.project_name}-search"
-  collection_id  = "default_collection"
-  location       = google_discovery_engine_data_store.data_store_dev.location
-  display_name   = "Search Engine App Staging"
-  data_store_ids = [google_discovery_engine_data_store.data_store_dev.data_store_id]
-  search_engine_config {
-    search_tier = "SEARCH_TIER_ENTERPRISE"
-  }
-  provider      = google.dev_billing_override
-}
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 resource "google_vertex_ai_index" "vector_search_index" {
   project = var.dev_project_id
   region = var.region
@@ -118,5 +91,4 @@ resource "google_storage_bucket" "vector_search_data_bucket" {
 
   depends_on = [resource.google_project_service.services]
 }
-{% endif %}
 {% endif %}

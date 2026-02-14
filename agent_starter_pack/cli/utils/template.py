@@ -1241,10 +1241,11 @@ def process_template(
 
             # 3. Copy data ingestion files if needed
             if include_data_ingestion and datastore:
-                logging.debug(
-                    f"3. Including data processing files with datastore: {datastore}"
-                )
-                copy_data_ingestion_files(project_template, datastore)
+                if datastore != "vertex_ai_search":
+                    logging.debug(
+                        f"3. Including data processing files with datastore: {datastore}"
+                    )
+                    copy_data_ingestion_files(project_template, datastore)
 
             # 4. Skip remote template files during cookiecutter processing
             # Remote files will be copied after cookiecutter to avoid Jinja conflicts
@@ -1333,7 +1334,7 @@ def process_template(
                             agent_directory=agent_directory,
                         )
 
-                # Copy other folders (frontend, tests, notebooks)
+                # Copy other folders (frontend, tests, notebooks, deployment)
                 other_folders = ["frontend", "tests", "notebooks"]
                 for folder in other_folders:
                     agent_folder = agent_path / folder
@@ -1350,10 +1351,11 @@ def process_template(
 
             # Check if data processing should be included
             if include_data_ingestion and datastore:
-                logging.debug(
-                    f"Including data processing files with datastore: {datastore}"
-                )
-                copy_data_ingestion_files(project_template, datastore)
+                if datastore != "vertex_ai_search":
+                    logging.debug(
+                        f"Including data processing files with datastore: {datastore}"
+                    )
+                    copy_data_ingestion_files(project_template, datastore)
 
             # Create cookiecutter.json in the template root
             # Get settings from template config

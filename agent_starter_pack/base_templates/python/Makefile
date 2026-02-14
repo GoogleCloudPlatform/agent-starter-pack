@@ -314,7 +314,7 @@ setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
 {%- endif %}
-{%- if cookiecutter.data_ingestion %}
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 # ==============================================================================
 # Data Ingestion (RAG capabilities)
@@ -326,17 +326,22 @@ data-ingestion:
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
 		--project-id=$$PROJECT_ID \
 		--region="us-central1" \
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-		--data-store-id="{{cookiecutter.project_name}}-datastore" \
-		--data-store-region="us" \
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 		--vector-search-index="{{cookiecutter.project_name}}-vector-search" \
 		--vector-search-index-endpoint="{{cookiecutter.project_name}}-vector-search-endpoint" \
 		--vector-search-data-bucket-name="$$PROJECT_ID-{{cookiecutter.project_name}}-vs" \
-{%- endif %}
 		--service-account="{{cookiecutter.project_name}}-rag@$$PROJECT_ID.iam.gserviceaccount.com" \
 		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \
 		--pipeline-name="data-ingestion-pipeline")
+{%- elif cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_search" %}
+
+# ==============================================================================
+# Data Sync (Vertex AI Search)
+# ==============================================================================
+
+# Trigger an on-demand sync for the GCS Data Connector
+sync-data:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	bash deployment/terraform/scripts/start_connector_run.sh $$PROJECT_ID us {{cookiecutter.project_name}}-collection
 {%- endif %}
 {%- endif %}
 

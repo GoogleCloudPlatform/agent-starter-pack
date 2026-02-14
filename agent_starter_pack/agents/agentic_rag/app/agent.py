@@ -29,13 +29,22 @@ from google.adk.plugins.bigquery_agent_analytics_plugin import (
 )
 from google.cloud import bigquery
 {%- endif %}
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+from google.adk.tools import VertexAiSearchTool
+{%- endif %}
 from google.genai import types
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 from langchain_google_vertexai import VertexAIEmbeddings
 
 from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
 from {{cookiecutter.agent_directory}}.templates import format_docs
+{%- endif %}
+
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 EMBEDDING_MODEL = "text-embedding-005"
+{%- endif %}
+
 LLM_LOCATION = "global"
 LOCATION = "us-central1"
 LLM = "gemini-3-flash-preview"
@@ -46,25 +55,21 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = LLM_LOCATION
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location=LOCATION)
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 embedding = VertexAIEmbeddings(
     project=project_id, location=LOCATION, model_name=EMBEDDING_MODEL
 )
+{%- endif %}
 
 {% if cookiecutter.datastore_type == "vertex_ai_search" %}
-EMBEDDING_COLUMN = "embedding"
-TOP_K = 5
-
 data_store_region = os.getenv("DATA_STORE_REGION", "us")
-data_store_id = os.getenv("DATA_STORE_ID", "{{cookiecutter.project_name}}-datastore")
-
-retriever = get_retriever(
-    project_id=project_id,
-    data_store_id=data_store_id,
-    data_store_region=data_store_region,
-    embedding=embedding,
-    embedding_column=EMBEDDING_COLUMN,
-    max_documents=10,
+data_store_id = os.getenv("DATA_STORE_ID", "")
+data_store_path = (
+    f"projects/{project_id}/locations/{data_store_region}"
+    f"/collections/{{cookiecutter.project_name}}-collection/dataStores/{data_store_id}"
 )
+
+vertex_search_tool = VertexAiSearchTool(data_store_id=data_store_path)
 {% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 vector_search_index = os.getenv(
     "VECTOR_SEARCH_INDEX", "{{cookiecutter.project_name}}-vector-search"
@@ -84,7 +89,6 @@ retriever = get_retriever(
     vector_search_index_endpoint=vector_search_index_endpoint,
     embedding=embedding,
 )
-{% endif %}
 compressor = get_compressor(
     project_id=project_id,
 )
@@ -114,7 +118,7 @@ def retrieve_docs(query: str) -> str:
         return f"Calling retrieval tool with query:\n\n{query}\n\nraised the following error:\n\n{type(e)}: {e}"
 
     return formatted_docs
-
+{% endif %}
 
 instruction = """You are an AI assistant for question-answering tasks.
 Answer to the best of your ability using the context provided.
@@ -129,7 +133,11 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=instruction,
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+    tools=[vertex_search_tool],
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
     tools=[retrieve_docs],
+{%- endif %}
 )
 
 {%- if cookiecutter.bq_analytics %}

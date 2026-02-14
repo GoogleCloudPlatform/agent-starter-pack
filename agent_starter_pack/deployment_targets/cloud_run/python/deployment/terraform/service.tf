@@ -105,8 +105,8 @@ resource "google_secret_manager_secret_version" "db_password" {
 
 locals {
   data_store_ids = {
-    staging = google_discovery_engine_data_store.data_store_staging.data_store_id
-    prod    = google_discovery_engine_data_store.data_store_prod.data_store_id
+    staging = data.external.data_store_id_staging.result.data_store_id
+    prod    = data.external.data_store_id_prod.result.data_store_id
   }
 }
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}

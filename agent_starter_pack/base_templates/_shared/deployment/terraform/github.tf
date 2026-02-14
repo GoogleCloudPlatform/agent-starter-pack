@@ -156,7 +156,7 @@ resource "github_actions_variable" "artifact_registry_repo_name" {
 }
 {% endif %}
 
-{% if cookiecutter.data_ingestion %}
+{% if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 resource "github_actions_variable" "pipeline_gcs_root_staging" {
   repository    = var.repository_name
   variable_name = "PIPELINE_GCS_ROOT_STAGING"
@@ -199,28 +199,6 @@ resource "github_actions_variable" "pipeline_cron_schedule" {
   depends_on    = [github_repository.repo]
 }
 
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
-resource "github_actions_variable" "data_store_id_staging" {
-  repository    = var.repository_name
-  variable_name = "DATA_STORE_ID_STAGING"
-  value         = google_discovery_engine_data_store.data_store_staging.data_store_id
-  depends_on    = [github_repository.repo]
-}
-
-resource "github_actions_variable" "data_store_id_prod" {
-  repository    = var.repository_name
-  variable_name = "DATA_STORE_ID_PROD"
-  value         = google_discovery_engine_data_store.data_store_prod.data_store_id
-  depends_on    = [github_repository.repo]
-}
-
-resource "github_actions_variable" "data_store_region" {
-  repository    = var.repository_name
-  variable_name = "DATA_STORE_REGION"
-  value         = var.data_store_region
-  depends_on    = [github_repository.repo]
-}
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 resource "github_actions_variable" "vector_search_index_staging" {
   repository    = var.repository_name
   variable_name = "VECTOR_SEARCH_INDEX_STAGING"
@@ -262,7 +240,27 @@ resource "github_actions_variable" "vector_search_bucket_prod" {
   value         = google_storage_bucket.vector_search_data_bucket["prod"].url
   depends_on    = [github_repository.repo]
 }
-{% endif %}
+{% elif cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_search" %}
+resource "github_actions_variable" "data_store_id_staging" {
+  repository    = var.repository_name
+  variable_name = "DATA_STORE_ID_STAGING"
+  value         = data.external.data_store_id_staging.result.data_store_id
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "data_store_id_prod" {
+  repository    = var.repository_name
+  variable_name = "DATA_STORE_ID_PROD"
+  value         = data.external.data_store_id_prod.result.data_store_id
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "data_store_region" {
+  repository    = var.repository_name
+  variable_name = "DATA_STORE_REGION"
+  value         = var.data_store_region
+  depends_on    = [github_repository.repo]
+}
 {% endif %}
 
 resource "github_repository_environment" "production_environment" {

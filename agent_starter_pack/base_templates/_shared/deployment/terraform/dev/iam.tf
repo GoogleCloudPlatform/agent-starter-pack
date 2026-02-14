@@ -70,7 +70,7 @@ resource "google_project_iam_member" "vertex_ai_sa_permissions" {
   depends_on = [resource.google_project_service.services]
 }
 {% endif %}
-{% if cookiecutter.data_ingestion %}
+{% if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 # Service account to run Vertex AI pipeline
 resource "google_service_account" "vertexai_pipeline_app_sa" {
   for_each = local.project_ids

@@ -90,7 +90,7 @@ resource "google_service_account_iam_member" "cicd_run_invoker_account_user" {
   depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
 
-{%- if cookiecutter.data_ingestion %}
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 # Grant Vertex AI SA the required permissions to run the ingestion
 resource "google_project_iam_member" "vertexai_pipeline_sa_roles" {
   for_each = {

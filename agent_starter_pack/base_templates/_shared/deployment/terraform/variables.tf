@@ -104,7 +104,7 @@ variable "cicd_sa_deployment_required_roles" {
   ]
 }
 
-{% if cookiecutter.data_ingestion %}
+{% if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 variable "pipeline_cron_schedule" {
   type        = string
@@ -128,13 +128,7 @@ variable "pipelines_roles" {
     "roles/resourcemanager.projectIamAdmin"
   ]
 }
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
-variable "data_store_region" {
-  type        = string
-  description = "Google Cloud region for resource deployment."
-  default     = "us"
-}
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+
 variable "vector_search_embedding_size" {
   type = number
   description = "The number of dimensions for the embeddings."
@@ -170,7 +164,6 @@ variable "vector_search_machine_type" {
   type = string
   default = "e2-standard-2"
 }
-{% endif %}
 {% endif %}
 variable "repository_owner" {
   description = "Owner of the Git repository - username or organization"

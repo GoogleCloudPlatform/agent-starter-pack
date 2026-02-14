@@ -79,7 +79,7 @@ jobs:
 {%- endif %}
 {%- endif %}
 
-{%- if cookiecutter.data_ingestion %}
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
       - name: Deploy data ingestion pipeline (Production)
         run: |
           cd data_ingestion && pip install uv==0.8.13 && cd data_ingestion_pipeline && \
@@ -87,14 +87,9 @@ jobs:
         env:
           PIPELINE_ROOT: {% raw %}${{ vars.PIPELINE_GCS_ROOT_PROD }}{% endraw %}
           REGION: {% raw %}${{ vars.REGION }}{% endraw %}
-          {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-          DATA_STORE_REGION: {% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}
-          DATA_STORE_ID: {% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %}
-          {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
           VECTOR_SEARCH_INDEX: {% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %}
           VECTOR_SEARCH_INDEX_ENDPOINT: {% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %}
           VECTOR_SEARCH_BUCKET: {% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}
-          {%- endif %}
           PROJECT_ID: {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}
           SERVICE_ACCOUNT: {% raw %}${{ vars.PIPELINE_SA_EMAIL_PROD }}{% endraw %}
           PIPELINE_NAME: {% raw %}${{ vars.PIPELINE_NAME }}{% endraw %}

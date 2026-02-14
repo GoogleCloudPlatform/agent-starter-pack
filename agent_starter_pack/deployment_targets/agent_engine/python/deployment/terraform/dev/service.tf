@@ -78,7 +78,7 @@ resource "google_vertex_ai_reasoning_engine" "app" {
 
       env {
         name  = "DATA_STORE_ID"
-        value = resource.google_discovery_engine_data_store.data_store_dev.data_store_id
+        value = data.external.data_store_id_dev.result.data_store_id
       }
 
       env {

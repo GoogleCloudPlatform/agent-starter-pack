@@ -34,7 +34,7 @@
   - forbidden directories (`datasets/`, `corpus/`, `prompts_dump/`, `embeddings_dump/`)
   - vector snapshot signatures (faiss/qdrant/milvus artifacts)
   - files over size limit except explicit allowlist (`data/`, `artifacts/` if ignored)
-  - static imports from runtime modules into model-training modules
+  - static imports from model-training modules into runtime modules
 
 ### Commit 6: Add commitment generation and verification
 - In MODELS_HOST pipelines, emit:

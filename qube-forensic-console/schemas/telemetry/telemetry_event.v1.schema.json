@@ -1,0 +1,44 @@
+{
+  "$id": "https://q.enterprise/schemas/telemetry/telemetry_event.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TelemetryEvent.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "eventKey",
+    "sessionId",
+    "timestamp",
+    "sourceSystem",
+    "payloadType",
+    "payload",
+    "canonicalHash",
+    "sealPhrase"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "telemetry.event.v1" },
+    "eventKey": { "type": "string" },
+    "sessionId": { "type": "string" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "sourceSystem": { "type": "string" },
+    "payloadType": { "type": "string", "enum": ["qube_forensic_report.v1"] },
+    "payload": { "type": "object" },
+
+    "canonicalHash": { "type": "string" },
+    "sealPhrase": {
+      "type": "string",
+      "const": "Canonical truth, attested and replayable."
+    },
+
+    "lineage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "caseId": { "type": "string" },
+        "checkpointId": { "type": "string" },
+        "kernel": { "type": "string" },
+        "computeNode": { "type": "string" }
+      }
+    }
+  }
+}

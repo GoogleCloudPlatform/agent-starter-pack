@@ -1,0 +1,135 @@
+{
+  "$id": "https://q.enterprise/schemas/forensics/qube_forensic_report.v1.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QubeForensicReport.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "@context",
+    "@type",
+    "caseId",
+    "timestamp",
+    "vehicle",
+    "computeNode",
+    "kernel",
+    "embeddingDimension",
+    "snapshot",
+    "intentSummary",
+    "actuatorVerification",
+    "governance"
+  ],
+  "properties": {
+    "@context": { "type": "string" },
+    "@type": { "const": "QubeForensicReport" },
+
+    "caseId": { "type": "string", "minLength": 6 },
+    "timestamp": { "type": "string", "format": "date-time" },
+
+    "vehicle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["primary"],
+      "properties": {
+        "primary": { "type": "string" },
+        "secondary": { "type": "string" }
+      }
+    },
+
+    "computeNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["model"],
+      "properties": {
+        "model": { "type": "string" },
+        "architecture": { "type": "string" },
+        "processNode": { "type": "string" }
+      }
+    },
+
+    "kernel": { "type": "string" },
+
+    "embeddingDimension": { "type": "integer", "const": 1536 },
+
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sensorBuffer", "environmentContext", "macroTexture"],
+      "properties": {
+        "sensorBuffer": { "$ref": "#/$defs/hashedAsset" },
+        "environmentContext": { "$ref": "#/$defs/hashedAsset" },
+        "macroTexture": { "$ref": "#/$defs/hashedAsset" }
+      }
+    },
+
+    "intentSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "decision"],
+      "properties": {
+        "label": { "type": "string" },
+        "decision": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status"],
+          "properties": {
+            "lateralAdjustmentMeters": { "type": "number" },
+            "velocityMph": { "type": "number" },
+            "status": { "type": "string" }
+          }
+        }
+      }
+    },
+
+    "actuatorVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dtvStatus", "trajectoryVarianceMm", "toleranceThresholdMm"],
+      "properties": {
+        "steeringDeltaStatus": { "type": "string" },
+        "brakePressure": { "type": "number" },
+        "trajectoryVarianceMm": { "type": "number" },
+        "toleranceThresholdMm": { "type": "number" },
+        "dtvStatus": { "type": "string", "enum": ["PASS", "FAIL"] }
+      }
+    },
+
+    "analystConclusion": { "type": "string" },
+
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sealPhrase", "mutationPolicy", "hashAlgorithm"],
+      "properties": {
+        "sealPhrase": {
+          "type": "string",
+          "const": "Canonical truth, attested and replayable."
+        },
+        "mutationPolicy": { "type": "string" },
+        "hashAlgorithm": { "type": "string", "enum": ["SHA-256"] },
+        "signature": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "alg": { "type": "string" },
+            "publicKey": { "type": "string" },
+            "sig": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+
+  "$defs": {
+    "hashedAsset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256"],
+      "properties": {
+        "config": { "type": "string" },
+        "analysis": { "type": "string" },
+        "roadFriction": { "type": "string" },
+        "sha256": { "type": "string", "minLength": 8 }
+      }
+    }
+  }
+}

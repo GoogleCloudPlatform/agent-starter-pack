@@ -1,29 +1,32 @@
-from google.adk.apps.app import App
-from google.adk.apps.app import EventsCompactionConfig
+name: CI
 
-app = App(
-    name='my-agent',
-    root_agent=root_agent,
-    events_compaction_config=EventsCompactionConfig(
-        compaction_interval=3,  # Trigger compaction every 3 new invocations.
-        overlap_size=1          # Include last invocation from the previous window.
-    ),
-)
-from google.adk import Agent
-from google.adk.apps.app import App
-from google.adk.agents.context_cache_config import ContextCacheConfig
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
-root_agent = Agent(
-  # configure an agent using Gemini 2.0 or higher
-)
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-# Create the app with context caching configuration
-app = App(
-    name='my-caching-agent-app',
-    root_agent=root_agent,
-    context_cache_config=ContextCacheConfig(
-        min_tokens=2048,    # Minimum tokens to trigger caching
-        ttl_seconds=600,    # Store for up to 10 minutes
-        cache_intervals=5,  # Refresh after 5 uses
-    ),
-)
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+        # If using uv (suggested by your uv.lock file):
+        # curl -LsSf https://astral.sh/uv/install.sh | sh
+        # uv sync
+
+    - name: Run tests
+      run: |
+        # Adjust this command based on your test runner (e.g., pytest)
+        python -m unittest discover tests

@@ -635,6 +635,22 @@ def setup_cicd(
     # Define tf_dir unconditionally (used later)
     tf_dir = Path("deployment/terraform")
 
+    # Check if Terraform structure exists (prototype projects may lack it)
+    if not (tf_dir / "variables.tf").exists():
+        console.print(
+            "\n❌ Terraform configuration not found in deployment/terraform/",
+            style="bold red",
+        )
+        console.print(
+            "This project appears to have been created without full deployment "
+            "configuration (e.g., in prototype mode)."
+        )
+        console.print(
+            "\nTo add deployment and CI/CD configuration, run:\n"
+            "  [cyan]uvx agent-starter-pack enhance[/]\n"
+        )
+        raise SystemExit(1)
+
     # Auto-detect CI/CD runner based on Terraform files (moved earlier)
     if cicd_runner is None:
         is_github_actions = (tf_dir / "wif.tf").exists() and (

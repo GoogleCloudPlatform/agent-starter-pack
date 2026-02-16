@@ -86,6 +86,7 @@ def generate_pyproject(
             "data_ingestion": "false",
             "datastore_type": "",
             "frontend_type": "",
+            "agent_guidance_filename": "GEMINI.md",
         }
     }
 

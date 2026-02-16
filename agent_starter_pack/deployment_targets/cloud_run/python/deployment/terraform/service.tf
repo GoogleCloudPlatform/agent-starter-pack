@@ -112,13 +112,9 @@ locals {
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 locals {
-  vector_search_indexes = {
-    staging = google_vertex_ai_index.vector_search_index_staging.id
-    prod    = google_vertex_ai_index.vector_search_index_prod.id
-  }
-  vector_search_index_endpoints = {
-    staging = google_vertex_ai_index_endpoint.vector_search_index_endpoint_staging.id
-    prod    = google_vertex_ai_index_endpoint.vector_search_index_endpoint_prod.id
+  vector_search_collections = {
+    for key, project_id in local.deploy_project_ids :
+    key => "projects/${project_id}/locations/${var.vector_search_location}/collections/${var.vector_search_collection_id}"
   }
 }
 {%- endif %}
@@ -178,18 +174,8 @@ resource "google_cloud_run_v2_service" "app" {
       }
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
       env {
-        name  = "VECTOR_SEARCH_INDEX"
-        value = local.vector_search_indexes[each.key]
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_INDEX_ENDPOINT"
-        value = local.vector_search_index_endpoints[each.key]
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_BUCKET"
-        value = google_storage_bucket.vector_search_data_bucket[each.key].url
+        name  = "VECTOR_SEARCH_COLLECTION"
+        value = local.vector_search_collections[each.key]
       }
 {%- endif %}
 {%- endif %}

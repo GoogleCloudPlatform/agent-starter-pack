@@ -20,6 +20,7 @@ settings:
   deployment_targets: ["agent_engine", "cloud_run", "none"]
   extra_dependencies: [
     "google-adk>=1.15.0,<2.0.0",
+    "google-cloud-vectorsearch",
     "langchain-google-vertexai~=2.0.7",
     "langchain~=0.3.24",
     "langchain-core~=0.3.55",

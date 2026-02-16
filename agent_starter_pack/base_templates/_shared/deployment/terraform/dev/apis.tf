@@ -26,6 +26,9 @@ locals {
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+    "vectorsearch.googleapis.com",
+{%- endif %}
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com"

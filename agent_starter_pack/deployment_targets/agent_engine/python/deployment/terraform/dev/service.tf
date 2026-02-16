@@ -88,18 +88,8 @@ resource "google_vertex_ai_reasoning_engine" "app" {
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
       env {
-        name  = "VECTOR_SEARCH_INDEX"
-        value = resource.google_vertex_ai_index.vector_search_index.id
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_INDEX_ENDPOINT"
-        value = resource.google_vertex_ai_index_endpoint.vector_search_index_endpoint.id
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_BUCKET"
-        value = "gs://${resource.google_storage_bucket.data_ingestion_PIPELINE_GCS_ROOT.name}"
+        name  = "VECTOR_SEARCH_COLLECTION"
+        value = "projects/${var.dev_project_id}/locations/${var.vector_search_location}/collections/${var.vector_search_collection_id}"
       }
 {%- endif %}
 {%- endif %}

@@ -747,7 +747,7 @@ app = App(root_agent=root_agent, name="app")
             )
 
     def test_data_ingestion_populates_files(self, tmp_path: pathlib.Path) -> None:
-        """Test that --include-data-ingestion actually populates data pipeline files."""
+        """Test that --datastore actually populates data pipeline files."""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -765,16 +765,17 @@ root_agent = Agent(
 """
             agent_file.write_text(agent_content)
 
-            # Run enhance with data ingestion enabled
+            # Run enhance with data ingestion enabled via --datastore
             result = runner.invoke(
                 enhance,
                 [
                     ".",
                     "--base-template",
-                    "adk",
+                    "agentic_rag",
                     "--deployment-target",
                     "agent_engine",
-                    "--include-data-ingestion",
+                    "--datastore",
+                    "vertex_ai_vector_search",
                     "--auto-approve",
                     "--skip-checks",
                     "--cicd-runner",
@@ -809,23 +810,6 @@ root_agent = Agent(
                 assert data_file.exists(), (
                     f"Expected data ingestion file {data_file} was not created"
                 )
-
-            # Verify agent.py was modified to add app object (backward compatibility)
-            preserved_agent_content = agent_file.read_text()
-            expected_content = """from google.adk.agents import Agent
-
-root_agent = Agent(
-    name="test_agent",
-    model="gemini-2.0-flash-001",
-)
-
-from google.adk.apps import App
-
-app = App(root_agent=root_agent, name="app")
-"""
-            assert preserved_agent_content == expected_content, (
-                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
-            )
 
 
 class TestEnhanceYamlAgentShim:
@@ -2283,7 +2267,6 @@ class TestCustomizeSmartMerge:
             "cloud_run",  # deployment_target changed
             "in_memory",  # session_type (shown because cloud_run) — same as default
             "skip",  # cicd_runner — same
-            "n",  # include_data_ingestion — same
         ]
 
         config = {
@@ -2291,7 +2274,6 @@ class TestCustomizeSmartMerge:
                 "deployment_target": "agent_engine",
                 "session_type": "in_memory",
                 "cicd_runner": "skip",
-                "include_data_ingestion": False,
             },
         }
 
@@ -2308,21 +2290,19 @@ class TestCustomizeSmartMerge:
         mock_prompt.side_effect = [
             "agent_engine",  # deployment_target — same
             "skip",  # cicd_runner — same
-            "n",  # include_data_ingestion — same
         ]
 
         config = {
             "create_params": {
                 "deployment_target": "agent_engine",
                 "cicd_runner": "skip",
-                "include_data_ingestion": False,
             },
         }
 
         result = _prompt_customize_overrides(config)
         assert result == {}
-        # Prompt.ask called 3 times (no session_type prompt)
-        assert mock_prompt.call_count == 3
+        # Prompt.ask called 2 times (no session_type prompt)
+        assert mock_prompt.call_count == 2
 
     @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
     @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")

@@ -497,18 +497,6 @@ def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any
     if new_cicd != current_cicd:
         overrides["cicd_runner"] = new_cicd
 
-    # Data ingestion
-    current_data_ingestion = create_params.get("include_data_ingestion", False)
-    current_data_ingestion_display = "y" if current_data_ingestion else "n"
-    new_data_ingestion = Prompt.ask(
-        f"  Include data ingestion (current: {current_data_ingestion_display})",
-        choices=["y", "n"],
-        default=current_data_ingestion_display,
-    )
-    new_data_ingestion_bool = new_data_ingestion == "y"
-    if new_data_ingestion_bool != current_data_ingestion:
-        overrides["include_data_ingestion"] = new_data_ingestion_bool
-
     console.print()
     return overrides
 
@@ -947,7 +935,6 @@ def enhance(
     deployment_target: str | None,
     cicd_runner: str | None,
     prototype: bool,
-    include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
     debug: bool,
@@ -1005,8 +992,6 @@ def enhance(
         cli_override_args["base_template"] = base_template
     if agent_directory:
         cli_override_args["agent_directory"] = agent_directory
-    if include_data_ingestion:
-        cli_override_args["include_data_ingestion"] = include_data_ingestion
     if prototype:
         cli_override_args["prototype"] = prototype
 
@@ -1482,7 +1467,6 @@ def enhance(
         deployment_target=deployment_target,
         cicd_runner=cicd_runner,
         prototype=prototype,
-        include_data_ingestion=include_data_ingestion,
         datastore=datastore,
         session_type=session_type,
         debug=debug,

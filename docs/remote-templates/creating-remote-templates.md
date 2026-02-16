@@ -429,7 +429,6 @@ base_template = "adk"
 [tool.agent-starter-pack.settings]
 session_type = "cloud_sql"
 deployment_targets = ["cloud_run"]
-include_data_ingestion = true
 ```
 
 ### Official Examples

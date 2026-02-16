@@ -87,9 +87,8 @@ jobs:
         env:
           PIPELINE_ROOT: {% raw %}${{ vars.PIPELINE_GCS_ROOT_PROD }}{% endraw %}
           REGION: {% raw %}${{ vars.REGION }}{% endraw %}
-          VECTOR_SEARCH_INDEX: {% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %}
-          VECTOR_SEARCH_INDEX_ENDPOINT: {% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %}
-          VECTOR_SEARCH_BUCKET: {% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}
+          VECTOR_SEARCH_COLLECTION_ID: {% raw %}${{ vars.VECTOR_SEARCH_COLLECTION_ID }}{% endraw %}
+          VECTOR_SEARCH_LOCATION: {% raw %}${{ vars.VECTOR_SEARCH_LOCATION }}{% endraw %}
           PROJECT_ID: {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}
           SERVICE_ACCOUNT: {% raw %}${{ vars.PIPELINE_SA_EMAIL_PROD }}{% endraw %}
           PIPELINE_NAME: {% raw %}${{ vars.PIPELINE_NAME }}{% endraw %}
@@ -122,6 +121,6 @@ jobs:
             --entrypoint-object=agent_engine \
             --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
             --service-account={% raw %}${{ vars.APP_SERVICE_ACCOUNT_PROD }}{% endraw %} \
-            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_a2a %},AGENT_VERSION=$AGENT_VERSION{%- endif %},LOGS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_PROD }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_PROD }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_PROD }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_PROD }}{% endraw %}{%- endif %}{%- endif %}"
+            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_a2a %},AGENT_VERSION=$AGENT_VERSION{%- endif %},LOGS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_PROD }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_COLLECTION_ID={% raw %}${{ vars.VECTOR_SEARCH_COLLECTION_ID }}{% endraw %},VECTOR_SEARCH_LOCATION={% raw %}${{ vars.VECTOR_SEARCH_LOCATION }}{% endraw %}{%- endif %}{%- endif %}"
 {%- endif %}
 

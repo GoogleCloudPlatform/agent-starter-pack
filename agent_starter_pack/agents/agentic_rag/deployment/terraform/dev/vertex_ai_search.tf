@@ -26,8 +26,20 @@ resource "google_storage_bucket" "docs_bucket" {
 
 # Set up GCS Data Connector for dev
 resource "null_resource" "data_connector_dev" {
+  triggers = {
+    project_id      = var.dev_project_id
+    location        = var.data_store_region
+    collection_id   = "${var.project_name}-collection"
+    scripts_dir     = "${path.module}/../scripts"
+  }
+
   provisioner "local-exec" {
-    command = "bash ${path.module}/scripts/setup_data_connector.sh ${var.dev_project_id} ${var.data_store_region} ${var.project_name}-collection ${var.project_name} gs://${google_storage_bucket.docs_bucket.name} ${var.data_connector_refresh_interval}"
+    command = "uv run ${path.module}/../scripts/setup_data_connector.py ${var.dev_project_id} ${var.data_store_region} ${var.project_name}-collection ${var.project_name} gs://${google_storage_bucket.docs_bucket.name} --refresh-interval ${var.data_connector_refresh_interval} --data-schema ${var.data_connector_data_schema}"
+  }
+
+  provisioner "local-exec" {
+    when    = destroy
+    command = "uv run ${self.triggers.scripts_dir}/delete_data_connector.py ${self.triggers.project_id} ${self.triggers.location} ${self.triggers.collection_id}"
   }
 
   depends_on = [google_storage_bucket.docs_bucket]
@@ -35,23 +47,22 @@ resource "null_resource" "data_connector_dev" {
 
 # Retrieve the auto-created data store ID for dev
 data "external" "data_store_id_dev" {
-  program = ["bash", "${path.module}/scripts/get_data_store_id.sh"]
+  program = ["uv", "run", "${path.module}/../scripts/get_data_store_id.py"]
 
   query = {
     project_id    = var.dev_project_id
     location      = var.data_store_region
     collection_id = "${var.project_name}-collection"
-    display_name  = var.project_name
   }
 
   depends_on = [null_resource.data_connector_dev]
 }
 
-# Search engine app for dev
+# Search engine app for dev — uses default_collection as Discovery Engine places data stores there regardless of connector collectionId
 resource "google_discovery_engine_search_engine" "search_engine_dev" {
   project        = var.dev_project_id
   engine_id      = "${var.project_name}-search"
-  collection_id  = "${var.project_name}-collection"
+  collection_id  = "default_collection"
   location       = var.data_store_region
   display_name   = "Search Engine App Dev"
   data_store_ids = [data.external.data_store_id_dev.result.data_store_id]

@@ -19,7 +19,6 @@ import sys
 
 import backoff
 from data_ingestion_pipeline.pipeline import pipeline
-from google.cloud import aiplatform
 from kfp import compiler
 
 PIPELINE_FILE_NAME = "data_processing_pipeline.json"
@@ -41,32 +40,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--region", default=os.getenv("REGION"), help="Vertex AI Pipelines region"
     )
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     parser.add_argument(
-        "--data-store-region",
-        default=os.getenv("DATA_STORE_REGION"),
-        help="Data Store region",
+        "--collection-id",
+        default=os.getenv("VECTOR_SEARCH_COLLECTION_ID"),
+        help="Vector Search 2.0 Collection ID",
     )
-    parser.add_argument(
-        "--data-store-id", default=os.getenv("DATA_STORE_ID"), help="Data store ID"
-    )
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-    parser.add_argument(
-        "--vector-search-index",
-        default=os.getenv("VECTOR_SEARCH_INDEX"),
-        help="Vector Search Index",
-    )
-    parser.add_argument(
-        "--vector-search-index-endpoint",
-        default=os.getenv("VECTOR_SEARCH_INDEX_ENDPOINT"),
-        help="Vector Search Index Endpoint",
-    )
-    parser.add_argument(
-        "--vector-search-data-bucket-name",
-        default=os.getenv("VECTOR_SEARCH_BUCKET"),
-        help="Vector Search Data Bucket Name",
-    )
-{%- endif %}
     parser.add_argument(
         "--service-account",
         default=os.getenv("SERVICE_ACCOUNT"),
@@ -97,9 +75,35 @@ def parse_args() -> argparse.Namespace:
         default=os.getenv("SCHEDULE_ONLY", "false").lower() == "true",
         help="Schedule only (do not submit)",
     )
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Run locally using KFP SubprocessRunner instead of submitting to Vertex AI",
+    )
     parsed_args = parser.parse_args()
 
-    # Validate required parameters
+    # In local mode, only project_id and region are strictly required
+    if parsed_args.local:
+        missing_params = []
+        required_params = {
+            "project_id": parsed_args.project_id,
+            "region": parsed_args.region,
+            "collection_id": parsed_args.collection_id,
+        }
+
+        for param_name, param_value in required_params.items():
+            if param_value is None:
+                missing_params.append(param_name)
+
+        if missing_params:
+            logging.error("Error: The following required parameters are missing:")
+            for param in missing_params:
+                logging.error(f"  - {param}")
+            sys.exit(1)
+
+        return parsed_args
+
+    # Validate required parameters for remote execution
     missing_params = []
     required_params = {
         "project_id": parsed_args.project_id,
@@ -107,19 +111,8 @@ def parse_args() -> argparse.Namespace:
         "service_account": parsed_args.service_account,
         "pipeline_root": parsed_args.pipeline_root,
         "pipeline_name": parsed_args.pipeline_name,
+        "collection_id": parsed_args.collection_id,
     }
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-    required_params["data_store_region"] = parsed_args.data_store_region
-    required_params["data_store_id"] = parsed_args.data_store_id
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-    required_params["vector_search_index"] = parsed_args.vector_search_index
-    required_params["vector_search_index_endpoint"] = (
-        parsed_args.vector_search_index_endpoint
-    )
-    required_params["vector_search_data_bucket_name"] = (
-        parsed_args.vector_search_data_bucket_name
-    )
-{%- endif %}
 
     for param_name, param_value in required_params.items():
         if param_value is None:
@@ -137,6 +130,28 @@ def parse_args() -> argparse.Namespace:
     return parsed_args
 
 
+def run_local(args: argparse.Namespace) -> None:
+    """Run the pipeline locally using KFP SubprocessRunner.
+
+    This executes the pipeline components as local subprocesses
+    without needing Vertex AI Pipelines infrastructure.
+    """
+    from kfp import local
+
+    local.init(runner=local.SubprocessRunner(use_venv=False))
+
+    from datetime import datetime, timezone
+
+    logging.info("Running pipeline locally...")
+    pipeline(
+        project_id=args.project_id,
+        location=args.region,
+        schedule_time=datetime.now(timezone.utc).isoformat(),
+        collection_id=args.collection_id,
+    )
+    logging.info("Local pipeline run completed!")
+
+
 @backoff.on_exception(
     backoff.expo,
     Exception,
@@ -148,6 +163,8 @@ def parse_args() -> argparse.Namespace:
 )
 def submit_and_wait_pipeline(pipeline_job_params: dict, service_account: str) -> None:
     """Submit pipeline job and wait for completion with retry logic."""
+    from google.cloud import aiplatform
+
     job = aiplatform.PipelineJob(**pipeline_job_params)
     job.submit(service_account=service_account)
     job.wait()
@@ -155,6 +172,10 @@ def submit_and_wait_pipeline(pipeline_job_params: dict, service_account: str) ->
 
 if __name__ == "__main__":
     args = parse_args()
+
+    if args.local:
+        run_local(args)
+        sys.exit(0)
 
     if args.schedule_only and not args.cron_schedule:
         logging.error("Missing --cron-schedule argument for scheduling")
@@ -168,6 +189,8 @@ if __name__ == "__main__":
         logging.info(f"{arg_name}: {arg_value}")
     logging.info("--------------\n")
 
+    from kfp import dsl
+
     compiler.Compiler().compile(pipeline_func=pipeline, package_path=PIPELINE_FILE_NAME)
     # Create common pipeline job parameters
     pipeline_job_params = {
@@ -180,24 +203,10 @@ if __name__ == "__main__":
         "parameter_values": {
             "project_id": args.project_id,
             "location": args.region,
+            "schedule_time": dsl.PIPELINE_JOB_SCHEDULE_TIME_UTC_PLACEHOLDER,
+            "collection_id": args.collection_id,
         },
     }
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-    pipeline_job_params["parameter_values"]["data_store_region"] = (
-        args.data_store_region
-    )
-    pipeline_job_params["parameter_values"]["data_store_id"] = args.data_store_id
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-    pipeline_job_params["parameter_values"]["vector_search_index"] = (
-        args.vector_search_index
-    )
-    pipeline_job_params["parameter_values"]["vector_search_index_endpoint"] = (
-        args.vector_search_index_endpoint
-    )
-    pipeline_job_params["parameter_values"]["vector_search_data_bucket_name"] = (
-        args.vector_search_data_bucket_name
-    )
-{%- endif %}
 
     if not args.schedule_only:
         logging.info("Running pipeline and waiting for completion...")
@@ -205,6 +214,8 @@ if __name__ == "__main__":
         logging.info("Pipeline completed!")
 
     if args.cron_schedule and args.schedule_only:
+        from google.cloud import aiplatform
+
         # Create pipeline job instance for scheduling
         job = aiplatform.PipelineJob(**pipeline_job_params)
         pipeline_job_schedule = aiplatform.PipelineJobSchedule(

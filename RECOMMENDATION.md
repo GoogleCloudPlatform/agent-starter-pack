@@ -1,37 +1,89 @@
-# Recommendation: hard split to minimize contamination and token waste
+# Recommendation: branch-first enterprise delivery with a stable AI adapter
 
-## Chosen split
+## Default operating model for client engagements
 
-- **AGENTS_HOST:** `Q-Enterprises/core-orchestrator`
-- **MODELS_HOST:** `adaptco/core-orchestrator`
+For initial discovery, proof-of-concept, and first production candidate work, keep implementation in the current repository on a dedicated feature branch:
 
-## Why this minimizes context contamination
+- **Branch:** `feat/charlie-fox-enterprise`
 
-1. Runtime orchestration and policy gates remain in one lean control-plane repo.
-2. Model-heavy churn (indexes, datasets, checkpoints, embedding exports) is isolated to a data-plane repo.
-3. Agent prompts no longer risk accidental inclusion of corpora/index internals from co-located files.
-4. CI/CD cadence can diverge safely: runtime hotfixes are not blocked by model pipeline rebuild cycles.
+Only move to a separate repository when one of these is true:
 
-## Explicit AGENTS_HOST boundaries (forbidden content)
+1. The client requires separate legal or security ownership boundaries.
+2. The client needs independent billing/access governance.
+3. The work has a distinct long-term product lifecycle.
 
-The following are forbidden in AGENTS_HOST:
+## Stability principle: keep the model behind an adapter
 
-- Model weights/checkpoints: `*.safetensors`, `*.pt`, `*.bin`, `*.ckpt`, `*.onnx` (above threshold)
-- Corpora/data dumps: `datasets/`, `corpus/`, `prompts_dump/`, `embeddings_dump/`
-- Vector snapshots: FAISS indexes, Qdrant snapshots, Milvus dumps
-- Raw training/eval prompt dumps containing proprietary context
-- Large binary artifacts not in explicit allowlist storage
+Treat the LLM provider as replaceable infrastructure. Keep business logic and workflows model-agnostic by using a provider interface.
 
-## AGENTS_HOST allowed content
+### Why this matters
 
-- Orchestrator logic, tool routers, MCP/A2A bridges
-- Policy/theta gates and receipt verification logic
-- Interface contracts: schemas, tool definitions, model/reference IDs
-- Commit proofs + URIs + verdict summaries only
+- The client system remains stable if model vendors or versions change.
+- Switching providers becomes a config and integration task, not a platform rewrite.
+- Reliability controls (timeouts, retries, fallback) stay centralized.
 
-## MODELS_HOST responsibility boundary
+## Client-safe architecture (recommended)
 
-- Dataset and build manifests
-- Embedding pipelines and RAG index build jobs
-- LoRA/training jobs and model registration metadata
-- Publishing artifact commitments to append-only ledger
+### 1) Application Layer (stable)
+
+- Business workflows (onboarding steps, approvals, policies)
+- RBAC, tenant isolation, and audit logging
+- Prompt templates with explicit versioning
+
+### 2) Orchestrator Layer
+
+- Routes user intent to tools, RAG, or worker agents
+- Enforces guardrails, policy checks, and escalation logic
+
+### 3) Multimodal RAG Layer
+
+- Ingestion pipelines for docs, images, video transcripts, and SOPs
+- Embeddings with metadata filtering by role and tenant
+- Retrieval + reranking + citation output
+
+### 4) LLM Provider Layer
+
+- ChatGPT (or other provider) behind a provider interface
+- Timeouts, retries, circuit breakers, and fallback model policy
+
+## Multi-user prompting without destabilizing core behavior
+
+Do **not** let user prompts mutate global system behavior directly.
+
+Version and govern these assets explicitly:
+
+- System prompts
+- Tool definitions
+- Retrieval policies
+- Worker-agent playbooks
+
+Roll out with staging and canary releases before production.
+
+## Evaluation and quality gates
+
+Maintain an eval suite that runs before promotion:
+
+- Task accuracy
+- Hallucination rate
+- Policy and compliance adherence
+- Safety/regulatory checks where applicable
+
+## Client-facing language (proposal-ready)
+
+Use concise statements such as:
+
+- “We will keep the intelligence layer modular and governed.”
+- “Your business logic stays stable even as model capabilities evolve.”
+- “Multi-user access is controlled through enterprise permissions and auditability.”
+
+## Optional extension: autonomous Unity RL pipeline
+
+If the engagement includes game AI or simulation training, add a dedicated MLOps track:
+
+1. Generate Unity C# behavior scripts from scoped specs.
+2. Build Unity environments headlessly.
+3. Train RL agents continuously (offline + online fine-tuning).
+4. Register and version models for deployment.
+5. Schedule nightly or continuous retraining with monitoring.
+
+This should still follow the same adapter and governance model used above.

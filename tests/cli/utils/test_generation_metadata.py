@@ -294,7 +294,6 @@ frontend_type = "streamlit"
         assert "cloud_sql" in cli_args
         assert "--cicd-runner" in cli_args
         assert "github_actions" in cli_args
-        assert "--include-data-ingestion" in cli_args or "-i" in cli_args
         assert "--datastore" in cli_args or "-ds" in cli_args
         assert "vertex_ai_vector_search" in cli_args
 

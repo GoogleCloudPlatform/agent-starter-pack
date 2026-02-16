@@ -109,7 +109,7 @@ def get_test_matrix() -> list[CICDTestConfig]:
         CICDTestConfig(
             agent="agentic_rag",
             deployment_target="agent_engine",
-            extra_params="--include-data-ingestion,--datastore,vertex_ai_vector_search",
+            extra_params="--datastore,vertex_ai_vector_search",
         ),
         # CICDTestConfig(
         #     agent="agentic_rag",

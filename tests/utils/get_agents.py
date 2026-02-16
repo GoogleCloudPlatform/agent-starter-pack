@@ -63,7 +63,6 @@ def get_test_combinations_to_run() -> list[tuple[str, str, list[str] | None]]:
         if agent == "agentic_rag":
             # Add vertex_ai_search variant
             params = [
-                "--include-data-ingestion",
                 "--datastore",
                 "vertex_ai_search",
             ]
@@ -74,7 +73,6 @@ def get_test_combinations_to_run() -> list[tuple[str, str, list[str] | None]]:
 
             # Add vertex_ai_vector_search variant
             params = [
-                "--include-data-ingestion",
                 "--datastore",
                 "vertex_ai_vector_search",
             ]

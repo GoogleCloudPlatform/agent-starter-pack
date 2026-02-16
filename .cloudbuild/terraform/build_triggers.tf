@@ -33,7 +33,7 @@ locals {
     "agent_starter_pack/agents/**",
     "agent_starter_pack/cli/**",
     "tests/**",
-    "agent_starter_pack/data_ingestion/**",
+    "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
     "pyproject.toml",
     "uv.lock",
     ".cloudbuild/**",
@@ -42,7 +42,7 @@ locals {
   lint_templated_agents_included_files = [
     "agent_starter_pack/cli/**",
     "agent_starter_pack/base_templates/**",
-    "agent_starter_pack/data_ingestion/**",
+    "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
     "agent_starter_pack/deployment_targets/**",
     "tests/integration/test_template_linting.py",
     "tests/integration/test_templated_patterns.py",
@@ -82,11 +82,11 @@ locals {
     },
     {
       name  = "agentic_rag-agent_engine-vertex_ai_search"
-      value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search"
+      value = "agentic_rag,agent_engine,--datastore,vertex_ai_search"
     },
     {
       name  = "agentic_rag-cloud_run-vertex_ai_vector_search"
-      value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
+      value = "agentic_rag,cloud_run,--datastore,vertex_ai_vector_search"
     },
     {
       name  = "adk_live-agent_engine"
@@ -237,7 +237,7 @@ locals {
     },
     {
       name  = "agentic_rag-agent_engine-vertex_ai_search-github"
-      value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search,--cicd-runner,github_actions"
+      value = "agentic_rag,agent_engine,--datastore,vertex_ai_search,--cicd-runner,github_actions"
     },
     {
       name  = "adk_live-agent_engine-github"
@@ -257,11 +257,11 @@ locals {
     },
     {
       name  = "agentic_rag-agent_engine-vertex_ai_search"
-      value = "agentic_rag,agent_engine,--include-data-ingestion,--datastore,vertex_ai_search"
+      value = "agentic_rag,agent_engine,--datastore,vertex_ai_search"
     },
     {
       name  = "agentic_rag-cloud_run-vertex_ai_vector_search"
-      value = "agentic_rag,cloud_run,--include-data-ingestion,--datastore,vertex_ai_vector_search"
+      value = "agentic_rag,cloud_run,--datastore,vertex_ai_vector_search"
     },
     {
       name  = "adk_live-agent_engine"
@@ -388,7 +388,7 @@ locals {
         "pyproject.toml",
         ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
         "agent_starter_pack/agents/agentic_rag/**",
-        "agent_starter_pack/data_ingestion/**",
+        "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
         "pyproject.toml",
         ] : substr(combo.name, 0, 8) == "adk_live" ? [
         "agent_starter_pack/agents/adk_live/**",
@@ -401,7 +401,7 @@ locals {
         # Shared and Python base templates only (not Go/Java/TypeScript)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
-        "agent_starter_pack/data_ingestion/**",
+        "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
         # Python deployment targets only (not Go/Java/TypeScript)
         "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
         "agent_starter_pack/deployment_targets/agent_engine/python/**",
@@ -562,9 +562,9 @@ resource "google_cloudbuild_trigger" "main_e2e_deployment_test" {
 
   substitutions = {
     _TEST_AGENT_COMBINATION = each.value.value
-    _E2E_DEV_PROJECT        = var.e2e_test_project_mapping.dev
-    _E2E_STAGING_PROJECT    = var.e2e_test_project_mapping.staging
-    _E2E_PROD_PROJECT       = var.e2e_test_project_mapping.prod
+    _E2E_DEV_PROJECT        = startswith(each.key, "agentic_rag") ? var.e2e_rag_project_mapping.dev : var.e2e_test_project_mapping.dev
+    _E2E_STAGING_PROJECT    = startswith(each.key, "agentic_rag") ? var.e2e_rag_project_mapping.staging : var.e2e_test_project_mapping.staging
+    _E2E_PROD_PROJECT       = startswith(each.key, "agentic_rag") ? var.e2e_rag_project_mapping.prod : var.e2e_test_project_mapping.prod
     _SECRETS_PROJECT_ID     = "asp-e2e-vars"
     _COMMIT_MESSAGE         = "$(push.head_commit.message)"
   }

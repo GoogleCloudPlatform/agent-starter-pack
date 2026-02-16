@@ -21,61 +21,40 @@ from kfp import dsl
 def pipeline(
     project_id: str,
     location: str,
+    schedule_time: str = "1970-01-01T00:00:00Z",
     is_incremental: bool = True,
     look_back_days: int = 1,
     chunk_size: int = 1500,
     chunk_overlap: int = 20,
+    max_rows: int = 100,
     destination_table: str = "incremental_questions_embeddings",
     deduped_table: str = "questions_embeddings",
     destination_dataset: str = "{{cookiecutter.project_name | replace('-', '_')}}_stackoverflow_data",
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-    data_store_region: str = "",
-    data_store_id: str = "",
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-    vector_search_index: str = "",
-    vector_search_index_endpoint: str = "",
-    vector_search_data_bucket_name: str = "",
-    ingestion_batch_size: int = 1000,
-{%- endif %}
+    collection_id: str = "",
+    ingestion_batch_size: int = 250,
 ) -> None:
     """Processes data and ingests it into a datastore for RAG Retrieval"""
 
-    # Process the data and generate embeddings
+    # Process the data
     processed_data = process_data(
         project_id=project_id,
-        schedule_time=dsl.PIPELINE_JOB_SCHEDULE_TIME_UTC_PLACEHOLDER,
+        schedule_time=schedule_time,
         is_incremental=is_incremental,
         look_back_days=look_back_days,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
+        max_rows=max_rows,
         destination_dataset=destination_dataset,
         destination_table=destination_table,
         deduped_table=deduped_table,
         location=location,
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-        embedding_column="embedding",{% endif %}
     ).set_retry(num_retries=2)
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
-    # Ingest the processed data into Vertex AI Search datastore
-    ingest_data(
-        project_id=project_id,
-        data_store_region=data_store_region,
-        input_files=processed_data.output,
-        data_store_id=data_store_id,
-        embedding_column="embedding",
-    ).set_retry(num_retries=2)
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-    # Ingest the processed data into Vertex AI Vector Search
+
+    # Ingest the processed data into Vector Search 2.0 Collection
     ingest_data(
         project_id=project_id,
         location=location,
-        vector_search_index=vector_search_index,
-        vector_search_index_endpoint=vector_search_index_endpoint,
-        vector_search_data_bucket_name=vector_search_data_bucket_name,
+        collection_id=collection_id,
         input_table=processed_data.output,
-        schedule_time=dsl.PIPELINE_JOB_SCHEDULE_TIME_UTC_PLACEHOLDER,
-        is_incremental=False,
-        look_back_days=look_back_days,
         ingestion_batch_size=ingestion_batch_size,
     ).set_retry(num_retries=2)
-{% endif %}

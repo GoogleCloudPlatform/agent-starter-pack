@@ -16,12 +16,18 @@
 variable "data_store_region" {
   type        = string
   description = "Region for the Vertex AI Search data store."
-  default     = "us"
+  default     = "global"
 }
 
 variable "data_connector_refresh_interval" {
   type        = string
   description = "Refresh interval for the GCS Data Connector periodic sync."
   default     = "86400s"
+}
+
+variable "data_connector_data_schema" {
+  type        = string
+  description = "Data schema for the GCS Data Connector. Use 'content' for unstructured files (PDF, HTML, TXT), 'document' for NDJSON/JSONL, 'csv' for CSV, or 'custom' for custom JSON."
+  default     = "content"
 }
 {% endif %}

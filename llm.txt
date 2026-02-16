@@ -76,8 +76,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 *   `--region`: GCP region (default: `us-central1`).
 
 **Data & Storage:**
-*   `-i, --include-data-ingestion`: Include data ingestion pipeline.
-*   `-ds, --datastore`: Datastore type (`vertex_ai_search`, `vertex_ai_vector_search`, `cloud_sql`).
+*   `-ds, --datastore`: Datastore type for data ingestion (`vertex_ai_search`, `vertex_ai_vector_search`, `cloud_sql`). Automatically enables data ingestion when specified.
 *   `--session-type`: Session storage (`in_memory`, `cloud_sql`, `agent_engine`).
 
 **Project Creation:**

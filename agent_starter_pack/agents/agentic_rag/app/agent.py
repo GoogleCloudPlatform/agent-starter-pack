@@ -34,15 +34,8 @@ from google.adk.tools import VertexAiSearchTool
 {%- endif %}
 from google.genai import types
 {%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-from langchain_google_vertexai import VertexAIEmbeddings
 
-from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
-from {{cookiecutter.agent_directory}}.templates import format_docs
-{%- endif %}
-
-{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-
-EMBEDDING_MODEL = "text-embedding-005"
+from {{cookiecutter.agent_directory}}.retrievers import search_collection
 {%- endif %}
 
 LLM_LOCATION = "global"
@@ -55,42 +48,22 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = LLM_LOCATION
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location=LOCATION)
-{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-embedding = VertexAIEmbeddings(
-    project=project_id, location=LOCATION, model_name=EMBEDDING_MODEL
-)
-{%- endif %}
 
 {% if cookiecutter.datastore_type == "vertex_ai_search" %}
-data_store_region = os.getenv("DATA_STORE_REGION", "us")
-data_store_id = os.getenv("DATA_STORE_ID", "")
+data_store_region = os.getenv("DATA_STORE_REGION", "global")
+data_store_id = os.getenv(
+    "DATA_STORE_ID", "{{cookiecutter.project_name}}-collection_documents"
+)
 data_store_path = (
     f"projects/{project_id}/locations/{data_store_region}"
-    f"/collections/{{cookiecutter.project_name}}-collection/dataStores/{data_store_id}"
+    f"/collections/default_collection/dataStores/{data_store_id}"
 )
 
 vertex_search_tool = VertexAiSearchTool(data_store_id=data_store_path)
 {% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-vector_search_index = os.getenv(
-    "VECTOR_SEARCH_INDEX", "{{cookiecutter.project_name}}-vector-search"
-)
-vector_search_index_endpoint = os.getenv(
-    "VECTOR_SEARCH_INDEX_ENDPOINT", "{{cookiecutter.project_name}}-vector-search-endpoint"
-)
-vector_search_bucket = os.getenv(
-    "VECTOR_SEARCH_BUCKET", f"{project_id}-{{cookiecutter.project_name}}-vs"
-)
-
-retriever = get_retriever(
-    project_id=project_id,
-    region=LOCATION,
-    vector_search_bucket=vector_search_bucket,
-    vector_search_index=vector_search_index,
-    vector_search_index_endpoint=vector_search_index_endpoint,
-    embedding=embedding,
-)
-compressor = get_compressor(
-    project_id=project_id,
+vector_search_collection = os.getenv(
+    "VECTOR_SEARCH_COLLECTION",
+    f"projects/{project_id}/locations/{LOCATION}/collections/{{cookiecutter.project_name}}-collection",
 )
 
 
@@ -103,21 +76,18 @@ def retrieve_docs(query: str) -> str:
         query (str): The user's question or search query.
 
     Returns:
-        str: Formatted string containing relevant document content retrieved and ranked based on the query.
+        str: Formatted string containing relevant document content.
     """
     try:
-        # Use the retriever to fetch relevant documents based on the query
-        retrieved_docs = retriever.invoke(query)
-        # Re-rank docs with Vertex AI Rank for better relevance
-        ranked_docs = compressor.compress_documents(
-            documents=retrieved_docs, query=query
+        return search_collection(
+            query=query,
+            collection_path=vector_search_collection,
         )
-        # Format ranked documents into a consistent structure for LLM consumption
-        formatted_docs = format_docs.format(docs=ranked_docs)
     except Exception as e:
-        return f"Calling retrieval tool with query:\n\n{query}\n\nraised the following error:\n\n{type(e)}: {e}"
-
-    return formatted_docs
+        return (
+            f"Calling retrieval tool with query:\n\n{query}\n\n"
+            f"raised the following error:\n\n{type(e)}: {e}"
+        )
 {% endif %}
 
 instruction = """You are an AI assistant for question-answering tasks.

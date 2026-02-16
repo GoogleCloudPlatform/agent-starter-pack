@@ -12,76 +12,49 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 {%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-# ruff: noqa
 
-import os
-
-from unittest.mock import MagicMock
-from langchain_google_community.vertex_rank import VertexAIRank
-from langchain_google_vertexai import VertexAIEmbeddings
-from google.cloud import aiplatform
-from langchain_google_vertexai import VectorSearchVectorStore
-from langchain_core.vectorstores import VectorStoreRetriever
+from google.cloud import vectorsearch_v1beta
 
 
-def get_retriever(
-    project_id: str,
-    region: str,
-    vector_search_bucket: str,
-    vector_search_index: str,
-    vector_search_index_endpoint: str,
-    embedding: VertexAIEmbeddings,
-) -> VectorStoreRetriever:
+def search_collection(
+    query: str,
+    collection_path: str,
+    top_k: int = 10,
+) -> str:
+    """Search a Vector Search 2.0 Collection using semantic search.
+
+    Args:
+        query: The search query text.
+        collection_path: Full resource path of the collection.
+        top_k: Number of results to return.
+
+    Returns:
+        Formatted string containing relevant document content.
     """
-    Creates and returns an instance of the retriever service.
-    """
-    try:
-        aiplatform.init(
-            project=project_id,
-            location=region,
-            staging_bucket=vector_search_bucket,
-        )
+    client = vectorsearch_v1beta.DataObjectSearchServiceClient()
 
-        my_index = aiplatform.MatchingEngineIndex(vector_search_index)
+    request = vectorsearch_v1beta.SearchDataObjectsRequest(
+        parent=collection_path,
+        semantic_search=vectorsearch_v1beta.SemanticSearch(
+            search_text=query,
+            search_field="text_embedding",
+            task_type="QUESTION_ANSWERING",
+            top_k=top_k,
+            output_fields=vectorsearch_v1beta.OutputFields(
+                data_fields=["question_id", "text_chunk", "full_text_md"]
+            ),
+        ),
+    )
 
-        my_index_endpoint = aiplatform.MatchingEngineIndexEndpoint(
-            vector_search_index_endpoint
-        )
+    results = client.search_data_objects(request)
 
-        return VectorSearchVectorStore.from_components(
-            project_id=project_id,
-            region=region,
-            gcs_bucket_name=vector_search_bucket.replace("gs://", ""),
-            index_id=my_index.name,
-            endpoint_id=my_index_endpoint.name,
-            embedding=embedding,
-            stream_update=True,
-        ).as_retriever()
-    except Exception:
-        retriever = MagicMock()
+    formatted_parts = []
+    for i, result in enumerate(results):
+        text_chunk = result.data_object.data.get("text_chunk", "")
+        formatted_parts.append(f"<Document {i}>\n{text_chunk}\n</Document {i}>")
 
-        def raise_exception(*args, **kwargs) -> None:
-            """Function that raises an exception when the retriever is not available."""
-            raise Exception("Retriever not available")
+    if not formatted_parts:
+        return "No relevant documents found."
 
-        retriever.invoke = raise_exception
-        return retriever
-
-
-def get_compressor(project_id: str, top_n: int = 5) -> VertexAIRank:
-    """
-    Creates and returns an instance of the compressor service.
-    """
-    try:
-        return VertexAIRank(
-            project_id=project_id,
-            location_id="global",
-            ranking_config="default_ranking_config",
-            title_field="id",
-            top_n=top_n,
-        )
-    except Exception:
-        compressor = MagicMock()
-        compressor.compress_documents = lambda x: []
-        return compressor
+    return "## Context provided:\n" + "\n".join(formatted_parts)
 {%- endif %}

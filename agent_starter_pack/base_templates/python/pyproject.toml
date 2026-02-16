@@ -129,3 +129,6 @@ session_type = "{{cookiecutter.session_type or 'none'}}"
 cicd_runner = "{{cookiecutter.cicd_runner}}"
 include_data_ingestion = {{ cookiecutter.data_ingestion | lower }}
 datastore = "{{cookiecutter.datastore_type or 'none'}}"
+{%- if cookiecutter.agent_guidance_filename != "GEMINI.md" %}
+agent_guidance_filename = "{{cookiecutter.agent_guidance_filename}}"
+{%- endif %}

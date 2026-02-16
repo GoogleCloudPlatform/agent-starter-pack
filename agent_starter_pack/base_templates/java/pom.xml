@@ -43,6 +43,9 @@
     <asp.agent_directory>src/main/java</asp.agent_directory>
     <asp.deployment_target>{{cookiecutter.deployment_target}}</asp.deployment_target>
     <asp.cicd_runner>{{cookiecutter.cicd_runner}}</asp.cicd_runner>
+{%- if cookiecutter.agent_guidance_filename != "GEMINI.md" %}
+    <asp.agent_guidance_filename>{{cookiecutter.agent_guidance_filename}}</asp.agent_guidance_filename>
+{%- endif %}
   </properties>
 
   <dependencies>

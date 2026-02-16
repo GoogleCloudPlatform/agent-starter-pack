@@ -951,6 +951,7 @@ def enhance(
     skip_welcome: bool = False,
     google_api_key: str | None = None,
     bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -994,6 +995,8 @@ def enhance(
         cli_override_args["agent_directory"] = agent_directory
     if prototype:
         cli_override_args["prototype"] = prototype
+    if agent_guidance_filename != "GEMINI.md":
+        cli_override_args["agent_guidance_filename"] = agent_guidance_filename
 
     # Smart-merge is the default when saved config exists (unless --force).
     # Skip if running in subprocess with saved config (subprocess re-execution
@@ -1485,4 +1488,5 @@ def enhance(
         cli_overrides=final_cli_overrides if final_cli_overrides else None,
         google_api_key=google_api_key,
         bq_analytics=bq_analytics,
+        agent_guidance_filename=agent_guidance_filename,
     )

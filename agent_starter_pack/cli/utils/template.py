@@ -1020,6 +1020,7 @@ def process_template(
     google_api_key: str | None = None,
     google_cloud_project: str | None = None,
     bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -1407,6 +1408,7 @@ def process_template(
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),
                 "bq_analytics": bq_analytics,
+                "agent_guidance_filename": agent_guidance_filename,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
                     "*.sum",  # Don't render Go sum files

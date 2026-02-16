@@ -160,6 +160,11 @@ def shared_template_options(f: Callable) -> Callable:
         "-bt",
         help="Base template to use (overrides template default, only for remote templates)",
     )(f)
+    f = click.option(
+        "--agent-guidance-filename",
+        default="GEMINI.md",
+        help="Filename for agent guidance (e.g., GEMINI.md, CLAUDE.md, AGENTS.md)",
+    )(f)
     return f
 
 
@@ -322,6 +327,7 @@ def create(
     cli_overrides: dict | None = None,
     google_api_key: str | None = None,
     bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Create GCP-based AI agent projects from templates."""
     try:
@@ -952,6 +958,7 @@ def create(
                 google_api_key=google_api_key,
                 google_cloud_project=creds_info.get("project"),
                 bq_analytics=bq_analytics,
+                agent_guidance_filename=agent_guidance_filename,
             )
 
             # Replace region in all files if a different region was specified

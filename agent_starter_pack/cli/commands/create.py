@@ -1138,23 +1138,20 @@ def display_agent_selection(
             )
         raise click.ClickException("No valid agents found")
 
-    # Group headers for display
-    GROUP_HEADERS = {
-        "python": "\U0001f40d Python",
-        "go": "\U0001f535 Go",
-        "java": "\u2615\ufe0f Java",
-    }
-
     console.print("\n> Please select an agent to get started:")
 
-    current_group = None
+    current_display_group = None
     for num, agent in agents.items():
-        agent_group = agent["language"]
+        agent_language = agent["language"]
+        display_group = agent_language if agent_language == "python" else "other"
 
         # Print group header when transitioning to a new group
-        if agent_group != current_group:
-            current_group = agent_group
-            header = GROUP_HEADERS.get(agent_group, "\U0001f527 Other")
+        if display_group != current_display_group:
+            current_display_group = display_group
+            if display_group == "python":
+                header = "\U0001f40d Python"
+            else:
+                header = "\U0001f310 Other Languages"
             console.print(f"\n  [bold cyan]{header}[/]")
 
         # Align agent names for cleaner display (use display_name if available)

@@ -380,38 +380,31 @@ class TestMakefileGeneration:
         assert "ui:" in output
         assert "playground-dev:" in output
 
-    def test_data_ingestion_target_present(
+    def test_vertex_search_has_data_ingestion_targets(
         self, makefile_renderer: MakefileRenderer
     ) -> None:
-        """Test that data ingestion configurations include data-ingestion target."""
+        """Test that Vertex AI Search config uses setup-datastore, data-ingestion, and sync-data targets."""
         config = TEST_CONFIGURATIONS["agentic_rag_cloud_run_vertex_search"]
         output = makefile_renderer.render(config)
 
+        assert "setup-datastore:" in output
         assert "data-ingestion:" in output
-        assert "data-store-id" in output
+        assert "sync-data:" in output
+        assert "start_connector_run" in output
 
-    def test_data_ingestion_vertex_search_config(
+    def test_vector_search_has_data_ingestion_target(
         self, makefile_renderer: MakefileRenderer
     ) -> None:
-        """Test that Vertex AI Search config uses correct parameters."""
-        config = TEST_CONFIGURATIONS["agentic_rag_cloud_run_vertex_search"]
-        output = makefile_renderer.render(config)
-
-        assert "--data-store-id" in output
-        assert "--data-store-region" in output
-        assert "--vector-search-index" not in output
-
-    def test_data_ingestion_vector_search_config(
-        self, makefile_renderer: MakefileRenderer
-    ) -> None:
-        """Test that Vector Search config uses correct parameters."""
+        """Test that Vector Search config uses setup-datastore and data-ingestion targets."""
         config = TEST_CONFIGURATIONS["agentic_rag_cloud_run_vector_search"]
         output = makefile_renderer.render(config)
 
-        assert "--vector-search-index" in output
-        assert "--vector-search-index-endpoint" in output
-        assert "--vector-search-data-bucket-name" in output
-        assert "--data-store-id" not in output
+        assert "setup-datastore:" in output
+        assert "data-ingestion:" in output
+        assert "--collection-id" in output
+        assert "--local" in output
+        assert "VECTOR_SEARCH_COLLECTION" in output
+        assert "sync-data:" not in output
 
     def test_custom_commands_override(
         self, makefile_renderer: MakefileRenderer
@@ -499,10 +492,15 @@ class TestMakefileGeneration:
                     f"Required target '{target}' missing in {config_name}"
                 )
 
-            # setup-dev-env is only present when cicd_runner != 'skip'
-            if config.get("cicd_runner") != "skip":
+            # setup-dev-env is present when cicd_runner != 'skip' AND no data_ingestion
+            # (data_ingestion replaces setup-dev-env with setup-datastore)
+            if config.get("cicd_runner") != "skip" and not config.get("data_ingestion"):
                 assert "setup-dev-env:" in output, (
                     f"setup-dev-env target missing in {config_name}"
+                )
+            elif config.get("data_ingestion"):
+                assert "setup-datastore:" in output, (
+                    f"setup-datastore target missing in {config_name}"
                 )
             else:
                 assert "setup-dev-env:" not in output, (

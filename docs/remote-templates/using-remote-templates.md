@@ -111,7 +111,7 @@ All `create` command options work with remote templates:
 uvx agent-starter-pack create my-agent -a template-url --deployment-target cloud_run
 
 # Include data ingestion
-uvx agent-starter-pack create my-agent -a template-url --include-data-ingestion --datastore cloud_sql
+uvx agent-starter-pack create my-agent -a template-url --datastore cloud_sql
 
 # Custom session storage
 uvx agent-starter-pack create my-agent -a template-url --session-type cloud_sql

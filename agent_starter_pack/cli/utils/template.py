@@ -121,6 +121,8 @@ CONDITIONAL_FILES = {
     "tests/helpers.py": lambda c: c.get("is_a2a"),
     "deployment/terraform/service.tf": _exclude_adk_live_agent_engine,
     "deployment/terraform/dev/service.tf": _exclude_adk_live_agent_engine,
+    # Data ingestion conditional (only for vertex_ai_vector_search)
+    "data_ingestion": lambda c: c.get("datastore_type") == "vertex_ai_vector_search",
 }
 
 
@@ -714,7 +716,7 @@ def prompt_datastore_selection(
 
     Args:
         agent_name: Name of the agent
-        from_cli_flag: Whether this is being called due to explicit --include-data-ingestion flag
+        from_cli_flag: Whether this is being called due to explicit --datastore flag
     """
     console = Console()
 
@@ -751,7 +753,7 @@ def prompt_datastore_selection(
             if include:
                 return _display_datastore_menu(console)
 
-    # If we get here, we need to prompt for datastore selection for explicit --include-data-ingestion flag
+    # If we get here, we need to prompt for datastore selection
     return _display_datastore_menu(console)
 
 
@@ -807,30 +809,23 @@ def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
     return template_path
 
 
-def copy_data_ingestion_files(
-    project_template: pathlib.Path, datastore_type: str
-) -> None:
-    """Copy data processing files to the project template for cookiecutter templating.
+def copy_sample_data_files(project_template: pathlib.Path) -> None:
+    """Copy sample data files to the project template.
 
     Args:
         project_template: Path to the project template directory
-        datastore_type: Type of datastore to use for data ingestion
     """
-    data_ingestion_src = pathlib.Path(__file__).parent.parent.parent / "data_ingestion"
-    data_ingestion_dst = project_template / "data_ingestion"
+    sample_data_src = pathlib.Path(__file__).parent.parent.parent / "sample_data"
+    sample_data_dst = project_template / "sample_data"
 
-    if data_ingestion_src.exists():
+    if sample_data_src.exists():
         logging.debug(
-            f"Copying data processing files from {data_ingestion_src} to {data_ingestion_dst}"
+            f"Copying sample data files from {sample_data_src} to {sample_data_dst}"
         )
-
-        copy_files(data_ingestion_src, data_ingestion_dst, overwrite=True)
-
-        logging.debug(f"Data ingestion files prepared for datastore: {datastore_type}")
+        copy_files(sample_data_src, sample_data_dst, overwrite=True)
+        logging.debug("Sample data files copied successfully")
     else:
-        logging.warning(
-            f"Data processing source directory not found at {data_ingestion_src}"
-        )
+        logging.warning(f"Sample data source directory not found at {sample_data_src}")
 
 
 def _extract_agent_garden_labels(
@@ -1239,12 +1234,10 @@ def process_template(
                         f"2b. Copied {language} deployment files from {language_deployment_path}"
                     )
 
-            # 3. Copy data ingestion files if needed
-            if include_data_ingestion and datastore:
-                logging.debug(
-                    f"3. Including data processing files with datastore: {datastore}"
-                )
-                copy_data_ingestion_files(project_template, datastore)
+            # 3. Copy sample data files for vertex_ai_search
+            if include_data_ingestion and datastore == "vertex_ai_search":
+                logging.debug("3. Including sample data files for vertex_ai_search")
+                copy_sample_data_files(project_template)
 
             # 4. Skip remote template files during cookiecutter processing
             # Remote files will be copied after cookiecutter to avoid Jinja conflicts
@@ -1333,8 +1326,14 @@ def process_template(
                             agent_directory=agent_directory,
                         )
 
-                # Copy other folders (frontend, tests, notebooks)
-                other_folders = ["frontend", "tests", "notebooks"]
+                # Copy other folders (frontend, tests, notebooks, deployment)
+                other_folders = [
+                    "frontend",
+                    "tests",
+                    "notebooks",
+                    "deployment",
+                    "data_ingestion",
+                ]
                 for folder in other_folders:
                     agent_folder = agent_path / folder
                     project_folder = project_template / folder
@@ -1347,13 +1346,6 @@ def process_template(
                             overwrite=True,
                             agent_directory=agent_directory,
                         )
-
-            # Check if data processing should be included
-            if include_data_ingestion and datastore:
-                logging.debug(
-                    f"Including data processing files with datastore: {datastore}"
-                )
-                copy_data_ingestion_files(project_template, datastore)
 
             # Create cookiecutter.json in the template root
             # Get settings from template config
@@ -1421,6 +1413,7 @@ def process_template(
                     "e2e/**/*",  # Don't render Go e2e test files (contain Go {{ }} syntax)
                     "frontend/**/*",  # Don't render frontend directory (covers all JS/TS/CSS/JSON files)
                     "notebooks/*",  # Don't render notebooks directory
+                    "sample_data/*",  # Don't render sample data files
                     ".git/*",  # Don't render git directory
                     "__pycache__/*",  # Don't render cache
                     "**/__pycache__/*",
@@ -1607,6 +1600,7 @@ def process_template(
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
+                "datastore_type": datastore if datastore else "",
             }
             apply_conditional_files(
                 final_destination, conditional_config, agent_directory
@@ -1636,8 +1630,34 @@ def process_template(
                 # Remove deployment folder
                 deployment_dir = final_destination / "deployment"
                 if deployment_dir.exists():
-                    shutil.rmtree(deployment_dir)
-                    logging.debug(f"Prototype mode: deleted {deployment_dir}")
+                    if include_data_ingestion and datastore in (
+                        "vertex_ai_search",
+                        "vertex_ai_vector_search",
+                    ):
+                        # Keep dev terraform for datastore setup, remove staging/prod
+                        # Also keep sql/ since dev/telemetry.tf references ../sql/
+                        terraform_dir = deployment_dir / "terraform"
+                        dirs_to_keep = {"dev", "sql", "scripts"}
+                        if terraform_dir.exists():
+                            for item in terraform_dir.iterdir():
+                                if item.name not in dirs_to_keep:
+                                    if item.is_dir():
+                                        shutil.rmtree(item)
+                                    else:
+                                        item.unlink()
+                        # Remove non-terraform deployment files
+                        for item in deployment_dir.iterdir():
+                            if item.name != "terraform":
+                                if item.is_dir():
+                                    shutil.rmtree(item)
+                                else:
+                                    item.unlink()
+                        logging.debug(
+                            f"Prototype mode: preserved deployment/terraform/dev/, cleaned rest of {deployment_dir}"
+                        )
+                    else:
+                        shutil.rmtree(deployment_dir)
+                        logging.debug(f"Prototype mode: deleted {deployment_dir}")
 
                 # Remove load_test folder
                 load_test_dir = final_destination / "tests" / "load_test"

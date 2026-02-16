@@ -25,6 +25,19 @@ resource "google_project_service" "cloud_resource_manager_api" {
   disable_on_destroy = false
 }
 
+# Enable Cloud Resource Manager API for each project in e2e_rag_project_mapping
+resource "google_project_service" "cloud_resource_manager_api_rag" {
+  for_each = {
+    "dev"     = var.e2e_rag_project_mapping.dev
+    "staging" = var.e2e_rag_project_mapping.staging
+    "prod"    = var.e2e_rag_project_mapping.prod
+  }
+
+  project            = each.value
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
 # Enable Cloud Scheduler API for scheduled cleanup jobs
 resource "google_project_service" "cloud_scheduler_api" {
   project            = var.cicd_runner_project_id

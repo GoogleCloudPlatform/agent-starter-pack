@@ -707,7 +707,6 @@ asp_version = "0.25.0"
 deployment_target = "cloud_run"
 session_type = "in_memory"
 cicd_runner = "skip"
-include_data_ingestion = false
 ```
 
 The `create_params` section enables the `enhance` command to recreate identical scaffolding with the locked ASP version.

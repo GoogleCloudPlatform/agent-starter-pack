@@ -29,13 +29,15 @@ from google.adk.plugins.bigquery_agent_analytics_plugin import (
 )
 from google.cloud import bigquery
 {%- endif %}
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+from google.adk.tools import VertexAiSearchTool
+{%- endif %}
 from google.genai import types
-from langchain_google_vertexai import VertexAIEmbeddings
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
-from {{cookiecutter.agent_directory}}.retrievers import get_compressor, get_retriever
-from {{cookiecutter.agent_directory}}.templates import format_docs
+from {{cookiecutter.agent_directory}}.retrievers import search_collection
+{%- endif %}
 
-EMBEDDING_MODEL = "text-embedding-005"
 LLM_LOCATION = "global"
 LOCATION = "us-central1"
 LLM = "gemini-3-flash-preview"
@@ -46,47 +48,22 @@ os.environ["GOOGLE_CLOUD_LOCATION"] = LLM_LOCATION
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
 vertexai.init(project=project_id, location=LOCATION)
-embedding = VertexAIEmbeddings(
-    project=project_id, location=LOCATION, model_name=EMBEDDING_MODEL
-)
 
 {% if cookiecutter.datastore_type == "vertex_ai_search" %}
-EMBEDDING_COLUMN = "embedding"
-TOP_K = 5
-
-data_store_region = os.getenv("DATA_STORE_REGION", "us")
-data_store_id = os.getenv("DATA_STORE_ID", "{{cookiecutter.project_name}}-datastore")
-
-retriever = get_retriever(
-    project_id=project_id,
-    data_store_id=data_store_id,
-    data_store_region=data_store_region,
-    embedding=embedding,
-    embedding_column=EMBEDDING_COLUMN,
-    max_documents=10,
+data_store_region = os.getenv("DATA_STORE_REGION", "global")
+data_store_id = os.getenv(
+    "DATA_STORE_ID", "{{cookiecutter.project_name}}-collection_documents"
 )
+data_store_path = (
+    f"projects/{project_id}/locations/{data_store_region}"
+    f"/collections/default_collection/dataStores/{data_store_id}"
+)
+
+vertex_search_tool = VertexAiSearchTool(data_store_id=data_store_path)
 {% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-vector_search_index = os.getenv(
-    "VECTOR_SEARCH_INDEX", "{{cookiecutter.project_name}}-vector-search"
-)
-vector_search_index_endpoint = os.getenv(
-    "VECTOR_SEARCH_INDEX_ENDPOINT", "{{cookiecutter.project_name}}-vector-search-endpoint"
-)
-vector_search_bucket = os.getenv(
-    "VECTOR_SEARCH_BUCKET", f"{project_id}-{{cookiecutter.project_name}}-vs"
-)
-
-retriever = get_retriever(
-    project_id=project_id,
-    region=LOCATION,
-    vector_search_bucket=vector_search_bucket,
-    vector_search_index=vector_search_index,
-    vector_search_index_endpoint=vector_search_index_endpoint,
-    embedding=embedding,
-)
-{% endif %}
-compressor = get_compressor(
-    project_id=project_id,
+vector_search_collection = os.getenv(
+    "VECTOR_SEARCH_COLLECTION",
+    f"projects/{project_id}/locations/{LOCATION}/collections/{{cookiecutter.project_name}}-collection",
 )
 
 
@@ -99,22 +76,19 @@ def retrieve_docs(query: str) -> str:
         query (str): The user's question or search query.
 
     Returns:
-        str: Formatted string containing relevant document content retrieved and ranked based on the query.
+        str: Formatted string containing relevant document content.
     """
     try:
-        # Use the retriever to fetch relevant documents based on the query
-        retrieved_docs = retriever.invoke(query)
-        # Re-rank docs with Vertex AI Rank for better relevance
-        ranked_docs = compressor.compress_documents(
-            documents=retrieved_docs, query=query
+        return search_collection(
+            query=query,
+            collection_path=vector_search_collection,
         )
-        # Format ranked documents into a consistent structure for LLM consumption
-        formatted_docs = format_docs.format(docs=ranked_docs)
     except Exception as e:
-        return f"Calling retrieval tool with query:\n\n{query}\n\nraised the following error:\n\n{type(e)}: {e}"
-
-    return formatted_docs
-
+        return (
+            f"Calling retrieval tool with query:\n\n{query}\n\n"
+            f"raised the following error:\n\n{type(e)}: {e}"
+        )
+{% endif %}
 
 instruction = """You are an AI assistant for question-answering tasks.
 Answer to the best of your ability using the context provided.
@@ -129,7 +103,11 @@ root_agent = Agent(
         retry_options=types.HttpRetryOptions(attempts=3),
     ),
     instruction=instruction,
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+    tools=[vertex_search_tool],
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
     tools=[retrieve_docs],
+{%- endif %}
 )
 
 {%- if cookiecutter.bq_analytics %}

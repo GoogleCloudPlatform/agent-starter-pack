@@ -21,12 +21,18 @@ from google.genai import types
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
 
-
+{% if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 @patch(
     "{{cookiecutter.agent_directory}}.agent.retrieve_docs",
     return_value="dummy content",
 )
 def test_agent_stream(mock_retrieve: MagicMock) -> None:
+{%- elif cookiecutter.datastore_type == "vertex_ai_search" %}
+@patch(
+    "{{cookiecutter.agent_directory}}.agent.vertex_search_tool",
+)
+def test_agent_stream(mock_search_tool: MagicMock) -> None:
+{%- endif %}
     """
     Integration test for the agent stream functionality.
     Tests that the agent returns valid streaming responses.

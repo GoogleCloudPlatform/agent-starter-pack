@@ -13,7 +13,7 @@
 # limitations under the License.
 
 steps:
-{%- if cookiecutter.data_ingestion %}
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
   - name: "python:3.12-slim"
     id: deploy-data-ingestion-pipeline-staging
     entrypoint: bash
@@ -25,14 +25,8 @@ steps:
     env:
       - "PIPELINE_ROOT=${_PIPELINE_GCS_ROOT_STAGING}"
       - "REGION=${_REGION}"
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-      - "DATA_STORE_REGION=${_DATA_STORE_REGION}"
-      - "DATA_STORE_ID=${_DATA_STORE_ID_STAGING}"
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-      - "VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING}"
-      - "VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING}"
-      - "VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}"
-{%- endif %}
+      - "VECTOR_SEARCH_COLLECTION_ID=${_VECTOR_SEARCH_COLLECTION_ID}"
+      - "VECTOR_SEARCH_LOCATION=${_VECTOR_SEARCH_LOCATION}"
       - "PROJECT_ID=${_STAGING_PROJECT_ID}"
       - "SERVICE_ACCOUNT=${_PIPELINE_SA_EMAIL_STAGING}"
       - "PIPELINE_NAME=${_PIPELINE_NAME}"
@@ -147,7 +141,7 @@ steps:
           --entrypoint-object=agent_engine \
           --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
           --service-account=${_APP_SERVICE_ACCOUNT_STAGING} \
-          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %},LOGS_BUCKET_NAME=${_LOGS_BUCKET_NAME_STAGING}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX=${_VECTOR_SEARCH_INDEX_STAGING},VECTOR_SEARCH_INDEX_ENDPOINT=${_VECTOR_SEARCH_INDEX_ENDPOINT_STAGING},VECTOR_SEARCH_BUCKET=${_VECTOR_SEARCH_BUCKET_STAGING}{%- endif %}{%- endif %}"
+          --set-env-vars="COMMIT_SHA=${COMMIT_SHA}{%- if cookiecutter.is_a2a %},AGENT_VERSION=$${AGENT_VERSION}{%- endif %},LOGS_BUCKET_NAME=${_LOGS_BUCKET_NAME_STAGING}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID=${_DATA_STORE_ID_STAGING},DATA_STORE_REGION=${_DATA_STORE_REGION}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_COLLECTION_ID=${_VECTOR_SEARCH_COLLECTION_ID},VECTOR_SEARCH_LOCATION=${_VECTOR_SEARCH_LOCATION}{%- endif %}{%- endif %}"
     env:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 

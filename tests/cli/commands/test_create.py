@@ -171,7 +171,6 @@ class TestCreateCommand:
                     "1",
                     "--deployment-target",
                     "cloud_run",
-                    "--include-data-ingestion",
                     "--datastore",
                     "vertex_ai_vector_search",
                     "--auto-approve",

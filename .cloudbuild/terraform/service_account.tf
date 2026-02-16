@@ -60,6 +60,25 @@ resource "google_project_iam_member" "cicd_runner_e2e_project_roles" {
   member  = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
 }
 
+# Grant permissions to the service account for RAG E2E project environments
+resource "google_project_iam_member" "cicd_runner_rag_project_roles" {
+  for_each = {
+    for idx, proj_role in flatten([
+      for env, project_id in var.e2e_rag_project_mapping : [
+        for role in local.e2e_project_roles : {
+          project = project_id
+          env     = env
+          role    = role
+        }
+      ]
+    ]) : "${proj_role.env}-${proj_role.role}" => proj_role
+  }
+
+  project = each.value.project
+  role    = each.value.role
+  member  = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
+}
+
 # Grant owner permissions to the service account for all cleanup projects
 resource "google_project_iam_member" "cicd_runner_cleanup_project_roles" {
   for_each = toset(var.cleanup_project_ids)

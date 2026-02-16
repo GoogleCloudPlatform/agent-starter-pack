@@ -32,7 +32,11 @@ def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
         args.extend(["--agent-directory", metadata["agent_directory"]])
 
     create_params = metadata.get("create_params", {})
+    # Skip include_data_ingestion — now auto-derived from agent config and --datastore
+    skip_keys = {"include_data_ingestion"}
     for key, value in create_params.items():
+        if key in skip_keys:
+            continue
         if (
             value is None
             or value is False

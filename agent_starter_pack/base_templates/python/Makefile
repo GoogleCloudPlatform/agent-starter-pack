@@ -284,7 +284,7 @@ deploy:
 		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"{%- if cookiecutter.is_a2a %}APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{% if cookiecutter.is_a2a %},{% endif %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %}DATA_STORE_ID={{cookiecutter.project_name}}-datastore,DATA_STORE_REGION=us{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}VECTOR_SEARCH_INDEX={{cookiecutter.project_name}}-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT={{cookiecutter.project_name}}-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-{{cookiecutter.project_name}}-vs{%- endif %}{%- endif %}" \
+		"{%- if cookiecutter.is_a2a %}APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{% if cookiecutter.is_a2a %},{% endif %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %}DATA_STORE_ID={{cookiecutter.project_name}}-collection_documents,DATA_STORE_REGION=global{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-central1/collections/{{cookiecutter.project_name}}-collection{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
@@ -303,7 +303,55 @@ deploy:
 backend: deploy
 {%- endif %}
 
-{%- if cookiecutter.cicd_runner != 'skip' %}
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+
+# ==============================================================================
+# Data Ingestion (RAG capabilities)
+# ==============================================================================
+
+# Set up Vector Search 2.0 Collection, GCS bucket, and service account
+setup-datastore:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve \
+		-target=null_resource.vector_search_collection_dev \
+		-target=google_storage_bucket.data_ingestion_PIPELINE_GCS_ROOT \
+		-target=google_project_iam_member.vertexai_pipeline_sa_roles)
+
+# Run the data ingestion pipeline locally for RAG capabilities
+data-ingestion:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
+		--project-id=$$PROJECT_ID \
+		--region="us-central1" \
+		--collection-id="{{cookiecutter.project_name}}-collection" \
+		--local)
+{%- elif cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_search" %}
+
+# ==============================================================================
+# Data Ingestion (Vertex AI Search)
+# ==============================================================================
+
+# Set up Vertex AI Search datastore (GCS bucket, data connector, search engine)
+setup-datastore:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve \
+		-target=google_discovery_engine_search_engine.search_engine_dev)
+
+# Upload sample data and trigger initial sync
+data-ingestion:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	DATA_STORE_REGION=$$(grep 'data_store_region' deployment/terraform/dev/vars/env.tfvars | sed 's/.*= *"//;s/".*//') && \
+	gcloud storage cp sample_data/* gs://$$PROJECT_ID-{{cookiecutter.project_name}}-docs/ && \
+	uv run deployment/terraform/scripts/start_connector_run.py $$PROJECT_ID $$DATA_STORE_REGION {{cookiecutter.project_name}}-collection --wait
+
+# Trigger an on-demand sync for the GCS Data Connector
+sync-data:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	DATA_STORE_REGION=$$(grep 'data_store_region' deployment/terraform/dev/vars/env.tfvars | sed 's/.*= *"//;s/".*//') && \
+	uv run deployment/terraform/scripts/start_connector_run.py $$PROJECT_ID $$DATA_STORE_REGION {{cookiecutter.project_name}}-collection --wait
+{%- elif cookiecutter.cicd_runner != 'skip' %}
 
 # ==============================================================================
 # Infrastructure Setup
@@ -313,30 +361,6 @@ backend: deploy
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-{%- endif %}
-{%- if cookiecutter.data_ingestion %}
-
-# ==============================================================================
-# Data Ingestion (RAG capabilities)
-# ==============================================================================
-
-# Run the data ingestion pipeline for RAG capabilities
-data-ingestion:
-	PROJECT_ID=$$(gcloud config get-value project) && \
-	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
-		--project-id=$$PROJECT_ID \
-		--region="us-central1" \
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-		--data-store-id="{{cookiecutter.project_name}}-datastore" \
-		--data-store-region="us" \
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-		--vector-search-index="{{cookiecutter.project_name}}-vector-search" \
-		--vector-search-index-endpoint="{{cookiecutter.project_name}}-vector-search-endpoint" \
-		--vector-search-data-bucket-name="$$PROJECT_ID-{{cookiecutter.project_name}}-vs" \
-{%- endif %}
-		--service-account="{{cookiecutter.project_name}}-rag@$$PROJECT_ID.iam.gserviceaccount.com" \
-		--pipeline-root="gs://$$PROJECT_ID-{{cookiecutter.project_name}}-rag" \
-		--pipeline-name="data-ingestion-pipeline")
 {%- endif %}
 {%- endif %}
 

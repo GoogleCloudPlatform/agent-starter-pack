@@ -204,7 +204,7 @@ def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
         (
             "agentic_rag",
             "agent_engine",
-            ["--include-data-ingestion", "--datastore", "vertex_ai_search"],
+            ["--datastore", "vertex_ai_search"],
         ),
         # adk_live - cloud_run only
         ("adk_live", "cloud_run", None),

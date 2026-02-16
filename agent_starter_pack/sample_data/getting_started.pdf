@@ -1,0 +1,54 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
+   /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 2058 >>
+stream
+BT /F1 11 Tf 50 750 Td (Getting Started with Your Agent) Tj ET
+BT /F1 11 Tf 50 722 Td (Overview) Tj ET
+BT /F1 11 Tf 50 694 Td (This agent uses Vertex AI Search to provide grounded, accurate responses based on your data.) Tj ET
+BT /F1 11 Tf 50 680 Td (It retrieves relevant documents from your datastore and uses them as context when generating answers.) Tj ET
+BT /F1 11 Tf 50 652 Td (How It Works) Tj ET
+BT /F1 11 Tf 50 624 Td (1. Data Ingestion: Documents are stored in a Google Cloud Storage \(GCS\) bucket.) Tj ET
+BT /F1 11 Tf 50 610 Td (2. Indexing: A GCS Data Connector syncs your documents into a Vertex AI Search data store.) Tj ET
+BT /F1 11 Tf 50 596 Td (3. Retrieval: When a user asks a question, the agent searches the data store for relevant content.) Tj ET
+BT /F1 11 Tf 50 582 Td (4. Response Generation: The agent uses the retrieved content to generate a grounded response.) Tj ET
+BT /F1 11 Tf 50 554 Td (Supported Document Formats) Tj ET
+BT /F1 11 Tf 50 526 Td (You can add the following file types to your data store:) Tj ET
+BT /F1 11 Tf 50 512 Td (- PDF \(.pdf\) - Reports, whitepapers, manuals) Tj ET
+BT /F1 11 Tf 50 498 Td (- HTML \(.html\) - Web pages, documentation) Tj ET
+BT /F1 11 Tf 50 484 Td (- Plain Text \(.txt\) - Notes, logs, transcripts) Tj ET
+BT /F1 11 Tf 50 456 Td (Adding Your Own Data) Tj ET
+BT /F1 11 Tf 50 428 Td (1. Place your files in the sample_data/ directory.) Tj ET
+BT /F1 11 Tf 50 414 Td (2. Run make setup-datastore to create the datastore and upload your files.) Tj ET
+BT /F1 11 Tf 50 400 Td (3. If the datastore already exists, run make sync-data to trigger a new sync.) Tj ET
+BT /F1 11 Tf 50 372 Td (Tips for Best Results) Tj ET
+BT /F1 11 Tf 50 344 Td (- Use descriptive filenames that reflect the content.) Tj ET
+BT /F1 11 Tf 50 330 Td (- Break large documents into focused, topic-specific files.) Tj ET
+BT /F1 11 Tf 50 316 Td (- Include headings and structure in your documents for better retrieval.) Tj ET
+BT /F1 11 Tf 50 302 Td (- After syncing new data, allow a few minutes for indexing to complete.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000266 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+0
+%%EOF

@@ -74,14 +74,10 @@ GCP region for deployment (default: `us-central1`)
 
 ## Data & Storage Options
 
-### `--include-data-ingestion`, `-i`
-Include data ingestion pipeline components in the project.
-
 ### `--datastore`, `-ds` DATASTORE
-Type of datastore for data ingestion (requires `--include-data-ingestion`):
+Type of datastore for data ingestion. Automatically enables data ingestion when specified. For agents that require data ingestion (e.g., `agentic_rag`), you will be prompted to select a datastore if not specified:
 - `vertex_ai_search`
-- `vertex_ai_vector_search` 
-- `vertex_ai_vector_search` 
+- `vertex_ai_vector_search`
 - `cloud_sql`
 
 ### `--session-type` TYPE

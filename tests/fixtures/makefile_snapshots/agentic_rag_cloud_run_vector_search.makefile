@@ -48,7 +48,7 @@ deploy:
 		--labels "" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"VECTOR_SEARCH_INDEX=test-rag-vector-search,VECTOR_SEARCH_INDEX_ENDPOINT=test-rag-vector-search-endpoint,VECTOR_SEARCH_BUCKET=$$PROJECT_ID-test-rag-vs" \
+		"VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-central1/collections/test-rag-collection" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
@@ -56,30 +56,26 @@ deploy:
 backend: deploy
 
 # ==============================================================================
-# Infrastructure Setup
-# ==============================================================================
-
-# Set up development environment resources using Terraform
-setup-dev-env:
-	PROJECT_ID=$$(gcloud config get-value project) && \
-	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-
-# ==============================================================================
 # Data Ingestion (RAG capabilities)
 # ==============================================================================
 
-# Run the data ingestion pipeline for RAG capabilities
+# Set up Vector Search 2.0 Collection, GCS bucket, and service account
+setup-datastore:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve \
+		-target=null_resource.vector_search_collection_dev \
+		-target=google_storage_bucket.data_ingestion_PIPELINE_GCS_ROOT \
+		-target=google_project_iam_member.vertexai_pipeline_sa_roles)
+
+# Run the data ingestion pipeline locally for RAG capabilities
 data-ingestion:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
 		--project-id=$$PROJECT_ID \
 		--region="us-central1" \
-		--vector-search-index="test-rag-vector-search" \
-		--vector-search-index-endpoint="test-rag-vector-search-endpoint" \
-		--vector-search-data-bucket-name="$$PROJECT_ID-test-rag-vs" \
-		--service-account="test-rag-rag@$$PROJECT_ID.iam.gserviceaccount.com" \
-		--pipeline-root="gs://$$PROJECT_ID-test-rag-rag" \
-		--pipeline-name="data-ingestion-pipeline")
+		--collection-id="test-rag-collection" \
+		--local)
 
 # ==============================================================================
 # Testing & Code Quality

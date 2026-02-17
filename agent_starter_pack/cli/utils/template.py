@@ -123,6 +123,46 @@ CONDITIONAL_FILES = {
     "deployment/terraform/dev/service.tf": _exclude_adk_live_agent_engine,
     # Data ingestion conditional (only for vertex_ai_vector_search)
     "data_ingestion": lambda c: c.get("datastore_type") == "vertex_ai_vector_search",
+    # Datastore-specific terraform files (vertex_ai_search vs vertex_ai_vector_search)
+    "deployment/terraform/vertex_ai_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/vertex_ai_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/vertex_ai_search_github.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/dev/vertex_ai_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/dev/vertex_ai_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/vector_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_github.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_iam.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_service_accounts.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/dev/vector_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/dev/vector_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/dev/vector_search_iam.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
 }
 
 

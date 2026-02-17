@@ -387,11 +387,11 @@ locals {
         "agent_starter_pack/deployment_targets/cloud_run/python/**",
         "pyproject.toml",
         ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
-        "agent_starter_pack/agents/agentic_rag/**",
-        "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
+        "agent_starter_pack/agents/agentic_rag/**/*",
+        "agent_starter_pack/agents/agentic_rag/data_ingestion/**/*",
         "pyproject.toml",
         ] : substr(combo.name, 0, 8) == "adk_live" ? [
-        "agent_starter_pack/agents/adk_live/**",
+        "agent_starter_pack/agents/adk_live/**/*",
         "pyproject.toml",
         ] : [
         # Only include files for the specific agent being tested

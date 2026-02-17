@@ -221,6 +221,8 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
 
 {%- if cookiecutter.is_a2a %}
 
+import os
+
 import pytest
 
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp

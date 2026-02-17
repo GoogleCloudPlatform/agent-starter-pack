@@ -18,8 +18,7 @@ from kfp.dsl import Input, component
 
 
 @component(
-    base_image="us-docker.pkg.dev/production-ai-template/starter-pack/data_processing:0.2",
-    packages_to_install=["google-cloud-vectorsearch"],
+    base_image="us-docker.pkg.dev/production-ai-template/starter-pack/data_processing_vectorsearch:0.3",
 )
 def ingest_data(
     project_id: str,

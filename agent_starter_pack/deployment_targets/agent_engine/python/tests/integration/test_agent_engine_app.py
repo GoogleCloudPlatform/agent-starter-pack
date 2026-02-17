@@ -221,8 +221,6 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
 
 {%- if cookiecutter.is_a2a %}
 
-import os
-
 import pytest
 
 from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
@@ -234,7 +232,6 @@ from tests.helpers import (
 {%- elif cookiecutter.is_adk %}
 
 import logging
-import os
 
 import pytest
 from google.adk.events.event import Event
@@ -243,7 +240,6 @@ from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- else %}
 
 import logging
-import os
 
 import pytest
 
@@ -253,10 +249,10 @@ from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 
 
 @pytest.fixture
-def agent_app() -> AgentEngineApp:
+def agent_app(monkeypatch: pytest.MonkeyPatch) -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
     # Set integration test flag to mock external services
-    os.environ["INTEGRATION_TEST"] = "TRUE"
+    monkeypatch.setenv("INTEGRATION_TEST", "TRUE")
 
     from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 
@@ -266,10 +262,10 @@ def agent_app() -> AgentEngineApp:
 
 
 @pytest.fixture
-def agent_app() -> AgentEngineApp:
+def agent_app(monkeypatch: pytest.MonkeyPatch) -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
     # Set integration test flag to mock external services
-    os.environ["INTEGRATION_TEST"] = "TRUE"
+    monkeypatch.setenv("INTEGRATION_TEST", "TRUE")
 
     from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 

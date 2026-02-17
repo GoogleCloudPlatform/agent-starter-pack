@@ -16,6 +16,10 @@
 # Versions match agent_starter_pack/agents/agentic_rag/data_ingestion/pyproject.toml
 FROM python:3.11-slim
 
+# Prevent Python from writing .pyc files
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 # Install packages in a single layer and clean up to reduce image size
 RUN pip install --no-cache-dir \
     "backoff>=2.2.0" \
@@ -28,5 +32,10 @@ RUN pip install --no-cache-dir \
     "langchain-text-splitters>=0.3.0" \
     "markdownify>=0.14.0" \
     "swifter>=1.4.0" \
+    # Clean up to reduce image size
     && pip cache purge \
-    && rm -rf /root/.cache/pip
+    && rm -rf /root/.cache/pip \
+    && find /usr/local -type d -name '__pycache__' -exec rm -rf {} + \
+    && find /usr/local -type f -name '*.pyc' -delete \
+    && find /usr/local -type d -name 'tests' -exec rm -rf {} + \
+    && find /usr/local -type d -name 'test' -exec rm -rf {} +

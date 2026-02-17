@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from google.api_core import exceptions
 from google.cloud import aiplatform
+from google.cloud import vectorsearch_v1beta
 
 # Configure logging
 logging.basicConfig(
@@ -350,6 +351,84 @@ def delete_vector_search_resources_in_project(
         return 0, 0, 0, 0
 
 
+def delete_vector_search_collections_in_project(
+    project_id: str, regions: list[str] | None = None
+) -> tuple[int, int]:
+    """
+    Delete all Vector Search 2.0 collections in a specific project.
+
+    Args:
+        project_id: The GCP project ID
+        regions: List of regions to check (default: europe-west1, europe-west4)
+
+    Returns:
+        Tuple of (deleted_collections, total_collections)
+    """
+    if regions is None:
+        regions = [DEFAULT_REGION, "europe-west4"]
+
+    total_found = 0
+    total_deleted = 0
+
+    for region in regions:
+        logger.info(
+            f"🔍 Checking for Vector Search 2.0 collections in {project_id} ({region})..."
+        )
+        try:
+            client = vectorsearch_v1beta.VectorSearchServiceClient()
+            parent = f"projects/{project_id}/locations/{region}"
+
+            collections = list(
+                client.list_collections(
+                    request=vectorsearch_v1beta.ListCollectionsRequest(parent=parent)
+                )
+            )
+
+            # Filter collections with test prefixes
+            test_collections = [
+                c
+                for c in collections
+                if c.name.split("/")[-1].startswith("test-")
+                or c.name.split("/")[-1].startswith("myagent")
+            ]
+
+            if not test_collections:
+                logger.info(
+                    f"✅ No Vector Search 2.0 collections with test prefixes in {project_id} ({region})"
+                )
+                continue
+
+            total_found += len(test_collections)
+            logger.info(
+                f"🎯 Found {len(test_collections)} collection(s) in {project_id} ({region})"
+            )
+
+            for collection in test_collections:
+                try:
+                    logger.info(f"🗑️ Deleting collection: {collection.name}")
+                    client.delete_collection(
+                        request=vectorsearch_v1beta.DeleteCollectionRequest(
+                            name=collection.name
+                        )
+                    )
+                    total_deleted += 1
+                    logger.info(f"✅ Deleted collection: {collection.name}")
+                except exceptions.NotFound:
+                    logger.info(
+                        f"✅ Collection {collection.name} not found (already deleted)"
+                    )
+                    total_deleted += 1
+                except Exception as e:
+                    logger.error(f"❌ Error deleting collection {collection.name}: {e}")
+
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Error listing collections in {project_id} ({region}): {e}"
+            )
+
+    return total_deleted, total_found
+
+
 def main():
     """Main function to delete Vector Search resources from all specified projects."""
     logger.info("🚀 Starting Vector Search cleanup across multiple projects...")
@@ -365,6 +444,8 @@ def main():
     total_found_indexes = 0
     total_deleted_endpoints = 0
     total_found_endpoints = 0
+    total_deleted_collections = 0
+    total_found_collections = 0
     failed_projects = []
 
     for project_id in project_ids:
@@ -374,6 +455,11 @@ def main():
             total_found_indexes += found_indexes
             total_deleted_endpoints += deleted_endpoints
             total_found_endpoints += found_endpoints
+
+            # Also clean up Vector Search 2.0 collections
+            deleted_collections, found_collections = delete_vector_search_collections_in_project(project_id)
+            total_deleted_collections += deleted_collections
+            total_found_collections += found_collections
         except Exception as e:
             logger.error(f"❌ Failed to process project {project_id}: {e}")
             failed_projects.append(project_id)
@@ -386,8 +472,11 @@ def main():
     logger.info(f"✅ Total Vector Search indexes deleted: {total_deleted_indexes}")
     logger.info(f"🎯 Total Vector Search endpoints found: {total_found_endpoints}")
     logger.info(f"✅ Total Vector Search endpoints deleted: {total_deleted_endpoints}")
+    logger.info(f"🎯 Total Vector Search 2.0 collections found: {total_found_collections}")
+    logger.info(f"✅ Total Vector Search 2.0 collections deleted: {total_deleted_collections}")
     logger.info(f"❌ Failed index deletions: {total_found_indexes - total_deleted_indexes}")
     logger.info(f"❌ Failed endpoint deletions: {total_found_endpoints - total_deleted_endpoints}")
+    logger.info(f"❌ Failed collection deletions: {total_found_collections - total_deleted_collections}")
     logger.info(
         f"📁 Projects processed: {len(project_ids) - len(failed_projects)}/{len(project_ids)}"
     )
@@ -395,7 +484,11 @@ def main():
     if failed_projects:
         logger.warning(f"⚠️ Failed to process projects: {', '.join(failed_projects)}")
         sys.exit(1)
-    elif (total_found_indexes > total_deleted_indexes) or (total_found_endpoints > total_deleted_endpoints):
+    elif (
+        (total_found_indexes > total_deleted_indexes)
+        or (total_found_endpoints > total_deleted_endpoints)
+        or (total_found_collections > total_deleted_collections)
+    ):
         logger.warning(
             f"⚠️ Some Vector Search resources could not be deleted"
         )

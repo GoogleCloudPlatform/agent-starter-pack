@@ -34,7 +34,7 @@ run_with_retry() {
     while [ $attempt -le $max_attempts ]; do
         echo -e "${YELLOW}  Attempt ${attempt}/${max_attempts}...${NC}"
 
-        if uv run --with google-api-python-client python "tests/cicd/scripts/${script_name}" 2>&1; then
+        if uv run --with google-api-python-client --with google-cloud-vectorsearch python "tests/cicd/scripts/${script_name}" 2>&1; then
             echo -e "${GREEN}  ✅ Completed successfully${NC}"
             echo ""
             return 0

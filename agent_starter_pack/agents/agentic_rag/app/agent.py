@@ -29,11 +29,11 @@ from google.adk.plugins.bigquery_agent_analytics_plugin import (
 )
 from google.cloud import bigquery
 {%- endif %}
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-from google.adk.tools import VertexAiSearchTool
-{%- endif %}
 from google.genai import types
-{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+
+from {{cookiecutter.agent_directory}}.retrievers import create_search_tool
+{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 from {{cookiecutter.agent_directory}}.retrievers import search_collection
 {%- endif %}
@@ -59,7 +59,7 @@ data_store_path = (
     f"/collections/default_collection/dataStores/{data_store_id}"
 )
 
-vertex_search_tool = VertexAiSearchTool(data_store_id=data_store_path)
+vertex_search_tool = create_search_tool(data_store_path)
 {% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 vector_search_collection = os.getenv(
     "VECTOR_SEARCH_COLLECTION",

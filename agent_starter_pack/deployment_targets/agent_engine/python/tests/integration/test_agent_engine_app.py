@@ -234,6 +234,7 @@ from tests.helpers import (
 {%- elif cookiecutter.is_adk %}
 
 import logging
+import os
 
 import pytest
 from google.adk.events.event import Event
@@ -242,6 +243,7 @@ from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 {%- else %}
 
 import logging
+import os
 
 import pytest
 
@@ -253,6 +255,9 @@ from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 @pytest.fixture
 def agent_app() -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
+    # Set integration test flag to mock external services
+    os.environ["INTEGRATION_TEST"] = "TRUE"
+
     from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 
     agent_engine.set_up()
@@ -263,6 +268,9 @@ def agent_app() -> AgentEngineApp:
 @pytest.fixture
 def agent_app() -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
+    # Set integration test flag to mock external services
+    os.environ["INTEGRATION_TEST"] = "TRUE"
+
     from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 
     agent_engine.set_up()

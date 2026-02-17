@@ -50,44 +50,59 @@ os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 vertexai.init(project=project_id, location=LOCATION)
 
 {% if cookiecutter.datastore_type == "vertex_ai_search" %}
-data_store_region = os.getenv("DATA_STORE_REGION", "global")
-data_store_id = os.getenv(
-    "DATA_STORE_ID", "{{cookiecutter.project_name}}-collection_documents"
-)
-data_store_path = (
-    f"projects/{project_id}/locations/{data_store_region}"
-    f"/collections/default_collection/dataStores/{data_store_id}"
-)
+# For integration tests, use a mock tool instead of the real Vertex AI Search
+if os.getenv("INTEGRATION_TEST") == "TRUE":
 
-vertex_search_tool = VertexAiSearchTool(data_store_id=data_store_path)
+    def vertex_search_tool(query: str) -> str:
+        """Mock Vertex AI Search tool for integration tests."""
+        return "Mock search result for testing purposes."
+
+else:
+    data_store_region = os.getenv("DATA_STORE_REGION", "global")
+    data_store_id = os.getenv(
+        "DATA_STORE_ID", "{{cookiecutter.project_name}}-collection_documents"
+    )
+    data_store_path = (
+        f"projects/{project_id}/locations/{data_store_region}"
+        f"/collections/default_collection/dataStores/{data_store_id}"
+    )
+
+    vertex_search_tool = VertexAiSearchTool(data_store_id=data_store_path)
 {% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-vector_search_collection = os.getenv(
-    "VECTOR_SEARCH_COLLECTION",
-    f"projects/{project_id}/locations/{LOCATION}/collections/{{cookiecutter.project_name}}-collection",
-)
+# For integration tests, use a mock function instead of the real Vector Search
+if os.getenv("INTEGRATION_TEST") == "TRUE":
 
+    def retrieve_docs(query: str) -> str:
+        """Mock Vector Search tool for integration tests."""
+        return "Mock vector search result for testing purposes."
 
-def retrieve_docs(query: str) -> str:
-    """
-    Useful for retrieving relevant documents based on a query.
-    Use this when you need additional information to answer a question.
+else:
+    vector_search_collection = os.getenv(
+        "VECTOR_SEARCH_COLLECTION",
+        f"projects/{project_id}/locations/{LOCATION}/collections/{{cookiecutter.project_name}}-collection",
+    )
 
-    Args:
-        query (str): The user's question or search query.
+    def retrieve_docs(query: str) -> str:
+        """
+        Useful for retrieving relevant documents based on a query.
+        Use this when you need additional information to answer a question.
 
-    Returns:
-        str: Formatted string containing relevant document content.
-    """
-    try:
-        return search_collection(
-            query=query,
-            collection_path=vector_search_collection,
-        )
-    except Exception as e:
-        return (
-            f"Calling retrieval tool with query:\n\n{query}\n\n"
-            f"raised the following error:\n\n{type(e)}: {e}"
-        )
+        Args:
+            query (str): The user's question or search query.
+
+        Returns:
+            str: Formatted string containing relevant document content.
+        """
+        try:
+            return search_collection(
+                query=query,
+                collection_path=vector_search_collection,
+            )
+        except Exception as e:
+            return (
+                f"Calling retrieval tool with query:\n\n{query}\n\n"
+                f"raised the following error:\n\n{type(e)}: {e}"
+            )
 {% endif %}
 
 instruction = """You are an AI assistant for question-answering tasks.

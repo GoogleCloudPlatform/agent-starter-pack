@@ -14,8 +14,8 @@
 
 {%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 from unittest.mock import MagicMock, patch
-
 {%- endif %}
+
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService

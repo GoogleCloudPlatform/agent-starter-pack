@@ -27,6 +27,7 @@ RUN pip install --no-cache-dir \
     "google-cloud-aiplatform>=1.80.0" \
     "google-cloud-bigquery>=3.0.0" \
     "google-cloud-pipeline-components>=2.19.0" \
+    "google-cloud-vectorsearch>=0.4.0" \
     "kfp>=1.4.0" \
     "langchain-text-splitters>=0.3.0" \
     "markdownify>=0.14.0" \

@@ -1196,7 +1196,12 @@ class TestE2EDeployment:
             pytest.skip("Skipping test: Previous test failed in the session")
 
         # Set region based on agent type
-        region = "us-central1" if config.agent == "adk_live" else DEFAULT_REGION
+        if config.agent == "adk_live":
+            region = "us-central1"
+        elif config.agent == "agentic_rag":
+            region = "europe-west4"
+        else:
+            region = DEFAULT_REGION
         github_pat = os.environ.get("GITHUB_PAT")
         github_app_installation_id = os.environ.get("GITHUB_APP_INSTALLATION_ID")
 

@@ -32,6 +32,7 @@ steps:
       - "PIPELINE_NAME=${_PIPELINE_NAME}"
       - "CRON_SCHEDULE=${_PIPELINE_CRON_SCHEDULE}"
       - "DISABLE_CACHING=TRUE"
+      - "SCHEDULE_ONLY=TRUE"
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}

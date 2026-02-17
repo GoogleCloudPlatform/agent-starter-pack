@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 from unittest.mock import MagicMock, patch
+{%- endif %}
 
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
@@ -28,10 +30,7 @@ from {{cookiecutter.agent_directory}}.agent import root_agent
 )
 def test_agent_stream(mock_retrieve: MagicMock) -> None:
 {%- elif cookiecutter.datastore_type == "vertex_ai_search" %}
-@patch(
-    "{{cookiecutter.agent_directory}}.agent.vertex_search_tool",
-)
-def test_agent_stream(mock_search_tool: MagicMock) -> None:
+def test_agent_stream() -> None:
 {%- endif %}
     """
     Integration test for the agent stream functionality.

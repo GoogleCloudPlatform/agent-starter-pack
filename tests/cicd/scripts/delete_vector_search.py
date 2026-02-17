@@ -351,6 +351,56 @@ def delete_vector_search_resources_in_project(
         return 0, 0, 0, 0
 
 
+def delete_single_collection(
+    client: vectorsearch_v1beta.VectorSearchServiceClient,
+    collection_name: str,
+    retry_count: int = 0,
+) -> bool:
+    """
+    Delete a single Vector Search 2.0 collection with retry logic.
+
+    Args:
+        client: The VectorSearchServiceClient instance
+        collection_name: Full resource name of the collection
+        retry_count: Current retry attempt number
+
+    Returns:
+        True if deleted successfully, False otherwise
+    """
+    try:
+        logger.info(f"🗑️ Deleting collection: {collection_name}")
+        client.delete_collection(
+            request=vectorsearch_v1beta.DeleteCollectionRequest(name=collection_name)
+        )
+        logger.info(f"✅ Deleted collection: {collection_name}")
+        return True
+    except exceptions.NotFound:
+        logger.info(f"✅ Collection {collection_name} not found (already deleted)")
+        return True
+    except exceptions.TooManyRequests:
+        if retry_count < MAX_RETRIES:
+            logger.warning(
+                f"⏱️ Rate limit hit for {collection_name}, waiting {RATE_LIMIT_DELAY}s before retry {retry_count + 1}/{MAX_RETRIES}..."
+            )
+            time.sleep(RATE_LIMIT_DELAY)
+            return delete_single_collection(client, collection_name, retry_count + 1)
+        else:
+            logger.error(f"❌ Rate limit exceeded max retries for {collection_name}")
+            return False
+    except Exception as e:
+        if retry_count < MAX_RETRIES:
+            logger.warning(
+                f"⏱️ Error deleting {collection_name}, retrying in {RETRY_DELAY}s... (attempt {retry_count + 1}/{MAX_RETRIES})"
+            )
+            time.sleep(RETRY_DELAY)
+            return delete_single_collection(client, collection_name, retry_count + 1)
+        else:
+            logger.error(
+                f"❌ Failed to delete {collection_name} after {MAX_RETRIES} retries: {e}"
+            )
+            return False
+
+
 def delete_vector_search_collections_in_project(
     project_id: str, regions: list[str] | None = None
 ) -> tuple[int, int]:
@@ -369,13 +419,13 @@ def delete_vector_search_collections_in_project(
 
     total_found = 0
     total_deleted = 0
+    client = vectorsearch_v1beta.VectorSearchServiceClient()
 
     for region in regions:
         logger.info(
             f"🔍 Checking for Vector Search 2.0 collections in {project_id} ({region})..."
         )
         try:
-            client = vectorsearch_v1beta.VectorSearchServiceClient()
             parent = f"projects/{project_id}/locations/{region}"
 
             collections = list(
@@ -403,23 +453,23 @@ def delete_vector_search_collections_in_project(
                 f"🎯 Found {len(test_collections)} collection(s) in {project_id} ({region})"
             )
 
-            for collection in test_collections:
-                try:
-                    logger.info(f"🗑️ Deleting collection: {collection.name}")
-                    client.delete_collection(
-                        request=vectorsearch_v1beta.DeleteCollectionRequest(
-                            name=collection.name
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_collection = {
+                    executor.submit(
+                        delete_single_collection, client, c.name
+                    ): c.name
+                    for c in test_collections
+                }
+
+                for future in as_completed(future_to_collection):
+                    col_name = future_to_collection[future]
+                    try:
+                        if future.result():
+                            total_deleted += 1
+                    except Exception as exc:
+                        logger.error(
+                            f"❌ Collection deletion raised exception {col_name}: {exc}"
                         )
-                    )
-                    total_deleted += 1
-                    logger.info(f"✅ Deleted collection: {collection.name}")
-                except exceptions.NotFound:
-                    logger.info(
-                        f"✅ Collection {collection.name} not found (already deleted)"
-                    )
-                    total_deleted += 1
-                except Exception as e:
-                    logger.error(f"❌ Error deleting collection {collection.name}: {e}")
 
         except Exception as e:
             logger.warning(

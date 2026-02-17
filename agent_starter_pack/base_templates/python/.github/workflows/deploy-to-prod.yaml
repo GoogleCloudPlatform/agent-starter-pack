@@ -94,6 +94,7 @@ jobs:
           PIPELINE_NAME: {% raw %}${{ vars.PIPELINE_NAME }}{% endraw %}
           CRON_SCHEDULE: {% raw %}${{ vars.PIPELINE_CRON_SCHEDULE }}{% endraw %}
           DISABLE_CACHING: "TRUE"
+          SCHEDULE_ONLY: "TRUE"
 {%- endif %}
 
 {%- if cookiecutter.deployment_target == 'cloud_run' %}

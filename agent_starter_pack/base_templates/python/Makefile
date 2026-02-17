@@ -351,7 +351,8 @@ sync-data:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	DATA_STORE_REGION=$$(grep 'data_store_region' deployment/terraform/dev/vars/env.tfvars | sed 's/.*= *"//;s/".*//') && \
 	uv run deployment/terraform/scripts/start_connector_run.py $$PROJECT_ID $$DATA_STORE_REGION {{cookiecutter.project_name}}-collection --wait
-{%- elif cookiecutter.cicd_runner != 'skip' %}
+{%- endif %}
+{%- if cookiecutter.cicd_runner != 'skip' %}
 
 # ==============================================================================
 # Infrastructure Setup

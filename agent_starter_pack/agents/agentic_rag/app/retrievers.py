@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
+
 import os
 from collections.abc import Callable
 
@@ -24,11 +25,12 @@ def create_search_tool(
     """Create a Vertex AI Search tool or mock for testing.
 
     Args:
-        data_store_path: Full path to the Vertex AI Search datastore.
+        data_store_path: Full resource path of the datastore.
 
     Returns:
         VertexAiSearchTool instance or mock function for testing.
     """
+    # For integration tests, return a mock function instead of the real tool
     if os.getenv("INTEGRATION_TEST") == "TRUE":
 
         def mock_search(query: str) -> str:
@@ -41,6 +43,7 @@ def create_search_tool(
 
 
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+
 import os
 
 from google.cloud import vectorsearch_v1beta
@@ -61,11 +64,9 @@ def search_collection(
     Returns:
         Formatted string containing relevant document content.
     """
+    # For integration tests, return mock data instead of calling the real API
     if os.getenv("INTEGRATION_TEST") == "TRUE":
-        return (
-            "## Context provided:\n"
-            "<Document 0>\nMock vector search result for testing purposes.\n</Document 0>"
-        )
+        return "## Context provided:\n<Document 0>\nMock vector search result for testing purposes.\n</Document 0>"
 
     client = vectorsearch_v1beta.DataObjectSearchServiceClient()
 

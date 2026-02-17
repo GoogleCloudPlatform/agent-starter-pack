@@ -163,6 +163,25 @@ CONDITIONAL_FILES = {
     "deployment/terraform/dev/vector_search_iam.tf": (
         lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
     ),
+    # Datastore-specific terraform scripts (vertex_ai_search vs vertex_ai_vector_search)
+    "deployment/terraform/scripts/delete_data_connector.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/get_data_store_id.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/setup_data_connector.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/start_connector_run.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/delete_vector_search_collection.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/scripts/setup_vector_search_collection.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
 }
 
 

@@ -251,8 +251,11 @@ from {{cookiecutter.agent_directory}}.agent_engine_app import AgentEngineApp
 
 
 @pytest.fixture
-def agent_app() -> AgentEngineApp:
+def agent_app(monkeypatch: pytest.MonkeyPatch) -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
+    # Set integration test flag to mock external services
+    monkeypatch.setenv("INTEGRATION_TEST", "TRUE")
+
     from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 
     agent_engine.set_up()
@@ -261,8 +264,11 @@ def agent_app() -> AgentEngineApp:
 
 
 @pytest.fixture
-def agent_app() -> AgentEngineApp:
+def agent_app(monkeypatch: pytest.MonkeyPatch) -> AgentEngineApp:
     """Fixture to create and set up AgentEngineApp instance"""
+    # Set integration test flag to mock external services
+    monkeypatch.setenv("INTEGRATION_TEST", "TRUE")
+
     from {{cookiecutter.agent_directory}}.agent_engine_app import agent_engine
 
     agent_engine.set_up()

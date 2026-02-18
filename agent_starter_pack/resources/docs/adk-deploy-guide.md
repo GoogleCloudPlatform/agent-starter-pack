@@ -172,7 +172,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 Pass secrets during deployment with `--set-secrets`. Note: `make deploy` doesn't support secrets, so run deploy.py directly:
 ```bash
-uv run python -m app.app_utils.deploy --set-secrets "API_KEY=my-api-key,DB_PASS=db-password:2"
+uv run python -m <your-agent-directory>.app_utils.deploy --set-secrets "API_KEY=my-api-key,DB_PASS=db-password:2"
 ```
 
 Format: `ENV_VAR=SECRET_ID` or `ENV_VAR=SECRET_ID:VERSION` (defaults to latest).
@@ -487,7 +487,7 @@ headers = {"Content-Type": "application/json", "Authorization": f"Bearer {ID_TOK
 # Step 1: Create a session
 user_id = "test_user"
 session_resp = requests.post(
-    f"{SERVICE_URL}/apps/app/users/{user_id}/sessions",
+    f"{SERVICE_URL}/apps/<your-agent-directory>/users/{user_id}/sessions",
     headers=headers,
     json={"state": {}}
 )
@@ -498,7 +498,7 @@ message_resp = requests.post(
     f"{SERVICE_URL}/run_sse",
     headers=headers,
     json={
-        "app_name": "app",
+        "app_name": "<your-agent-directory>",
         "user_id": user_id,
         "session_id": session_id,
         "new_message": {"role": "user", "parts": [{"text": "Hello!"}]},
@@ -598,11 +598,11 @@ curl -X POST \
     },
     "id": "req-1"
   }' \
-  "$SERVICE_URL/a2a/app"
+  "$SERVICE_URL/a2a/<your-agent-directory>"
 
 # Get the agent card (describes capabilities)
 curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
-  "$SERVICE_URL/a2a/app/.well-known/agent-card.json"
+  "$SERVICE_URL/a2a/<your-agent-directory>/.well-known/agent-card.json"
 ```
 
 ---
@@ -669,10 +669,10 @@ curl -X POST http://localhost:8000/invoke -H "Content-Type: application/json" \
 ```bash
 # Pub/Sub push subscription
 gcloud pubsub subscriptions create my-sub --topic=my-topic \
-    --push-endpoint=https://YOUR_PROJECT.run.app/invoke
+    --push-endpoint=https://<your-service-name>.run.app/invoke
 # Eventarc trigger
 gcloud eventarc triggers create my-trigger \
-    --destination-run-service=YOUR_PROJECT \
+    --destination-run-service=<your-service-name> \
     --destination-run-path=/invoke \
     --event-filters="type=google.cloud.storage.object.v1.finalized"
 ```

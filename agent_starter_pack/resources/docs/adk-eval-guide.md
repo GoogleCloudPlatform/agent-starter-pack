@@ -92,7 +92,7 @@ make eval EVALSET=tests/eval/evalsets/my_evalset.json
           }
         }
       ],
-      "session_input": { "app_name": "my_app", "user_id": "user_1", "state": {} }
+      "session_input": { "app_name": "<your-agent-directory>", "user_id": "user_1", "state": {} }
     }
   ]
 }

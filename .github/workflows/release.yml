@@ -38,8 +38,8 @@ jobs:
 
       - name: Configure git
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
       - name: Bump version
         id: bump
@@ -77,21 +77,22 @@ jobs:
         id: create_pr
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          STEPS_BUMP_OUTPUTS_NEW_VERSION: ${{ steps.bump.outputs.new_version }}
         run: |
-          BRANCH="release/v${{ steps.bump.outputs.new_version }}"
+          BRANCH="release/v${STEPS_BUMP_OUTPUTS_NEW_VERSION}"
 
           # Delete existing branch if it exists
           git push origin --delete "$BRANCH" 2>/dev/null || true
 
           git checkout -b "$BRANCH"
           git add pyproject.toml uv.lock
-          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }}"
+          git commit -m "chore: bump version to ${STEPS_BUMP_OUTPUTS_NEW_VERSION}"
           git push -u origin "$BRANCH"
 
           # Create PR using PAT (author is the PAT owner, CLA will pass)
           PR_URL=$(gh pr create \
-            --title "chore: release v${{ steps.bump.outputs.new_version }}" \
-            --body "## Release v${{ steps.bump.outputs.new_version }}
+            --title "chore: release v${STEPS_BUMP_OUTPUTS_NEW_VERSION}" \
+            --body "## Release v${STEPS_BUMP_OUTPUTS_NEW_VERSION}
 
           This PR was automatically created by the release workflow.
 
@@ -108,23 +109,26 @@ jobs:
       - name: Approve PR
         env:
           GH_TOKEN: ${{ secrets.APPROVER_PAT }}
+          STEPS_CREATE_PR_OUTPUTS_PR_URL: ${{ steps.create_pr.outputs.pr_url }}
         run: |
           # Approve with second account's PAT (different user than PR author)
-          gh pr review "${{ steps.create_pr.outputs.pr_url }}" --approve
+          gh pr review "${STEPS_CREATE_PR_OUTPUTS_PR_URL}" --approve
 
       - name: Wait for all checks to pass
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          STEPS_CREATE_PR_OUTPUTS_PR_URL: ${{ steps.create_pr.outputs.pr_url }}
         run: |
           echo "Waiting for all status checks to complete..."
-          gh pr checks "${{ steps.create_pr.outputs.pr_url }}" --watch --fail-fast
+          gh pr checks "${STEPS_CREATE_PR_OUTPUTS_PR_URL}" --watch --fail-fast
 
       - name: Enable auto-merge
         env:
           GH_TOKEN: ${{ secrets.RELEASE_PAT }}
+          STEPS_CREATE_PR_OUTPUTS_PR_URL: ${{ steps.create_pr.outputs.pr_url }}
         run: |
           # Use PAT for auto-merge so the merge event triggers the publish workflow
-          gh pr merge "${{ steps.create_pr.outputs.pr_url }}" --auto --squash
+          gh pr merge "${STEPS_CREATE_PR_OUTPUTS_PR_URL}" --auto --squash
 
   # Job 2: Publish release (triggered when release PR is merged)
   publish:
@@ -149,10 +153,12 @@ jobs:
         id: version
         run: |
           # Extract version from branch name (release/v1.2.3 -> 1.2.3)
-          VERSION="${{ github.event.pull_request.head.ref }}"
+          VERSION="${GITHUB_EVENT_PULL_REQUEST_HEAD_REF}"
           VERSION="${VERSION#release/v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_EVENT_PULL_REQUEST_HEAD_REF: ${{ github.event.pull_request.head.ref }}
 
       - name: Build package
         run: uv build
@@ -164,13 +170,15 @@ jobs:
 
       - name: Configure git
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
       - name: Create and push tag
         run: |
-          git tag ${{ steps.version.outputs.tag }}
-          git push origin ${{ steps.version.outputs.tag }}
+          git tag ${STEPS_VERSION_OUTPUTS_TAG}
+          git push origin ${STEPS_VERSION_OUTPUTS_TAG}
+        env:
+          STEPS_VERSION_OUTPUTS_TAG: ${{ steps.version.outputs.tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

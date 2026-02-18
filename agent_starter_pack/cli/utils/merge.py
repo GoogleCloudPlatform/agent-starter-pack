@@ -26,6 +26,7 @@ import shutil
 import subprocess
 
 from rich.console import Console
+from rich.markup import escape
 from rich.prompt import Prompt
 
 from .upgrade import DependencyChange, FileCompareResult
@@ -98,7 +99,7 @@ def display_results(
         dep_changes = []
 
     if groups["auto_update"]:
-        console.print("[bold green]Auto-updating (unchanged by you):[/bold green]")
+        console.print("[bold green]Will auto-update (unchanged by you):[/bold green]")
         for result in groups["auto_update"]:
             console.print(f"  [green]✓[/green] {result.path}")
         console.print()
@@ -108,7 +109,7 @@ def display_results(
     ]
     if preserved_user_modified:
         console.print(
-            "[bold cyan]Preserving (you modified, template unchanged):[/bold cyan]"
+            "[bold cyan]Will preserve (you modified, template unchanged):[/bold cyan]"
         )
         for result in preserved_user_modified:
             console.print(f"  [cyan]✓[/cyan] {result.path}")
@@ -124,13 +125,13 @@ def display_results(
         console.print()
 
     if groups["new"]:
-        console.print("[bold yellow]New files:[/bold yellow]")
+        console.print("[bold yellow]Files to add:[/bold yellow]")
         for result in groups["new"]:
             console.print(f"  [yellow]+[/yellow] {result.path}")
         console.print()
 
     if groups["removed"]:
-        console.print("[bold yellow]Removed files:[/bold yellow]")
+        console.print("[bold yellow]Files to remove:[/bold yellow]")
         for result in groups["removed"]:
             console.print(f"  [yellow]-[/yellow] {result.path}")
         console.print()
@@ -144,25 +145,21 @@ def display_results(
         console.print()
 
     if dep_changes:
-        console.print("[bold]Dependencies:[/bold]")
+        console.print("[bold]Dependency changes:[/bold]")
         for change in dep_changes:
+            dep_name = escape(change.name)
+            old_ver = escape(change.old_version or "")
+            new_ver = escape(change.new_version or "")
             if change.change_type == "updated":
                 console.print(
-                    f"  [green]✓[/green] Updated: {change.name} "
-                    f"{change.old_version} → {change.new_version}"
+                    f"  [green]✓[/green] Update: {dep_name} {old_ver} → {new_ver}"
                 )
             elif change.change_type == "added":
-                console.print(
-                    f"  [green]+[/green] Added: {change.name}{change.new_version}"
-                )
+                console.print(f"  [green]+[/green] Add: {dep_name}{new_ver}")
             elif change.change_type == "kept":
-                console.print(
-                    f"  [cyan]✓[/cyan] Kept: {change.name}{change.old_version}"
-                )
+                console.print(f"  [cyan]✓[/cyan] Keep (yours): {dep_name}{old_ver}")
             elif change.change_type == "removed":
-                console.print(
-                    f"  [yellow]-[/yellow] Removed: {change.name}{change.old_version}"
-                )
+                console.print(f"  [yellow]-[/yellow] Remove: {dep_name}{old_ver}")
         console.print()
 
 
@@ -181,7 +178,7 @@ def handle_conflict(
         auto_approve: If True, keep user's version
 
     Returns:
-        Action taken: "kept", "updated", or "skipped"
+        Action taken: "kept", "kept_all", "updated", "updated_all", or "skipped"
     """
     if auto_approve:
         console.print(f"  [dim]Keeping your version: {result.path}[/dim]")
@@ -191,8 +188,8 @@ def handle_conflict(
     console.print(f"  Reason: {result.reason}")
 
     choice = Prompt.ask(
-        "  (v)iew diff, (k)eep yours, (u)se new, (s)kip",
-        choices=["v", "k", "u", "s"],
+        "  (v)iew diff, (k)eep yours, (K)eep all, (u)se new, (U)se all, (s)kip",
+        choices=["v", "k", "K", "u", "U", "s"],
         default="k",
     )
 
@@ -232,12 +229,18 @@ def handle_conflict(
 
         # Ask again after viewing
         choice = Prompt.ask(
-            "  (k)eep yours, (u)se new, (s)kip",
-            choices=["k", "u", "s"],
+            "  (k)eep yours, (K)eep all, (u)se new, (U)se all, (s)kip",
+            choices=["k", "K", "u", "U", "s"],
             default="k",
         )
 
-    if choice == "k":
+    if choice == "K":
+        console.print("  [cyan]Keeping your version for all conflicts[/cyan]")
+        return "kept_all"
+    elif choice == "U":
+        console.print("  [green]Using new version for all conflicts[/green]")
+        return "updated_all"
+    elif choice == "k":
         console.print("  [cyan]Keeping your version[/cyan]")
         return "kept"
     elif choice == "u":
@@ -281,41 +284,40 @@ def apply_changes(
             counts["updated"] += 1
 
     for result in groups["new"]:
-        should_add = (
-            auto_approve
-            or Prompt.ask(
-                f"  Add new file {result.path}?", choices=["y", "n"], default="y"
-            )
-            == "y"
-        )
-        if should_add:
-            if copy_file(new_template_dir / result.path, project_dir / result.path):
-                counts["added"] += 1
-        else:
-            counts["skipped"] += 1
+        if copy_file(new_template_dir / result.path, project_dir / result.path):
+            counts["added"] += 1
 
     for result in groups["removed"]:
         file_path = project_dir / result.path
-        should_remove = (
-            auto_approve
-            or Prompt.ask(
-                f"  Remove file {result.path}?", choices=["y", "n"], default="y"
-            )
-            == "y"
-        )
-        if should_remove and file_path.exists():
+        if file_path.exists():
             file_path.unlink()
             counts["removed"] += 1
-        elif not should_remove:
-            counts["skipped"] += 1
 
     if groups["conflict"]:
         console.print()
         console.print("[bold]Resolving conflicts:[/bold]")
 
+    bulk_action = None  # "keep" or "update" when user chooses K or U
     for result in groups["conflict"]:
+        if bulk_action == "keep":
+            console.print(f"  [dim]Keeping your version: {result.path}[/dim]")
+            counts["conflicts_kept"] += 1
+            continue
+        elif bulk_action == "update":
+            if copy_file(new_template_dir / result.path, project_dir / result.path):
+                console.print(f"  [green]Updated: {result.path}[/green]")
+                counts["conflicts_updated"] += 1
+            continue
+
         action = handle_conflict(result, project_dir, new_template_dir, auto_approve)
-        if action == "updated":
+        if action == "kept_all":
+            counts["conflicts_kept"] += 1
+            bulk_action = "keep"
+        elif action == "updated_all":
+            if copy_file(new_template_dir / result.path, project_dir / result.path):
+                counts["conflicts_updated"] += 1
+            bulk_action = "update"
+        elif action == "updated":
             if copy_file(new_template_dir / result.path, project_dir / result.path):
                 counts["conflicts_updated"] += 1
         elif action == "kept":

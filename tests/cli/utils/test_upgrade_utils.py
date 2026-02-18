@@ -16,6 +16,7 @@
 
 import pathlib
 import tempfile
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -26,6 +27,7 @@ from agent_starter_pack.cli.utils.upgrade import (
     group_results_by_action,
     merge_pyproject_dependencies,
     three_way_compare,
+    update_asp_metadata,
     write_merged_dependencies,
 )
 
@@ -229,6 +231,22 @@ class TestThreeWayCompare:
         result = three_way_compare("old_file.txt", project, old_template, new_template)
 
         assert result.action == "conflict"
+
+    def test_user_added_file_skipped(
+        self, temp_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
+    ) -> None:
+        """Test that user-added files (not in any template) are skipped."""
+        project, old_template, new_template = temp_dirs
+
+        # File only exists in the current project, not in either template
+        (project / "my_custom_file.txt").write_text("user content")
+
+        result = three_way_compare(
+            "my_custom_file.txt", project, old_template, new_template
+        )
+
+        assert result.action == "skip"
+        assert "user-added" in result.reason.lower()
 
     def test_skip_agent_code(
         self, temp_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
@@ -438,48 +456,167 @@ dependencies = [{deps_str}]
         assert len(removed) == 1
         assert removed[0].name == "old-dep"
 
+    def test_extras_change_detected_as_update(
+        self, pyproject_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
+    ) -> None:
+        """Test that changing extras on same package is detected as update, not add+remove."""
+        current, old_template, new_template = pyproject_dirs
+
+        self._write_pyproject(
+            current,
+            ["google-cloud-aiplatform[evaluation]>=1.0.0"],
+        )
+        self._write_pyproject(
+            old_template,
+            ["google-cloud-aiplatform[evaluation]>=1.0.0"],
+        )
+        self._write_pyproject(
+            new_template,
+            ["google-cloud-aiplatform[evaluation,agent-engines]>=1.1.0"],
+        )
+
+        result = merge_pyproject_dependencies(
+            current / "pyproject.toml",
+            old_template / "pyproject.toml",
+            new_template / "pyproject.toml",
+        )
+
+        # Should be one "updated" change, not an "added" + "removed"
+        updated = [c for c in result.changes if c.change_type == "updated"]
+        added = [c for c in result.changes if c.change_type == "added"]
+        removed = [c for c in result.changes if c.change_type == "removed"]
+        assert len(updated) == 1
+        assert updated[0].name == "google-cloud-aiplatform"
+        assert len(added) == 0
+        assert len(removed) == 0
+
+        # Merged deps should contain the new extras
+        assert any(
+            "google-cloud-aiplatform[evaluation,agent-engines]" in d
+            for d in result.merged_deps
+        )
+
+    def test_extras_treated_as_same_package(
+        self, pyproject_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
+    ) -> None:
+        """Test that packages with different extras are treated as the same package."""
+        current, old_template, new_template = pyproject_dirs
+
+        self._write_pyproject(current, ["google-cloud-aiplatform[evaluation]>=1.0.0"])
+        self._write_pyproject(
+            old_template, ["google-cloud-aiplatform[evaluation]>=1.0.0"]
+        )
+        self._write_pyproject(
+            new_template,
+            ["google-cloud-aiplatform[evaluation,agent-engines]>=1.1.0"],
+        )
+
+        result = merge_pyproject_dependencies(
+            current / "pyproject.toml",
+            old_template / "pyproject.toml",
+            new_template / "pyproject.toml",
+        )
+
+        # Should be one "updated" change, not separate add/remove
+        updated = [c for c in result.changes if c.change_type == "updated"]
+        added = [c for c in result.changes if c.change_type == "added"]
+        removed = [c for c in result.changes if c.change_type == "removed"]
+
+        assert len(updated) == 1
+        assert updated[0].name == "google-cloud-aiplatform"
+        assert len(added) == 0
+        assert len(removed) == 0
+
+    def test_extras_preserved_in_merged_deps(
+        self, pyproject_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
+    ) -> None:
+        """Test that extras brackets are preserved in merged dependency output."""
+        current, old_template, new_template = pyproject_dirs
+
+        self._write_pyproject(current, ["google-adk>=0.2.0"])
+        self._write_pyproject(old_template, ["google-adk>=0.2.0"])
+        self._write_pyproject(new_template, ["google-adk[extra]>=0.3.0"])
+
+        result = merge_pyproject_dependencies(
+            current / "pyproject.toml",
+            old_template / "pyproject.toml",
+            new_template / "pyproject.toml",
+        )
+
+        # Merged deps should include the extras
+        assert any("google-adk[extra]>=0.3.0" in dep for dep in result.merged_deps)
+
 
 class TestWriteMergedDependencies:
-    """Tests for writing merged dependencies back to pyproject.toml."""
+    """Tests for writing merged dependencies via uv CLI."""
 
-    def test_writes_dependencies_correctly(self, tmp_path: pathlib.Path) -> None:
-        """Test that dependencies are written correctly to pyproject.toml."""
+    @patch("agent_starter_pack.cli.utils.upgrade.subprocess.run")
+    def test_calls_uv_add_with_merged_deps(
+        self, mock_run: MagicMock, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that uv add --frozen is called with the merged deps."""
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
-            """
-[project]
-name = "test-project"
-dependencies = [
-    "old-dep>=1.0.0",
-]
-"""
+            '[project]\nname = "test"\ndependencies = [\n    "old-dep>=1.0.0",\n]\n'
         )
+        mock_run.return_value = MagicMock(returncode=0, stderr="")
 
         merged_deps = ["google-adk>=0.3.0", "my-custom-lib>=1.0.0"]
         result = write_merged_dependencies(pyproject, merged_deps)
 
         assert result is True
-        content = pyproject.read_text()
-        assert '"google-adk>=0.3.0"' in content
-        assert '"my-custom-lib>=1.0.0"' in content
-        assert "old-dep" not in content
+        # Should call uv remove for old-dep, then uv add for merged deps
+        calls = mock_run.call_args_list
+        assert len(calls) == 2
 
-    def test_handles_empty_dependencies(self, tmp_path: pathlib.Path) -> None:
-        """Test writing empty dependencies list."""
+        remove_call = calls[0]
+        assert remove_call[0][0][:3] == ["uv", "remove", "--frozen"]
+        assert "old-dep" in remove_call[0][0]
+
+        add_call = calls[1]
+        assert add_call[0][0][:3] == ["uv", "add", "--frozen"]
+        assert "google-adk>=0.3.0" in add_call[0][0]
+        assert "my-custom-lib>=1.0.0" in add_call[0][0]
+
+    @patch("agent_starter_pack.cli.utils.upgrade.subprocess.run")
+    def test_skips_remove_when_no_removals(
+        self, mock_run: MagicMock, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that uv remove is not called when there are no deps to remove."""
         pyproject = tmp_path / "pyproject.toml"
         pyproject.write_text(
-            """
-[project]
-name = "test-project"
-dependencies = ["some-dep>=1.0.0"]
-"""
+            '[project]\nname = "test"\ndependencies = [\n    "google-adk>=0.2.0",\n]\n'
         )
+        mock_run.return_value = MagicMock(returncode=0, stderr="")
+
+        merged_deps = ["google-adk>=0.3.0", "new-dep>=1.0.0"]
+        result = write_merged_dependencies(pyproject, merged_deps)
+
+        assert result is True
+        # Only uv add should be called (google-adk is in both lists)
+        assert len(mock_run.call_args_list) == 1
+        add_call = mock_run.call_args_list[0]
+        assert add_call[0][0][:3] == ["uv", "add", "--frozen"]
+
+    @patch("agent_starter_pack.cli.utils.upgrade.subprocess.run")
+    def test_handles_empty_merged_deps(
+        self, mock_run: MagicMock, tmp_path: pathlib.Path
+    ) -> None:
+        """Test writing empty dependencies list removes all current deps."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            '[project]\nname = "test"\ndependencies = [\n    "some-dep>=1.0.0",\n]\n'
+        )
+        mock_run.return_value = MagicMock(returncode=0, stderr="")
 
         result = write_merged_dependencies(pyproject, [])
 
         assert result is True
-        content = pyproject.read_text()
-        assert "dependencies = []" in content
+        # Should call uv remove for some-dep, no uv add
+        assert len(mock_run.call_args_list) == 1
+        remove_call = mock_run.call_args_list[0]
+        assert remove_call[0][0][:3] == ["uv", "remove", "--frozen"]
+        assert "some-dep" in remove_call[0][0]
 
     def test_returns_false_for_missing_file(self, tmp_path: pathlib.Path) -> None:
         """Test that missing file returns False."""
@@ -542,6 +679,230 @@ class TestCollectAllFilesDeepExclusion:
                 not in files
             )
             assert "main.py" in files
+
+
+class TestUpdateAspMetadata:
+    """Tests for updating ASP metadata across all supported languages."""
+
+    def test_python_updates_create_params(self, tmp_path: pathlib.Path) -> None:
+        """Test that Python create_params keys are updated correctly."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            """
+[project]
+name = "test-project"
+
+[tool.agent-starter-pack]
+name = "test-project"
+asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
+deployment_target = "agent_engine"
+cicd_runner = "skip"
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "cloud_run", "cicd_runner": "github_actions"},
+            language="python",
+        )
+
+        assert result is True
+        content = pyproject.read_text()
+        assert 'deployment_target = "cloud_run"' in content
+        assert 'cicd_runner = "github_actions"' in content
+
+    def test_python_updates_asp_version(self, tmp_path: pathlib.Path) -> None:
+        """Test that asp_version is updated when provided."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            """
+[tool.agent-starter-pack]
+asp_version = "0.25.0"
+
+[tool.agent-starter-pack.create_params]
+deployment_target = "agent_engine"
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "cloud_run"},
+            asp_version="0.30.0",
+            language="python",
+        )
+
+        assert result is True
+        content = pyproject.read_text()
+        assert 'asp_version = "0.30.0"' in content
+        assert 'deployment_target = "cloud_run"' in content
+
+    def test_go_updates_asp_toml(self, tmp_path: pathlib.Path) -> None:
+        """Test that Go .asp.toml metadata is updated correctly."""
+        asp_toml = tmp_path / ".asp.toml"
+        asp_toml.write_text(
+            """
+[project]
+base_template = "adk_go"
+version = "0.25.0"
+language = "go"
+deployment_target = "agent_engine"
+cicd_runner = "skip"
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "cloud_run", "cicd_runner": "github_actions"},
+            asp_version="0.30.0",
+            language="go",
+        )
+
+        assert result is True
+        content = asp_toml.read_text()
+        assert 'deployment_target = "cloud_run"' in content
+        assert 'cicd_runner = "github_actions"' in content
+        assert 'version = "0.30.0"' in content
+
+    def test_java_updates_pom_xml(self, tmp_path: pathlib.Path) -> None:
+        """Test that Java pom.xml ASP properties are updated correctly."""
+        pom = tmp_path / "pom.xml"
+        pom.write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <properties>
+    <asp.version>0.25.0</asp.version>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.deployment_target>agent_engine</asp.deployment_target>
+    <asp.cicd_runner>skip</asp.cicd_runner>
+  </properties>
+</project>
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "cloud_run", "cicd_runner": "github_actions"},
+            asp_version="0.30.0",
+            language="java",
+        )
+
+        assert result is True
+        content = pom.read_text()
+        assert "<asp.deployment_target>cloud_run</asp.deployment_target>" in content
+        assert "<asp.cicd_runner>github_actions</asp.cicd_runner>" in content
+        assert "<asp.version>0.30.0</asp.version>" in content
+
+    def test_typescript_updates_asp_toml(self, tmp_path: pathlib.Path) -> None:
+        """Test that TypeScript .asp.toml metadata is updated correctly."""
+        asp_toml = tmp_path / ".asp.toml"
+        asp_toml.write_text(
+            """
+[project]
+base_template = "adk_ts"
+version = "0.25.0"
+language = "typescript"
+deployment_target = "cloud_run"
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "agent_engine"},
+            language="typescript",
+        )
+
+        assert result is True
+        content = asp_toml.read_text()
+        assert 'deployment_target = "agent_engine"' in content
+
+    def test_python_removes_stale_keys(self, tmp_path: pathlib.Path) -> None:
+        """Test that stale keys like session_type are removed from pyproject.toml."""
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text(
+            """[tool.agent-starter-pack]
+name = "test-project"
+
+[tool.agent-starter-pack.create_params]
+deployment_target = "cloud_run"
+session_type = "in_memory"
+cicd_runner = "skip"
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "agent_engine"},
+            language="python",
+            remove_keys=["session_type"],
+        )
+
+        assert result is True
+        content = pyproject.read_text()
+        assert 'deployment_target = "agent_engine"' in content
+        assert "session_type" not in content
+        assert 'cicd_runner = "skip"' in content
+
+    def test_java_removes_stale_keys(self, tmp_path: pathlib.Path) -> None:
+        """Test that stale keys are removed from pom.xml."""
+        pom = tmp_path / "pom.xml"
+        pom.write_text(
+            """<?xml version="1.0" encoding="UTF-8"?>
+<project>
+  <properties>
+    <asp.deployment_target>cloud_run</asp.deployment_target>
+    <asp.session_type>in_memory</asp.session_type>
+    <asp.cicd_runner>skip</asp.cicd_runner>
+  </properties>
+</project>
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "agent_engine"},
+            language="java",
+            remove_keys=["session_type"],
+        )
+
+        assert result is True
+        content = pom.read_text()
+        assert "<asp.deployment_target>agent_engine</asp.deployment_target>" in content
+        assert "session_type" not in content
+        assert "<asp.cicd_runner>skip</asp.cicd_runner>" in content
+
+    def test_go_removes_stale_keys(self, tmp_path: pathlib.Path) -> None:
+        """Test that stale keys are removed from .asp.toml."""
+        asp_toml = tmp_path / ".asp.toml"
+        asp_toml.write_text(
+            """[project]
+deployment_target = "cloud_run"
+session_type = "in_memory"
+cicd_runner = "skip"
+"""
+        )
+
+        result = update_asp_metadata(
+            tmp_path,
+            {"deployment_target": "agent_engine"},
+            language="go",
+            remove_keys=["session_type"],
+        )
+
+        assert result is True
+        content = asp_toml.read_text()
+        assert 'deployment_target = "agent_engine"' in content
+        assert "session_type" not in content
+        assert 'cicd_runner = "skip"' in content
+
+    def test_returns_false_for_missing_file(self, tmp_path: pathlib.Path) -> None:
+        """Test that missing config file returns False."""
+        result = update_asp_metadata(
+            tmp_path, {"deployment_target": "cloud_run"}, language="python"
+        )
+
+        assert result is False
 
 
 if __name__ == "__main__":

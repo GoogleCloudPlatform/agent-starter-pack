@@ -49,6 +49,11 @@ from ..utils.merge import (
 )
 from ..utils.template import (
     get_available_agents,
+    get_deployment_targets,
+    load_template_config,
+    prompt_cicd_runner_selection,
+    prompt_deployment_target,
+    prompt_session_type_selection,
     resolve_agent_alias,
     validate_agent_directory_name,
 )
@@ -56,6 +61,7 @@ from ..utils.upgrade import (
     compare_all_files,
     group_results_by_action,
     merge_pyproject_dependencies,
+    update_asp_metadata,
     write_merged_dependencies,
 )
 from ..utils.version import get_current_version
@@ -411,21 +417,18 @@ def check_and_execute_with_saved_config(
         project_version, current_version
     )
 
-    # Show detected configuration and ask user
+    # Show detected configuration
     _display_saved_config(
         display_params, project_version, current_version, use_different_version
     )
 
     if not auto_approve:
-        use_saved = Prompt.ask(
-            "Use these settings?",
-            choices=["y", "customize"],
-            default="y",
-        )
-        if use_saved != "y":
-            return _prompt_customize_overrides(project_config)
+        # Always go through interactive customization so the user can
+        # configure params they haven't set yet (e.g., cicd_runner).
+        # Pressing Enter on every prompt keeps current values.
+        return _prompt_customize_overrides(project_config)
 
-    # Build and execute the command
+    # auto_approve: use saved config as-is via subprocess
     args = build_args_from_config(project_config, auto_approve, cli_overrides)
     # --force and --dry-run were introduced in this version; strip them
     # when re-executing against an older locked version to avoid crashes.
@@ -445,8 +448,10 @@ def check_and_execute_with_saved_config(
 def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any]:
     """Prompt user to customize project settings interactively.
 
-    Shows each configurable parameter with the current saved value as default.
-    Returns only the parameters that were changed.
+    Uses the same rich numbered menus as the create command. Shows each
+    configurable parameter with the current saved value as the default
+    selection. Only shows options that are valid for the selected agent's
+    template (e.g., Go agents don't have session_type).
 
     Args:
         project_config: The saved project configuration
@@ -455,45 +460,58 @@ def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any
         Dict of only the changed parameter names to new values
     """
     create_params = project_config.get("create_params", {})
+    base_template = project_config.get("base_template", "adk")
     overrides: dict[str, Any] = {}
 
-    console.print()
-    console.print("[bold]Customize your project settings:[/bold]")
-    console.print("[dim](Press Enter to keep current value)[/dim]")
-    console.print()
+    # 1. Agent selection
+    new_agent = display_base_template_selection(base_template)
+    if new_agent != base_template:
+        overrides["base_template"] = new_agent
+    effective_agent = new_agent
 
-    # Deployment target
-    current_deployment = create_params.get("deployment_target", "agent_engine")
-    deployment_choices = ["agent_engine", "cloud_run", "none"]
-    new_deployment = Prompt.ask(
-        f"  Deployment target (current: {current_deployment})",
-        choices=deployment_choices,
-        default=current_deployment,
-    )
-    if new_deployment != current_deployment:
-        overrides["deployment_target"] = new_deployment
-
-    # Session type — only relevant for cloud_run
-    effective_deployment = new_deployment
-    if effective_deployment == "cloud_run":
-        current_session = create_params.get("session_type", "in_memory")
-        session_choices = ["in_memory", "cloud_sql", "agent_engine"]
-        new_session = Prompt.ask(
-            f"  Session type (current: {current_session})",
-            choices=session_choices,
-            default=current_session,
+    # Re-load template config for the (potentially new) agent
+    available_targets = get_deployment_targets(effective_agent)
+    requires_session = False
+    try:
+        template_path = (
+            pathlib.Path(__file__).parent.parent.parent
+            / "agents"
+            / effective_agent
+            / ".template"
         )
+        template_config = load_template_config(template_path)
+        requires_session = template_config.get("settings", {}).get(
+            "requires_session", False
+        )
+    except Exception:
+        pass
+
+    # 2. Deployment target
+    current_deployment = create_params.get("deployment_target", "cloud_run")
+    if available_targets and len(available_targets) > 1:
+        new_deployment = prompt_deployment_target(
+            effective_agent, default_value=current_deployment
+        )
+        if new_deployment != current_deployment:
+            overrides["deployment_target"] = new_deployment
+    elif available_targets and len(available_targets) == 1:
+        new_deployment = available_targets[0]
+        if new_deployment != current_deployment:
+            overrides["deployment_target"] = new_deployment
+    else:
+        new_deployment = current_deployment
+
+    # 3. Session type — only for cloud_run AND agents that support sessions
+    effective_deployment = overrides.get("deployment_target", current_deployment)
+    if effective_deployment == "cloud_run" and requires_session:
+        current_session = create_params.get("session_type", "in_memory")
+        new_session = prompt_session_type_selection(default_value=current_session)
         if new_session != current_session:
             overrides["session_type"] = new_session
 
-    # CI/CD runner
+    # 4. CI/CD runner
     current_cicd = create_params.get("cicd_runner", "skip")
-    cicd_choices = ["google_cloud_build", "github_actions", "skip"]
-    new_cicd = Prompt.ask(
-        f"  CI/CD runner (current: {current_cicd})",
-        choices=cicd_choices,
-        default=current_cicd,
-    )
+    new_cicd = prompt_cicd_runner_selection(default_value=current_cicd)
     if new_cicd != current_cicd:
         overrides["cicd_runner"] = new_cicd
 
@@ -521,12 +539,17 @@ def display_base_template_selection(current_base: str) -> str:
 
     for agent in agents.values():
         template_choices[choice_num] = agent["name"]
-        current_indicator = " (current)" if agent["name"] == current_base else ""
-        console.print(
-            f"  {choice_num}. [bold]{agent['name']}[/]{current_indicator} - [dim]{agent['description']}[/]"
-        )
         if agent["name"] == current_base:
+            console.print(
+                f"  {choice_num}. [bold cyan]{agent['name']}[/]"
+                f" [dim]{agent['description']}[/]"
+                "  [dim cyan](current)[/]"
+            )
             current_choice = choice_num
+        else:
+            console.print(
+                f"  [dim]{choice_num}. {agent['name']} - {agent['description']}[/]"
+            )
         choice_num += 1
 
     if current_choice is None:
@@ -690,7 +713,11 @@ def _build_enhance_create_args(
         if _should_skip_config_value(value):
             continue
 
-        arg_name = f"--{key.replace('_', '-')}"
+        # base_template maps to --agent in the create command
+        if key == "base_template":
+            arg_name = "--agent"
+        else:
+            arg_name = f"--{key.replace('_', '-')}"
 
         # Remove existing arg if present (to override)
         while arg_name in args:
@@ -743,12 +770,7 @@ def _run_smart_merge(
     # Build args for the "new" template (with enhance overrides merged)
     new_args = _build_enhance_create_args(project_config, cli_overrides)
 
-    # Check if there's actually a difference in template params
-    if old_args == new_args:
-        # No template difference — fall through to interactive flow
-        # (user may want to add params like cicd_runner interactively)
-        logging.debug("Smart-merge: old_args == new_args, falling through")
-        return False
+    same_config = old_args == new_args
 
     # Create temp directories
     temp_base = pathlib.Path(tempfile.mkdtemp(prefix="asp_enhance_"))
@@ -759,27 +781,36 @@ def _run_smart_merge(
         console.print()
         console.print("[dim]Generating templates for comparison...[/dim]")
 
-        # Generate old template (what was originally generated)
-        console.print("[dim]  - Original template...[/dim]")
-        if not run_create_command(old_args, old_template_dir, project_name):
-            console.print(
-                "[bold red]Error:[/bold red] Failed to generate original template"
-            )
-            console.print("[dim]Falling back to standard overwrite mode.[/dim]")
-            return False
+        if same_config:
+            # Only generate one template, use as both old and new
+            console.print("[dim]  - Template...[/dim]")
+            if not run_create_command(old_args, old_template_dir, project_name):
+                console.print("[bold red]Error:[/bold red] Failed to generate template")
+                console.print("[dim]Falling back to standard overwrite mode.[/dim]")
+                return False
+            old_template_project = old_template_dir / project_name
+            new_template_project = old_template_project  # same reference
+        else:
+            # Generate old template (what was originally generated)
+            console.print("[dim]  - Original template...[/dim]")
+            if not run_create_command(old_args, old_template_dir, project_name):
+                console.print(
+                    "[bold red]Error:[/bold red] Failed to generate original template"
+                )
+                console.print("[dim]Falling back to standard overwrite mode.[/dim]")
+                return False
 
-        # Generate new template (with enhance params)
-        console.print("[dim]  - Enhanced template...[/dim]")
-        if not run_create_command(new_args, new_template_dir, project_name):
-            console.print(
-                "[bold red]Error:[/bold red] Failed to generate enhanced template"
-            )
-            console.print("[dim]Falling back to standard overwrite mode.[/dim]")
-            return False
+            # Generate new template (with enhance params)
+            console.print("[dim]  - Enhanced template...[/dim]")
+            if not run_create_command(new_args, new_template_dir, project_name):
+                console.print(
+                    "[bold red]Error:[/bold red] Failed to generate enhanced template"
+                )
+                console.print("[dim]Falling back to standard overwrite mode.[/dim]")
+                return False
 
-        # The templates are created in subdirectories named after the project
-        old_template_project = old_template_dir / project_name
-        new_template_project = new_template_dir / project_name
+            old_template_project = old_template_dir / project_name
+            new_template_project = new_template_dir / project_name
 
         console.print()
 
@@ -861,6 +892,32 @@ def _run_smart_merge(
                 project_dir / "pyproject.toml",
                 dep_result.merged_deps,
             )
+
+        # Update ASP metadata to reflect the new config
+        if not dry_run and cli_overrides:
+            metadata_updates = {
+                k: v
+                for k, v in cli_overrides.items()
+                if isinstance(v, str) and not _should_skip_config_value(v)
+            }
+
+            # Determine stale keys to remove
+            stale_keys: list[str] = []
+            effective_deployment = cli_overrides.get(
+                "deployment_target",
+                project_config.get("create_params", {}).get("deployment_target"),
+            )
+            if effective_deployment and effective_deployment != "cloud_run":
+                stale_keys.append("session_type")
+
+            if metadata_updates or stale_keys:
+                update_asp_metadata(
+                    project_dir,
+                    metadata_updates,
+                    asp_version=get_current_version(),
+                    language=language,
+                    remove_keys=stale_keys or None,
+                )
 
         # Summary
         console.print()
@@ -1031,12 +1088,8 @@ def enhance(
                     return  # "y" → subprocess executed
                 elif isinstance(saved_config_result, dict):
                     overrides = saved_config_result
-                    if not overrides:
-                        console.print(
-                            "[bold green]✅[/bold green] No changes selected. "
-                            "Project is already up to date."
-                        )
-                        return
+                    # Even if no overrides (user kept all defaults), run
+                    # smart-merge so the file comparison is displayed.
                 # saved_config_result is False → no saved config (shouldn't happen
                 # since we already checked project_config above)
             else:
@@ -1056,26 +1109,21 @@ def enhance(
                 ):
                     return
 
-            if overrides:
-                if _run_smart_merge(
-                    current_dir,
-                    project_config,
-                    overrides,
-                    auto_approve,
-                    dry_run,
-                ):
-                    return
-                # If smart-merge returned False, fall through to brute-force
-                console.print(
-                    "[yellow]⚠️  Smart-merge failed, falling back to standard mode.[/yellow]"
-                )
-            elif dry_run:
-                # dry_run with auto_approve and no CLI overrides — nothing to do
-                console.print(
-                    "[bold red]Error:[/bold red] --dry-run requires specifying what to change "
-                    "(e.g. --deployment-target cloud_run) or interactive customization."
-                )
+            # Run smart-merge: with overrides if provided, or same-config
+            # comparison if user kept all defaults (overrides is empty dict)
+            effective_overrides = overrides if overrides else None
+            if _run_smart_merge(
+                current_dir,
+                project_config,
+                effective_overrides,
+                auto_approve,
+                dry_run,
+            ):
                 return
+            # If smart-merge returned False, fall through to brute-force
+            console.print(
+                "[yellow]⚠️  Smart-merge failed, falling back to standard mode.[/yellow]"
+            )
         elif dry_run:
             console.print(
                 "[bold red]Error:[/bold red] --dry-run requires saved project metadata "
@@ -1087,8 +1135,9 @@ def enhance(
                 "[dim]No saved metadata found - using standard overwrite mode.[/dim]"
             )
     else:
-        # --force or subprocess re-execution: try saved config subprocess
+        # --force or subprocess re-execution
         if not is_saved_config_subprocess:
+            # --force: try saved config subprocess
             saved_config_result = check_and_execute_with_saved_config(
                 current_dir,
                 auto_approve=auto_approve,
@@ -1099,6 +1148,19 @@ def enhance(
                 return
             # If customize dict returned here (force mode), ignore it —
             # force means brute-force overwrite
+        elif not force:
+            # Subprocess re-execution without --force: route through smart-merge
+            # so file changes are displayed and confirmation is asked
+            project_config = get_project_asp_config(current_dir)
+            if project_config:
+                if _run_smart_merge(
+                    current_dir,
+                    project_config,
+                    None,
+                    auto_approve,
+                    dry_run=False,
+                ):
+                    return
 
     # Setup debug logging if enabled
     if debug:

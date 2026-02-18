@@ -40,7 +40,7 @@ def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
         if (
             value is None
             or value is False
-            or str(value).lower() == "none"
+            or str(value).lower() in ("none", "skip")
             or value == ""
         ):
             continue

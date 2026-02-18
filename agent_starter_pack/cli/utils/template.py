@@ -1449,16 +1449,6 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
-            # Load adk-cheatsheet.md for injection
-            adk_cheatsheet_path = (
-                pathlib.Path(__file__).parent.parent.parent
-                / "resources"
-                / "docs"
-                / "adk-cheatsheet.md"
-            )
-            with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
-                adk_cheatsheet_content = md_file.read()
-
             # Generate Java package variables if language is Java
             java_vars = (
                 generate_java_package_vars(project_name) if language == "java" else {}
@@ -1497,7 +1487,6 @@ def process_template(
                 "agent_sample_publisher": agent_sample_publisher or "",
                 "use_google_api_key": bool(google_api_key),
                 "google_cloud_project": google_cloud_project or "your-gcp-project-id",
-                "adk_cheatsheet": adk_cheatsheet_content,
                 # Java package variables (only populated for Java projects)
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),

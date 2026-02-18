@@ -7,18 +7,18 @@ If you have ADK skills available (`/adk-cheatsheet`, `/adk-eval-guide`, `/adk-de
 use those instead of fetching the URLs below.
 
 Otherwise, fetch these resources as needed:
-- **ADK Cheatsheet**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/agent_starter_pack/resources/docs/adk-cheatsheet.md — Agent definitions, tools, callbacks, orchestration
+- **ADK Cheatsheet**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/agent_starter_pack/resources/docs/adk-cheatsheet.md — Agent definitions, tools, callbacks, orchestration
 {%- if not cookiecutter.is_adk_live %}
-- **Evaluation Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/agent_starter_pack/resources/docs/adk-eval-guide.md — Eval config, metrics, gotchas
+- **Evaluation Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/agent_starter_pack/resources/docs/adk-eval-guide.md — Eval config, metrics, gotchas
 {%- endif %}
-- **Deployment Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/agent_starter_pack/resources/docs/adk-deploy-guide.md — Infrastructure, CI/CD, testing deployed agents
-- **Development Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/docs/guide/development-guide.md — Full development workflow
+- **Deployment Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/agent_starter_pack/resources/docs/adk-deploy-guide.md — Infrastructure, CI/CD, testing deployed agents
+- **Development Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/docs/guide/development-guide.md — Full development workflow
 - **ADK Docs**: https://google.github.io/adk-docs/llms.txt
 {%- else %}
 
 Fetch these resources as needed:
-- **Deployment Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/agent_starter_pack/resources/docs/adk-deploy-guide.md — Infrastructure, CI/CD, testing deployed agents
-- **Development Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/docs/guide/development-guide.md — Full development workflow
+- **Deployment Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/agent_starter_pack/resources/docs/adk-deploy-guide.md — Infrastructure, CI/CD, testing deployed agents
+- **Development Guide**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/docs/guide/development-guide.md — Full development workflow
 {%- endif %}
 
 ---
@@ -52,7 +52,7 @@ Run `make test`. Fix issues until all tests pass.
 **Requires explicit human approval.** Run `make deploy` only after user confirms. See the **Deployment Guide** for details.
 
 ### Phase 6: Production Deployment
-Ask the user: Option A (simple single-project) or Option B (full CI/CD pipeline with `uvx agent-starter-pack setup-cicd`). See the [deployment docs](https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/v{{cookiecutter.package_version}}/docs/guide/deployment.md) for step-by-step instructions.
+Ask the user: Option A (simple single-project) or Option B (full CI/CD pipeline with `uvx agent-starter-pack setup-cicd`). See the [deployment docs](https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/docs/guide/deployment.md) for step-by-step instructions.
 
 ## Development Commands
 

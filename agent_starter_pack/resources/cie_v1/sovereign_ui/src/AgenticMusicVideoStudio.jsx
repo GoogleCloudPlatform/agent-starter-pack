@@ -15,6 +15,7 @@ const AgenticMusicVideoStudio = () => {
   const analyserRef = useRef(null);
   const sourceRef = useRef(null);
   const animationRef = useRef(null);
+  const hasStartedPlaybackRef = useRef(false);
 
   // Canvas for E8 visualization
   const canvasRef = useRef(null);
@@ -178,14 +179,26 @@ const AgenticMusicVideoStudio = () => {
     }
   };
 
-  const togglePlayback = () => {
+  const togglePlayback = async () => {
+    if (!audioContextRef.current || !sourceRef.current) return;
+
     if (!isPlaying) {
-      sourceRef.current?.start(0);
+      if (!hasStartedPlaybackRef.current) {
+        sourceRef.current.start(0);
+        hasStartedPlaybackRef.current = true;
+      } else if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+
       setIsPlaying(true);
-    } else {
-      audioContextRef.current?.suspend();
-      setIsPlaying(false);
+      return;
     }
+
+    if (audioContextRef.current.state === 'running') {
+      await audioContextRef.current.suspend();
+    }
+
+    setIsPlaying(false);
   };
 
   return (

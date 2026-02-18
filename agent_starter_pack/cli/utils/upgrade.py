@@ -19,6 +19,7 @@ import hashlib
 import logging
 import pathlib
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from typing import Literal
@@ -40,6 +41,9 @@ FILE_CATEGORIES = {
         "{agent_directory}/**/*.go",
         # Java agent code
         "{agent_directory}/**/*.java",
+        # TypeScript agent code
+        "{agent_directory}/agent.ts",
+        "{agent_directory}/**/*.ts",
     ],
     "config_files": [  # Never overwritten
         "deployment/vars/*.tfvars",
@@ -52,10 +56,13 @@ FILE_CATEGORIES = {
         # Go dependencies
         "go.mod",
         "go.sum",
-        # Go ASP config
+        # Go / TypeScript ASP config
         ".asp.toml",
         # Java dependencies (ASP config is in pom.xml properties)
         "pom.xml",
+        # TypeScript dependencies
+        "package.json",
+        "package-lock.json",
     ],
     # Everything else is "scaffolding" (3-way compare)
 }
@@ -225,6 +232,15 @@ def three_way_compare(
             old_template_hash=old_hash,
         )
 
+    # File only in current project (user-added, not part of ASP template)
+    if current_hash is not None and old_hash is None and new_hash is None:
+        return FileCompareResult(
+            path=relative_path,
+            category=category,
+            action="skip",
+            reason="User-added file (not part of ASP template)",
+        )
+
     # File doesn't exist anywhere relevant
     if current_hash is None and new_hash is None:
         return FileCompareResult(
@@ -331,25 +347,33 @@ def collect_all_files(
     return all_files
 
 
-def _parse_dependency(dep_str: str) -> tuple[str, str]:
-    """Parse a dependency string into (name, version_spec).
+def _parse_dependency(dep_str: str) -> tuple[str, str, str]:
+    """Parse a dependency string into (base_name, extras, version_spec).
+
+    Extras are separated from the package name so that packages with
+    different extras brackets (e.g., ``pkg[a]`` vs ``pkg[a,b]``) are
+    keyed by the same base name.
 
     Examples:
-        "google-adk>=0.2.0" -> ("google-adk", ">=0.2.0")
-        "requests==2.31.0" -> ("requests", "==2.31.0")
-        "pytest" -> ("pytest", "")
+        "google-adk>=0.2.0" -> ("google-adk", "", ">=0.2.0")
+        "google-cloud-aiplatform[evaluation]>=1.0" -> ("google-cloud-aiplatform", "[evaluation]", ">=1.0")
+        "requests==2.31.0" -> ("requests", "", "==2.31.0")
+        "pytest" -> ("pytest", "", "")
     """
-    # Match package name followed by optional version spec
-    match = re.match(r"^([a-zA-Z0-9_-]+(?:\[[^\]]+\])?)(.*)", dep_str.strip())
+    # Match base package name, optional extras in brackets, optional version spec
+    match = re.match(r"^([a-zA-Z0-9_-]+)(\[[^\]]+\])?(.*)", dep_str.strip())
     if match:
-        return match.group(1).lower(), match.group(2).strip()
-    return dep_str.lower(), ""
+        base_name = match.group(1).lower()
+        extras = match.group(2) or ""
+        version = match.group(3).strip()
+        return base_name, extras, version
+    return dep_str.lower(), "", ""
 
 
 def _load_dependencies_from_pyproject(
     pyproject_path: pathlib.Path,
-) -> dict[str, str]:
-    """Load dependencies as {name: version_spec} dict."""
+) -> dict[str, tuple[str, str]]:
+    """Load dependencies as {base_name: (extras, version_spec)} dict."""
     if not pyproject_path.exists():
         return {}
 
@@ -358,10 +382,10 @@ def _load_dependencies_from_pyproject(
             data = tomllib.load(f)
 
         deps = data.get("project", {}).get("dependencies", [])
-        result = {}
+        result: dict[str, tuple[str, str]] = {}
         for dep in deps:
-            name, version = _parse_dependency(dep)
-            result[name] = version
+            name, extras, version = _parse_dependency(dep)
+            result[name] = (extras, version)
         return result
     except Exception as e:
         logging.warning(f"Error loading dependencies from {pyproject_path}: {e}")
@@ -379,22 +403,24 @@ def merge_pyproject_dependencies(
     new_deps = _load_dependencies_from_pyproject(new_template_pyproject)
 
     changes: list[DependencyChange] = []
-    merged: dict[str, str] = {}
+    merged: dict[str, tuple[str, str]] = {}
     user_added = set(current_deps.keys()) - set(old_deps.keys())
     asp_managed = set(old_deps.keys())
 
-    for name, new_version in new_deps.items():
-        merged[name] = new_version
+    for name, (new_extras, new_version) in new_deps.items():
+        merged[name] = (new_extras, new_version)
 
         if name in old_deps:
-            old_version = old_deps[name]
-            if old_version != new_version:
+            old_extras, old_version = old_deps[name]
+            old_spec = f"{old_extras}{old_version}"
+            new_spec = f"{new_extras}{new_version}"
+            if old_spec != new_spec:
                 changes.append(
                     DependencyChange(
                         name=name,
                         change_type="updated",
-                        old_version=old_version,
-                        new_version=new_version,
+                        old_version=old_spec,
+                        new_version=new_spec,
                     )
                 )
         else:
@@ -402,33 +428,37 @@ def merge_pyproject_dependencies(
                 DependencyChange(
                     name=name,
                     change_type="added",
-                    new_version=new_version,
+                    new_version=f"{new_extras}{new_version}",
                 )
             )
 
     for name in user_added:
-        user_version = current_deps[name]
-        merged[name] = user_version
+        user_extras, user_version = current_deps[name]
+        merged[name] = (user_extras, user_version)
+        user_spec = f"{user_extras}{user_version}"
         changes.append(
             DependencyChange(
                 name=name,
                 change_type="kept",
-                old_version=user_version,
-                new_version=user_version,
+                old_version=user_spec,
+                new_version=user_spec,
             )
         )
 
     for name in asp_managed:
         if name not in new_deps and name not in user_added:
+            old_extras, old_version = old_deps[name]
             changes.append(
                 DependencyChange(
                     name=name,
                     change_type="removed",
-                    old_version=old_deps[name],
+                    old_version=f"{old_extras}{old_version}",
                 )
             )
 
-    merged_list = [f"{name}{version}" for name, version in sorted(merged.items())]
+    merged_list = [
+        f"{name}{extras}{version}" for name, (extras, version) in sorted(merged.items())
+    ]
 
     return DependencyMergeResult(
         changes=changes,
@@ -441,7 +471,10 @@ def write_merged_dependencies(
     pyproject_path: pathlib.Path,
     merged_deps: list[str],
 ) -> bool:
-    """Write merged dependencies back to pyproject.toml.
+    """Write merged dependencies to pyproject.toml using uv CLI.
+
+    Uses ``uv add --frozen`` and ``uv remove --frozen`` so the lockfile
+    and virtualenv are left untouched — only pyproject.toml is modified.
 
     Args:
         pyproject_path: Path to pyproject.toml
@@ -453,25 +486,154 @@ def write_merged_dependencies(
     if not pyproject_path.exists():
         return False
 
+    project_dir = pyproject_path.parent
+
     try:
-        content = pyproject_path.read_text(encoding="utf-8")
+        # Determine which deps to remove (in current but not in merged)
+        current_deps = _load_dependencies_from_pyproject(pyproject_path)
+        merged_names: set[str] = set()
+        for dep in merged_deps:
+            name, _, _ = _parse_dependency(dep)
+            merged_names.add(name)
 
-        # Format dependencies as a TOML array
+        to_remove = [n for n in current_deps if n not in merged_names]
+
+        if to_remove:
+            result = subprocess.run(
+                ["uv", "remove", "--frozen", *to_remove],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                logging.warning(f"uv remove failed: {result.stderr}")
+
+        # Add / update all merged deps
         if merged_deps:
-            deps_formatted = ",\n    ".join(f'"{dep}"' for dep in merged_deps)
-            new_deps_section = f"dependencies = [\n    {deps_formatted},\n]"
-        else:
-            new_deps_section = "dependencies = []"
+            result = subprocess.run(
+                ["uv", "add", "--frozen", *merged_deps],
+                cwd=project_dir,
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                logging.warning(f"uv add failed: {result.stderr}")
+                return False
 
-        # Replace the dependencies array using regex
-        # Match: dependencies = [...] (potentially multiline)
-        pattern = r"dependencies\s*=\s*\[[^\]]*\]"
-        content = re.sub(pattern, new_deps_section, content, flags=re.DOTALL)
-
-        pyproject_path.write_text(content, encoding="utf-8")
         return True
+    except FileNotFoundError:
+        logging.warning("uv not found — cannot write merged dependencies")
+        return False
     except Exception as e:
         logging.warning(f"Could not write dependencies to {pyproject_path}: {e}")
+        return False
+
+
+def update_asp_metadata(
+    project_dir: pathlib.Path,
+    create_params: dict[str, str],
+    asp_version: str | None = None,
+    language: str = "python",
+    remove_keys: list[str] | None = None,
+) -> bool:
+    """Update specific keys in ASP metadata for any supported language.
+
+    Handles all config formats:
+    - Python: ``pyproject.toml`` under ``[tool.agent-starter-pack]``
+    - Go / TypeScript: ``.asp.toml`` under ``[project]``
+    - Java: ``pom.xml`` ``<properties>`` with ``asp.*`` prefix
+
+    Args:
+        project_dir: Path to the project directory
+        create_params: Dict of keys to update
+            (e.g., ``{"deployment_target": "cloud_run"}``)
+        asp_version: If provided, update the ASP version field
+        language: Project language (``"python"``, ``"go"``, ``"java"``,
+            ``"typescript"``)
+        remove_keys: List of keys to remove from create_params section
+
+    Returns:
+        True if successful, False otherwise
+    """
+    from .language import LANGUAGE_CONFIGS
+
+    lang_config = LANGUAGE_CONFIGS.get(language, LANGUAGE_CONFIGS["python"])
+    config_file = lang_config.get("config_file")
+    config_format = lang_config.get("config_format", "toml")
+    version_key = lang_config.get("version_key", "asp_version")
+
+    if not config_file:
+        return False
+
+    config_path = project_dir / config_file
+    if not config_path.exists():
+        return False
+
+    try:
+        if config_format == "maven_properties":
+            return _update_maven_asp_metadata(
+                config_path, create_params, asp_version, version_key, remove_keys
+            )
+
+        # TOML format (Python, Go, TypeScript)
+        content = config_path.read_text(encoding="utf-8")
+
+        # Update version field if provided
+        if asp_version:
+            pattern = rf'({re.escape(version_key)}\s*=\s*)"[^"]*"'
+            content = re.sub(pattern, f'\\1"{asp_version}"', content)
+
+        # Update individual keys
+        for key, value in create_params.items():
+            pattern = rf'({re.escape(key)}\s*=\s*)"[^"]*"'
+            replacement = f'\\1"{value}"'
+            content = re.sub(pattern, replacement, content)
+
+        # Remove stale keys
+        if remove_keys:
+            for key in remove_keys:
+                content = re.sub(rf'\n{re.escape(key)}\s*=\s*"[^"]*"', "", content)
+
+        config_path.write_text(content, encoding="utf-8")
+        return True
+    except Exception as e:
+        logging.warning(f"Could not update ASP metadata in {config_path}: {e}")
+        return False
+
+
+def _update_maven_asp_metadata(
+    pom_path: pathlib.Path,
+    create_params: dict[str, str],
+    asp_version: str | None,
+    version_key: str,
+    remove_keys: list[str] | None = None,
+) -> bool:
+    """Update ASP metadata in a Maven pom.xml file."""
+    try:
+        content = pom_path.read_text(encoding="utf-8")
+
+        if asp_version:
+            pattern = rf"(<{re.escape(version_key)}>)[^<]*(</)"
+            content = re.sub(pattern, rf"\g<1>{asp_version}\g<2>", content)
+
+        for key, value in create_params.items():
+            prop_name = f"asp.{key}"
+            pattern = rf"(<{re.escape(prop_name)}>)[^<]*(</)"
+            content = re.sub(pattern, rf"\g<1>{value}\g<2>", content)
+
+        if remove_keys:
+            for key in remove_keys:
+                prop_name = f"asp.{key}"
+                content = re.sub(
+                    rf"\s*<{re.escape(prop_name)}>[^<]*</{re.escape(prop_name)}>",
+                    "",
+                    content,
+                )
+
+        pom_path.write_text(content, encoding="utf-8")
+        return True
+    except Exception as e:
+        logging.warning(f"Could not update Maven ASP metadata in {pom_path}: {e}")
         return False
 
 

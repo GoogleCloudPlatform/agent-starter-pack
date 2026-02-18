@@ -251,6 +251,44 @@ frontend_type = "None"
         assert create_params["datastore"] == "vertex_ai_search"
 
 
+class TestMetadataSkipValues:
+    """Test that skip/none values are filtered from CLI args."""
+
+    def test_skip_value_filtered(self) -> None:
+        """Test that cicd_runner='skip' is not included in CLI args."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "cloud_run",
+                "cicd_runner": "skip",
+                "session_type": "in_memory",
+            },
+        }
+
+        args = metadata_to_cli_args(metadata)
+
+        assert "--cicd-runner" not in args
+        assert "skip" not in args
+        # Other params should still be present
+        assert "--deployment-target" in args
+        assert "cloud_run" in args
+
+    def test_none_value_filtered(self) -> None:
+        """Test that values of 'none' are still filtered."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "cloud_run",
+                "frontend_type": "None",
+            },
+        }
+
+        args = metadata_to_cli_args(metadata)
+
+        assert "--frontend-type" not in args
+        assert "None" not in args
+
+
 class TestMetadataEnablesRecreation:
     """Test that metadata is sufficient to recreate identical project scaffolding."""
 
@@ -296,6 +334,26 @@ frontend_type = "streamlit"
         assert "github_actions" in cli_args
         assert "--datastore" in cli_args or "-ds" in cli_args
         assert "vertex_ai_vector_search" in cli_args
+
+    def test_skip_value_filtered_from_cli_args(self) -> None:
+        """Test that 'skip' values in create_params are not included in CLI args."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+                "cicd_runner": "skip",
+            },
+        }
+
+        cli_args = metadata_to_cli_args(metadata)
+
+        assert "--agent" in cli_args
+        assert "adk" in cli_args
+        assert "--deployment-target" in cli_args
+        assert "agent_engine" in cli_args
+        # "skip" value should be filtered out
+        assert "--cicd-runner" not in cli_args
+        assert "skip" not in cli_args
 
     def test_metadata_round_trip(self, tmp_path: pathlib.Path) -> None:
         """Test that metadata can be parsed and used to recreate project args."""

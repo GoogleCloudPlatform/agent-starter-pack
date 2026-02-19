@@ -53,11 +53,12 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
+          docker build -t {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}{%- if cookiecutter.deployment_target == 'gke' %}:{% raw %}${{ github.sha }}{% endraw %}{%- endif %} \
             --build-arg COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %} \
             .
-          docker push {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}
+          docker push {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}{%- if cookiecutter.deployment_target == 'gke' %}:{% raw %}${{ github.sha }}{% endraw %}{%- endif %}
 
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
       - name: Deploy to Cloud Run (Staging)
         run: |
           gcloud run deploy {{cookiecutter.project_name}} \
@@ -73,6 +74,30 @@ jobs:
             --project {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %} \
             --format="value(status.url)")
           echo "url=$URL" >> $GITHUB_OUTPUT
+{%- elif cookiecutter.deployment_target == 'gke' %}
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: {% raw %}${{ vars.GKE_CLUSTER_NAME }}{% endraw %}
+          location: {% raw %}${{ vars.REGION }}{% endraw %}
+          project_id: {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %}
+
+      - name: Deploy to GKE (Staging)
+        run: |
+          kubectl apply -f k8s/hpa.yaml -f k8s/pdb.yaml
+          kubectl set image deployment/{{cookiecutter.project_name}} \
+            {{cookiecutter.project_name}}={% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %} \
+            -n {{cookiecutter.project_name}}
+          EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          [ -n "$EXTERNAL_IP" ] && kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}
+          kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}}
+
+      - name: Get Staging URL
+        id: staging-url
+        run: |
+          IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          echo "url=http://$IP:8080" >> $GITHUB_OUTPUT
+{%- endif %}
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -81,6 +106,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
       - name: Get ID Token
         id: id-token
         run: |
@@ -98,6 +124,17 @@ jobs:
         env:
           _ID_TOKEN: {% raw %}${{ steps.id-token.outputs.token }}{% endraw %}
           _STAGING_URL: {% raw %}${{ steps.staging-url.outputs.url }}{% endraw %}
+{%- elif cookiecutter.deployment_target == 'gke' %}
+      - name: Run Load Tests
+        run: |
+          mvn test -Dtest="**/e2e/load_test/**" \
+            -Dstaging.url={% raw %}${{ steps.staging-url.outputs.url }}{% endraw %} \
+            -Dload.duration=30 \
+            -Dload.users=10 \
+            -Dload.ramp=2
+        env:
+          _STAGING_URL: {% raw %}${{ steps.staging-url.outputs.url }}{% endraw %}
+{%- endif %}
 
   call_production_workflow:
     needs: deploy_and_test_staging

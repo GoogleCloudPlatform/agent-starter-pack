@@ -36,7 +36,7 @@ steps:
       - 'PATH=/usr/local/bin:/usr/bin:~/.local/bin'
 {%- endif %}
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
-   
+
   - name: "gcr.io/cloud-builders/gcloud-slim"
     id: trigger-deployment
     entrypoint: gcloud
@@ -51,6 +51,57 @@ steps:
       - "--project"
       - $_PROD_PROJECT_ID
 
+{%- elif cookiecutter.deployment_target == 'gke' %}
+{%- if cookiecutter.is_a2a %}
+  # Extract version from pyproject.toml
+  - name: "gcr.io/cloud-builders/gcloud-slim"
+    id: extract-version
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        VERSION=$(awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')
+        echo "$${VERSION}" > /workspace/agent_version.txt
+
+{%- endif %}
+  # Build and Push
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "build",
+        "-t",
+        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME:$SHORT_SHA",
+        "--build-arg",
+        "COMMIT_SHA=$COMMIT_SHA",
+{%- if cookiecutter.is_a2a %}
+        "--build-arg",
+        "AGENT_VERSION=$(cat /workspace/agent_version.txt || echo '0.0.0')",
+{%- endif %}
+        ".",
+      ]
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      [
+        "push",
+        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME:$SHORT_SHA",
+      ]
+
+  # Deploy to Production GKE
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: trigger-deployment
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud container clusters get-credentials $$_GKE_CLUSTER_NAME --region $$_REGION --project $$_PROD_PROJECT_ID
+        kubectl apply -f k8s/hpa.yaml -f k8s/pdb.yaml
+        kubectl set image deployment/{{cookiecutter.project_name}} {{cookiecutter.project_name}}=$$_REGION-docker.pkg.dev/$$_CICD_PROJECT_ID/$$_ARTIFACT_REGISTRY_REPO_NAME/$$_CONTAINER_NAME:$$SHORT_SHA -n {{cookiecutter.project_name}}
+        EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        [ -n "$EXTERNAL_IP" ] && kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}
+        kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}}
+    env:
+      - "_GKE_CLUSTER_NAME=${_GKE_CLUSTER_NAME}"
+      - "_CICD_PROJECT_ID=${PROJECT_ID}"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 {%- if cookiecutter.is_a2a %}
   # Extract version from pyproject.toml

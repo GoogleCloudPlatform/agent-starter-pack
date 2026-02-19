@@ -13,6 +13,7 @@
 # limitations under the License.
 
 steps:
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
   # Deploy to Production
   - name: "gcr.io/cloud-builders/gcloud"
     id: deploy-prod
@@ -27,6 +28,22 @@ steps:
       - "${_REGION}"
       - "--project"
       - "${_PROD_PROJECT_ID}"
+{%- elif cookiecutter.deployment_target == 'gke' %}
+  # Deploy to GKE Production
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: deploy-prod
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud container clusters get-credentials $$_GKE_CLUSTER_NAME --region $$_REGION --project $$_PROD_PROJECT_ID
+        kubectl apply -f k8s/hpa.yaml -f k8s/pdb.yaml
+        kubectl set image deployment/{{cookiecutter.project_name}} \
+          {{cookiecutter.project_name}}=$$_REGION-docker.pkg.dev/$$_CICD_PROJECT_ID/$$_ARTIFACT_REGISTRY_REPO_NAME/$$_CONTAINER_NAME:$$SHORT_SHA -n {{cookiecutter.project_name}}
+        EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        [ -n "$EXTERNAL_IP" ] && kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}
+        kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}}
+{%- endif %}
 
 substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID

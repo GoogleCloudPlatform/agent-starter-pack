@@ -152,7 +152,7 @@ name = "My Awesome Template"  # Optional: falls back to [project].name
 description = "Custom description"  # Optional: falls back to [project].description
 
 [tool.agent-starter-pack.settings]
-deployment_targets = ["cloud_run", "agent_engine"]
+deployment_targets = ["cloud_run", "gke", "agent_engine"]
 frontend_type = "None"
 # Optional: Customize the directory name for agent files (default: "app")
 agent_directory = "app"
@@ -419,7 +419,7 @@ extra_dependencies = ["pandas", "numpy", "scikit-learn"]
 base_template = "adk"
 [tool.agent-starter-pack.settings]
 frontend_type = "None"
-deployment_targets = ["agent_engine", "cloud_run"]
+deployment_targets = ["agent_engine", "cloud_run", "gke"]
 ```
 
 **Enterprise Template:**

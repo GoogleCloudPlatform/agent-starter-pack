@@ -13,7 +13,9 @@
 # limitations under the License.
 
 steps:
-  # Deploy to Production
+  {%- if cookiecutter.deployment_target == 'cloud_run' %}
+
+  # Deploy to Production (Cloud Run)
   - name: "gcr.io/cloud-builders/gcloud"
     id: deploy-prod
     entrypoint: gcloud
@@ -27,6 +29,80 @@ steps:
       - "${_REGION}"
       - "--project"
       - "${_PROD_PROJECT_ID}"
+
+  {%- elif cookiecutter.deployment_target == 'gke' %}
+
+  # Get GKE Credentials
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: get-gke-credentials
+    entrypoint: gcloud
+    args:
+      - "container"
+      - "clusters"
+      - "get-credentials"
+      - "${_GKE_CLUSTER_NAME}"
+      - "--region"
+      - "${_REGION}"
+      - "--project"
+      - "${_PROD_PROJECT_ID}"
+
+  # Apply HPA and PDB policies
+  - name: "gcr.io/cloud-builders/kubectl"
+    id: apply-k8s-policies
+    args:
+      - "apply"
+      - "-f"
+      - "k8s/hpa.yaml"
+      - "-f"
+      - "k8s/pdb.yaml"
+    env:
+      - "CLOUDSDK_COMPUTE_REGION=${_REGION}"
+      - "CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER_NAME}"
+
+  # Deploy to Production (GKE)
+  - name: "gcr.io/cloud-builders/kubectl"
+    id: deploy-prod
+    args:
+      - "set"
+      - "image"
+      - "deployment/{{cookiecutter.project_name}}"
+      - "{{cookiecutter.project_name}}=$_REGION-docker.pkg.dev/$_CICD_PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME:$SHORT_SHA"
+      - "--namespace={{cookiecutter.project_name}}"
+    env:
+      - "CLOUDSDK_COMPUTE_REGION=${_REGION}"
+      - "CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER_NAME}"
+
+  # Set APP_URL env var on deployment
+  - name: "gcr.io/cloud-builders/kubectl"
+    id: set-app-url
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} \
+          --namespace={{cookiecutter.project_name}} \
+          -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        [ -n "$${EXTERNAL_IP}" ] && kubectl set env deployment/{{cookiecutter.project_name}} \
+          APP_URL=http://$${EXTERNAL_IP}:8080 \
+          --namespace={{cookiecutter.project_name}}
+    env:
+      - "CLOUDSDK_COMPUTE_REGION=${_REGION}"
+      - "CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER_NAME}"
+
+  # Wait for Rollout
+  - name: "gcr.io/cloud-builders/kubectl"
+    id: rollout-status
+    args:
+      - "rollout"
+      - "status"
+      - "deployment/{{cookiecutter.project_name}}"
+      - "--namespace={{cookiecutter.project_name}}"
+      - "--timeout=300s"
+    env:
+      - "CLOUDSDK_COMPUTE_REGION=${_REGION}"
+      - "CLOUDSDK_CONTAINER_CLUSTER=${_GKE_CLUSTER_NAME}"
+
+  {%- endif %}
 
 substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID

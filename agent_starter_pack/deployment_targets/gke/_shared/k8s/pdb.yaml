@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ cookiecutter.project_name }}
+  namespace: {{ cookiecutter.project_name }}
+  labels:
+    app: {{ cookiecutter.project_name }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: {{ cookiecutter.project_name }}

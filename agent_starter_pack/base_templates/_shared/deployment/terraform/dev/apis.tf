@@ -26,6 +26,10 @@ locals {
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
+{%- if cookiecutter.deployment_target == "gke" %}
+    "compute.googleapis.com",
+    "container.googleapis.com",
+{%- endif %}
 {%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
     "vectorsearch.googleapis.com",
 {%- endif %}

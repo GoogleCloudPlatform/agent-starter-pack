@@ -121,6 +121,8 @@ CONDITIONAL_FILES = {
     "tests/helpers.py": lambda c: c.get("is_a2a"),
     "deployment/terraform/service.tf": _exclude_adk_live_agent_engine,
     "deployment/terraform/dev/service.tf": _exclude_adk_live_agent_engine,
+    # GKE-specific files
+    "k8s": lambda c: c.get("deployment_target") == "gke",
     # Data ingestion conditional (only for vertex_ai_vector_search)
     "data_ingestion": lambda c: c.get("datastore_type") == "vertex_ai_vector_search",
     # Datastore-specific terraform files (vertex_ai_search vs vertex_ai_vector_search)
@@ -476,7 +478,7 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
-DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine", "none"]
+DEPLOYMENT_TARGETS = ["cloud_run", "gke", "agent_engine", "none"]
 SUPPORTED_LANGUAGES = ["python", "go", "java", "typescript"]
 DEFAULT_FRONTEND = "None"
 
@@ -687,7 +689,11 @@ def prompt_deployment_target(
         },
         "cloud_run": {
             "display_name": "cloud_run",
-            "description": "GCP serverless containers",
+            "description": "Serverless container platform",
+        },
+        "gke": {
+            "display_name": "gke",
+            "description": "Managed Kubernetes (Autopilot)",
         },
         "none": {
             "display_name": "none",

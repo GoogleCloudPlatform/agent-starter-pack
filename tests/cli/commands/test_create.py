@@ -91,7 +91,7 @@ def mock_subprocess() -> Generator[MagicMock, None, None]:
 def mock_get_deployment_targets() -> Generator[MagicMock, None, None]:
     """Mock get_deployment_targets to return a list of targets."""
     with patch("agent_starter_pack.cli.commands.create.get_deployment_targets") as mock:
-        mock.return_value = ["cloud_run", "agent_engine"]
+        mock.return_value = ["cloud_run", "agent_engine", "gke"]
         yield mock
 
 
@@ -103,7 +103,7 @@ def mock_load_template_config() -> Generator[MagicMock, None, None]:
             "name": "langgraph",
             "description": "LangGraph Base React Agent",
             "settings": {
-                "deployment_targets": ["cloud_run", "agent_engine"],
+                "deployment_targets": ["cloud_run", "agent_engine", "gke"],
                 "requires_data_ingestion": False,
                 "commands": {"extra": {"dev": "uv run app/main.py"}},
             },
@@ -388,7 +388,7 @@ class TestCreateCommand:
         assert result.exit_code == 2
         assert "Invalid value for '--deployment-target'" in result.output
         assert (
-            "'invalid_target' is not one of 'agent_engine', 'cloud_run', 'none'"
+            "'invalid_target' is not one of 'agent_engine', 'cloud_run', 'gke', 'none'"
             in result.output
         )
 

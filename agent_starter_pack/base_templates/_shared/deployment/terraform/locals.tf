@@ -33,6 +33,10 @@ locals {
   deploy_project_services = [
     "aiplatform.googleapis.com",
     "run.googleapis.com",
+{%- if cookiecutter.deployment_target == "gke" %}
+    "compute.googleapis.com",
+    "container.googleapis.com",
+{%- endif %}
     "discoveryengine.googleapis.com",
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",

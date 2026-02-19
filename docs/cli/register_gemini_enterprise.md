@@ -4,7 +4,7 @@ Register a deployed agent to Gemini Enterprise, making it available as a tool wi
 
 Supports:
 - **ADK agents** deployed to Agent Engine
-- **A2A agents** deployed to Cloud Run
+- **A2A agents** deployed to Cloud Run or GKE
 
 > **Note:** A2A agents deployed to Agent Engine are not yet supported for Gemini Enterprise registration. This feature will be available in a future release.
 

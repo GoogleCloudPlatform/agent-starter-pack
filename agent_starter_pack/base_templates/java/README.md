@@ -26,6 +26,9 @@ Extracted from a project generated with [`googleCloudPlatform/agent-starter-pack
 │           └── load_test/   # Load tests
 ├── deployment/
 │   └── terraform/           # Infrastructure as Code
+{%- if cookiecutter.deployment_target == 'gke' %}
+├── k8s/                     # Kubernetes manifests for GKE deployment
+{%- endif %}
 ├── Dockerfile               # Container build
 ├── GEMINI.md                # AI-assisted development guide
 {%- endif %}

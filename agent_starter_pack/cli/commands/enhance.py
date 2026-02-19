@@ -464,7 +464,7 @@ def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any
 
     # Deployment target
     current_deployment = create_params.get("deployment_target", "agent_engine")
-    deployment_choices = ["agent_engine", "cloud_run", "none"]
+    deployment_choices = ["agent_engine", "cloud_run", "gke", "none"]
     new_deployment = Prompt.ask(
         f"  Deployment target (current: {current_deployment})",
         choices=deployment_choices,
@@ -475,7 +475,7 @@ def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any
 
     # Session type — only relevant for cloud_run
     effective_deployment = new_deployment
-    if effective_deployment == "cloud_run":
+    if effective_deployment in ("cloud_run", "gke"):
         current_session = create_params.get("session_type", "in_memory")
         session_choices = ["in_memory", "cloud_sql", "agent_engine"]
         new_session = Prompt.ask(

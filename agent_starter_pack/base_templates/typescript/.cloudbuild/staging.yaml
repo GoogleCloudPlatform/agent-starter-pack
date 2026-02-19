@@ -19,7 +19,7 @@ steps:
       [
         "build",
         "-t",
-        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
+        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME{%- if cookiecutter.deployment_target == 'gke' %}:$SHORT_SHA{%- endif %}",
         "--build-arg",
         "COMMIT_SHA=$COMMIT_SHA",
         ".",
@@ -28,9 +28,10 @@ steps:
     args:
       [
         "push",
-        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME",
+        "$_REGION-docker.pkg.dev/$PROJECT_ID/$_ARTIFACT_REGISTRY_REPO_NAME/$_CONTAINER_NAME{%- if cookiecutter.deployment_target == 'gke' %}:$SHORT_SHA{%- endif %}",
       ]
 
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
   # Deploy to Staging
   - name: "gcr.io/cloud-builders/gcloud"
     id: deploy-staging
@@ -78,6 +79,46 @@ steps:
         npm ci
         npm run build
         NODE_PATH=node_modules npx tsx ../tests/load_test/load_test.ts
+{%- elif cookiecutter.deployment_target == 'gke' %}
+  # Deploy to GKE Staging
+  - name: "gcr.io/cloud-builders/gcloud"
+    id: deploy-staging
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud container clusters get-credentials $$_GKE_CLUSTER_NAME --region $$_REGION --project $$_STAGING_PROJECT_ID
+        kubectl apply -f k8s/hpa.yaml -f k8s/pdb.yaml
+        kubectl set image deployment/{{cookiecutter.project_name}} \
+          {{cookiecutter.project_name}}=$$_REGION-docker.pkg.dev/$$PROJECT_ID/$$_ARTIFACT_REGISTRY_REPO_NAME/$$_CONTAINER_NAME:$$SHORT_SHA -n {{cookiecutter.project_name}}
+        EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        [ -n "$EXTERNAL_IP" ] && kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}
+        kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}}
+
+  # Fetch Staging Service URL
+  - name: "gcr.io/cloud-builders/kubectl"
+    id: fetch-staging-url
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        gcloud container clusters get-credentials $$_GKE_CLUSTER_NAME --region $$_REGION --project $$_STAGING_PROJECT_ID
+        IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+        echo "http://$$IP:8080" > staging_url.txt
+
+  # Load Testing
+  - name: "node:20-slim"
+    id: load_test
+    dir: {{cookiecutter.agent_directory}}
+    entrypoint: /bin/bash
+    args:
+      - "-c"
+      - |
+        export STAGING_URL=$(cat ../staging_url.txt)
+        npm ci
+        npm run build
+        NODE_PATH=node_modules npx tsx ../tests/load_test/load_test.ts
+{%- endif %}
 
   # Export Load Test Results to GCS
   - name: gcr.io/cloud-builders/gcloud

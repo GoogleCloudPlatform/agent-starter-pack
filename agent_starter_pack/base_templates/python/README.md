@@ -16,7 +16,7 @@ Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.c
 {%- if extracted|default(false) %}
 │   └── ...                    # Custom modules
 {%- else %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') %}
 │   ├── fast_api_app.py        # FastAPI Backend server
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 │   ├── agent_engine_app.py    # Agent Engine application logic
@@ -33,6 +33,9 @@ Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.c
 {%- endif %}
 {%- if cookiecutter.cicd_runner != 'skip' %}
 ├── deployment/                # Infrastructure and deployment scripts
+{%- if cookiecutter.deployment_target == 'gke' %}
+├── k8s/                       # Kubernetes manifests for GKE deployment
+{%- endif %}
 {%- if cookiecutter.agent_name != 'adk_live' %}
 ├── notebooks/                 # Jupyter notebooks for prototyping and evaluation
 {%- endif %}
@@ -94,8 +97,8 @@ make install && make playground
 {%- endfor %}
 {%- endif %}
 | `make test`          | Run unit and integration tests                                                              |
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
-| `make deploy`        | Deploy agent to Cloud Run                                                                   |
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') %}
+| `make deploy`        | Deploy agent to {{ 'GKE' if cookiecutter.deployment_target == 'gke' else 'Cloud Run' }}                                                                   |
 | `make local-backend` | Launch local development server with hot-reload                                             |
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 | `make deploy`        | Deploy agent to Agent Engine                                                                |

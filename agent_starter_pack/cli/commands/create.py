@@ -141,7 +141,7 @@ def shared_template_options(f: Callable) -> Callable:
     f = click.option(
         "--deployment-target",
         "-d",
-        type=click.Choice(["agent_engine", "cloud_run", "none"]),
+        type=click.Choice(["agent_engine", "cloud_run", "gke", "none"]),
         help="Deployment target name",
     )(f)
     f = click.option(
@@ -786,7 +786,7 @@ def create(
 
                 if final_deployment == "none":
                     final_session_type = "in_memory"
-                elif final_deployment == "cloud_run":
+                elif final_deployment in ("cloud_run", "gke"):
                     if deployment_agent_name in session_type_supported_agents:
                         # Allow session type selection for supported agents
                         if not session_type:

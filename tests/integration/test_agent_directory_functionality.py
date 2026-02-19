@@ -292,8 +292,13 @@ version = "0.1.0"
 [tool.hatch.build.targets.wheel]
 packages = ["bot", "frontend"]
 
-[tool.agent-starter-pack.settings]
+[tool.agent-starter-pack]
+base_template = "adk"
 agent_directory = "bot"
+
+[tool.agent-starter-pack.create_params]
+deployment_target = "cloud_run"
+session_type = "in_memory"
 """)
 
             # Change to project directory
@@ -313,6 +318,7 @@ agent_directory = "bot"
                     "--skip-checks",
                     "--cicd-runner",
                     "skip",
+                    "--force",  # Force regeneration since this is testing metadata reading
                 ]
 
                 result = run_command(

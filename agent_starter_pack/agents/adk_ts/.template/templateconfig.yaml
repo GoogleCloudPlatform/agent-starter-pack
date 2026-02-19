@@ -18,7 +18,7 @@ settings:
   language: "typescript"
   requires_data_ingestion: false
   requires_session: false
-  deployment_targets: ["cloud_run", "gke"]
+  deployment_targets: ["cloud_run", "gke", "none"]
   extra_dependencies: []
   tags: ["adk", "typescript"]
   frontend_type: "None"

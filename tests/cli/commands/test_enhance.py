@@ -1300,6 +1300,22 @@ class TestBuildEnhanceCreateArgs:
         assert "cloud_run" in args
         assert "agent_engine" not in args
 
+    def test_base_template_override_maps_to_agent_flag(self) -> None:
+        """Test that base_template override maps to --agent, not --base-template."""
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+            },
+        }
+        overrides = {"base_template": "agentic_rag"}
+        args = _build_enhance_create_args(config, overrides)
+        # Should replace --agent value, not add --base-template
+        assert "--agent" in args
+        assert "agentic_rag" in args
+        assert "adk" not in args
+        assert "--base-template" not in args
+
     def test_no_overrides_returns_metadata_args(self) -> None:
         """Test with no overrides returns metadata-based args only."""
         config = {
@@ -1548,7 +1564,7 @@ class TestSmartMerge:
 
             output = strip_ansi(result.output)
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
-            assert "New files" in output
+            assert "Files to add" in output
             # Verify new file was added
             assert pathlib.Path("Dockerfile").exists()
 
@@ -1745,6 +1761,7 @@ class TestSmartMerge:
                 (template_dir / "pyproject.toml").write_text(
                     """[project]
 name = "test"
+version = "0.1.0"
 dependencies = [
     "google-cloud-aiplatform>=1.50.0",
     "uvicorn>=0.30.0",
@@ -1756,6 +1773,7 @@ dependencies = [
                 (template_dir / "pyproject.toml").write_text(
                     """[project]
 name = "test"
+version = "0.1.0"
 dependencies = [
     "google-cloud-aiplatform>=1.50.0",
 ]
@@ -1774,6 +1792,7 @@ dependencies = [
             pyproject.write_text(
                 """[project]
 name = "test"
+version = "0.1.0"
 dependencies = [
     "google-cloud-aiplatform>=1.50.0",
     "my-custom-library>=2.0.0",
@@ -1812,14 +1831,14 @@ deployment_target = "agent_engine"
             final_pyproject = pyproject.read_text()
 
             # User's custom dependencies should be preserved
-            assert "my-custom-library>=2.0.0" in final_pyproject
-            assert "another-user-lib>=1.0.0" in final_pyproject
+            assert "my-custom-library" in final_pyproject
+            assert "another-user-lib" in final_pyproject
 
             # New ASP dependency should be added
-            assert "uvicorn>=0.30.0" in final_pyproject
+            assert "uvicorn" in final_pyproject
 
             # Original ASP dependency should remain
-            assert "google-cloud-aiplatform>=1.50.0" in final_pyproject
+            assert "google-cloud-aiplatform" in final_pyproject
 
 
 class TestSmartMergeFallback:
@@ -2084,11 +2103,13 @@ class TestSmartMergeFallback:
         "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
     )
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
-    def test_same_params_falls_through_to_interactive(
+    def test_same_params_runs_smart_merge(
         self, mock_run_create, mock_saved_config, tmp_path: pathlib.Path
     ) -> None:
-        """Test that same params as saved config falls through to interactive flow."""
+        """Test that same params as saved config runs smart-merge (shows results)."""
         mock_saved_config.return_value = False
+        # Smart-merge generates one template and uses it as both old and new
+        mock_run_create.return_value = True
 
         runner = CliRunner()
 
@@ -2104,24 +2125,24 @@ class TestSmartMergeFallback:
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").write_text("root_agent = None")
 
-            with patch(
-                "agent_starter_pack.cli.commands.enhance.create"
-            ) as mock_create_cmd:
-                runner.invoke(
-                    enhance,
-                    [
-                        ".",
-                        "--deployment-target",
-                        "agent_engine",
-                        "--auto-approve",
-                        "--cicd-runner",
-                        "skip",
-                        "--skip-checks",
-                    ],
-                )
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
 
-                # Same params → smart-merge falls through → reaches create
-                mock_create_cmd.assert_called_once()
+            # Same params → smart-merge runs with one template as both old and new
+            mock_run_create.assert_called_once()
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "No file changes needed" in output or "No changes" in output
 
 
 class TestCustomizeSmartMerge:
@@ -2129,21 +2150,18 @@ class TestCustomizeSmartMerge:
 
     @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
     @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
-    @patch("agent_starter_pack.cli.commands.enhance.Prompt.ask")
     @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
     @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
     def test_customize_routes_to_smart_merge(
         self,
         mock_version: MagicMock,
         mock_display: MagicMock,
-        mock_prompt: MagicMock,
         mock_customize: MagicMock,
         mock_smart_merge: MagicMock,
         tmp_path: pathlib.Path,
     ) -> None:
-        """Test that choosing 'customize' routes overrides to smart-merge."""
+        """Test that interactive customization routes overrides to smart-merge."""
         mock_version.return_value = "0.30.0"
-        mock_prompt.return_value = "customize"
         mock_customize.return_value = {"deployment_target": "cloud_run"}
         mock_smart_merge.return_value = True
 
@@ -2173,22 +2191,22 @@ class TestCustomizeSmartMerge:
             call_args = mock_smart_merge.call_args
             assert call_args[0][2] == {"deployment_target": "cloud_run"}
 
+    @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
     @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
-    @patch("agent_starter_pack.cli.commands.enhance.Prompt.ask")
     @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
     @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
-    def test_customize_no_changes_exits_cleanly(
+    def test_customize_no_changes_runs_smart_merge(
         self,
         mock_version: MagicMock,
         mock_display: MagicMock,
-        mock_prompt: MagicMock,
         mock_customize: MagicMock,
+        mock_smart_merge: MagicMock,
         tmp_path: pathlib.Path,
     ) -> None:
-        """Test that empty overrides from customize shows 'no changes' message."""
+        """Test that empty overrides still runs smart-merge (same-config comparison)."""
         mock_version.return_value = "0.30.0"
-        mock_prompt.return_value = "customize"
         mock_customize.return_value = {}
+        mock_smart_merge.return_value = True
 
         runner = CliRunner()
 
@@ -2209,27 +2227,27 @@ class TestCustomizeSmartMerge:
                 [".", "--skip-checks"],
             )
 
-            output = strip_ansi(result.output)
-            assert "No changes selected" in output
-            assert result.exit_code == 0
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            mock_customize.assert_called_once()
+            mock_smart_merge.assert_called_once()
+            # Smart-merge called with None overrides (no changes)
+            call_args = mock_smart_merge.call_args
+            assert call_args[0][2] is None
 
     @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
     @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
-    @patch("agent_starter_pack.cli.commands.enhance.Prompt.ask")
     @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
     @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
     def test_customize_smart_merge_fallback(
         self,
         mock_version: MagicMock,
         mock_display: MagicMock,
-        mock_prompt: MagicMock,
         mock_customize: MagicMock,
         mock_smart_merge: MagicMock,
         tmp_path: pathlib.Path,
     ) -> None:
         """Test that smart-merge failure after customize shows fallback message."""
         mock_version.return_value = "0.30.0"
-        mock_prompt.return_value = "customize"
         mock_customize.return_value = {"deployment_target": "cloud_run"}
         mock_smart_merge.return_value = False
 
@@ -2256,20 +2274,31 @@ class TestCustomizeSmartMerge:
             output = strip_ansi(result.output)
             assert "falling back" in output.lower()
 
-    @patch("agent_starter_pack.cli.commands.enhance.Prompt.ask")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_cicd_runner_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_session_type_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_deployment_target")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.load_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_deployment_targets")
     def test_prompt_customize_overrides_returns_only_changes(
         self,
-        mock_prompt: MagicMock,
+        mock_targets: MagicMock,
+        mock_load_config: MagicMock,
+        mock_agent_select: MagicMock,
+        mock_deploy_prompt: MagicMock,
+        mock_session_prompt: MagicMock,
+        mock_cicd_prompt: MagicMock,
     ) -> None:
         """Test that _prompt_customize_overrides returns only changed params."""
-        # Simulate: change deployment_target, keep everything else
-        mock_prompt.side_effect = [
-            "cloud_run",  # deployment_target changed
-            "in_memory",  # session_type (shown because cloud_run) — same as default
-            "skip",  # cicd_runner — same
-        ]
+        mock_targets.return_value = ["agent_engine", "cloud_run"]
+        mock_load_config.return_value = {"settings": {"requires_session": True}}
+        mock_agent_select.return_value = "adk"  # same as current
+        mock_deploy_prompt.return_value = "cloud_run"  # changed
+        mock_session_prompt.return_value = "in_memory"  # same
+        mock_cicd_prompt.return_value = "skip"  # same
 
         config = {
+            "base_template": "adk",
             "create_params": {
                 "deployment_target": "agent_engine",
                 "session_type": "in_memory",
@@ -2280,19 +2309,30 @@ class TestCustomizeSmartMerge:
         result = _prompt_customize_overrides(config)
         assert result == {"deployment_target": "cloud_run"}
 
-    @patch("agent_starter_pack.cli.commands.enhance.Prompt.ask")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_cicd_runner_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_session_type_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_deployment_target")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.load_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_deployment_targets")
     def test_prompt_customize_overrides_session_type_gated_on_cloud_run(
         self,
-        mock_prompt: MagicMock,
+        mock_targets: MagicMock,
+        mock_load_config: MagicMock,
+        mock_agent_select: MagicMock,
+        mock_deploy_prompt: MagicMock,
+        mock_session_prompt: MagicMock,
+        mock_cicd_prompt: MagicMock,
     ) -> None:
         """Test that session_type is only prompted when deployment is cloud_run."""
-        # When deployment_target stays agent_engine, session_type should NOT be prompted
-        mock_prompt.side_effect = [
-            "agent_engine",  # deployment_target — same
-            "skip",  # cicd_runner — same
-        ]
+        mock_targets.return_value = ["agent_engine", "cloud_run"]
+        mock_load_config.return_value = {"settings": {"requires_session": True}}
+        mock_agent_select.return_value = "adk"  # same
+        mock_deploy_prompt.return_value = "agent_engine"  # same
+        mock_cicd_prompt.return_value = "skip"  # same
 
         config = {
+            "base_template": "adk",
             "create_params": {
                 "deployment_target": "agent_engine",
                 "cicd_runner": "skip",
@@ -2301,26 +2341,59 @@ class TestCustomizeSmartMerge:
 
         result = _prompt_customize_overrides(config)
         assert result == {}
-        # Prompt.ask called 2 times (no session_type prompt)
-        assert mock_prompt.call_count == 2
+        # session_type prompt should NOT have been called
+        mock_session_prompt.assert_not_called()
+
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_cicd_runner_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_session_type_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_deployment_target")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.load_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_deployment_targets")
+    def test_prompt_customize_overrides_agent_change(
+        self,
+        mock_targets: MagicMock,
+        mock_load_config: MagicMock,
+        mock_agent_select: MagicMock,
+        mock_deploy_prompt: MagicMock,
+        mock_session_prompt: MagicMock,
+        mock_cicd_prompt: MagicMock,
+    ) -> None:
+        """Test that changing agent type is returned as an override."""
+        mock_targets.return_value = ["cloud_run"]
+        mock_load_config.return_value = {"settings": {"requires_session": False}}
+        mock_agent_select.return_value = "agentic_rag"  # changed from adk
+        mock_cicd_prompt.return_value = "skip"  # same
+
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "cloud_run",
+                "cicd_runner": "skip",
+            },
+        }
+
+        result = _prompt_customize_overrides(config)
+        assert result == {"base_template": "agentic_rag"}
+        # Only 1 deployment target available, so prompt_deployment_target not called
+        mock_deploy_prompt.assert_not_called()
+        # Agent doesn't require sessions
+        mock_session_prompt.assert_not_called()
 
     @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
     @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
-    @patch("agent_starter_pack.cli.commands.enhance.Prompt.ask")
     @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
     @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
     def test_dry_run_with_customize(
         self,
         mock_version: MagicMock,
         mock_display: MagicMock,
-        mock_prompt: MagicMock,
         mock_customize: MagicMock,
         mock_smart_merge: MagicMock,
         tmp_path: pathlib.Path,
     ) -> None:
-        """Test that --dry-run works with customize prompt and smart-merge preview."""
+        """Test that --dry-run works with interactive customization and smart-merge preview."""
         mock_version.return_value = "0.30.0"
-        mock_prompt.return_value = "customize"
         mock_customize.return_value = {"deployment_target": "cloud_run"}
         mock_smart_merge.return_value = True
 

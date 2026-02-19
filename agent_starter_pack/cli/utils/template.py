@@ -676,7 +676,9 @@ def get_deployment_targets(
 
 
 def prompt_deployment_target(
-    agent_name: str, remote_config: dict[str, Any] | None = None
+    agent_name: str,
+    remote_config: dict[str, Any] | None = None,
+    default_value: str | None = None,
 ) -> str:
     """Ask user to select a deployment target for the agent."""
     targets = get_deployment_targets(agent_name, remote_config=remote_config)
@@ -704,6 +706,10 @@ def prompt_deployment_target(
     if not targets:
         return ""
 
+    default_idx = 1
+    if default_value and default_value in targets:
+        default_idx = targets.index(default_value) + 1
+
     console = Console()
     console.print("\n> Please select a deployment target:")
     console.print("\n  [bold cyan]☁️  Deployment Targets[/]")
@@ -711,18 +717,27 @@ def prompt_deployment_target(
         info = TARGET_INFO.get(target, {})
         display_name = info.get("display_name", target)
         description = info.get("description", "")
-        name_padded = display_name.ljust(14)
-        console.print(f"     {idx}. [bold]{name_padded}[/] [dim]{description}[/]")
+        if target == default_value:
+            name_padded = display_name.ljust(14)
+            console.print(
+                f"     {idx}. [bold cyan]{name_padded}[/] [dim]{description}[/]"
+                "  [dim cyan](current)[/]"
+            )
+        elif default_value:
+            console.print(f"     [dim]{idx}. {display_name.ljust(14)} {description}[/]")
+        else:
+            name_padded = display_name.ljust(14)
+            console.print(f"     {idx}. [bold]{name_padded}[/] [dim]{description}[/]")
 
     choice = IntPrompt.ask(
         "\nEnter the number of your deployment target choice",
-        default=1,
+        default=default_idx,
         show_default=True,
     )
     return targets[choice - 1]
 
 
-def prompt_session_type_selection() -> str:
+def prompt_session_type_selection(default_value: str | None = None) -> str:
     """Ask user to select a session type for Cloud Run deployment."""
     console = Console()
 
@@ -741,21 +756,35 @@ def prompt_session_type_selection() -> str:
         },
     }
 
+    default_idx = 1
+    keys = list(session_types.keys())
+    if default_value and default_value in keys:
+        default_idx = keys.index(default_value) + 1
+
     console.print("\n> Please select a session type:")
     console.print("\n  [bold cyan]💾 Session Types[/]")
-    for idx, (_key, info) in enumerate(session_types.items(), 1):
-        name_padded = info["display_name"].ljust(14)
-        console.print(
-            f"     {idx}. [bold]{name_padded}[/] [dim]{info['description']}[/]"
-        )
+    for idx, (key, info) in enumerate(session_types.items(), 1):
+        display_name = info["display_name"]
+        description = info["description"]
+        if key == default_value:
+            name_padded = display_name.ljust(14)
+            console.print(
+                f"     {idx}. [bold cyan]{name_padded}[/] [dim]{description}[/]"
+                "  [dim cyan](current)[/]"
+            )
+        elif default_value:
+            console.print(f"     [dim]{idx}. {display_name.ljust(14)} {description}[/]")
+        else:
+            name_padded = display_name.ljust(14)
+            console.print(f"     {idx}. [bold]{name_padded}[/] [dim]{description}[/]")
 
     choice = IntPrompt.ask(
         "\nEnter the number of your session type choice",
-        default=1,
+        default=default_idx,
         show_default=True,
     )
 
-    return list(session_types.keys())[choice - 1]
+    return keys[choice - 1]
 
 
 def _display_datastore_menu(console: Console) -> str:
@@ -822,7 +851,7 @@ def prompt_datastore_selection(
     return _display_datastore_menu(console)
 
 
-def prompt_cicd_runner_selection() -> str:
+def prompt_cicd_runner_selection(default_value: str | None = None) -> str:
     """Ask user to select a CI/CD runner."""
     console = Console()
 
@@ -841,21 +870,27 @@ def prompt_cicd_runner_selection() -> str:
         },
     }
 
+    default_idx = 1
+    keys = list(cicd_runners.keys())
+    if default_value and default_value in keys:
+        default_idx = keys.index(default_value) + 1
+
     console.print("\n> Please select a CI/CD runner:")
     console.print("\n  [bold cyan]🔧 CI/CD Options[/]")
-    for idx, (_key, info) in enumerate(cicd_runners.items(), 1):
+    for idx, (key, info) in enumerate(cicd_runners.items(), 1):
         name_padded = info["display_name"].ljust(20)
+        current = "  [dim](current)[/]" if key == default_value else ""
         console.print(
-            f"     {idx}. [bold]{name_padded}[/] [dim]{info['description']}[/]"
+            f"     {idx}. [bold]{name_padded}[/] [dim]{info['description']}[/]{current}"
         )
 
     choice = IntPrompt.ask(
         "\nEnter the number of your CI/CD runner choice",
-        default=1,
+        default=default_idx,
         show_default=True,
     )
 
-    return list(cicd_runners.keys())[choice - 1]
+    return keys[choice - 1]
 
 
 def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
@@ -1420,16 +1455,6 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
-            # Load adk-cheatsheet.md for injection
-            adk_cheatsheet_path = (
-                pathlib.Path(__file__).parent.parent.parent
-                / "resources"
-                / "docs"
-                / "adk-cheatsheet.md"
-            )
-            with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
-                adk_cheatsheet_content = md_file.read()
-
             # Generate Java package variables if language is Java
             java_vars = (
                 generate_java_package_vars(project_name) if language == "java" else {}
@@ -1468,7 +1493,6 @@ def process_template(
                 "agent_sample_publisher": agent_sample_publisher or "",
                 "use_google_api_key": bool(google_api_key),
                 "google_cloud_project": google_cloud_project or "your-gcp-project-id",
-                "adk_cheatsheet": adk_cheatsheet_content,
                 # Java package variables (only populated for Java projects)
                 "java_package": java_vars.get("java_package", ""),
                 "java_package_path": java_vars.get("java_package_path", ""),

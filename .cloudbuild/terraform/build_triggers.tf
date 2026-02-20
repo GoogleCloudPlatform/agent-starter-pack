@@ -344,21 +344,18 @@ locals {
     },
   ]
 
+  # Sentinel combos watch broad paths (cli, templates, pyproject.toml, etc.)
+  # All other combos only watch agent-specific + deployment-target-specific paths.
+  e2e_sentinel_combos = toset(["adk-agent_engine", "adk-cloud_run", "adk-gke"])
+
   # Go-specific E2E included files - auto-derives deployment target from combo value
   go_e2e_agent_deployment_included_files = {
     for combo in local.e2e_agent_deployment_combinations :
     combo.name => [
       "agent_starter_pack/agents/adk_go/**",
-      "agent_starter_pack/base_templates/_shared/**",
       "agent_starter_pack/base_templates/go/**",
       "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
       "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/go/**",
-      "agent_starter_pack/cli/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "agent_starter_pack/resources/locks/**",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild/**",
     ] if endswith(split(",", combo.value)[0], "_go")
   }
 
@@ -367,15 +364,9 @@ locals {
     for combo in local.e2e_agent_deployment_combinations :
     combo.name => [
       "agent_starter_pack/agents/adk_java/**",
-      "agent_starter_pack/base_templates/_shared/**",
       "agent_starter_pack/base_templates/java/**",
       "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
       "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/java/**",
-      "agent_starter_pack/cli/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild/**",
     ] if endswith(split(",", combo.value)[0], "_java")
   }
 
@@ -384,16 +375,9 @@ locals {
     for combo in local.e2e_agent_deployment_combinations :
     combo.name => [
       "agent_starter_pack/agents/adk_ts/**",
-      "agent_starter_pack/base_templates/_shared/**",
       "agent_starter_pack/base_templates/typescript/**",
       "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
       "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/typescript/**",
-      "agent_starter_pack/cli/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "agent_starter_pack/resources/locks/**",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild/**",
     ] if endswith(split(",", combo.value)[0], "_ts")
   }
 
@@ -417,24 +401,23 @@ locals {
         # Cloud SQL is Python Cloud Run only
         "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
         "agent_starter_pack/deployment_targets/cloud_run/python/**",
-        "pyproject.toml",
         ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
         "agent_starter_pack/agents/agentic_rag/**/*",
         "agent_starter_pack/agents/agentic_rag/data_ingestion/**/*",
-        "pyproject.toml",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
         ] : substr(combo.name, 0, 8) == "adk_live" ? [
         "agent_starter_pack/agents/adk_live/**/*",
-        "pyproject.toml",
-        ] : [
-        # Only include files for the specific agent being tested
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
+        ] :
+      contains(local.e2e_sentinel_combos, combo.name) ? [
+        # Sentinel: broad paths - catches CLI, template, and dependency changes
         "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
-        # Common files that affect all agents
         "agent_starter_pack/cli/**",
-        # Shared and Python base templates only (not Go/Java/TypeScript)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
         "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
-        # Deployment target derived from combo value
         "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
         "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
         "tests/cicd/test_e2e_deployment.py",
@@ -442,6 +425,11 @@ locals {
         "pyproject.toml",
         "uv.lock",
         ".cloudbuild/**",
+      ] : [
+        # Non-sentinel: only agent + deployment target paths
+        "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
       ]
     )
   }

@@ -136,10 +136,144 @@ resource "google_container_cluster" "app" {
   # Enable Autopilot mode
   enable_autopilot = true
 
+  # Use private nodes (no external IPs) for security and org policy compliance
+  private_cluster_config {
+    enable_private_nodes    = true
+    enable_private_endpoint = false
+  }
+
+  ip_allocation_policy {
+    # Let GKE auto-assign secondary ranges for pods and services
+  }
+
   deletion_protection = false
 
   # Make dependencies conditional to avoid errors.
   depends_on = [
     resource.google_project_service.services,
   ]
+}
+
+# Cloud Router for NAT gateway
+resource "google_compute_router" "router" {
+  name    = "${var.project_name}-router"
+  project = var.dev_project_id
+  region  = var.region
+  network = google_compute_network.gke_network.id
+}
+
+# Cloud NAT for private GKE nodes to access the internet
+resource "google_compute_router_nat" "nat" {
+  name                               = "${var.project_name}-nat"
+  project                            = var.dev_project_id
+  router                             = google_compute_router.router.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}
+
+# Artifact Registry for container images
+resource "google_artifact_registry_repository" "docker_repo" {
+  location      = var.region
+  repository_id = var.project_name
+  format        = "DOCKER"
+  project       = var.dev_project_id
+
+  depends_on = [resource.google_project_service.services]
+}
+
+# Allow GKE Kubernetes ServiceAccount to impersonate the application GCP SA via Workload Identity
+resource "google_service_account_iam_member" "workload_identity_binding" {
+  service_account_id = google_service_account.app_sa.name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${var.dev_project_id}.svc.id.goog[${var.project_name}/${var.project_name}]"
+
+  depends_on = [google_container_cluster.app]
+}
+
+# --- Kubernetes Resources (managed by Terraform for dev) ---
+
+resource "kubernetes_namespace_v1" "app" {
+  metadata {
+    name = var.project_name
+  }
+  depends_on = [google_container_cluster.app]
+}
+
+resource "kubernetes_service_account_v1" "app" {
+  metadata {
+    name      = var.project_name
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+    annotations = {
+      "iam.gke.io/gcp-service-account" = "${var.project_name}-app@${var.dev_project_id}.iam.gserviceaccount.com"
+    }
+  }
+}
+
+resource "kubernetes_service_v1" "app" {
+  metadata {
+    name      = var.project_name
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+    labels = {
+      app = var.project_name
+    }
+  }
+  spec {
+    type = "LoadBalancer"
+    port {
+      port        = 8080
+      target_port = 8080
+      protocol    = "TCP"
+    }
+    selector = {
+      app = var.project_name
+    }
+  }
+}
+
+resource "kubernetes_horizontal_pod_autoscaler_v2" "app" {
+  metadata {
+    name      = var.project_name
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+    labels = {
+      app = var.project_name
+    }
+  }
+  spec {
+    scale_target_ref {
+      api_version = "apps/v1"
+      kind        = "Deployment"
+      name        = var.project_name
+    }
+    min_replicas = 2
+    max_replicas = 10
+    metric {
+      type = "Resource"
+      resource {
+        name = "cpu"
+        target {
+          type                = "Utilization"
+          average_utilization = 70
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_pod_disruption_budget_v1" "app" {
+  metadata {
+    name      = var.project_name
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+    labels = {
+      app = var.project_name
+    }
+  }
+  spec {
+    min_available = 1
+    selector {
+      match_labels = {
+        app = var.project_name
+      }
+    }
+  }
 }

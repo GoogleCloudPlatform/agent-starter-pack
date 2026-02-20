@@ -14,7 +14,7 @@ This project is organized as follows:
 ├── .cloudbuild/         # CI/CD pipeline configurations for Google Cloud Build
 ├── deployment/          # Infrastructure and deployment scripts
 {%- if cookiecutter.deployment_target == 'gke' %}
-├── k8s/                 # Kubernetes manifests for GKE deployment
+│   ├── k8s/             # Kubernetes manifests for GKE deployment
 {%- endif %}
 ├── tests/               # Unit, integration, and load tests
 │   ├── unit/            # Unit tests

@@ -34,7 +34,7 @@ Agent generated with [`googleCloudPlatform/agent-starter-pack`](https://github.c
 {%- if cookiecutter.cicd_runner != 'skip' %}
 ├── deployment/                # Infrastructure and deployment scripts
 {%- if cookiecutter.deployment_target == 'gke' %}
-├── k8s/                       # Kubernetes manifests for GKE deployment
+│   ├── k8s/                   # Kubernetes manifests for GKE deployment
 {%- endif %}
 {%- if cookiecutter.agent_name != 'adk_live' %}
 ├── notebooks/                 # Jupyter notebooks for prototyping and evaluation

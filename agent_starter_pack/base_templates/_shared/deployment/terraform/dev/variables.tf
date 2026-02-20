@@ -51,7 +51,9 @@ variable "app_sa_roles" {
   default = [
 
     "roles/aiplatform.user",
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "roles/discoveryengine.editor",
+{%- endif %}
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/storage.admin",

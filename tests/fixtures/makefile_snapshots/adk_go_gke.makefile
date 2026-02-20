@@ -56,75 +56,25 @@ local-backend:
 # Example: make deploy IMAGE_TAG=v1.0.0
 deploy:
 	@PROJECT_ID=$$(gcloud config get-value project) && \
-	echo "Enabling required APIs..." && \
-	gcloud services enable compute.googleapis.com container.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com --project=$$PROJECT_ID && \
-	echo "Ensuring VPC network exists..." && \
-	(gcloud compute networks describe test-go-agent-network --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating VPC network..." && \
-		 gcloud compute networks create test-go-agent-network --subnet-mode=custom --project=$$PROJECT_ID)) && \
-	echo "Ensuring subnet exists..." && \
-	(gcloud compute networks subnets describe test-go-agent-subnet --region us-central1 --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating subnet in us-central1..." && \
-		 gcloud compute networks subnets create test-go-agent-subnet --network=test-go-agent-network --region=us-central1 --range=10.0.0.0/20 --project=$$PROJECT_ID)) && \
-	echo "Ensuring firewall rules exist..." && \
-	(gcloud compute firewall-rules describe test-go-agent-allow-internal --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating internal firewall rule..." && \
-		 gcloud compute firewall-rules create test-go-agent-allow-internal \
-			--network=test-go-agent-network \
-			--allow=tcp,udp,icmp \
-			--source-ranges=10.0.0.0/8 \
-			--project=$$PROJECT_ID)) && \
-	echo "Ensuring GKE cluster exists..." && \
-	(gcloud container clusters describe test-go-agent-dev --region us-central1 --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating GKE Autopilot cluster (this may take a few minutes)..." && \
-		 gcloud container clusters create-auto test-go-agent-dev --region us-central1 --project $$PROJECT_ID --network=test-go-agent-network --subnetwork=test-go-agent-subnet)) && \
+	echo "Provisioning infrastructure via Terraform..." && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
 	echo "Configuring kubectl credentials..." && \
 	gcloud container clusters get-credentials test-go-agent-dev --region us-central1 --project $$PROJECT_ID && \
 	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
 	IMAGE=us-central1-docker.pkg.dev/$$PROJECT_ID/test-go-agent/test-go-agent:$$IMAGE_TAG && \
-	echo "Ensuring Artifact Registry repository exists..." && \
-	(gcloud artifacts repositories create test-go-agent \
-		--repository-format=docker \
-		--location=us-central1 \
-		--project=$$PROJECT_ID 2>/dev/null || true) && \
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
-	echo "Applying Kubernetes manifests..." && \
-	kubectl create namespace test-go-agent --dry-run=client -o yaml | kubectl apply -f - && \
-	kubectl apply -f k8s/service.yaml -f k8s/serviceaccount.yaml -f k8s/hpa.yaml -f k8s/pdb.yaml && \
-	echo "Setting up Workload Identity..." && \
-	SA_EMAIL=test-go-agent-app@$$PROJECT_ID.iam.gserviceaccount.com && \
-	(gcloud iam service-accounts describe $$SA_EMAIL --project=$$PROJECT_ID >/dev/null 2>&1 || \
-		gcloud iam service-accounts create test-go-agent-app \
-			--display-name="test-go-agent Agent Service Account" \
-			--project=$$PROJECT_ID) && \
-	for ROLE in roles/aiplatform.user roles/logging.logWriter roles/cloudtrace.agent roles/storage.admin roles/serviceusage.serviceUsageConsumer roles/discoveryengine.editor; do \
-		gcloud projects add-iam-policy-binding $$PROJECT_ID \
-			--member="serviceAccount:$$SA_EMAIL" \
-			--role="$$ROLE" --quiet --no-user-output-enabled; \
-	done && \
-	gcloud iam service-accounts add-iam-policy-binding $$SA_EMAIL \
-		--role="roles/iam.workloadIdentityUser" \
-		--member="serviceAccount:$$PROJECT_ID.svc.id.goog[test-go-agent/test-go-agent]" \
-		--project=$$PROJECT_ID --quiet --no-user-output-enabled && \
-	kubectl annotate serviceaccount test-go-agent \
-		iam.gke.io/gcp-service-account=$$SA_EMAIL \
-		-n test-go-agent --overwrite && \
 	echo "Deploying container image..." && \
-	sed 's|image: PLACEHOLDER|image: '"$$IMAGE"'|' k8s/deployment.yaml | kubectl apply -f - && \
+	kubectl apply -f deployment/k8s/deployment.yaml && \
+	kubectl set image deployment/test-go-agent \
+		test-go-agent=$$IMAGE \
+		-n test-go-agent && \
 	echo "Waiting for rollout to complete..." && \
-	kubectl rollout status deployment/test-go-agent -n test-go-agent && \
-	echo "" && \
-	echo "Waiting for external IP..." && \
-	for i in $$(seq 1 12); do \
-		EXTERNAL_IP=$$(kubectl get svc test-go-agent -n test-go-agent -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
-		[ -n "$$EXTERNAL_IP" ] && break; \
-		sleep 5; \
-	done && \
+	kubectl rollout status deployment/test-go-agent -n test-go-agent --timeout=300s && \
+	EXTERNAL_IP=$$(kubectl get svc test-go-agent -n test-go-agent -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \
 	if [ -n "$$EXTERNAL_IP" ]; then \
-		kubectl set env deployment/test-go-agent \
-			APP_URL=http://$$EXTERNAL_IP:8080 \
-			-n test-go-agent && \
+		kubectl set env deployment/test-go-agent APP_URL=http://$$EXTERNAL_IP:8080 -n test-go-agent; \
 		echo ""; \
 		echo "==============================================================================="; \
 		echo "  Service URL: http://$$EXTERNAL_IP:8080"; \
@@ -236,20 +186,3 @@ build-inspector-if-needed:
 		echo "Building inspector frontend..."; \
 		cd tools/a2a-inspector/frontend && npm run build; \
 	fi
-
-# ==============================================================================
-# Gemini Enterprise Registration
-# ==============================================================================
-
-# Register agent with Gemini Enterprise for A2A discovery
-# Usage: make register-gemini-enterprise (interactive - will prompt for required details)
-# For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
-# Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, AGENT_CARD_URL
-register-gemini-enterprise:
-	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
-	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
-	EXTERNAL_IP=$$(kubectl get svc test-go-agent -n test-go-agent -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \
-	uvx agent-starter-pack@0.20.0 register-gemini-enterprise \
-		--agent-card-url="http://$$EXTERNAL_IP:8080/.well-known/agent-card.json" \
-		--deployment-target="gke" \
-		--project-number="$$PROJECT_NUMBER"

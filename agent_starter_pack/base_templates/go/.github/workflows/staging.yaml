@@ -111,7 +111,7 @@ jobs:
 
       - name: Deploy to GKE (Staging)
         run: |
-          kubectl apply -f k8s/hpa.yaml -f k8s/pdb.yaml
+          kubectl apply -f deployment/k8s/hpa.yaml -f deployment/k8s/pdb.yaml
           kubectl set image deployment/{{cookiecutter.project_name}} \
             {{cookiecutter.project_name}}={% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %} \
             --namespace={{cookiecutter.project_name}}

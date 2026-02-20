@@ -89,12 +89,12 @@ steps:
       - "-c"
       - |
         gcloud container clusters get-credentials $$_GKE_CLUSTER_NAME --region $$_REGION --project $$_STAGING_PROJECT_ID
-        kubectl apply -f k8s/hpa.yaml -f k8s/pdb.yaml
+        kubectl apply -f deployment/k8s/hpa.yaml -f deployment/k8s/pdb.yaml
         kubectl set image deployment/{{cookiecutter.project_name}} \
           {{cookiecutter.project_name}}=$$_REGION-docker.pkg.dev/$$PROJECT_ID/$$_ARTIFACT_REGISTRY_REPO_NAME/$$_CONTAINER_NAME:$$SHORT_SHA -n {{cookiecutter.project_name}}
         EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
         [ -n "$EXTERNAL_IP" ] && kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}
-        kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}}
+        kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} --timeout=300s
 
   # Fetch Staging Service URL
   - name: "gcr.io/cloud-builders/kubectl"

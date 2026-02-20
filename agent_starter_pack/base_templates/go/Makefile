@@ -90,75 +90,25 @@ deploy:
 # Example: make deploy IMAGE_TAG=v1.0.0
 deploy:
 	@PROJECT_ID=$$(gcloud config get-value project) && \
-	echo "Enabling required APIs..." && \
-	gcloud services enable compute.googleapis.com container.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com --project=$$PROJECT_ID && \
-	echo "Ensuring VPC network exists..." && \
-	(gcloud compute networks describe {{cookiecutter.project_name}}-network --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating VPC network..." && \
-		 gcloud compute networks create {{cookiecutter.project_name}}-network --subnet-mode=custom --project=$$PROJECT_ID)) && \
-	echo "Ensuring subnet exists..." && \
-	(gcloud compute networks subnets describe {{cookiecutter.project_name}}-subnet --region us-central1 --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating subnet in us-central1..." && \
-		 gcloud compute networks subnets create {{cookiecutter.project_name}}-subnet --network={{cookiecutter.project_name}}-network --region=us-central1 --range=10.0.0.0/20 --project=$$PROJECT_ID)) && \
-	echo "Ensuring firewall rules exist..." && \
-	(gcloud compute firewall-rules describe {{cookiecutter.project_name}}-allow-internal --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating internal firewall rule..." && \
-		 gcloud compute firewall-rules create {{cookiecutter.project_name}}-allow-internal \
-			--network={{cookiecutter.project_name}}-network \
-			--allow=tcp,udp,icmp \
-			--source-ranges=10.0.0.0/8 \
-			--project=$$PROJECT_ID)) && \
-	echo "Ensuring GKE cluster exists..." && \
-	(gcloud container clusters describe {{cookiecutter.project_name}}-dev --region us-central1 --project $$PROJECT_ID >/dev/null 2>&1 || \
-		(echo "Creating GKE Autopilot cluster (this may take a few minutes)..." && \
-		 gcloud container clusters create-auto {{cookiecutter.project_name}}-dev --region us-central1 --project $$PROJECT_ID --network={{cookiecutter.project_name}}-network --subnetwork={{cookiecutter.project_name}}-subnet)) && \
+	echo "Provisioning infrastructure via Terraform..." && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
 	echo "Configuring kubectl credentials..." && \
 	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-central1 --project $$PROJECT_ID && \
 	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
 	IMAGE=us-central1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
-	echo "Ensuring Artifact Registry repository exists..." && \
-	(gcloud artifacts repositories create {{cookiecutter.project_name}} \
-		--repository-format=docker \
-		--location=us-central1 \
-		--project=$$PROJECT_ID 2>/dev/null || true) && \
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
-	echo "Applying Kubernetes manifests..." && \
-	kubectl create namespace {{cookiecutter.project_name}} --dry-run=client -o yaml | kubectl apply -f - && \
-	kubectl apply -f k8s/service.yaml -f k8s/serviceaccount.yaml -f k8s/hpa.yaml -f k8s/pdb.yaml && \
-	echo "Setting up Workload Identity..." && \
-	SA_EMAIL={{cookiecutter.project_name}}-app@$$PROJECT_ID.iam.gserviceaccount.com && \
-	(gcloud iam service-accounts describe $$SA_EMAIL --project=$$PROJECT_ID >/dev/null 2>&1 || \
-		gcloud iam service-accounts create {{cookiecutter.project_name}}-app \
-			--display-name="{{cookiecutter.project_name}} Agent Service Account" \
-			--project=$$PROJECT_ID) && \
-	for ROLE in roles/aiplatform.user roles/logging.logWriter roles/cloudtrace.agent roles/storage.admin roles/serviceusage.serviceUsageConsumer roles/discoveryengine.editor; do \
-		gcloud projects add-iam-policy-binding $$PROJECT_ID \
-			--member="serviceAccount:$$SA_EMAIL" \
-			--role="$$ROLE" --quiet --no-user-output-enabled; \
-	done && \
-	gcloud iam service-accounts add-iam-policy-binding $$SA_EMAIL \
-		--role="roles/iam.workloadIdentityUser" \
-		--member="serviceAccount:$$PROJECT_ID.svc.id.goog[{{cookiecutter.project_name}}/{{cookiecutter.project_name}}]" \
-		--project=$$PROJECT_ID --quiet --no-user-output-enabled && \
-	kubectl annotate serviceaccount {{cookiecutter.project_name}} \
-		iam.gke.io/gcp-service-account=$$SA_EMAIL \
-		-n {{cookiecutter.project_name}} --overwrite && \
 	echo "Deploying container image..." && \
-	sed 's|image: PLACEHOLDER|image: '"$$IMAGE"'|' k8s/deployment.yaml | kubectl apply -f - && \
+	kubectl apply -f deployment/k8s/deployment.yaml && \
+	kubectl set image deployment/{{cookiecutter.project_name}} \
+		{{cookiecutter.project_name}}=$$IMAGE \
+		-n {{cookiecutter.project_name}} && \
 	echo "Waiting for rollout to complete..." && \
-	kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} && \
-	echo "" && \
-	echo "Waiting for external IP..." && \
-	for i in $$(seq 1 12); do \
-		EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null); \
-		[ -n "$$EXTERNAL_IP" ] && break; \
-		sleep 5; \
-	done && \
+	kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} --timeout=300s && \
+	EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \
 	if [ -n "$$EXTERNAL_IP" ]; then \
-		kubectl set env deployment/{{cookiecutter.project_name}} \
-			APP_URL=http://$$EXTERNAL_IP:8080 \
-			-n {{cookiecutter.project_name}} && \
+		kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}; \
 		echo ""; \
 		echo "==============================================================================="; \
 		echo "  Service URL: http://$$EXTERNAL_IP:8080"; \
@@ -275,6 +225,7 @@ build-inspector-if-needed:
 		echo "Building inspector frontend..."; \
 		cd tools/a2a-inspector/frontend && npm run build; \
 	fi
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 # ==============================================================================
 # Gemini Enterprise Registration
@@ -285,20 +236,11 @@ build-inspector-if-needed:
 # For non-interactive use, set env vars: ID or GEMINI_ENTERPRISE_APP_ID (full GE resource name)
 # Optional env vars: GEMINI_DISPLAY_NAME, GEMINI_DESCRIPTION, AGENT_CARD_URL
 register-gemini-enterprise:
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
 	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
 		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
-		--project-number="$$PROJECT_NUMBER"
-{%- elif cookiecutter.deployment_target == 'gke' %}
-	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
-	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
-	EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \
-	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
-		--agent-card-url="http://$$EXTERNAL_IP:8080/.well-known/agent-card.json" \
-		--deployment-target="gke" \
 		--project-number="$$PROJECT_NUMBER"
 {%- endif %}
 {%- endif %}

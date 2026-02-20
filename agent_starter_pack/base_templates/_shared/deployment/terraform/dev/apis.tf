@@ -16,12 +16,15 @@ locals {
   services = [
     "aiplatform.googleapis.com",
     "cloudbuild.googleapis.com",
+{%- if cookiecutter.deployment_target != 'gke' %}
     "run.googleapis.com",
+{%- endif %}
     "bigquery.googleapis.com",
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "discoveryengine.googleapis.com",
+{%- endif %}
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
-    "bigquery.googleapis.com",
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",

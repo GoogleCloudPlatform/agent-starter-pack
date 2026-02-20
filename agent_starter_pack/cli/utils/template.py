@@ -122,7 +122,7 @@ CONDITIONAL_FILES = {
     "deployment/terraform/service.tf": _exclude_adk_live_agent_engine,
     "deployment/terraform/dev/service.tf": _exclude_adk_live_agent_engine,
     # GKE-specific files
-    "k8s": lambda c: c.get("deployment_target") == "gke",
+    "deployment/k8s": lambda c: c.get("deployment_target") == "gke",
     # Data ingestion conditional (only for vertex_ai_vector_search)
     "data_ingestion": lambda c: c.get("datastore_type") == "vertex_ai_vector_search",
     # Datastore-specific terraform files (vertex_ai_search vs vertex_ai_vector_search)
@@ -1721,11 +1721,16 @@ def process_template(
                 # Remove deployment folder
                 deployment_dir = final_destination / "deployment"
                 if deployment_dir.exists():
-                    if include_data_ingestion and datastore in (
-                        "vertex_ai_search",
-                        "vertex_ai_vector_search",
-                    ):
-                        # Keep dev terraform for datastore setup, remove staging/prod
+                    keep_deployment_dev = (
+                        include_data_ingestion
+                        and datastore
+                        in (
+                            "vertex_ai_search",
+                            "vertex_ai_vector_search",
+                        )
+                    ) or deployment_target == "gke"
+                    if keep_deployment_dev:
+                        # Keep dev terraform for datastore/GKE setup, remove staging/prod
                         # Also keep sql/ since dev/telemetry.tf references ../sql/
                         terraform_dir = deployment_dir / "terraform"
                         dirs_to_keep = {"dev", "sql", "scripts"}
@@ -1736,9 +1741,10 @@ def process_template(
                                         shutil.rmtree(item)
                                     else:
                                         item.unlink()
-                        # Remove non-terraform deployment files
+                        # Remove non-terraform, non-k8s deployment files
+                        deployment_dirs_to_keep = {"terraform", "k8s"}
                         for item in deployment_dir.iterdir():
-                            if item.name != "terraform":
+                            if item.name not in deployment_dirs_to_keep:
                                 if item.is_dir():
                                     shutil.rmtree(item)
                                 else:

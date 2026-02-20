@@ -128,74 +128,91 @@ locals {
       name  = "adk-cloud_run-bq-analytics"
       value = "adk,cloud_run,--bq-analytics"
     },
+    {
+      name  = "adk-gke"
+      value = "adk,gke"
+    },
+    {
+      name  = "langgraph-gke"
+      value = "langgraph,gke"
+    },
+    {
+      name  = "agentic_rag-gke-vertex_ai_search"
+      value = "agentic_rag,gke,--datastore,vertex_ai_search"
+    },
+    {
+      name  = "adk_live-gke"
+      value = "adk_live,gke"
+    },
+    {
+      name  = "adk_a2a-gke"
+      value = "adk_a2a,gke"
+    },
+    {
+      name  = "adk_go-gke"
+      value = "adk_go,gke"
+    },
+    {
+      name  = "adk_java-gke"
+      value = "adk_java,gke"
+    },
+    {
+      name  = "adk_ts-gke"
+      value = "adk_ts,gke"
+    },
   ]
 
-  # Go-specific included files (different paths from Python)
-  # Only triggers when Go-specific template files change
+  # Go-specific included files - auto-derives deployment target from combo value
   go_agent_testing_included_files = {
-    "adk_go-cloud_run" = [
-      # Go agent-specific files
+    for combo in local.agent_testing_combinations :
+    combo.name => [
       "agent_starter_pack/agents/adk_go/**",
-      # Shared base template (affects all languages)
       "agent_starter_pack/base_templates/_shared/**",
-      # Go base template
       "agent_starter_pack/base_templates/go/**",
-      # Go deployment target (Cloud Run only for Go)
-      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-      "agent_starter_pack/deployment_targets/cloud_run/go/**",
-      # Common files
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/go/**",
       "agent_starter_pack/cli/**",
       "tests/integration/test_template_linting.py",
       "tests/integration/test_templated_patterns.py",
       "agent_starter_pack/resources/locks/**",
       "pyproject.toml",
       "uv.lock",
-    ]
+    ] if endswith(split(",", combo.value)[0], "_go")
   }
 
-  # Java-specific included files (different paths from Python)
-  # Only triggers when Java-specific template files change
+  # Java-specific included files - auto-derives deployment target from combo value
   java_agent_testing_included_files = {
-    "adk_java-cloud_run" = [
-      # Java agent-specific files
+    for combo in local.agent_testing_combinations :
+    combo.name => [
       "agent_starter_pack/agents/adk_java/**",
-      # Shared base template (affects all languages)
       "agent_starter_pack/base_templates/_shared/**",
-      # Java base template
       "agent_starter_pack/base_templates/java/**",
-      # Java deployment target (Cloud Run only for Java)
-      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-      "agent_starter_pack/deployment_targets/cloud_run/java/**",
-      # Common files
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/java/**",
       "agent_starter_pack/cli/**",
       "tests/integration/test_template_linting.py",
       "tests/integration/test_templated_patterns.py",
       "pyproject.toml",
       "uv.lock",
-    ]
+    ] if endswith(split(",", combo.value)[0], "_java")
   }
 
-  # TypeScript-specific included files (different paths from Python)
-  # Only triggers when TypeScript-specific template files change
+  # TypeScript-specific included files - auto-derives deployment target from combo value
   ts_agent_testing_included_files = {
-    "adk_ts-cloud_run" = [
-      # TypeScript agent-specific files
+    for combo in local.agent_testing_combinations :
+    combo.name => [
       "agent_starter_pack/agents/adk_ts/**",
-      # Shared base template (affects all languages)
       "agent_starter_pack/base_templates/_shared/**",
-      # TypeScript base template
       "agent_starter_pack/base_templates/typescript/**",
-      # TypeScript deployment target (Cloud Run only for TypeScript)
-      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-      "agent_starter_pack/deployment_targets/cloud_run/typescript/**",
-      # Common files
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/typescript/**",
       "agent_starter_pack/cli/**",
       "tests/integration/test_template_linting.py",
       "tests/integration/test_templated_patterns.py",
       "agent_starter_pack/resources/locks/**",
       "pyproject.toml",
       "uv.lock",
-    ]
+    ] if endswith(split(",", combo.value)[0], "_ts")
   }
 
   agent_testing_included_files = {
@@ -213,11 +230,9 @@ locals {
         # Shared and Python base templates only (not Go/Java/TypeScript)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
-        # Python deployment targets only (not Go/Java/TypeScript)
-        "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
-        "agent_starter_pack/deployment_targets/agent_engine/python/**",
-        "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-        "agent_starter_pack/deployment_targets/cloud_run/python/**",
+        # Deployment target derived from combo value
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
         "tests/integration/test_template_linting.py",
         "tests/integration/test_templated_patterns.py",
         "agent_starter_pack/resources/locks/**",
@@ -295,74 +310,75 @@ locals {
       name  = "adk_ts-cloud_run"
       value = "adk_ts,cloud_run"
     },
+    {
+      name  = "adk-gke"
+      value = "adk,gke"
+    },
+    {
+      name  = "langgraph-gke"
+      value = "langgraph,gke"
+    },
+    {
+      name  = "agentic_rag-gke-vertex_ai_search"
+      value = "agentic_rag,gke,--datastore,vertex_ai_search"
+    },
+    {
+      name  = "adk_live-gke"
+      value = "adk_live,gke"
+    },
+    {
+      name  = "adk_a2a-gke"
+      value = "adk_a2a,gke"
+    },
+    {
+      name  = "adk_go-gke"
+      value = "adk_go,gke"
+    },
+    {
+      name  = "adk_java-gke"
+      value = "adk_java,gke"
+    },
+    {
+      name  = "adk_ts-gke"
+      value = "adk_ts,gke"
+    },
   ]
 
-  # Go-specific E2E included files
-  # Only triggers when Go-specific template files change
+  # Sentinel combos watch broad paths (cli, templates, pyproject.toml, etc.)
+  # All other combos only watch agent-specific + deployment-target-specific paths.
+  e2e_sentinel_combos = toset(["adk-agent_engine", "adk-cloud_run", "adk-gke"])
+
+  # Go-specific E2E included files - auto-derives deployment target from combo value
   go_e2e_agent_deployment_included_files = {
-    "adk_go-cloud_run" = [
-      # Go agent-specific files
+    for combo in local.e2e_agent_deployment_combinations :
+    combo.name => [
       "agent_starter_pack/agents/adk_go/**",
-      # Shared base template
-      "agent_starter_pack/base_templates/_shared/**",
-      # Go base template
       "agent_starter_pack/base_templates/go/**",
-      # Go deployment target (Cloud Run only for Go)
-      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-      "agent_starter_pack/deployment_targets/cloud_run/go/**",
-      # Common files
-      "agent_starter_pack/cli/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "agent_starter_pack/resources/locks/**",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild/**",
-    ]
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/go/**",
+    ] if endswith(split(",", combo.value)[0], "_go")
   }
 
-  # Java-specific E2E included files
-  # Only triggers when Java-specific template files change
+  # Java-specific E2E included files - auto-derives deployment target from combo value
   java_e2e_agent_deployment_included_files = {
-    "adk_java-cloud_run" = [
-      # Java agent-specific files
+    for combo in local.e2e_agent_deployment_combinations :
+    combo.name => [
       "agent_starter_pack/agents/adk_java/**",
-      # Shared base template
-      "agent_starter_pack/base_templates/_shared/**",
-      # Java base template
       "agent_starter_pack/base_templates/java/**",
-      # Java deployment target (Cloud Run only for Java)
-      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-      "agent_starter_pack/deployment_targets/cloud_run/java/**",
-      # Common files
-      "agent_starter_pack/cli/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild/**",
-    ]
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/java/**",
+    ] if endswith(split(",", combo.value)[0], "_java")
   }
 
-  # TypeScript-specific E2E included files
-  # Only triggers when TypeScript-specific template files change
+  # TypeScript-specific E2E included files - auto-derives deployment target from combo value
   ts_e2e_agent_deployment_included_files = {
-    "adk_ts-cloud_run" = [
-      # TypeScript agent-specific files
+    for combo in local.e2e_agent_deployment_combinations :
+    combo.name => [
       "agent_starter_pack/agents/adk_ts/**",
-      # Shared base template
-      "agent_starter_pack/base_templates/_shared/**",
-      # TypeScript base template
       "agent_starter_pack/base_templates/typescript/**",
-      # TypeScript deployment target (Cloud Run only for TypeScript)
-      "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-      "agent_starter_pack/deployment_targets/cloud_run/typescript/**",
-      # Common files
-      "agent_starter_pack/cli/**",
-      "tests/cicd/test_e2e_deployment.py",
-      "agent_starter_pack/resources/locks/**",
-      "pyproject.toml",
-      "uv.lock",
-      ".cloudbuild/**",
-    ]
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+      "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/typescript/**",
+    ] if endswith(split(",", combo.value)[0], "_ts")
   }
 
   # Create a safe trigger name by replacing underscores with hyphens and dots with hyphens
@@ -385,33 +401,35 @@ locals {
         # Cloud SQL is Python Cloud Run only
         "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
         "agent_starter_pack/deployment_targets/cloud_run/python/**",
-        "pyproject.toml",
         ] : substr(combo.name, 0, 11) == "agentic_rag" ? [
         "agent_starter_pack/agents/agentic_rag/**/*",
         "agent_starter_pack/agents/agentic_rag/data_ingestion/**/*",
-        "pyproject.toml",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
         ] : substr(combo.name, 0, 8) == "adk_live" ? [
         "agent_starter_pack/agents/adk_live/**/*",
-        "pyproject.toml",
-        ] : [
-        # Only include files for the specific agent being tested
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
+        ] :
+      contains(local.e2e_sentinel_combos, combo.name) ? [
+        # Sentinel: broad paths - catches CLI, template, and dependency changes
         "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
-        # Common files that affect all agents
         "agent_starter_pack/cli/**",
-        # Shared and Python base templates only (not Go/Java/TypeScript)
         "agent_starter_pack/base_templates/_shared/**",
         "agent_starter_pack/base_templates/python/**",
         "agent_starter_pack/agents/agentic_rag/data_ingestion/**",
-        # Python deployment targets only (not Go/Java/TypeScript)
-        "agent_starter_pack/deployment_targets/agent_engine/_shared/**",
-        "agent_starter_pack/deployment_targets/agent_engine/python/**",
-        "agent_starter_pack/deployment_targets/cloud_run/_shared/**",
-        "agent_starter_pack/deployment_targets/cloud_run/python/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
         "tests/cicd/test_e2e_deployment.py",
         "agent_starter_pack/resources/locks/**",
         "pyproject.toml",
         "uv.lock",
         ".cloudbuild/**",
+      ] : [
+        # Non-sentinel: only agent + deployment target paths
+        "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
+        "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
       ]
     )
   }

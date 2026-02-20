@@ -71,7 +71,7 @@ agent-starter-pack create PROJECT_NAME [OPTIONS]
 *   `-a, --agent`: Agent template - built-in agents (e.g., `adk`, `agentic_rag`), remote templates (`adk@gemini-fullstack`, `github.com/user/repo@branch`), or local projects (`local@./path`).
 
 **Deployment Options:**
-*   `-d, --deployment-target`: Target environment (`cloud_run` or `agent_engine`).
+*   `-d, --deployment-target`: Target environment (`cloud_run`, `gke`, or `agent_engine`).
 *   `--cicd-runner`: CI/CD runner (`google_cloud_build` or `github_actions`).
 *   `--region`: GCP region (default: `us-central1`).
 
@@ -251,7 +251,8 @@ Choose with `--session-type` flag during project creation.
 
 ### Deployment Targets
 
-*   **`cloud_run`:** Container-based deployment on Cloud Run. Supports all session types.
+*   **`cloud_run`:** Serverless container platform on Cloud Run. Supports all session types.
+*   **`gke`:** Managed Kubernetes (GKE Autopilot). Same container-based deployment as Cloud Run with more infrastructure control.
 *   **`agent_engine`:** Managed Vertex AI Agent Engine. Provides automatic session management.
 
 ### CI/CD Runners

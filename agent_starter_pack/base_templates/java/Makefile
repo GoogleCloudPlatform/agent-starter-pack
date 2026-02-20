@@ -63,6 +63,7 @@ local-backend:
 # ==============================================================================
 
 # Deploy the agent remotely
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 # Usage: make deploy [PORT=8080]
 #   PORT=8080 - Specify container port
 deploy:
@@ -78,6 +79,42 @@ deploy:
 		--labels "created-by=adk" \
 		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app" \
 		$(if $(PORT),--port=$(PORT))
+{%- elif cookiecutter.deployment_target == 'gke' %}
+# Usage: make deploy [IMAGE_TAG=mytag]
+#   IMAGE_TAG - Specify the Docker image tag (defaults to timestamp)
+#
+# Deploys to GKE cluster
+# Example: make deploy IMAGE_TAG=v1.0.0
+deploy:
+	@PROJECT_ID=$$(gcloud config get-value project) && \
+	echo "Provisioning infrastructure via Terraform..." && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
+	echo "Configuring kubectl credentials..." && \
+	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-central1 --project $$PROJECT_ID && \
+	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
+	IMAGE=us-central1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
+	echo "Building and pushing Docker image..." && \
+	gcloud builds submit --tag $$IMAGE && \
+	echo "Deploying container image..." && \
+	kubectl apply -f deployment/k8s/deployment.yaml && \
+	kubectl set image deployment/{{cookiecutter.project_name}} \
+		{{cookiecutter.project_name}}=$$IMAGE \
+		-n {{cookiecutter.project_name}} && \
+	echo "Waiting for rollout to complete..." && \
+	kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} --timeout=300s && \
+	EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \
+	if [ -n "$$EXTERNAL_IP" ]; then \
+		kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}; \
+		echo ""; \
+		echo "==============================================================================="; \
+		echo "  Service URL: http://$$EXTERNAL_IP:8080"; \
+		echo "==============================================================================="; \
+	else \
+		echo "External IP is still being provisioned. Check with:"; \
+		echo "  kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}}"; \
+	fi
+{%- endif %}
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -164,6 +201,7 @@ build-inspector-if-needed:
 	@if [ -d "tools/a2a-inspector" ] && [ ! -f "tools/a2a-inspector/frontend/public/script.js" ]; then \
 		cd tools/a2a-inspector/frontend && npm run build; \
 	fi
+{%- if cookiecutter.deployment_target == 'cloud_run' %}
 
 # ==============================================================================
 # Gemini Enterprise Registration
@@ -180,4 +218,5 @@ register-gemini-enterprise:
 		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
 		--project-number="$$PROJECT_NUMBER"
+{%- endif %}
 {%- endif %}

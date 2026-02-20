@@ -18,7 +18,7 @@ settings:
   language: "java"
   requires_data_ingestion: false
   requires_session: false
-  deployment_targets: ["cloud_run", "none"]
+  deployment_targets: ["cloud_run", "gke", "none"]
   extra_dependencies: []
   tags: ["adk", "java", "a2a"]
   frontend_type: "None"

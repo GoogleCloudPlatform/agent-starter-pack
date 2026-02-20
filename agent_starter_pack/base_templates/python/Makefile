@@ -71,7 +71,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- elif cookiecutter.is_adk %}
 	uv run adk web . --port 8501 --reload_agents
 {%- elif cookiecutter.is_a2a %}
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') %}
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload &
 	$(MAKE) inspector
 {%- else %}
@@ -119,7 +119,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 {%- endif %}
 {%- endfor %}
 {%- endif %}
-{%- if cookiecutter.deployment_target == 'cloud_run' or (cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live) %}
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') or (cookiecutter.deployment_target == 'agent_engine' and cookiecutter.is_adk_live) %}
 
 # ==============================================================================
 # Local Development Commands
@@ -128,7 +128,7 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 # Launch local development server with hot-reload
 # Usage: make local-backend [PORT=8000] - Specify PORT for parallel scenario testing
 local-backend:
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') %}
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port $(or $(PORT),8000) --reload
 {%- else %}
 	uv run python -m {{cookiecutter.agent_directory}}.app_utils.expose_app --mode local --port $(or $(PORT),8000) --local-agent {{cookiecutter.agent_directory}}.agent.root_agent
@@ -203,14 +203,14 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "==============================================================================="
 	@echo "| 🌐 Inspector UI: http://localhost:5001                                     |"
 	@echo "|                                                                             |"
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') %}
 	@echo "| 💡 Testing Locally:                                                         |"
 	@echo "|    Paste this URL into the inspector:                                      |"
 	@echo "|    http://localhost:8000/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json              |"
 	@echo "|                                                                             |"
 {%- endif %}
 	@echo "| 💡 Testing Remote Deployment:                                               |"
-{%- if cookiecutter.deployment_target == 'cloud_run' %}
+{%- if cookiecutter.deployment_target in ('cloud_run', 'gke') %}
 	@echo "|    <SERVICE_URL>/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json"
 	@echo "|    (Get SERVICE_URL from 'make deploy' output or Cloud Console)            |"
 	@echo "|                                                                             |"
@@ -265,6 +265,8 @@ build-inspector-if-needed:
 # Deploy the agent remotely
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
 # Usage: make deploy [IAP=true] [PORT=8080] - Set IAP=true to enable Identity-Aware Proxy, PORT to specify container port
+{%- elif cookiecutter.deployment_target == 'gke' %}
+# Usage: make deploy [IMAGE_TAG=mytag] - Build and deploy to GKE cluster
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 # Usage: make deploy [AGENT_IDENTITY=true] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
 {%- endif %}
@@ -287,6 +289,35 @@ deploy:
 		"{%- if cookiecutter.is_a2a %}APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-central1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{% if cookiecutter.is_a2a %},{% endif %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %}DATA_STORE_ID={{cookiecutter.project_name}}-collection_documents,DATA_STORE_REGION=global{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-central1/collections/{{cookiecutter.project_name}}-collection{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
+{%- elif cookiecutter.deployment_target == 'gke' %}
+	@PROJECT_ID=$$(gcloud config get-value project) && \
+	echo "Provisioning infrastructure via Terraform..." && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
+	echo "Configuring kubectl credentials..." && \
+	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-central1 --project $$PROJECT_ID && \
+	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
+	IMAGE=us-central1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
+	echo "Building and pushing Docker image..." && \
+	gcloud builds submit --tag $$IMAGE && \
+	echo "Deploying container image..." && \
+	kubectl apply -f deployment/k8s/deployment.yaml && \
+	kubectl set image deployment/{{cookiecutter.project_name}} \
+		{{cookiecutter.project_name}}=$$IMAGE \
+		-n {{cookiecutter.project_name}} && \
+	echo "Waiting for rollout to complete..." && \
+	kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} --timeout=300s && \
+	EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \
+	if [ -n "$$EXTERNAL_IP" ]; then \
+		kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$$EXTERNAL_IP:8080 -n {{cookiecutter.project_name}}; \
+		echo ""; \
+		echo "==============================================================================="; \
+		echo "  Service URL: http://$$EXTERNAL_IP:8080"; \
+		echo "==============================================================================="; \
+	else \
+		echo "External IP is still being provisioned. Check with:"; \
+		echo "  kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}}"; \
+	fi
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 	# Export dependencies to requirements file using uv export.
 	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > {{cookiecutter.agent_directory}}/app_utils/.requirements.txt 2>/dev/null || \

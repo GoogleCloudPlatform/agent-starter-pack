@@ -25,7 +25,7 @@ This object contains fields that control the generated project's features and be
 
 | Field                       | Type           | Description                                                                                                                                 |
 | --------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deployment_targets`        | list(string)   | A list of deployment targets your template supports. Options: `agent_engine`, `cloud_run`.                                                  |
+| `deployment_targets`        | list(string)   | A list of deployment targets your template supports. Options: `agent_engine`, `cloud_run`, `gke`.                                           |
 | `tags`                      | list(string)   | A list of tags for categorization. The `adk` tag enables special integrations with the Agent Development Kit.                                 |
 | `frontend_type`             | string         | Specifies the frontend to use. Examples: `adk_live_react`, `inspector`. Defaults to `None` (no frontend).                                    |
 | `agent_directory`           | string         | The name of the directory where agent code will be placed. Defaults to `app`. Can be overridden by the CLI `--agent-directory` parameter.    |

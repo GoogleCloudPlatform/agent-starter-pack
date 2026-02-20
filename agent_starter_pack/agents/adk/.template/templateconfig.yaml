@@ -17,7 +17,7 @@ example_question: "What's the weather in San Francisco?"
 settings:
   requires_data_ingestion: false
   requires_session: true
-  deployment_targets: ["agent_engine", "cloud_run", "none"]
+  deployment_targets: ["agent_engine", "cloud_run", "gke", "none"]
   extra_dependencies: ["google-adk>=1.15.0,<2.0.0"]
   tags: ["adk"]
   frontend_type: "None"

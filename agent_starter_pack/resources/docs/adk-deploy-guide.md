@@ -170,12 +170,17 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 
 **Agent Engine:**
 
-Pass secrets during deployment with `--set-secrets`. Note: `make deploy` doesn't support secrets, so run deploy.py directly:
+Pass secrets during deployment with the `SECRETS` variable:
 ```bash
-uv run python -m <your-agent-directory>.app_utils.deploy --set-secrets "API_KEY=my-api-key,DB_PASS=db-password:2"
+make deploy SECRETS="API_KEY=my-api-key,DB_PASS=db-password:2"
 ```
 
 Format: `ENV_VAR=SECRET_ID` or `ENV_VAR=SECRET_ID:VERSION` (defaults to latest).
+
+To remove all secrets from a deployed agent:
+```bash
+make deploy SECRETS=""
+```
 
 In your agent code, access via `os.environ`:
 ```python

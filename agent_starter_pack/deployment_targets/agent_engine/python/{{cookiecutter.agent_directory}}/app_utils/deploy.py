@@ -491,6 +491,20 @@ def deploy_agent_engine_app(
         remote_agent = client.agent_engines.create(config=config)
 {%- endif %}
 
+    # SDK omits secret_env from the update mask when empty, so clear it explicitly.
+    if set_secrets is not None and not secrets and matching_agents:
+        clear_op = client.agent_engines._update(
+            name=remote_agent.api_resource.name,
+            config={
+                "spec": {"deployment_spec": {"secret_env": []}},
+                "update_mask": "spec.deployment_spec.secret_env",
+            },
+        )
+        _agent_engines_utils._await_operation(
+            operation_name=clear_op.name,
+            get_operation_fn=client.agent_engines._get_agent_operation,
+        )
+
     write_deployment_metadata(remote_agent)
     print_deployment_success(remote_agent, location, project)
 

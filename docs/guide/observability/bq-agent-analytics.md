@@ -147,16 +147,3 @@ WHERE event_type = 'LLM_RESPONSE'
   AND JSON_VALUE(attributes, '$.usage_metadata.prompt') IS NOT NULL
 GROUP BY agent, model;
 ```
-
-## Looker Studio Dashboard
-
-To visualize your agent analytics, you can use the pre-built Looker Studio dashboard template:
-
-*   **Template Link:** [go/agent-starter-pack-observability-dashboard](http://go/agent-starter-pack-observability-dashboard)
-*   **Instructions:**
-    1.  Open the link.
-    2.  Click "Use Template".
-    3.  Select your GCP project and the `YOUR_AGENT_NAME_telemetry` dataset as the data source.
-    4.  Map the fields if prompted.
-    5.  Explore the visualizations on agent usage, tool calls, token consumption, and errors.
-```

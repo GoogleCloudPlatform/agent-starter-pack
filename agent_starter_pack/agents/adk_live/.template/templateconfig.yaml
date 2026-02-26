@@ -20,3 +20,19 @@ settings:
   extra_dependencies: ["google-adk>=1.16.0,<2.0.0", "click>=8.0.0,<9.0.0", "uvicorn>=0.18.0,<1.0.0", "fastapi>=0.75.0,<1.0.0", "backoff>=2.0.0,<3.0.0"]
   tags: ["adk", "adk_live"]
 example_question: "What's the weather in San Francisco?"
+skill_triggers:
+  - "build a realtime voice agent"
+  - "streaming audio video assistant"
+skill_workflow:
+  - "Configure realtime input/output interfaces."
+  - "Implement agent behavior and tool integrations."
+  - "Run with frontend and validate media interactions."
+skill_inputs:
+  - "Live audio/video streams"
+  - "User prompts or transcripts"
+skill_outputs:
+  - "Realtime multimodal responses"
+skill_constraints:
+  - "Requires frontend/runtime support for live media"
+skill_references:
+  - "agent_starter_pack/frontends/adk_live_react/README.md"

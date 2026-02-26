@@ -21,4 +21,19 @@ settings:
   extra_dependencies: ["google-adk>=1.15.0,<2.0.0"]
   tags: ["adk"]
   frontend_type: "None"
-    
+skill_triggers:
+  - "build a simple tool-using assistant"
+  - "start a basic react agent"
+skill_workflow:
+  - "Define lightweight tools for the assistant."
+  - "Wire the root ADK agent with instructions and tools."
+  - "Run and iterate locally before deployment."
+skill_inputs:
+  - "User question or task description"
+  - "Tool/API credentials"
+skill_outputs:
+  - "Assistant response with tool-grounded result"
+skill_constraints:
+  - "Best for lightweight workflows and prototyping"
+skill_references:
+  - "docs/guide/template-config-reference.md"

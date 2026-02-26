@@ -1095,6 +1095,11 @@ def display_agent_selection(deployment_target: str | None = None) -> str:
         console.print(
             f"     {num}. [bold]{name_padded}[/] [dim]{agent['description']}[/]"
         )
+        triggers = agent.get("skill_triggers", [])
+        if triggers:
+            console.print(
+                f"        [dim]skill intents: {', '.join(triggers[:2])}[/]"
+            )
 
     # Add special option for adk-samples
     adk_samples_option = len(agents) + 1

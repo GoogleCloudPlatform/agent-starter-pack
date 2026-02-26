@@ -20,3 +20,19 @@ settings:
   extra_dependencies: ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9", "nest-asyncio>=1.6.0,<2.0.0"]
   tags: ["adk", "a2a"]
   frontend_type: "None"
+skill_triggers:
+  - "enable a2a protocol support"
+  - "build interoperable adk agents"
+skill_workflow:
+  - "Implement agent tools and core behavior."
+  - "Expose A2A endpoints and message handling."
+  - "Validate interoperability with partner agents."
+skill_inputs:
+  - "User requests"
+  - "A2A peer agent messages"
+skill_outputs:
+  - "A2A-compliant responses and tool results"
+skill_constraints:
+  - "Experimental template; API contracts may evolve"
+skill_references:
+  - "docs/guide/template-config-reference.md"

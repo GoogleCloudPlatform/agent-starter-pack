@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: 'google-github-actions/setup-gcloud@v2'
 {%- endif %}
-{%- if cookiecutter.data_ingestion %}
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
       - name: Deploy data ingestion pipeline (Staging)
         run: |
@@ -63,14 +63,8 @@ jobs:
         env:
           PIPELINE_ROOT: {% raw %}${{ vars.PIPELINE_GCS_ROOT_STAGING }}{% endraw %}
           REGION: {% raw %}${{ vars.REGION }}{% endraw %}
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-          DATA_STORE_REGION: {% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}
-          DATA_STORE_ID: {% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %}
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-          VECTOR_SEARCH_INDEX: {% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %}
-          VECTOR_SEARCH_INDEX_ENDPOINT: {% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %}
-          VECTOR_SEARCH_BUCKET: {% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}
-{%- endif %}
+          VECTOR_SEARCH_COLLECTION_ID: {% raw %}${{ vars.VECTOR_SEARCH_COLLECTION_ID }}{% endraw %}
+          VECTOR_SEARCH_LOCATION: {% raw %}${{ vars.VECTOR_SEARCH_LOCATION }}{% endraw %}
           PROJECT_ID: {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %}
           SERVICE_ACCOUNT: {% raw %}${{ vars.PIPELINE_SA_EMAIL_STAGING }}{% endraw %}
           PIPELINE_NAME: {% raw %}${{ vars.PIPELINE_NAME }}{% endraw %}
@@ -148,7 +142,7 @@ jobs:
             --entrypoint-object=agent_engine \
             --requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
             --service-account={% raw %}${{ vars.APP_SERVICE_ACCOUNT_STAGING }}{% endraw %} \
-            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_a2a %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- endif %},LOGS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_INDEX={% raw %}${{ vars.VECTOR_SEARCH_INDEX_STAGING }}{% endraw %},VECTOR_SEARCH_INDEX_ENDPOINT={% raw %}${{ vars.VECTOR_SEARCH_INDEX_ENDPOINT_STAGING }}{% endraw %},VECTOR_SEARCH_BUCKET={% raw %}${{ vars.VECTOR_SEARCH_BUCKET_STAGING }}{% endraw %}{%- endif %}{%- endif %}"
+            --set-env-vars="COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %}{%- if cookiecutter.is_a2a %},AGENT_VERSION={% raw %}${{ steps.extract-version.outputs.version }}{% endraw %}{%- endif %},LOGS_BUCKET_NAME={% raw %}${{ vars.LOGS_BUCKET_NAME_STAGING }}{% endraw %}{%- if cookiecutter.data_ingestion %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %},DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_STAGING }}{% endraw %},DATA_STORE_REGION={% raw %}${{ vars.DATA_STORE_REGION }}{% endraw %}{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %},VECTOR_SEARCH_COLLECTION_ID={% raw %}${{ vars.VECTOR_SEARCH_COLLECTION_ID }}{% endraw %},VECTOR_SEARCH_LOCATION={% raw %}${{ vars.VECTOR_SEARCH_LOCATION }}{% endraw %}{%- endif %}{%- endif %}"
 
       - name: Fetch Auth Token
         id: fetch-token
@@ -199,7 +193,7 @@ jobs:
 {%- elif cookiecutter.deployment_target == 'cloud_run' %}
           export _ID_TOKEN="{% raw %}${{ steps.fetch-token.outputs._id_token }}{% endraw %}"
           export _STAGING_URL="{% raw %}${{ steps.fetch-url.outputs._staging_url }}{% endraw %}"
-          pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.9{%- endif %}
+          pip install locust==2.31.1{%- if cookiecutter.is_a2a %} a2a-sdk~=0.3.22{%- endif %}
           locust -f tests/load_test/load_test.py \
           --headless \
           -H ${_STAGING_URL} \

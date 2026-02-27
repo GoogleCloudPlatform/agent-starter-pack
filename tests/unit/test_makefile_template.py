@@ -18,12 +18,13 @@ from pytest import TempPathFactory
 class MakefileRenderer:
     """Helper class to render Makefile templates with Jinja2."""
 
-    def __init__(self) -> None:
+    def __init__(self, language: str = "python") -> None:
+        self.language = language
         template_dir = (
             Path(__file__).parent.parent.parent
             / "agent_starter_pack"
             / "base_templates"
-            / "python"
+            / language
         )
         self.env = Environment(
             loader=FileSystemLoader(str(template_dir)),
@@ -237,11 +238,47 @@ TEST_CONFIGURATIONS = {
     },
 }
 
+# Go test configurations
+GO_TEST_CONFIGURATIONS = {
+    "adk_go_cloud_run": {
+        "project_name": "test-go-agent",
+        "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
+        "example_question": "What's the weather in San Francisco?",
+        "package_version": "0.20.0",
+    },
+}
+
+# Java test configurations
+JAVA_TEST_CONFIGURATIONS = {
+    "adk_java_cloud_run": {
+        "project_name": "test-java-agent",
+        "java_package": "test_java_agent",
+        "java_package_path": "test_java_agent",
+        "deployment_target": "cloud_run",
+        "cicd_runner": "google_cloud_build",
+        "example_question": "What's the weather in San Francisco?",
+        "package_version": "0.20.0",
+    },
+}
+
 
 @pytest.fixture
 def makefile_renderer() -> MakefileRenderer:
-    """Fixture to create a MakefileRenderer instance."""
-    return MakefileRenderer()
+    """Fixture to create a MakefileRenderer instance for Python."""
+    return MakefileRenderer("python")
+
+
+@pytest.fixture
+def go_makefile_renderer() -> MakefileRenderer:
+    """Fixture to create a MakefileRenderer instance for Go."""
+    return MakefileRenderer("go")
+
+
+@pytest.fixture
+def java_makefile_renderer() -> MakefileRenderer:
+    """Fixture to create a MakefileRenderer instance for Java."""
+    return MakefileRenderer("java")
 
 
 class TestMakefileGeneration:
@@ -343,38 +380,31 @@ class TestMakefileGeneration:
         assert "ui:" in output
         assert "playground-dev:" in output
 
-    def test_data_ingestion_target_present(
+    def test_vertex_search_has_data_ingestion_targets(
         self, makefile_renderer: MakefileRenderer
     ) -> None:
-        """Test that data ingestion configurations include data-ingestion target."""
+        """Test that Vertex AI Search config uses setup-datastore, data-ingestion, and sync-data targets."""
         config = TEST_CONFIGURATIONS["agentic_rag_cloud_run_vertex_search"]
         output = makefile_renderer.render(config)
 
+        assert "setup-datastore:" in output
         assert "data-ingestion:" in output
-        assert "data-store-id" in output
+        assert "sync-data:" in output
+        assert "start_connector_run" in output
 
-    def test_data_ingestion_vertex_search_config(
+    def test_vector_search_has_data_ingestion_target(
         self, makefile_renderer: MakefileRenderer
     ) -> None:
-        """Test that Vertex AI Search config uses correct parameters."""
-        config = TEST_CONFIGURATIONS["agentic_rag_cloud_run_vertex_search"]
-        output = makefile_renderer.render(config)
-
-        assert "--data-store-id" in output
-        assert "--data-store-region" in output
-        assert "--vector-search-index" not in output
-
-    def test_data_ingestion_vector_search_config(
-        self, makefile_renderer: MakefileRenderer
-    ) -> None:
-        """Test that Vector Search config uses correct parameters."""
+        """Test that Vector Search config uses setup-datastore and data-ingestion targets."""
         config = TEST_CONFIGURATIONS["agentic_rag_cloud_run_vector_search"]
         output = makefile_renderer.render(config)
 
-        assert "--vector-search-index" in output
-        assert "--vector-search-index-endpoint" in output
-        assert "--vector-search-data-bucket-name" in output
-        assert "--data-store-id" not in output
+        assert "setup-datastore:" in output
+        assert "data-ingestion:" in output
+        assert "--collection-id" in output
+        assert "--local" in output
+        assert "VECTOR_SEARCH_COLLECTION" in output
+        assert "sync-data:" not in output
 
     def test_custom_commands_override(
         self, makefile_renderer: MakefileRenderer
@@ -462,15 +492,193 @@ class TestMakefileGeneration:
                     f"Required target '{target}' missing in {config_name}"
                 )
 
-            # setup-dev-env is only present when cicd_runner != 'skip'
-            if config.get("cicd_runner") != "skip":
+            # setup-dev-env is present when cicd_runner != 'skip' AND no data_ingestion
+            # (data_ingestion replaces setup-dev-env with setup-datastore)
+            if config.get("cicd_runner") != "skip" and not config.get("data_ingestion"):
                 assert "setup-dev-env:" in output, (
                     f"setup-dev-env target missing in {config_name}"
+                )
+            elif config.get("data_ingestion"):
+                assert "setup-datastore:" in output, (
+                    f"setup-datastore target missing in {config_name}"
                 )
             else:
                 assert "setup-dev-env:" not in output, (
                     f"setup-dev-env should not be present in prototype mode ({config_name})"
                 )
+
+
+class TestGoMakefileGeneration:
+    """Test Go Makefile generation."""
+
+    @pytest.mark.parametrize("config_name", GO_TEST_CONFIGURATIONS.keys())
+    def test_makefile_renders_without_errors(
+        self, go_makefile_renderer: MakefileRenderer, config_name: str
+    ) -> None:
+        """Test that Go Makefile renders without Jinja2 errors."""
+        config = GO_TEST_CONFIGURATIONS[config_name]
+        output = go_makefile_renderer.render(config)
+
+        assert output, f"Makefile should not be empty for {config_name}"
+        assert "install:" in output
+        assert "playground:" in output
+
+    @pytest.mark.parametrize("config_name", GO_TEST_CONFIGURATIONS.keys())
+    def test_makefile_snapshot(
+        self,
+        go_makefile_renderer: MakefileRenderer,
+        config_name: str,
+        snapshot_dir: Path,
+    ) -> None:
+        """Test that Go Makefile output matches expected snapshot."""
+        config = GO_TEST_CONFIGURATIONS[config_name]
+        output = go_makefile_renderer.render(config)
+
+        snapshot_file = snapshot_dir / f"{config_name}.makefile"
+
+        if not snapshot_file.exists():
+            snapshot_file.write_text(output)
+            pytest.skip(f"Created new snapshot for {config_name}")
+
+        expected = snapshot_file.read_text()
+        assert output == expected, (
+            f"Go Makefile output changed for {config_name}.\n"
+            f"To update snapshots, delete {snapshot_file} and rerun tests."
+        )
+
+    @pytest.mark.parametrize("config_name", GO_TEST_CONFIGURATIONS.keys())
+    def test_go_makefile_has_required_targets(
+        self, go_makefile_renderer: MakefileRenderer, config_name: str
+    ) -> None:
+        """Test that Go Makefile has all required targets."""
+        config = GO_TEST_CONFIGURATIONS[config_name]
+        output = go_makefile_renderer.render(config)
+
+        required_targets = ["install:", "playground:", "test:", "lint:", "build:"]
+        for target in required_targets:
+            assert target in output, (
+                f"Required target '{target}' missing in Go {config_name}"
+            )
+
+    @pytest.mark.parametrize("config_name", GO_TEST_CONFIGURATIONS.keys())
+    def test_makefile_hash(
+        self, go_makefile_renderer: MakefileRenderer, config_name: str, hash_file: Path
+    ) -> None:
+        """Test that Go Makefile output hash matches expected hash."""
+        config = GO_TEST_CONFIGURATIONS[config_name]
+        output = go_makefile_renderer.render(config)
+
+        output_hash = hashlib.sha256(output.encode()).hexdigest()
+
+        if hash_file.exists():
+            hashes = json.loads(hash_file.read_text())
+        else:
+            hashes = {}
+
+        if config_name not in hashes:
+            hashes[config_name] = output_hash
+            hash_file.write_text(json.dumps(hashes, indent=2, sort_keys=True))
+            pytest.skip(f"Created new hash for {config_name}")
+
+        expected_hash = hashes[config_name]
+        assert output_hash == expected_hash, (
+            f"Go Makefile output changed for {config_name}.\n"
+            f"Expected hash: {expected_hash}\n"
+            f"Actual hash:   {output_hash}"
+        )
+
+
+class TestJavaMakefileGeneration:
+    """Test Java Makefile generation."""
+
+    @pytest.mark.parametrize("config_name", JAVA_TEST_CONFIGURATIONS.keys())
+    def test_makefile_renders_without_errors(
+        self, java_makefile_renderer: MakefileRenderer, config_name: str
+    ) -> None:
+        """Test that Java Makefile renders without Jinja2 errors."""
+        config = JAVA_TEST_CONFIGURATIONS[config_name]
+        output = java_makefile_renderer.render(config)
+
+        assert output, f"Makefile should not be empty for {config_name}"
+        assert "install:" in output
+        assert "playground:" in output
+
+    @pytest.mark.parametrize("config_name", JAVA_TEST_CONFIGURATIONS.keys())
+    def test_makefile_snapshot(
+        self,
+        java_makefile_renderer: MakefileRenderer,
+        config_name: str,
+        snapshot_dir: Path,
+    ) -> None:
+        """Test that Java Makefile output matches expected snapshot."""
+        config = JAVA_TEST_CONFIGURATIONS[config_name]
+        output = java_makefile_renderer.render(config)
+
+        snapshot_file = snapshot_dir / f"{config_name}.makefile"
+
+        if not snapshot_file.exists():
+            snapshot_file.write_text(output)
+            pytest.skip(f"Created new snapshot for {config_name}")
+
+        expected = snapshot_file.read_text()
+        assert output == expected, (
+            f"Java Makefile output changed for {config_name}.\n"
+            f"To update snapshots, delete {snapshot_file} and rerun tests."
+        )
+
+    @pytest.mark.parametrize("config_name", JAVA_TEST_CONFIGURATIONS.keys())
+    def test_java_makefile_has_required_targets(
+        self, java_makefile_renderer: MakefileRenderer, config_name: str
+    ) -> None:
+        """Test that Java Makefile has all required targets."""
+        config = JAVA_TEST_CONFIGURATIONS[config_name]
+        output = java_makefile_renderer.render(config)
+
+        required_targets = ["install:", "playground:", "test:", "lint:", "build:"]
+        for target in required_targets:
+            assert target in output, (
+                f"Required target '{target}' missing in Java {config_name}"
+            )
+
+    @pytest.mark.parametrize("config_name", JAVA_TEST_CONFIGURATIONS.keys())
+    def test_makefile_hash(
+        self,
+        java_makefile_renderer: MakefileRenderer,
+        config_name: str,
+        hash_file: Path,
+    ) -> None:
+        """Test that Java Makefile output hash matches expected hash."""
+        config = JAVA_TEST_CONFIGURATIONS[config_name]
+        output = java_makefile_renderer.render(config)
+
+        output_hash = hashlib.sha256(output.encode()).hexdigest()
+
+        if hash_file.exists():
+            hashes = json.loads(hash_file.read_text())
+        else:
+            hashes = {}
+
+        if config_name not in hashes:
+            hashes[config_name] = output_hash
+            hash_file.write_text(json.dumps(hashes, indent=2, sort_keys=True))
+            pytest.skip(f"Created new hash for {config_name}")
+
+        expected_hash = hashes[config_name]
+        assert output_hash == expected_hash, (
+            f"Java Makefile output changed for {config_name}.\n"
+            f"Expected hash: {expected_hash}\n"
+            f"Actual hash:   {output_hash}"
+        )
+
+    def test_java_makefile_uses_maven(
+        self, java_makefile_renderer: MakefileRenderer
+    ) -> None:
+        """Test that Java Makefile uses Maven commands."""
+        config = JAVA_TEST_CONFIGURATIONS["adk_java_cloud_run"]
+        output = java_makefile_renderer.render(config)
+
+        assert "mvn" in output, "Java Makefile should use Maven commands"
+        assert "mvn dependency:resolve" in output or "mvn compile" in output
 
 
 @pytest.fixture

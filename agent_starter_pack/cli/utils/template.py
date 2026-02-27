@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,6 +56,8 @@ from .remote_template import (
 AGENT_ALIASES: dict[str, str] = {
     "adk_base": "adk",
     "langgraph_base": "langgraph",
+    "custom": "langgraph",
+    "custom_a2a": "langgraph",
     "adk_a2a_base": "adk_a2a",
     "adk_base_go": "adk_go",
 }
@@ -89,10 +91,14 @@ def resolve_agent_alias(name: str | None) -> str | None:
 # The config dict contains: agent_name, cicd_runner, is_adk, is_adk_live, is_a2a
 # =============================================================================
 
+
 # Helper: exclude service.tf only for adk_live + agent_engine combination
-_exclude_adk_live_agent_engine = lambda c: not (
-    c.get("agent_name") == "adk_live" and c.get("deployment_target") == "agent_engine"
-)
+def _exclude_adk_live_agent_engine(c: dict) -> bool:
+    return not (
+        c.get("agent_name") == "adk_live"
+        and c.get("deployment_target") == "agent_engine"
+    )
+
 
 CONDITIONAL_FILES = {
     # CI/CD runner conditional files (base_template)
@@ -115,6 +121,67 @@ CONDITIONAL_FILES = {
     "tests/helpers.py": lambda c: c.get("is_a2a"),
     "deployment/terraform/service.tf": _exclude_adk_live_agent_engine,
     "deployment/terraform/dev/service.tf": _exclude_adk_live_agent_engine,
+    # Data ingestion conditional (only for vertex_ai_vector_search)
+    "data_ingestion": lambda c: c.get("datastore_type") == "vertex_ai_vector_search",
+    # Datastore-specific terraform files (vertex_ai_search vs vertex_ai_vector_search)
+    "deployment/terraform/vertex_ai_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/vertex_ai_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/vertex_ai_search_github.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/dev/vertex_ai_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/dev/vertex_ai_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/vector_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_github.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_iam.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/vector_search_service_accounts.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/dev/vector_search.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/dev/vector_search_variables.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/dev/vector_search_iam.tf": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    # Datastore-specific terraform scripts (vertex_ai_search vs vertex_ai_vector_search)
+    "deployment/terraform/scripts/delete_data_connector.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/get_data_store_id.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/setup_data_connector.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/start_connector_run.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_search"
+    ),
+    "deployment/terraform/scripts/delete_vector_search_collection.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
+    "deployment/terraform/scripts/setup_vector_search_collection.py": (
+        lambda c: c.get("datastore_type") == "vertex_ai_vector_search"
+    ),
 }
 
 
@@ -167,6 +234,93 @@ def apply_conditional_files(
             logging.debug(f"Conditional file '{rel_path}' condition True, keeping")
 
 
+def _add_dependencies_interactively(
+    project_path: pathlib.Path,
+    dependencies: list[str],
+    success_message: str,
+    auto_approve: bool = False,
+) -> bool:
+    """Helper function to interactively add dependencies using uv add.
+
+    Args:
+        project_path: Path to the project directory
+        dependencies: List of dependencies to install
+        success_message: Message to show upon success
+        auto_approve: Whether to skip confirmation and auto-install
+
+    Returns:
+        True if dependencies were added successfully, False otherwise
+    """
+    if not dependencies:
+        return True
+
+    console = Console()
+    deps_str = " ".join(f"'{dep}'" for dep in dependencies)
+
+    should_add = True
+    if not auto_approve:
+        should_add = Confirm.ask(
+            "\n? Add these dependencies automatically?", default=True
+        )
+
+    if not should_add:
+        console.print("\n⚠️  Skipped dependency installation.", style="yellow")
+        console.print("   To add them manually later, run:", style="dim")
+        console.print(f"       cd {project_path.name}", style="dim")
+        console.print(f"       uv add {deps_str}\n", style="dim")
+        return False
+
+    # Run uv add
+    try:
+        if auto_approve:
+            console.print(
+                f"✓ Auto-installing dependencies: {', '.join(dependencies)}",
+                style="bold cyan",
+            )
+        else:
+            console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
+
+        # Run uv add in the project directory
+        cmd = ["uv", "add", *dependencies]
+        result = subprocess.run(
+            cmd,
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+        # Show success message
+        if not auto_approve:
+            # Show a summary line from uv output
+            output_lines = result.stderr.strip().split("\n")
+            for line in output_lines:
+                if "Resolved" in line or "Installed" in line:
+                    console.print(f"  {line}", style="dim")
+                    break
+
+        console.print(f"✓ {success_message}\n", style="bold green")
+        return True
+
+    except subprocess.CalledProcessError as e:
+        console.print(
+            f"\n✗ Failed to add dependencies: {e.stderr.strip()}", style="bold red"
+        )
+        console.print("  You can add them manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
+    except FileNotFoundError:
+        console.print(
+            "\n✗ uv command not found. Please install uv first.", style="bold red"
+        )
+        console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
+        console.print("\n  To add dependencies manually:", style="yellow")
+        console.print(f"      cd {project_path.name}", style="dim")
+        console.print(f"      uv add {deps_str}\n", style="dim")
+        return False
+
+
 def add_base_template_dependencies_interactively(
     project_path: pathlib.Path,
     base_dependencies: list[str],
@@ -189,9 +343,6 @@ def add_base_template_dependencies_interactively(
 
     console = Console()
 
-    # Construct dependency string once for reuse
-    deps_str = " ".join(f"'{dep}'" for dep in base_dependencies)
-
     # Show what dependencies will be added
     console.print(
         f"\n✓ Base template override: Using '{base_template_name}' as foundation",
@@ -201,80 +352,56 @@ def add_base_template_dependencies_interactively(
     for dep in base_dependencies:
         console.print(f"    • {dep}", style="yellow")
 
-    # Ask for confirmation unless auto-approve
-    should_add = True
+    return _add_dependencies_interactively(
+        project_path=project_path,
+        dependencies=base_dependencies,
+        success_message="Dependencies added successfully",
+        auto_approve=auto_approve,
+    )
+
+
+def add_bq_analytics_dependencies(
+    project_path: pathlib.Path,
+    auto_approve: bool = False,
+) -> bool:
+    """Add BigQuery Agent Analytics Plugin dependencies using uv add.
+
+    Args:
+        project_path: Path to the project directory
+        auto_approve: Whether to skip confirmation and auto-install
+
+    Returns:
+        True if dependencies were added successfully, False otherwise
+    """
+    dependencies = ["google-adk[bigquery-analytics]>=1.21.0"]
+
     if not auto_approve:
-        should_add = Confirm.ask(
-            "\n? Add these dependencies automatically?", default=True
-        )
-
-    if not should_add:
-        console.print("\n⚠️  Skipped dependency installation.", style="yellow")
-        console.print("   To add them manually later, run:", style="dim")
-        console.print(f"       cd {project_path.name}", style="dim")
-        console.print(f"       uv add {deps_str}\n", style="dim")
-        return False
-
-    # Run uv add
-    try:
-        if auto_approve:
-            console.print(
-                f"✓ Auto-installing dependencies: {', '.join(base_dependencies)}",
-                style="bold cyan",
-            )
-        else:
-            console.print(f"\n✓ Running: uv add {deps_str}", style="bold cyan")
-
-        # Run uv add in the project directory
-        cmd = ["uv", "add", *base_dependencies]
-        result = subprocess.run(
-            cmd,
-            cwd=project_path,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-
-        # Show success message
-        if not auto_approve:
-            # Show a summary line from uv output
-            output_lines = result.stderr.strip().split("\n")
-            for line in output_lines:
-                if "Resolved" in line or "Installed" in line:
-                    console.print(f"  {line}", style="dim")
-                    break
-
-        console.print("✓ Dependencies added successfully\n", style="bold green")
-        return True
-
-    except subprocess.CalledProcessError as e:
+        console = Console()
         console.print(
-            f"\n✗ Failed to add dependencies: {e.stderr.strip()}", style="bold red"
+            "\nℹ️  Adding BigQuery Agent Analytics Plugin dependencies...", style="cyan"
         )
-        console.print("  You can add them manually:", style="yellow")
-        console.print(f"      cd {project_path.name}", style="dim")
-        console.print(f"      uv add {deps_str}\n", style="dim")
-        return False
-    except FileNotFoundError:
-        console.print(
-            "\n✗ uv command not found. Please install uv first.", style="bold red"
-        )
-        console.print("  Install from: https://docs.astral.sh/uv/", style="dim")
-        console.print("\n  To add dependencies manually:", style="yellow")
-        console.print(f"      cd {project_path.name}", style="dim")
-        console.print(f"      uv add {deps_str}\n", style="dim")
-        return False
+
+    return _add_dependencies_interactively(
+        project_path=project_path,
+        dependencies=dependencies,
+        success_message="BQ Analytics dependencies added successfully",
+        auto_approve=auto_approve,
+    )
 
 
-def validate_agent_directory_name(agent_dir: str, allow_dot: bool = False) -> None:
-    """Validate that an agent directory name is a valid Python identifier.
+def validate_agent_directory_name(
+    agent_dir: str, allow_dot: bool = False, language: str = "python"
+) -> None:
+    """Validate that an agent directory name is a valid identifier for the language.
 
     Args:
         agent_dir: The agent directory name to validate
         allow_dot: If True, allows "." as a special value indicating flat structure
+        language: The project language (python, go, java). Validation rules are
+            only enforced for Python projects since they need valid module names.
 
     Raises:
-        ValueError: If the agent directory name is not a valid Python identifier
+        ValueError: If the agent directory name is not valid for the language
 
     Note:
         The special value "." indicates flat structure - agent code is in the
@@ -288,6 +415,11 @@ def validate_agent_directory_name(agent_dir: str, allow_dot: bool = False) -> No
             "Agent directory '.' is not valid in this context. "
             "Use '.' only to indicate flat structure templates."
         )
+
+    # Only validate Python identifier rules for Python projects
+    # Go and Java have different directory structure requirements
+    if language != "python":
+        return
 
     if "-" in agent_dir:
         raise ValueError(
@@ -362,8 +494,8 @@ def get_overwrite_folders(agent_directory: str) -> list[str]:
 
 
 TEMPLATE_CONFIG_FILE = "templateconfig.yaml"
-DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine"]
-SUPPORTED_LANGUAGES = ["python", "go"]
+DEPLOYMENT_TARGETS = ["cloud_run", "agent_engine", "none"]
+SUPPORTED_LANGUAGES = ["python", "go", "java", "typescript"]
 DEFAULT_FRONTEND = "None"
 SKILL_METADATA_FIELDS = (
     "skill_triggers",
@@ -420,6 +552,35 @@ def _get_skill_metadata_list(config: dict[str, Any], field: str) -> list[str]:
     return [item for item in value if isinstance(item, str)]
 
 
+def generate_java_package_vars(project_name: str) -> dict[str, str]:
+    """Generate Java package variables from project name.
+
+    Args:
+        project_name: The project name (e.g., "my-agent", "myAgent")
+
+    Returns:
+        Dict with java_package and java_package_path
+    """
+    # Sanitize for Java conventions: lowercase, no hyphens, no dots
+    # Java package names should be all lowercase with no separators
+    sanitized = "".join(c for c in project_name.lower() if c.isalnum())
+
+    # Remove leading digits if any
+    if sanitized and sanitized[0].isdigit():
+        sanitized = "_" + sanitized
+
+    # Package name is just the sanitized project name
+    java_package = sanitized
+
+    # Package path is the same (single-level package)
+    java_package_path = sanitized
+
+    return {
+        "java_package": java_package,
+        "java_package_path": java_package_path,
+    }
+
+
 def get_available_agents(deployment_target: str | None = None) -> dict:
     """Dynamically load available agents from the agents directory.
 
@@ -435,8 +596,10 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "adk_a2a": 1,
         "adk_live": 2,
         "agentic_rag": 3,
-        "langgraph": 0,
+        "langgraph": 4,  # displayed as "custom_a2a"
         "adk_go": 0,
+        "adk_java": 0,
+        "adk_ts": 0,
     }
 
     agents_list = []
@@ -480,10 +643,12 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                         framework = "other"
 
                     description = config.get("description", "No description available")
+                    display_name = config.get("display_name", agent_name)
                     priority = PRIORITY_ORDER.get(agent_name, 100)
 
                     agent_info = {
                         "name": agent_name,
+                        "display_name": display_name,
                         "description": description,
                         "language": language,
                         "framework": framework,
@@ -511,15 +676,16 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                 except Exception as e:
                     logging.warning(f"Could not load agent from {agent_dir}: {e}")
 
-    # Define group order: Python ADK, Python LangGraph, Go ADK, Other
+    # Define group order by language: Python, Go, Java, TypeScript, Other
     GROUP_ORDER = {
-        ("python", "adk"): 0,
-        ("python", "langgraph"): 1,
-        ("go", "adk"): 2,
+        "python": 0,
+        "go": 1,
+        "java": 2,
+        "typescript": 3,
     }
 
     def sort_key(agent: dict) -> tuple:
-        group = (agent["language"], agent["framework"])
+        group = agent["language"]
         group_order = GROUP_ORDER.get(group, 99)
         return (group_order, agent["priority"], agent["name"])
 
@@ -617,7 +783,9 @@ def get_deployment_targets(
 
 
 def prompt_deployment_target(
-    agent_name: str, remote_config: dict[str, Any] | None = None
+    agent_name: str,
+    remote_config: dict[str, Any] | None = None,
+    default_value: str | None = None,
 ) -> str:
     """Ask user to select a deployment target for the agent."""
     targets = get_deployment_targets(agent_name, remote_config=remote_config)
@@ -632,10 +800,18 @@ def prompt_deployment_target(
             "display_name": "cloud_run",
             "description": "GCP serverless containers",
         },
+        "none": {
+            "display_name": "none",
+            "description": "No Cloud deployment",
+        },
     }
 
     if not targets:
         return ""
+
+    default_idx = 1
+    if default_value and default_value in targets:
+        default_idx = targets.index(default_value) + 1
 
     console = Console()
     console.print("\n> Please select a deployment target:")
@@ -644,18 +820,27 @@ def prompt_deployment_target(
         info = TARGET_INFO.get(target, {})
         display_name = info.get("display_name", target)
         description = info.get("description", "")
-        name_padded = display_name.ljust(14)
-        console.print(f"     {idx}. [bold]{name_padded}[/] [dim]{description}[/]")
+        if target == default_value:
+            name_padded = display_name.ljust(14)
+            console.print(
+                f"     {idx}. [bold cyan]{name_padded}[/] [dim]{description}[/]"
+                "  [dim cyan](current)[/]"
+            )
+        elif default_value:
+            console.print(f"     [dim]{idx}. {display_name.ljust(14)} {description}[/]")
+        else:
+            name_padded = display_name.ljust(14)
+            console.print(f"     {idx}. [bold]{name_padded}[/] [dim]{description}[/]")
 
     choice = IntPrompt.ask(
         "\nEnter the number of your deployment target choice",
-        default=1,
+        default=default_idx,
         show_default=True,
     )
     return targets[choice - 1]
 
 
-def prompt_session_type_selection() -> str:
+def prompt_session_type_selection(default_value: str | None = None) -> str:
     """Ask user to select a session type for Cloud Run deployment."""
     console = Console()
 
@@ -674,21 +859,35 @@ def prompt_session_type_selection() -> str:
         },
     }
 
+    default_idx = 1
+    keys = list(session_types.keys())
+    if default_value and default_value in keys:
+        default_idx = keys.index(default_value) + 1
+
     console.print("\n> Please select a session type:")
     console.print("\n  [bold cyan]💾 Session Types[/]")
-    for idx, (_key, info) in enumerate(session_types.items(), 1):
-        name_padded = info["display_name"].ljust(14)
-        console.print(
-            f"     {idx}. [bold]{name_padded}[/] [dim]{info['description']}[/]"
-        )
+    for idx, (key, info) in enumerate(session_types.items(), 1):
+        display_name = info["display_name"]
+        description = info["description"]
+        if key == default_value:
+            name_padded = display_name.ljust(14)
+            console.print(
+                f"     {idx}. [bold cyan]{name_padded}[/] [dim]{description}[/]"
+                "  [dim cyan](current)[/]"
+            )
+        elif default_value:
+            console.print(f"     [dim]{idx}. {display_name.ljust(14)} {description}[/]")
+        else:
+            name_padded = display_name.ljust(14)
+            console.print(f"     {idx}. [bold]{name_padded}[/] [dim]{description}[/]")
 
     choice = IntPrompt.ask(
         "\nEnter the number of your session type choice",
-        default=1,
+        default=default_idx,
         show_default=True,
     )
 
-    return list(session_types.keys())[choice - 1]
+    return keys[choice - 1]
 
 
 def _display_datastore_menu(console: Console) -> str:
@@ -714,7 +913,7 @@ def prompt_datastore_selection(
 
     Args:
         agent_name: Name of the agent
-        from_cli_flag: Whether this is being called due to explicit --include-data-ingestion flag
+        from_cli_flag: Whether this is being called due to explicit --datastore flag
     """
     console = Console()
 
@@ -751,11 +950,11 @@ def prompt_datastore_selection(
             if include:
                 return _display_datastore_menu(console)
 
-    # If we get here, we need to prompt for datastore selection for explicit --include-data-ingestion flag
+    # If we get here, we need to prompt for datastore selection
     return _display_datastore_menu(console)
 
 
-def prompt_cicd_runner_selection() -> str:
+def prompt_cicd_runner_selection(default_value: str | None = None) -> str:
     """Ask user to select a CI/CD runner."""
     console = Console()
 
@@ -774,21 +973,27 @@ def prompt_cicd_runner_selection() -> str:
         },
     }
 
+    default_idx = 1
+    keys = list(cicd_runners.keys())
+    if default_value and default_value in keys:
+        default_idx = keys.index(default_value) + 1
+
     console.print("\n> Please select a CI/CD runner:")
     console.print("\n  [bold cyan]🔧 CI/CD Options[/]")
-    for idx, (_key, info) in enumerate(cicd_runners.items(), 1):
+    for idx, (key, info) in enumerate(cicd_runners.items(), 1):
         name_padded = info["display_name"].ljust(20)
+        current = "  [dim](current)[/]" if key == default_value else ""
         console.print(
-            f"     {idx}. [bold]{name_padded}[/] [dim]{info['description']}[/]"
+            f"     {idx}. [bold]{name_padded}[/] [dim]{info['description']}[/]{current}"
         )
 
     choice = IntPrompt.ask(
         "\nEnter the number of your CI/CD runner choice",
-        default=1,
+        default=default_idx,
         show_default=True,
     )
 
-    return list(cicd_runners.keys())[choice - 1]
+    return keys[choice - 1]
 
 
 def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
@@ -807,30 +1012,23 @@ def get_template_path(agent_name: str, debug: bool = False) -> pathlib.Path:
     return template_path
 
 
-def copy_data_ingestion_files(
-    project_template: pathlib.Path, datastore_type: str
-) -> None:
-    """Copy data processing files to the project template for cookiecutter templating.
+def copy_sample_data_files(project_template: pathlib.Path) -> None:
+    """Copy sample data files to the project template.
 
     Args:
         project_template: Path to the project template directory
-        datastore_type: Type of datastore to use for data ingestion
     """
-    data_ingestion_src = pathlib.Path(__file__).parent.parent.parent / "data_ingestion"
-    data_ingestion_dst = project_template / "data_ingestion"
+    sample_data_src = pathlib.Path(__file__).parent.parent.parent / "sample_data"
+    sample_data_dst = project_template / "sample_data"
 
-    if data_ingestion_src.exists():
+    if sample_data_src.exists():
         logging.debug(
-            f"Copying data processing files from {data_ingestion_src} to {data_ingestion_dst}"
+            f"Copying sample data files from {sample_data_src} to {sample_data_dst}"
         )
-
-        copy_files(data_ingestion_src, data_ingestion_dst, overwrite=True)
-
-        logging.debug(f"Data ingestion files prepared for datastore: {datastore_type}")
+        copy_files(sample_data_src, sample_data_dst, overwrite=True)
+        logging.debug("Sample data files copied successfully")
     else:
-        logging.warning(
-            f"Data processing source directory not found at {data_ingestion_src}"
-        )
+        logging.warning(f"Sample data source directory not found at {sample_data_src}")
 
 
 def _extract_agent_garden_labels(
@@ -1024,6 +1222,8 @@ def process_template(
     remote_spec: Any | None = None,
     google_api_key: str | None = None,
     google_cloud_project: str | None = None,
+    bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Process the template directory and create a new project.
 
@@ -1044,6 +1244,7 @@ def process_template(
         agent_garden: Whether this deployment is from Agent Garden
         google_api_key: Optional Google AI Studio API key to generate .env file
         google_cloud_project: Optional GCP project ID to populate .env file
+        bq_analytics: Whether to include BigQuery Agent Analytics Plugin
     """
     logging.debug(f"Processing template from {template_dir}")
     logging.debug(f"Project name: {project_name}")
@@ -1054,7 +1255,9 @@ def process_template(
     console = Console()
 
     def get_agent_directory(
-        template_config: dict[str, Any], cli_overrides: dict[str, Any] | None = None
+        template_config: dict[str, Any],
+        cli_overrides: dict[str, Any] | None = None,
+        language: str = "python",
     ) -> str:
         """Get agent directory with CLI override support.
 
@@ -1087,8 +1290,8 @@ def process_template(
                 logging.debug("Flat structure (-dir .): using 'app' as fallback")
                 agent_dir = "app"
 
-        # Validate agent directory is a valid Python identifier
-        validate_agent_directory_name(agent_dir)
+        # Validate agent directory is valid for the language
+        validate_agent_directory_name(agent_dir, language=language)
 
         return agent_dir
 
@@ -1156,8 +1359,9 @@ def process_template(
             else:
                 template_path = pathlib.Path(template_dir)
                 early_config = load_template_config(template_path)
-            agent_directory = get_agent_directory(early_config, cli_overrides)
+            # Get language first so we can pass it to get_agent_directory
             language = get_agent_language(agent_name, remote_config)
+            agent_directory = get_agent_directory(early_config, cli_overrides, language)
 
             # Base paths for template structure
             base_templates_path = (
@@ -1234,12 +1438,10 @@ def process_template(
                         f"2b. Copied {language} deployment files from {language_deployment_path}"
                     )
 
-            # 3. Copy data ingestion files if needed
-            if include_data_ingestion and datastore:
-                logging.debug(
-                    f"3. Including data processing files with datastore: {datastore}"
-                )
-                copy_data_ingestion_files(project_template, datastore)
+            # 3. Copy sample data files for vertex_ai_search
+            if include_data_ingestion and datastore == "vertex_ai_search":
+                logging.debug("3. Including sample data files for vertex_ai_search")
+                copy_sample_data_files(project_template)
 
             # 4. Skip remote template files during cookiecutter processing
             # Remote files will be copied after cookiecutter to avoid Jinja conflicts
@@ -1280,7 +1482,9 @@ def process_template(
 
             # 6. Copy agent-specific files to override base template (using final config)
             if agent_path.exists():
-                agent_directory = get_agent_directory(template_config, cli_overrides)
+                agent_directory = get_agent_directory(
+                    template_config, cli_overrides, language
+                )
 
                 # For remote/local templates with base_template override, always use "app"
                 # as the source directory since base templates store agent code in "app/"
@@ -1310,8 +1514,30 @@ def process_template(
                         agent_directory=agent_directory,
                     )
 
-                # Copy other folders (frontend, tests, notebooks)
-                other_folders = ["frontend", "tests", "notebooks"]
+                # For Java templates, also copy src/test if it exists
+                if language == "java":
+                    source_test_folder = agent_path / "src" / "test"
+                    target_test_folder = project_template / "src" / "test"
+                    if source_test_folder.exists():
+                        logging.debug(
+                            "6b. Copying Java test folder src/test with override"
+                        )
+                        copy_files(
+                            source_test_folder,
+                            target_test_folder,
+                            agent_name,
+                            overwrite=True,
+                            agent_directory=agent_directory,
+                        )
+
+                # Copy other folders (frontend, tests, notebooks, deployment)
+                other_folders = [
+                    "frontend",
+                    "tests",
+                    "notebooks",
+                    "deployment",
+                    "data_ingestion",
+                ]
                 for folder in other_folders:
                     agent_folder = agent_path / folder
                     project_folder = project_template / folder
@@ -1325,13 +1551,6 @@ def process_template(
                             agent_directory=agent_directory,
                         )
 
-            # Check if data processing should be included
-            if include_data_ingestion and datastore:
-                logging.debug(
-                    f"Including data processing files with datastore: {datastore}"
-                )
-                copy_data_ingestion_files(project_template, datastore)
-
             # Create cookiecutter.json in the template root
             # Get settings from template config
             settings = template_config.get("settings", {})
@@ -1339,21 +1558,10 @@ def process_template(
             frontend_type = settings.get("frontend_type", DEFAULT_FRONTEND)
             tags = settings.get("tags", ["None"])
 
-            # Load adk-cheatsheet.md and llm.txt for injection
-            adk_cheatsheet_path = (
-                pathlib.Path(__file__).parent.parent.parent
-                / "resources"
-                / "docs"
-                / "adk-cheatsheet.md"
+            # Generate Java package variables if language is Java
+            java_vars = (
+                generate_java_package_vars(project_name) if language == "java" else {}
             )
-            with open(adk_cheatsheet_path, encoding="utf-8") as md_file:
-                adk_cheatsheet_content = md_file.read()
-
-            llm_txt_path = (
-                pathlib.Path(__file__).parent.parent.parent.parent / "llm.txt"
-            )
-            with open(llm_txt_path, encoding="utf-8") as txt_file:
-                llm_txt_content = txt_file.read()
 
             cookiecutter_config = {
                 "project_name": project_name,
@@ -1369,6 +1577,9 @@ def process_template(
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
+                "requires_data_ingestion": settings.get(
+                    "requires_data_ingestion", False
+                ),
                 "language": language,
                 "deployment_target": deployment_target or "",
                 "cicd_runner": cicd_runner or "google_cloud_build",
@@ -1377,32 +1588,33 @@ def process_template(
                 "extra_dependencies": [extra_deps],
                 "data_ingestion": include_data_ingestion,
                 "datastore_type": datastore if datastore else "",
-                "agent_directory": get_agent_directory(template_config, cli_overrides),
+                "agent_directory": get_agent_directory(
+                    template_config, cli_overrides, language
+                ),
                 "agent_garden": agent_garden,
                 "agent_sample_id": agent_sample_id or "",
                 "agent_sample_publisher": agent_sample_publisher or "",
                 "use_google_api_key": bool(google_api_key),
                 "google_cloud_project": google_cloud_project or "your-gcp-project-id",
-                "adk_cheatsheet": adk_cheatsheet_content,
-                "llm_txt": llm_txt_content,
+                # Java package variables (only populated for Java projects)
+                "java_package": java_vars.get("java_package", ""),
+                "java_package_path": java_vars.get("java_package_path", ""),
+                "bq_analytics": bq_analytics,
+                "agent_guidance_filename": agent_guidance_filename,
                 "_copy_without_render": [
                     "*.ipynb",  # Don't render notebooks
-                    "*.json",  # Don't render JSON files
-                    "*.tsx",  # Don't render TypeScript React files
-                    "*.ts",  # Don't render TypeScript files
-                    "*.jsx",  # Don't render JavaScript React files
-                    "*.js",  # Don't render JavaScript files
-                    "*.css",  # Don't render CSS files
                     "*.sum",  # Don't render Go sum files
                     "e2e/**/*",  # Don't render Go e2e test files (contain Go {{ }} syntax)
-                    "frontend/**/*",  # Don't render frontend directory recursively
+                    "frontend/**/*",  # Don't render frontend directory (covers all JS/TS/CSS/JSON files)
                     "notebooks/*",  # Don't render notebooks directory
+                    "sample_data/*",  # Don't render sample data files
                     ".git/*",  # Don't render git directory
                     "__pycache__/*",  # Don't render cache
                     "**/__pycache__/*",
                     ".pytest_cache/*",
                     ".venv/*",
                     "**/.venv/*",  # Don't render .venv at any depth
+                    "node_modules/**/*",  # Don't render node_modules (TS/JS deps contain {{ }} syntax)
                     "*templates.py",  # Don't render templates files
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                 ],
@@ -1436,52 +1648,6 @@ def process_template(
                 logging.debug(
                     f"Copying remote template files from {remote_template_path} to {generated_project_dir}"
                 )
-
-                # Preserve base template README and pyproject.toml files before overwriting
-                preserve_files = ["README.md"]
-
-                # Only preserve pyproject.toml if the remote template doesn't have starter pack integration
-                remote_pyproject = remote_template_path / "pyproject.toml"
-                if remote_pyproject.exists():
-                    try:
-                        remote_pyproject_content = remote_pyproject.read_text()
-                        # Check for starter pack integration markers
-                        has_starter_pack_integration = (
-                            "[tool.agent-starter-pack]" in remote_pyproject_content
-                        )
-                        if not has_starter_pack_integration:
-                            preserve_files.append("pyproject.toml")
-                            logging.debug(
-                                "Remote pyproject.toml lacks starter pack integration - will preserve base template version"
-                            )
-                        else:
-                            logging.debug(
-                                "Remote pyproject.toml has starter pack integration - using remote version only"
-                            )
-                    except Exception as e:
-                        logging.warning(
-                            f"Could not read remote pyproject.toml: {e}. Will preserve base template version."
-                        )
-                        preserve_files.append("pyproject.toml")
-                else:
-                    preserve_files.append("pyproject.toml")
-
-                for preserve_file in preserve_files:
-                    base_file = generated_project_dir / preserve_file
-                    remote_file = remote_template_path / preserve_file
-
-                    if base_file.exists() and remote_file.exists():
-                        # Preserve the base template file with starter_pack prefix
-                        base_name = pathlib.Path(preserve_file).stem
-                        extension = pathlib.Path(preserve_file).suffix
-                        preserved_file = (
-                            generated_project_dir
-                            / f"starter_pack_{base_name}{extension}"
-                        )
-                        shutil.copy2(base_file, preserved_file)
-                        logging.debug(
-                            f"Preserved base template {preserve_file} as starter_pack_{base_name}{extension}"
-                        )
 
                 # Check if this is a flat structure template
                 # Flat structure can be detected via:
@@ -1552,108 +1718,12 @@ def process_template(
                     for item in generated_project_dir.iterdir():
                         dest_item = final_destination / item.name
 
-                        # Special handling for README files - always preserve existing README
-                        # Special handling for pyproject.toml files - only preserve for in-folder updates
-                        should_preserve_file = item.name.lower().startswith(
-                            "readme"
-                        ) or (item.name == "pyproject.toml" and in_folder)
-                        if (
-                            should_preserve_file
-                            and (final_destination / item.name).exists()
-                        ):
-                            # The existing file stays, use base template file with starter_pack prefix
-                            base_name = item.stem
-                            extension = item.suffix
-                            dest_item = (
-                                final_destination
-                                / f"starter_pack_{base_name}{extension}"
-                            )
-
-                            # Try to use base template file instead of templated file
-                            # Use language-specific base path
-                            base_file = language_base_path / item.name
-                            if base_file.exists():
-                                logging.debug(
-                                    f"{item.name} conflict: preserving existing {item.name}, using base template {item.name} as starter_pack_{base_name}{extension}"
-                                )
-                                # Process the base template file through cookiecutter
-                                try:
-                                    import tempfile as tmp_module
-
-                                    with (
-                                        tmp_module.TemporaryDirectory() as temp_file_dir
-                                    ):
-                                        temp_file_path = pathlib.Path(temp_file_dir)
-
-                                        # Create a minimal cookiecutter structure for just the file
-                                        file_template_dir = (
-                                            temp_file_path / "file_template"
-                                        )
-                                        file_template_dir.mkdir()
-                                        file_project_dir = (
-                                            file_template_dir
-                                            / "{{cookiecutter.project_name}}"
-                                        )
-                                        file_project_dir.mkdir()
-
-                                        # Copy base file to template structure
-                                        shutil.copy2(
-                                            base_file, file_project_dir / item.name
-                                        )
-
-                                        # Create cookiecutter.json with same config as main template
-                                        with open(
-                                            file_template_dir / "cookiecutter.json",
-                                            "w",
-                                            encoding="utf-8",
-                                        ) as config_file:
-                                            json.dump(
-                                                cookiecutter_config,
-                                                config_file,
-                                                indent=4,
-                                            )
-
-                                        # Process the file template
-                                        cookiecutter(
-                                            str(file_template_dir),
-                                            no_input=True,
-                                            overwrite_if_exists=True,
-                                            output_dir=str(temp_file_path),
-                                            extra_context={
-                                                "project_name": project_name,
-                                                "agent_name": agent_name,
-                                            },
-                                        )
-
-                                        # Copy the processed file
-                                        processed_file = (
-                                            temp_file_path / project_name / item.name
-                                        )
-                                        if processed_file.exists():
-                                            shutil.copy2(processed_file, dest_item)
-                                        else:
-                                            # Fallback to original behavior if processing fails
-                                            shutil.copy2(item, dest_item)
-
-                                except Exception as e:
-                                    logging.warning(
-                                        f"Failed to process base template {item.name}: {e}. Using templated {item.name} instead."
-                                    )
-                                    shutil.copy2(item, dest_item)
-                            else:
-                                # Fallback to original behavior if base file doesn't exist
-                                logging.debug(
-                                    f"{item.name} conflict: preserving existing {item.name}, saving templated {item.name} as starter_pack_{base_name}{extension}"
-                                )
-                                shutil.copy2(item, dest_item)
+                        if item.is_dir():
+                            if dest_item.exists():
+                                shutil.rmtree(dest_item)
+                            shutil.copytree(item, dest_item, dirs_exist_ok=True)
                         else:
-                            # Normal file copying
-                            if item.is_dir():
-                                if dest_item.exists():
-                                    shutil.rmtree(dest_item)
-                                shutil.copytree(item, dest_item, dirs_exist_ok=True)
-                            else:
-                                shutil.copy2(item, dest_item)
+                            shutil.copy2(item, dest_item)
                     logging.debug(
                         f"Project files successfully copied to {final_destination}"
                     )
@@ -1665,34 +1735,12 @@ def process_template(
                 )
 
                 if generated_project_dir.exists():
-                    # Check for existing README and pyproject.toml files before removing destination
-                    existing_preserved_files = []
                     if final_destination.exists():
-                        for item in final_destination.iterdir():
-                            if item.is_file() and (
-                                item.name.lower().startswith("readme")
-                                or item.name == "pyproject.toml"
-                            ):
-                                existing_preserved_files.append(
-                                    (item.name, item.read_text())
-                                )
                         shutil.rmtree(final_destination)
 
                     shutil.copytree(
                         generated_project_dir, final_destination, dirs_exist_ok=True
                     )
-
-                    # Restore existing README and pyproject.toml files with starter_pack prefix
-                    for file_name, file_content in existing_preserved_files:
-                        base_name = pathlib.Path(file_name).stem
-                        extension = pathlib.Path(file_name).suffix
-                        preserved_file_path = (
-                            final_destination / f"starter_pack_{base_name}{extension}"
-                        )
-                        preserved_file_path.write_text(file_content)
-                        logging.debug(
-                            f"File preservation: existing {file_name} preserved as starter_pack_{base_name}{extension}"
-                        )
 
                     logging.debug(
                         f"Project successfully created at {final_destination}"
@@ -1720,7 +1768,9 @@ def process_template(
             )
 
             # Delete appropriate files based on ADK tag
-            agent_directory = get_agent_directory(template_config, cli_overrides)
+            agent_directory = get_agent_directory(
+                template_config, cli_overrides, language
+            )
 
             # Handle YAML config agents for in-folder mode
             # This runs after all files have been copied to the final destination
@@ -1739,10 +1789,12 @@ def process_template(
             # Apply conditional file logic (Windows-compatible replacement for Jinja2 filenames)
             conditional_config = {
                 "agent_name": agent_name,
+                "deployment_target": deployment_target,
                 "cicd_runner": cicd_runner or "google_cloud_build",
                 "is_adk": "adk" in tags,
                 "is_adk_live": "adk_live" in tags,
                 "is_a2a": "a2a" in tags,
+                "datastore_type": datastore if datastore else "",
             }
             apply_conditional_files(
                 final_destination, conditional_config, agent_directory
@@ -1772,8 +1824,34 @@ def process_template(
                 # Remove deployment folder
                 deployment_dir = final_destination / "deployment"
                 if deployment_dir.exists():
-                    shutil.rmtree(deployment_dir)
-                    logging.debug(f"Prototype mode: deleted {deployment_dir}")
+                    if include_data_ingestion and datastore in (
+                        "vertex_ai_search",
+                        "vertex_ai_vector_search",
+                    ):
+                        # Keep dev terraform for datastore setup, remove staging/prod
+                        # Also keep sql/ since dev/telemetry.tf references ../sql/
+                        terraform_dir = deployment_dir / "terraform"
+                        dirs_to_keep = {"dev", "sql", "scripts"}
+                        if terraform_dir.exists():
+                            for item in terraform_dir.iterdir():
+                                if item.name not in dirs_to_keep:
+                                    if item.is_dir():
+                                        shutil.rmtree(item)
+                                    else:
+                                        item.unlink()
+                        # Remove non-terraform deployment files
+                        for item in deployment_dir.iterdir():
+                            if item.name != "terraform":
+                                if item.is_dir():
+                                    shutil.rmtree(item)
+                                else:
+                                    item.unlink()
+                        logging.debug(
+                            f"Prototype mode: preserved deployment/terraform/dev/, cleaned rest of {deployment_dir}"
+                        )
+                    else:
+                        shutil.rmtree(deployment_dir)
+                        logging.debug(f"Prototype mode: deleted {deployment_dir}")
 
                 # Remove load_test folder
                 load_test_dir = final_destination / "tests" / "load_test"
@@ -1803,7 +1881,7 @@ def process_template(
                     if remote_uv_lock.exists():
                         shutil.copy2(remote_uv_lock, final_destination / "uv.lock")
                         logging.debug("Used uv.lock from remote template")
-                elif deployment_target:
+                elif deployment_target and deployment_target != "none":
                     # For local templates, use the existing logic
                     lock_path = (
                         pathlib.Path(__file__).parent.parent.parent
@@ -1838,8 +1916,8 @@ def process_template(
 
             # Generate .env file for Google API Key if provided
             if google_api_key:
-                if language == "go":
-                    # For Go templates, update the root .env file
+                if language in ("go", "java"):
+                    # For Go/Java templates, update the root .env file
                     env_file_path = final_destination / ".env"
                     env_content = f"""# Local development configuration
 # Using Google AI Studio API Key

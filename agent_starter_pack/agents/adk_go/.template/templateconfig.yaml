@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,13 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-description: "Simple ReAct agent"
+description: "Go agent with A2A"
 example_question: "What's the weather in San Francisco?"
 settings:
   language: "go"
   requires_data_ingestion: false
   requires_session: false
-  deployment_targets: ["cloud_run"]
+  deployment_targets: ["cloud_run", "none"]
   extra_dependencies: []
   tags: ["adk", "go", "a2a"]
   frontend_type: "None"

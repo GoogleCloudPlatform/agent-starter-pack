@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,10 @@ import pytest
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.create import (
+    AgentSelectionResult,
     create,
     display_agent_selection,
+    display_more_options_submenu,
     normalize_project_name,
 )
 
@@ -169,7 +171,6 @@ class TestCreateCommand:
                     "1",
                     "--deployment-target",
                     "cloud_run",
-                    "--include-data-ingestion",
                     "--datastore",
                     "vertex_ai_vector_search",
                     "--auto-approve",
@@ -334,6 +335,47 @@ class TestCreateCommand:
         assert result.exit_code == 1
         assert "Invalid agent name or number: non_existent_agent" in result.output
 
+    def test_create_with_none_deployment_target(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command with 'none' deployment target skips CI/CD and shows enhance hint"""
+        runner = CliRunner()
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "1",
+                    "--deployment-target",
+                    "none",
+                    "--auto-approve",
+                ],
+                catch_exceptions=False,
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+
+        # Verify process_template was called with none deployment and skip CI/CD
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["deployment_target"] == "none"
+        assert call_kwargs["cicd_runner"] == "skip"
+
+        # Verify enhance hint is shown
+        assert "enhance" in result.output
+
     def test_create_with_invalid_deployment_target(self) -> None:
         """Test create command fails with invalid deployment target"""
         runner = CliRunner()
@@ -346,7 +388,7 @@ class TestCreateCommand:
         assert result.exit_code == 2
         assert "Invalid value for '--deployment-target'" in result.output
         assert (
-            "'invalid_target' is not one of 'agent_engine', 'cloud_run'"
+            "'invalid_target' is not one of 'agent_engine', 'cloud_run', 'none'"
             in result.output
         )
 
@@ -358,8 +400,113 @@ class TestCreateCommand:
             mock_prompt.return_value = 1
             result = display_agent_selection()
 
-        assert result == "langgraph"
+        assert isinstance(result, AgentSelectionResult)
+        assert result.agent == "langgraph"
+        assert result.bq_analytics is False
         mock_get_available_agents.assert_called_once()
+
+    def test_display_agent_selection_more_options(
+        self, mock_get_available_agents: MagicMock, mock_console: MagicMock
+    ) -> None:
+        """Test selecting 'More Options' dispatches to submenu"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_more_options_submenu"
+            ) as mock_submenu,
+        ):
+            # Option 3 = More Options (2 agents + 1)
+            mock_prompt.return_value = 3
+            mock_submenu.return_value = AgentSelectionResult(agent="adk")
+            result = display_agent_selection()
+
+        assert result.agent == "adk"
+        mock_submenu.assert_called_once_with(None)
+
+    def test_more_options_bq_analytics(
+        self, mock_get_available_agents: MagicMock, mock_console: MagicMock
+    ) -> None:
+        """Test More Options bq-analytics flow sets bq_analytics=True"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_agent_selection"
+            ) as mock_agent_sel,
+        ):
+            mock_prompt.return_value = 1
+            mock_agent_sel.return_value = AgentSelectionResult(agent="adk")
+            result = display_more_options_submenu()
+
+        assert result.agent == "adk"
+        assert result.bq_analytics is True
+
+    def test_more_options_adk_samples(self, mock_console: MagicMock) -> None:
+        """Test More Options submenu dispatches to adk-samples"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_adk_samples_selection"
+            ) as mock_adk,
+        ):
+            mock_prompt.return_value = 2
+            mock_adk.return_value = AgentSelectionResult(agent="adk@some/agent")
+            result = display_more_options_submenu()
+
+        assert result.agent == "adk@some/agent"
+        mock_adk.assert_called_once()
+
+    def test_more_options_custom_url(self, mock_console: MagicMock) -> None:
+        """Test More Options custom URL flow"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_int_prompt,
+            patch("rich.prompt.Prompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.parse_agent_spec"
+            ) as mock_parse,
+        ):
+            mock_int_prompt.return_value = 3
+            mock_prompt.return_value = "https://github.com/user/repo"
+            mock_parse.return_value = MagicMock()  # Valid spec
+            result = display_more_options_submenu()
+
+        assert result.agent == "https://github.com/user/repo"
+        assert result.bq_analytics is False
+
+    def test_more_options_custom_url_invalid(self, mock_console: MagicMock) -> None:
+        """Test More Options custom URL with invalid URL retries"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_int_prompt,
+            patch("rich.prompt.Prompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.parse_agent_spec"
+            ) as mock_parse,
+        ):
+            # First call: select custom URL (3), second call: select back (4)
+            mock_int_prompt.side_effect = [3, 4]
+            mock_prompt.return_value = "not-a-url"
+            mock_parse.side_effect = [None, None]
+            with patch(
+                "agent_starter_pack.cli.commands.create.display_agent_selection"
+            ) as mock_agent_sel:
+                mock_agent_sel.return_value = AgentSelectionResult(agent="adk")
+                result = display_more_options_submenu()
+
+        assert result.agent == "adk"
+
+    def test_more_options_back(self, mock_console: MagicMock) -> None:
+        """Test More Options back navigation"""
+        with (
+            patch("rich.prompt.IntPrompt.ask") as mock_prompt,
+            patch(
+                "agent_starter_pack.cli.commands.create.display_agent_selection"
+            ) as mock_agent_sel,
+        ):
+            mock_prompt.return_value = 4
+            mock_agent_sel.return_value = AgentSelectionResult(agent="langgraph")
+            result = display_more_options_submenu()
+
+        assert result.agent == "langgraph"
+        mock_agent_sel.assert_called_once()
 
     def test_normalize_project_name(self, mock_console: MagicMock) -> None:
         """Test the normalize_project_name function directly"""
@@ -526,3 +673,126 @@ class TestCreateCommand:
         assert call_kwargs["agent_name"] == "adk"
         assert call_kwargs["deployment_target"] == "agent_engine"
         assert call_kwargs["cicd_runner"] == "skip"  # prototype mode
+
+    def test_create_with_bq_analytics_flag(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command with --bq-analytics flag"""
+        runner = CliRunner()
+
+        # Configure available agents to include 'adk'
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "adk",
+                "description": "ADK Base Agent",
+                "language": "python",
+                "framework": "adk",
+            },
+        }
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "adk",
+                    "--bq-analytics",
+                    "--auto-approve",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is True
+
+    def test_create_without_bq_analytics_flag(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command defaults bq_analytics to False"""
+        runner = CliRunner()
+
+        # Configure available agents to include 'adk'
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "adk",
+                "description": "ADK Base Agent",
+                "language": "python",
+                "framework": "adk",
+            },
+        }
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                ["test-project", "--agent", "adk", "--auto-approve"],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is False
+
+    def test_create_bq_analytics_with_non_adk_agent(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test --bq-analytics flag with non-ADK agent logic"""
+        runner = CliRunner()
+
+        # Configure available agents to include 'langgraph'
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "langgraph",
+                "description": "LangGraph Agent",
+                "language": "python",
+                "framework": "langgraph",
+            },
+        }
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "langgraph",
+                    "--bq-analytics",
+                    "--auto-approve",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is True

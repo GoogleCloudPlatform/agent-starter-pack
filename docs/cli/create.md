@@ -74,14 +74,10 @@ GCP region for deployment (default: `us-central1`)
 
 ## Data & Storage Options
 
-### `--include-data-ingestion`, `-i`
-Include data ingestion pipeline components in the project.
-
 ### `--datastore`, `-ds` DATASTORE
-Type of datastore for data ingestion (requires `--include-data-ingestion`):
+Type of datastore for data ingestion. Automatically enables data ingestion when specified. For agents that require data ingestion (e.g., `agentic_rag`), you will be prompted to select a datastore if not specified:
 - `vertex_ai_search`
-- `vertex_ai_vector_search` 
-- `vertex_ai_vector_search` 
+- `vertex_ai_vector_search`
 - `cloud_sql`
 
 ### `--session-type` TYPE
@@ -111,7 +107,7 @@ uvx agent-starter-pack create my-agent -a github.com/user/template --base-templa
 ✓ Base template override: Using 'adk_a2a' as foundation
   This requires adding the following dependencies:
     • google-adk>=1.16.0,<2.0.0
-    • a2a-sdk~=0.3.9
+    • a2a-sdk~=0.3.22
 
 ? Add these dependencies automatically? [Y/n]
 ```
@@ -142,7 +138,7 @@ uvx agent-starter-pack create my-agent -a template --in-folder
 - Working within established repository structures
 - Containerized development environments
 
-**Automatic Backup:** When using `--in-folder`, a complete backup of your directory is automatically created as `.backup_[dirname]_[timestamp]` before any changes are made.
+**Automatic Backup:** When using `--in-folder`, a complete backup of your directory is automatically created at `~/.agent-starter-pack/backups/[dirname]_[timestamp]` before any changes are made.
 
 ## Automation Options
 
@@ -188,6 +184,9 @@ uvx agent-starter-pack create my-agent -a adk -d cloud_run
 
 # Create a Go agent (Cloud Run only)
 uvx agent-starter-pack create my-go-agent -a adk_go
+
+# Create a TypeScript agent (Cloud Run only)
+uvx agent-starter-pack create my-ts-agent -a adk_ts
 ```
 
 ### Remote Templates

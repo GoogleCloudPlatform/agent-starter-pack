@@ -71,6 +71,7 @@ See [Installation Guide](https://googlecloudplatform.github.io/agent-starter-pac
 | `adk_a2a`  | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support for distributed agent communication and interoperability |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A. Supporting [Vertex AI Search](https://cloud.google.com/generative-ai-app-builder/docs/enterprise-search-introduction) and [Vector Search](https://cloud.google.com/vertex-ai/docs/vector-search/overview).       |
 | `langgraph`      | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) |
+| `adk_java`   | A base ReAct agent implemented using Google's [Agent Development Kit for Java](https://github.com/google/adk-java) |
 | `adk_live`       | A real-time multimodal RAG agent powered by Gemini, supporting audio/video/text chat     |
 
 **More agents are on the way!** We are continuously expanding our [agent library](https://googlecloudplatform.github.io/agent-starter-pack/agents/overview). Have a specific agent type in mind? [Raise an issue as a feature request!](https://github.com/GoogleCloudPlatform/agent-starter-pack/issues/new?labels=enhancement)
@@ -99,7 +100,7 @@ The `agent-starter-pack` offers key features to accelerate and simplify the deve
 
 This starter pack covers all aspects of Agent development, from prototyping and evaluation to deployment and monitoring.
 
-![High Level Architecture](docs/images/ags_high_level_architecture.png "Architecture")
+![High Level Architecture](docs/images/asp_high_level_architecture.png "Architecture")
 
 ---
 
@@ -126,7 +127,7 @@ Visit our [documentation site](https://googlecloudplatform.github.io/agent-start
 
 ### Video Walkthrough:
 
-- **[Exploring the Agent Starter Pack](https://www.youtube.com/watch?v=9zqwym-N3lg)**: A comprehensive tutorial demonstrating how to rapidly deploy AI Agents using the Agent Starter Pack, covering architecture, templates, and step-by-step deployment.
+- **[From Demo to Production with Agent Starter Pack](https://www.youtube.com/watch?v=mtJMYgJkTt8)**: Learn how the Agent Starter Pack acts as an Automated Architect, building the professional infrastructure for your AI project in seconds. Covers why most AI projects fail at deployment and how ASP automates Terraform, CI/CD, and observability.
 
 - **[6-minute introduction](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791)** (April 2024): Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 

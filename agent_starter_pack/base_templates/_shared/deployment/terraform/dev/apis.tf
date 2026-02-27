@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,9 @@ locals {
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+    "vectorsearch.googleapis.com",
+{%- endif %}
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
     "sqladmin.googleapis.com",
     "secretmanager.googleapis.com"

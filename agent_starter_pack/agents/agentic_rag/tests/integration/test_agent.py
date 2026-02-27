@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 from unittest.mock import MagicMock, patch
+{%- endif %}
 
 from google.adk.agents.run_config import RunConfig, StreamingMode
 from google.adk.runners import Runner
@@ -21,12 +23,15 @@ from google.genai import types
 
 from {{cookiecutter.agent_directory}}.agent import root_agent
 
-
+{% if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 @patch(
     "{{cookiecutter.agent_directory}}.agent.retrieve_docs",
     return_value="dummy content",
 )
 def test_agent_stream(mock_retrieve: MagicMock) -> None:
+{%- elif cookiecutter.datastore_type == "vertex_ai_search" %}
+def test_agent_stream() -> None:
+{%- endif %}
     """
     Integration test for the agent stream functionality.
     Tests that the agent returns valid streaming responses.

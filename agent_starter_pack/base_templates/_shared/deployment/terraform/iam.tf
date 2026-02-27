@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -89,21 +89,3 @@ resource "google_service_account_iam_member" "cicd_run_invoker_account_user" {
   member             = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
   depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
-
-{%- if cookiecutter.data_ingestion %}
-# Grant Vertex AI SA the required permissions to run the ingestion
-resource "google_project_iam_member" "vertexai_pipeline_sa_roles" {
-  for_each = {
-    for pair in setproduct(keys(local.deploy_project_ids), var.pipelines_roles) :
-    join(",", pair) => {
-      project = local.deploy_project_ids[pair[0]]
-      role    = pair[1]
-    }
-  }
-
-  project    = each.value.project
-  role       = each.value.role
-  member     = "serviceAccount:${google_service_account.vertexai_pipeline_app_sa[split(",", each.key)[0]].email}"
-  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
-}
-{%- endif %}

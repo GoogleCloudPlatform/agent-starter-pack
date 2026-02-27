@@ -1,5 +1,5 @@
 # ruff: noqa
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,16 @@ from zoneinfo import ZoneInfo
 from google.adk.agents import Agent
 from google.adk.apps import App
 from google.adk.models import Gemini
+from google.adk.tools import LongRunningFunctionTool
 from google.genai import types
+{%- if cookiecutter.bq_analytics %}
+import logging
+from google.adk.plugins.bigquery_agent_analytics_plugin import (
+    BigQueryAgentAnalyticsPlugin,
+    BigQueryLoggerConfig,
+)
+from google.cloud import bigquery
+{%- endif %}
 {%- if not cookiecutter.use_google_api_key %}
 
 import os
@@ -65,6 +74,18 @@ def get_current_time(query: str) -> str:
     return f"The current time for query {query} is {now.strftime('%Y-%m-%d %H:%M:%S %Z%z')}"
 
 
+def request_user_input(message: str) -> dict:
+    """Request additional input from the user.
+
+    Use this tool when you need more information from the user to complete a task.
+    Calling this tool will pause execution until the user responds.
+
+    Args:
+        message: The question or clarification request to show the user.
+    """
+    return {"status": "pending", "message": message}
+
+
 root_agent = Agent(
     name="root_agent",
     model=Gemini(
@@ -73,7 +94,48 @@ root_agent = Agent(
     ),
     description="An agent that can provide information about the weather and time.",
     instruction="You are a helpful AI assistant designed to provide accurate and useful information.",
-    tools=[get_weather, get_current_time],
+    tools=[
+        get_weather,
+        get_current_time,
+        LongRunningFunctionTool(func=request_user_input),
+    ],
 )
 
-app = App(root_agent=root_agent, name="{{cookiecutter.agent_directory}}")
+{%- if cookiecutter.bq_analytics %}
+{%- if cookiecutter.use_google_api_key %}
+import os
+{%- endif %}
+
+# Initialize BigQuery Analytics
+_plugins = []
+_project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
+_dataset_id = os.environ.get("BQ_ANALYTICS_DATASET_ID", "adk_agent_analytics")
+_location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
+
+if _project_id:
+    try:
+        bq = bigquery.Client(project=_project_id)
+        bq.create_dataset(f"{_project_id}.{_dataset_id}", exists_ok=True)
+
+        _plugins.append(
+            BigQueryAgentAnalyticsPlugin(
+                project_id=_project_id,
+                dataset_id=_dataset_id,
+                location=_location,
+                config=BigQueryLoggerConfig(
+                    gcs_bucket_name=os.environ.get("BQ_ANALYTICS_GCS_BUCKET"),
+                    connection_id=os.environ.get("BQ_ANALYTICS_CONNECTION_ID"),
+                ),
+            )
+        )
+    except Exception as e:
+        logging.warning(f"Failed to initialize BigQuery Analytics: {e}")
+{%- endif %}
+
+app = App(
+    root_agent=root_agent,
+    name="{{cookiecutter.agent_directory}}",
+{%- if cookiecutter.bq_analytics %}
+    plugins=_plugins,
+{%- endif %}
+)

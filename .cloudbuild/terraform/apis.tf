@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,19 @@ resource "google_project_service" "cloud_resource_manager_api" {
     "dev"     = var.e2e_test_project_mapping.dev
     "staging" = var.e2e_test_project_mapping.staging
     "prod"    = var.e2e_test_project_mapping.prod
+  }
+
+  project            = each.value
+  service            = "cloudresourcemanager.googleapis.com"
+  disable_on_destroy = false
+}
+
+# Enable Cloud Resource Manager API for each project in e2e_rag_project_mapping
+resource "google_project_service" "cloud_resource_manager_api_rag" {
+  for_each = {
+    "dev"     = var.e2e_rag_project_mapping.dev
+    "staging" = var.e2e_rag_project_mapping.staging
+    "prod"    = var.e2e_rag_project_mapping.prod
   }
 
   project            = each.value

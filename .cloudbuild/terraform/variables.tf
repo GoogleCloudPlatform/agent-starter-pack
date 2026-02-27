@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,15 @@ variable "e2e_test_project_mapping" {
   })
 }
 
+variable "e2e_rag_project_mapping" {
+  description = "Mapping of project IDs for agentic_rag E2E tests (separate projects with datastore resources)"
+  type = object({
+    dev     = string
+    prod    = string
+    staging = string
+  })
+}
+
 variable "cleanup_project_ids" {
   description = "List of all project IDs that need cleanup (for scheduled cleanup job)"
   type        = list(string)
@@ -51,6 +60,9 @@ variable "cleanup_project_ids" {
     "asp-e2e-prd",
     "asp-test-dev",
     "asp-test-prd",
-    "asp-test-stg"
+    "asp-test-stg",
+    "asp-rag-dev",
+    "asp-rag-stg",
+    "asp-rag-prd"
   ]
 }

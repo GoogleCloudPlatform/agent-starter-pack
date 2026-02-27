@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ steps:
     entrypoint: /bin/bash
     env:
       - 'PROJECT_IDS=${_PROJECT_IDS}'
-      - 'E2E_PROJECT_IDS=${_E2E_PROJECT_IDS}'
+      - 'E2E_PROJECT_IDS=${_PROJECT_IDS}'
       - 'CICD_PROJECT_ID=${_CICD_PROJECT_ID}'
     args:
       - "-c"
@@ -34,6 +34,5 @@ options:
   defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
 
 substitutions:
-  _PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg'
-  _E2E_PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg'
+  _PROJECT_IDS: 'asp-e2e-dev,asp-e2e-stg,asp-e2e-prd,asp-test-dev,asp-test-prd,asp-test-stg,asp-rag-dev,asp-rag-stg,asp-rag-prd'
   _CICD_PROJECT_ID: 'asp-e2e-cicd'

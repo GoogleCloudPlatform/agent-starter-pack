@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,16 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.7.0"
     }
+{%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_search" %}
+    null = {
+      source  = "hashicorp/null"
+      version = "~> 3.2.0"
+    }
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.3.0"
+    }
+{%- endif %}
   }
 }
 

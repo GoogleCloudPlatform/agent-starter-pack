@@ -78,7 +78,6 @@ export default defineConfig({
       },
       {
         text: 'Development',
-        collapsed: true,
         items: [
           { text: 'Development Guide', link: '/guide/development-guide' },
           { text: 'Data Ingestion', link: '/guide/data-ingestion' },
@@ -88,15 +87,21 @@ export default defineConfig({
       },
       {
         text: 'Deployment & Operations',
-        collapsed: true,
         items: [
           { text: 'Deployment', link: '/guide/deployment' },
-          { text: 'Observability', link: '/guide/observability' }
+          {
+            text: 'Observability',
+            collapsed: false,
+            items: [
+              { text: 'Overview', link: '/guide/observability/' },
+              { text: 'Cloud Trace', link: '/guide/observability/cloud-trace' },
+              { text: 'BigQuery Plugin', link: '/guide/observability/bq-agent-analytics' }
+            ]
+          }
         ]
       },
       {
         text: 'Templates',
-        collapsed: true,
         items: [
           { text: 'Agent Templates', link: '/agents/overview' },
           { text: 'Remote Templates', link: '/remote-templates/' },
@@ -107,10 +112,11 @@ export default defineConfig({
       },
       {
         text: 'CLI Commands',
-        collapsed: true,
         items: [
           { text: 'create', link: '/cli/create' },
           { text: 'enhance', link: '/cli/enhance' },
+          { text: 'extract', link: '/cli/extract' },
+          { text: 'upgrade', link: '/cli/upgrade' },
           { text: 'list', link: '/cli/list' },
           { text: 'register-gemini-enterprise', link: '/cli/register_gemini_enterprise' },
           { text: 'setup-cicd', link: '/cli/setup_cicd' }

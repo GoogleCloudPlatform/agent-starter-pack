@@ -1,0 +1,30 @@
+{
+  "name": "{{cookiecutter.project_name}}",
+  "version": "1.0.0",
+  "description": "AI Agent built with Google ADK (TypeScript)",
+  "type": "module",
+  "main": "{{cookiecutter.agent_directory}}/agent.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc && npx @google/adk-devtools web -h localhost dist/agent.js",
+    "run": "tsc && npx @google/adk-devtools run dist/agent.js",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/node": "^25.0.3",
+    "dotenv": "^17.2.3",
+    "eslint": "^9.39.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.0",
+    "typescript-eslint": "^8.50.1",
+    "vitest": "^4.0.16"
+  },
+  "dependencies": {
+    "@google/adk": "^0.3.0",
+    "@google/adk-devtools": "^0.3.0",
+    "zod": "^4.2.1"
+  }
+}

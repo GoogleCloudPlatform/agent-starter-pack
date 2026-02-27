@@ -110,6 +110,7 @@ celerybeat.pid
 # Environments
 .env
 !agent_starter_pack/base_templates/go/.env
+!agent_starter_pack/base_templates/java/.env
 .venv
 .venv*
 env/
@@ -196,11 +197,15 @@ Thumbs.db
 .saved_chats
 .aider*
 target
+target*/
 set_projects.sh
 delete_genai_repos.sh
 cleanup_e2e_projects.sh
 docs/.vitepress/cache
 tests/cicd/delete_gcp_resources.sh
 tests/cicd/delete_agent_engines.py
-backup*
+backup*/
 .geminiignore
+
+# Private design documents
+docs/design/

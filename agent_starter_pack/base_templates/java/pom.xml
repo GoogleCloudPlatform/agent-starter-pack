@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright 2026 Google LLC
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <groupId>{{cookiecutter.java_package}}</groupId>
+  <artifactId>{{cookiecutter.project_name}}</artifactId>
+  <version>1.0.0</version>
+  <packaging>jar</packaging>
+
+  <name>{{cookiecutter.project_name}}</name>
+  <description>AI Agent built with Google ADK</description>
+
+  <properties>
+    <!-- Build properties -->
+    <java.version>17</java.version>
+    <maven.compiler.release>${java.version}</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <adk.version>0.5.0</adk.version>
+    <junit.version>5.11.4</junit.version>
+
+    <!-- ASP Metadata -->
+    <asp.name>{{cookiecutter.project_name}}</asp.name>
+    <asp.version>{{cookiecutter.package_version}}</asp.version>
+    <asp.language>java</asp.language>
+    <asp.base_template>{{cookiecutter.agent_name}}</asp.base_template>
+    <asp.agent_directory>src/main/java</asp.agent_directory>
+    <asp.deployment_target>{{cookiecutter.deployment_target}}</asp.deployment_target>
+    <asp.cicd_runner>{{cookiecutter.cicd_runner}}</asp.cicd_runner>
+{%- if cookiecutter.agent_guidance_filename != "GEMINI.md" %}
+    <asp.agent_guidance_filename>{{cookiecutter.agent_guidance_filename}}</asp.agent_guidance_filename>
+{%- endif %}
+  </properties>
+
+  <dependencies>
+    <!-- ADK Core -->
+    <dependency>
+      <groupId>com.google.adk</groupId>
+      <artifactId>google-adk</artifactId>
+      <version>${adk.version}</version>
+    </dependency>
+    <!-- ADK Dev UI -->
+    <dependency>
+      <groupId>com.google.adk</groupId>
+      <artifactId>google-adk-dev</artifactId>
+      <version>${adk.version}</version>
+    </dependency>
+    <!-- ADK + A2A -->
+    <dependency>
+      <groupId>com.google.adk</groupId>
+      <artifactId>google-adk-a2a-webservice</artifactId>
+      <version>${adk.version}</version>
+    </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <version>3.5.3</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.13.0</version>
+        <configuration>
+          <release>${java.version}</release>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.4.1</version>
+        <configuration>
+          <mainClass>{{cookiecutter.java_package}}.Main</mainClass>
+        </configuration>
+      </plugin>
+      <!-- Unit and E2E tests (run with: mvn test) -->
+      <!-- Runs unit/ and e2e/integration/ tests, excludes load tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.5.2</version>
+        <configuration>
+          <includes>
+            <include>**/unit/**/*Test.java</include>
+            <include>**/e2e/integration/**/*Test.java</include>
+          </includes>
+          <excludedGroups>load</excludedGroups>
+        </configuration>
+      </plugin>
+      <!-- Load tests (run with: mvn test-compile failsafe:integration-test failsafe:verify) -->
+      <!-- Requires a running server, not run by default -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+        <version>3.5.2</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>integration-test</goal>
+              <goal>verify</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <includes>
+            <include>**/e2e/load_test/**/*Test.java</include>
+          </includes>
+          <groups>load</groups>
+          <systemPropertyVariables>
+            <staging.url>${staging.url}</staging.url>
+            <load.duration>${load.duration}</load.duration>
+            <load.users>${load.users}</load.users>
+            <load.ramp>${load.ramp}</load.ramp>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+      <!-- Checkstyle for code quality (run with: mvn checkstyle:check) -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.6.0</version>
+        <configuration>
+          <configLocation>google_checks.xml</configLocation>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>true</failsOnError>
+          <linkXRef>false</linkXRef>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-maven-plugin</artifactId>
+        <version>3.4.1</version>
+        <configuration>
+          <mainClass>{{cookiecutter.java_package}}.Main</mainClass>
+          <finalName>app</finalName>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>repackage</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>

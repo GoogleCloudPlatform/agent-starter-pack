@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -477,9 +477,10 @@ if __name__ == "__main__":
             # Format: projects/PROJECT_ID/locations/LOCATION/reasoningEngines/ENGINE_ID
             import re
 
+            remote_id: str = config["remote_agent_engine_id"]
             match = re.match(
                 r"projects/([^/]+)/locations/([^/]+)/reasoningEngines/",
-                config["remote_agent_engine_id"],
+                remote_id,
             )
             if match:
                 config["project_id"] = match.group(1)

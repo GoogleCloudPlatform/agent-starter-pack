@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -65,6 +65,10 @@ variable "app_sa_roles" {
     "roles/cloudsql.client",
     "roles/secretmanager.secretAccessor",
 {%- endif %}
+{%- if cookiecutter.bq_analytics %}
+    "roles/bigquery.dataOwner",
+    "roles/bigquery.jobUser",
+{%- endif %}
   ]
 }
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -100,74 +104,6 @@ variable "cicd_sa_deployment_required_roles" {
   ]
 }
 
-{% if cookiecutter.data_ingestion %}
-
-variable "pipeline_cron_schedule" {
-  type        = string
-  description = "Cron expression defining the schedule for automated data ingestion."
-  default     = "0 0 * * 0" # Run at 00:00 UTC every Sunday
-}
-
-variable "pipelines_roles" {
-  description = "List of roles to assign to the Vertex AI Pipelines service account"
-  type        = list(string)
-  default = [
-    "roles/storage.admin",
-    "roles/aiplatform.user",
-    "roles/discoveryengine.admin",
-    "roles/logging.logWriter",
-    "roles/artifactregistry.writer",
-    "roles/bigquery.dataEditor",
-    "roles/bigquery.jobUser",
-    "roles/bigquery.readSessionUser",
-    "roles/bigquery.connectionAdmin",
-    "roles/resourcemanager.projectIamAdmin"
-  ]
-}
-{% if cookiecutter.datastore_type == "vertex_ai_search" %}
-variable "data_store_region" {
-  type        = string
-  description = "Google Cloud region for resource deployment."
-  default     = "us"
-}
-{% elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-variable "vector_search_embedding_size" {
-  type = number
-  description = "The number of dimensions for the embeddings."
-  default = 768
-}
-
-variable "vector_search_approximate_neighbors_count" {
-  type = number
-  description = "The approximate number of neighbors to return."
-  default = 150
-}
-
-variable "vector_search_min_replica_count" {
-  type = number
-  description = "The min replica count for vector search instance"
-  default = 1
-}
-
-variable "vector_search_max_replica_count" {
-  type = number
-  description = "The max replica count for vector search instance"
-  default = 1
-}
-
-variable "vector_search_shard_size" {
-  description = "The shard size of the vector search instance"
-  type = string
-  default = "SHARD_SIZE_SMALL"
-}
-
-variable "vector_search_machine_type" {
-  description = "The machine type for the vector search instance"
-  type = string
-  default = "e2-standard-2"
-}
-{% endif %}
-{% endif %}
 variable "repository_owner" {
   description = "Owner of the Git repository - username or organization"
   type        = string

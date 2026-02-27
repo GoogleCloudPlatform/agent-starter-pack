@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ locals {
   cicd_runner_roles = [
     "roles/owner",
   ]
-  
+
   e2e_project_roles = [
-    "roles/owner", 
+    "roles/owner",
   ]
 }
 
@@ -46,6 +46,25 @@ resource "google_project_iam_member" "cicd_runner_e2e_project_roles" {
   for_each = {
     for idx, proj_role in flatten([
       for env, project_id in var.e2e_test_project_mapping : [
+        for role in local.e2e_project_roles : {
+          project = project_id
+          env     = env
+          role    = role
+        }
+      ]
+    ]) : "${proj_role.env}-${proj_role.role}" => proj_role
+  }
+
+  project = each.value.project
+  role    = each.value.role
+  member  = "serviceAccount:${google_service_account.cicd_runner_sa.email}"
+}
+
+# Grant permissions to the service account for RAG E2E project environments
+resource "google_project_iam_member" "cicd_runner_rag_project_roles" {
+  for_each = {
+    for idx, proj_role in flatten([
+      for env, project_id in var.e2e_rag_project_mapping : [
         for role in local.e2e_project_roles : {
           project = project_id
           env     = env

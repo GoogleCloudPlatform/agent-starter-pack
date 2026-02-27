@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -200,14 +200,6 @@ def list_agents(adk: bool, source: str | None) -> None:
     table.add_column("Skill Triggers", style="cyan")
 
     for i, (_, agent) in enumerate(agents.items()):
-        triggers = agent.get("skill_triggers", [])
-        triggers_preview = ", ".join(triggers[:2])
-        if len(triggers) > 2:
-            triggers_preview += ", ..."
-        table.add_row(
-            str(i + 1),
-            agent["name"],
-            agent["description"],
-            triggers_preview or "-",
-        )
+        display_name = agent.get("display_name", agent["name"])
+        table.add_row(str(i + 1), display_name, agent["description"])
     console.print(table)

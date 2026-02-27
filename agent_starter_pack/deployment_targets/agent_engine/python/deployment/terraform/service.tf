@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,20 +24,16 @@ data "google_storage_bucket_object_content" "dummy_source_b64" {
 
 locals {
   data_store_ids = {
-    staging = google_discovery_engine_data_store.data_store_staging.data_store_id
-    prod    = google_discovery_engine_data_store.data_store_prod.data_store_id
+    staging = data.external.data_store_id_staging.result.data_store_id
+    prod    = data.external.data_store_id_prod.result.data_store_id
   }
 }
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
 locals {
-  vector_search_indexes = {
-    staging = google_vertex_ai_index.vector_search_index_staging.id
-    prod    = google_vertex_ai_index.vector_search_index_prod.id
-  }
-  vector_search_index_endpoints = {
-    staging = google_vertex_ai_index_endpoint.vector_search_index_endpoint_staging.id
-    prod    = google_vertex_ai_index_endpoint.vector_search_index_endpoint_prod.id
+  vector_search_collections = {
+    for key, project_id in local.deploy_project_ids :
+    key => "projects/${project_id}/locations/${var.vector_search_location}/collections/${var.vector_search_collection_id}"
   }
 }
 {%- endif %}
@@ -83,6 +79,21 @@ resource "google_vertex_ai_reasoning_engine" "app" {
         name  = "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY"
         value = "true"
       }
+{%- if cookiecutter.bq_analytics %}
+      env {
+        name  = "BQ_ANALYTICS_DATASET_ID"
+        value = google_bigquery_dataset.telemetry_dataset[each.key].dataset_id
+      }
+      env {
+        name  = "BQ_ANALYTICS_GCS_BUCKET"
+        value = google_storage_bucket.logs_data_bucket[each.value].name
+      }
+      env {
+        name  = "BQ_ANALYTICS_CONNECTION_ID"
+        # Format: {location}.{connection_id}
+        value = "${var.region}.${google_bigquery_connection.genai_telemetry_connection[each.key].connection_id}"
+      }
+{%- endif %}
 {%- if cookiecutter.data_ingestion %}
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
 
@@ -98,18 +109,8 @@ resource "google_vertex_ai_reasoning_engine" "app" {
 {%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
 
       env {
-        name  = "VECTOR_SEARCH_INDEX"
-        value = local.vector_search_indexes[each.key]
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_INDEX_ENDPOINT"
-        value = local.vector_search_index_endpoints[each.key]
-      }
-
-      env {
-        name  = "VECTOR_SEARCH_BUCKET"
-        value = google_storage_bucket.vector_search_data_bucket[each.key].url
+        name  = "VECTOR_SEARCH_COLLECTION"
+        value = local.vector_search_collections[each.key]
       }
 {%- endif %}
 {%- endif %}

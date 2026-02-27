@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,16 +17,10 @@ example_question: "How to save a pandas dataframe to CSV?"
 settings:
   requires_data_ingestion: true
   requires_session: true
-  deployment_targets: ["agent_engine", "cloud_run"]
+  deployment_targets: ["agent_engine", "cloud_run", "none"]
   extra_dependencies: [
     "google-adk>=1.15.0,<2.0.0",
-    "langchain-google-vertexai~=2.0.7",
-    "langchain~=0.3.24",
-    "langchain-core~=0.3.55",
-    "langchain-community~=0.3.17",
-    "langchain-openai~=0.3.5",
-    "langchain-google-community[vertexaisearch]~=2.0.7",
-    "Jinja2~=3.1.6",
+    "google-cloud-vectorsearch",
   ]
   tags: ["adk"]
   frontend_type: "None"

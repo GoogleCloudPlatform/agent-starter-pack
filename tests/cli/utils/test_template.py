@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ import pytest
 
 from agent_starter_pack.cli.utils.template import (
     copy_flat_structure_agent_files,
+    generate_java_package_vars,
     validate_agent_directory_name,
 )
 
@@ -67,6 +68,66 @@ class TestValidateAgentDirectoryName:
         """Test that special characters are rejected."""
         with pytest.raises(ValueError, match="not a valid Python identifier"):
             validate_agent_directory_name("agent@home")
+
+    def test_java_language_skips_python_validation(self) -> None:
+        """Test that Java language skips Python identifier validation."""
+        # These would fail for Python but should pass for Java
+        validate_agent_directory_name("src/main/java", language="java")
+        validate_agent_directory_name("my-agent", language="java")
+        validate_agent_directory_name("123agent", language="java")
+
+    def test_go_language_skips_python_validation(self) -> None:
+        """Test that Go language skips Python identifier validation."""
+        # These would fail for Python but should pass for Go
+        validate_agent_directory_name("my-agent", language="go")
+        validate_agent_directory_name("agent/pkg", language="go")
+
+    def test_python_language_uses_python_validation(self) -> None:
+        """Test that Python language uses Python identifier validation."""
+        with pytest.raises(ValueError, match="not a valid Python identifier"):
+            validate_agent_directory_name("123agent", language="python")
+        with pytest.raises(ValueError, match="hyphens"):
+            validate_agent_directory_name("my-agent", language="python")
+
+
+class TestGenerateJavaPackageVars:
+    """Tests for the generate_java_package_vars function."""
+
+    def test_simple_project_name(self) -> None:
+        """Test generation for simple project name."""
+        result = generate_java_package_vars("myagent")
+        assert result["java_package"] == "myagent"
+        assert result["java_package_path"] == "myagent"
+
+    def test_hyphenated_project_name(self) -> None:
+        """Test that hyphens are removed (Java convention: no separators)."""
+        result = generate_java_package_vars("my-agent")
+        assert result["java_package"] == "myagent"
+        assert result["java_package_path"] == "myagent"
+
+    def test_dotted_project_name(self) -> None:
+        """Test that dots are removed (Java convention: no separators)."""
+        result = generate_java_package_vars("my.agent")
+        assert result["java_package"] == "myagent"
+        assert result["java_package_path"] == "myagent"
+
+    def test_uppercase_project_name(self) -> None:
+        """Test that uppercase is converted to lowercase."""
+        result = generate_java_package_vars("MyAgent")
+        assert result["java_package"] == "myagent"
+        assert result["java_package_path"] == "myagent"
+
+    def test_leading_digit_prefixed(self) -> None:
+        """Test that leading digits get underscore prefix."""
+        result = generate_java_package_vars("123agent")
+        assert result["java_package"] == "_123agent"
+        assert result["java_package_path"] == "_123agent"
+
+    def test_mixed_separators(self) -> None:
+        """Test project name with mixed hyphens and dots are removed."""
+        result = generate_java_package_vars("my-cool.agent")
+        assert result["java_package"] == "mycoolagent"
+        assert result["java_package_path"] == "mycoolagent"
 
 
 class TestCopyFlatStructureAgentFiles:

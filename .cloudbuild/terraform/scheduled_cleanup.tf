@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 resource "google_cloudbuild_trigger" "scheduled_cleanup" {
   name            = "scheduled-cleanup"
   project         = var.cicd_runner_project_id
-  location        = var.region  # Must match repository connection region
+  location        = var.region # Must match repository connection region
   description     = "Daily cleanup of test resources (Agent Engines, Cloud SQL, Vector Search, Service Accounts)"
   service_account = google_service_account.cicd_runner_sa.id
 
@@ -35,11 +35,11 @@ resource "google_cloudbuild_trigger" "scheduled_cleanup" {
 resource "google_cloud_scheduler_job" "daily_cleanup" {
   name             = "daily-cleanup-trigger"
   project          = var.cicd_runner_project_id
-  region           = "europe-west1"  # Cloud Scheduler doesn't support europe-west4
+  region           = "europe-west1" # Cloud Scheduler doesn't support europe-west4
   description      = "Triggers daily cleanup of test resources at 3 AM UTC"
   schedule         = "0 3 * * *"
   time_zone        = "UTC"
-  attempt_deadline = "1800s"  # 30 minutes (max allowed)
+  attempt_deadline = "1800s" # 30 minutes (max allowed)
 
   http_target {
     http_method = "POST"

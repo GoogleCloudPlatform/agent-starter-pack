@@ -1,0 +1,13 @@
+# Agent Starter Pack Configuration
+# This file is used by the 'enhance' command to identify project settings
+
+[project]
+name = "{{cookiecutter.project_name}}"
+version = "{{cookiecutter.package_version}}"
+language = "typescript"
+base_template = "{{cookiecutter.agent_name}}"
+deployment_target = "{{cookiecutter.deployment_target}}"
+cicd_runner = "{{cookiecutter.cicd_runner}}"
+{%- if cookiecutter.agent_guidance_filename != "GEMINI.md" %}
+agent_guidance_filename = "{{cookiecutter.agent_guidance_filename}}"
+{%- endif %}

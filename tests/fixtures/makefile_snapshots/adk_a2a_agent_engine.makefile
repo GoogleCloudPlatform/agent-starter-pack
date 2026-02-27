@@ -78,6 +78,7 @@ build-inspector-if-needed:
 # ==============================================================================
 
 # Deploy the agent remotely
+# Usage: make deploy [AGENT_IDENTITY=true] [SECRETS="KEY=SECRET_ID,..."] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
 deploy:
 	# Export dependencies to requirements file using uv export.
 	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_a2a/app_utils/.requirements.txt 2>/dev/null || \
@@ -86,7 +87,9 @@ deploy:
 		--source-packages=./test_a2a \
 		--entrypoint-module=test_a2a.agent_engine_app \
 		--entrypoint-object=agent_engine \
-		--requirements-file=test_a2a/app_utils/.requirements.txt
+		--requirements-file=test_a2a/app_utils/.requirements.txt \
+		$(if $(AGENT_IDENTITY),--agent-identity) \
+		$(if $(filter command line,$(origin SECRETS)),--set-secrets="$(SECRETS)")
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
@@ -108,6 +111,33 @@ setup-dev-env:
 test:
 	uv sync --dev
 	uv run pytest tests/unit && uv run pytest tests/integration
+
+# ==============================================================================
+# Agent Evaluation
+# ==============================================================================
+
+# Run agent evaluation using ADK eval
+# Usage: make eval [EVALSET=tests/eval/evalsets/basic.evalset.json] [EVAL_CONFIG=tests/eval/eval_config.json]
+eval:
+	@echo "==============================================================================="
+	@echo "| Running Agent Evaluation                                                    |"
+	@echo "==============================================================================="
+	uv sync --dev --extra eval
+	uv run adk eval ./test_a2a $${EVALSET:-tests/eval/evalsets/basic.evalset.json} \
+		$(if $(EVAL_CONFIG),--config_file_path=$(EVAL_CONFIG),$(if $(wildcard tests/eval/eval_config.json),--config_file_path=tests/eval/eval_config.json,))
+
+# Run evaluation with all evalsets
+eval-all:
+	@echo "==============================================================================="
+	@echo "| Running All Evalsets                                                        |"
+	@echo "==============================================================================="
+	@for evalset in tests/eval/evalsets/*.evalset.json; do \
+		echo ""; \
+		echo "▶ Running: $$evalset"; \
+		$(MAKE) eval EVALSET=$$evalset || exit 1; \
+	done
+	@echo ""
+	@echo "✅ All evalsets completed"
 
 # Run code quality checks (codespell, ruff, ty)
 lint:

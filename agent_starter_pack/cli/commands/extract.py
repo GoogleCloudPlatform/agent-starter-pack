@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,15 @@ import click
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from rich.console import Console
 
+from ..utils.language import (
+    LANGUAGE_CONFIGS,
+    detect_language,
+    find_agent_file,
+    get_asp_config_for_language,
+    get_language_config,
+)
 from ..utils.logging import handle_cli_error
+from ..utils.template import generate_java_package_vars
 
 # Path to base templates directory
 BASE_TEMPLATES_DIR = pathlib.Path(__file__).parent.parent.parent / "base_templates"
@@ -83,36 +91,6 @@ CORE_DEPENDENCIES = {
     "langgraph",
 }
 
-# =============================================================================
-# Language Configuration
-# =============================================================================
-# To add a new language, add an entry with the required keys.
-
-LANGUAGE_CONFIGS: dict[str, dict[str, Any]] = {
-    "python": {
-        "detection_files": ["pyproject.toml"],
-        "config_file": "pyproject.toml",
-        "config_path": ["tool", "agent-starter-pack"],
-        "project_files": ["pyproject.toml"],
-        "lock_file": "uv.lock",
-        "lock_command": ["uv", "lock"],
-        "lock_command_name": "uv lock",
-        "strip_dependencies": True,
-        "display_name": "Python",
-    },
-    "go": {
-        "detection_files": ["go.mod"],
-        "config_file": ".asp.toml",
-        "config_path": ["project"],
-        "project_files": ["go.mod", "go.sum", ".asp.toml"],
-        "lock_file": "go.sum",
-        "lock_command": ["go", "mod", "tidy"],
-        "lock_command_name": "go mod tidy",
-        "strip_dependencies": False,
-        "display_name": "Go",
-    },
-}
-
 
 def get_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
     """Read agent-starter-pack config from project's pyproject.toml.
@@ -152,114 +130,41 @@ def detect_agent_directory(
     if asp_config and asp_config.get("agent_directory"):
         return asp_config["agent_directory"]
 
-    # Try common patterns
+    # Try common patterns (check for Python, TypeScript, and Go agent files)
     for candidate in ["app", "agent", "src"]:
         candidate_path = project_dir / candidate
-        if candidate_path.is_dir() and (candidate_path / "agent.py").exists():
-            return candidate
+        if candidate_path.is_dir():
+            # Check for Python agent
+            if (candidate_path / "agent.py").exists():
+                return candidate
+            # Check for Go agent
+            if (candidate_path / "agent.go").exists():
+                return candidate
+            # Check for TypeScript agent
+            if (candidate_path / "agent.ts").exists():
+                return candidate
+            # Check for Java Maven structure
+            java_main_path = candidate_path / "main" / "java"
+            if java_main_path.is_dir():
+                return candidate
 
-    # Fallback: look for any directory with agent.py
+    # Fallback: look for any directory with agent.py, agent.go, or agent.ts
     for item in project_dir.iterdir():
-        if (
-            item.is_dir()
-            and not item.name.startswith(".")
-            and (item / "agent.py").exists()
-        ):
-            return item.name
+        if item.is_dir() and not item.name.startswith("."):
+            if (item / "agent.py").exists():
+                return item.name
+            if (item / "agent.go").exists():
+                return item.name
+            if (item / "agent.ts").exists():
+                return item.name
+
+    # Check for Java project at root (src/main/java structure)
+    if (project_dir / "pom.xml").exists():
+        src_main_java = project_dir / "src" / "main" / "java"
+        if src_main_java.is_dir():
+            return "src/main/java"
 
     return "app"  # Default fallback
-
-
-def detect_language(project_dir: pathlib.Path) -> str:
-    """Detect the project language using LANGUAGE_CONFIGS.
-
-    Detection order:
-    1. Check .asp.toml for explicit language field
-    2. Check for language-specific detection files (go.mod, pyproject.toml, etc.)
-    3. Default to Python
-
-    Args:
-        project_dir: Path to the project directory
-
-    Returns:
-        Language key (e.g., 'python', 'go')
-    """
-    # First, check .asp.toml for explicit language declaration
-    asp_toml_path = project_dir / ".asp.toml"
-    if asp_toml_path.exists():
-        try:
-            with open(asp_toml_path, "rb") as f:
-                asp_data = tomllib.load(f)
-            language = asp_data.get("project", {}).get("language")
-            if language and language in LANGUAGE_CONFIGS:
-                return language
-        except Exception:
-            pass
-
-    # Check each language's detection files (non-Python first to avoid false positives)
-    # Python has pyproject.toml which is common, so check other languages first
-    for lang in ["go", "python"]:  # Order matters: more specific first
-        config = LANGUAGE_CONFIGS.get(lang)
-        if config:
-            for detection_file in config.get("detection_files", []):
-                if (project_dir / detection_file).exists():
-                    # For Python, also need to check it's not just a pyproject.toml
-                    # for a Go project (Go projects don't have pyproject.toml)
-                    if lang == "python":
-                        # Only return python if no other language indicators exist
-                        return lang
-                    return lang
-
-    # Default to Python
-    return "python"
-
-
-def get_asp_config_for_language(
-    project_dir: pathlib.Path, language: str
-) -> dict[str, Any] | None:
-    """Read ASP config based on language configuration.
-
-    Uses LANGUAGE_CONFIGS to determine where to look for config.
-
-    Args:
-        project_dir: Path to the project directory
-        language: Language key (e.g., 'python', 'go')
-
-    Returns:
-        The ASP config dict if found, None otherwise
-    """
-    lang_config = LANGUAGE_CONFIGS.get(language)
-    if not lang_config:
-        return None
-
-    config_file = lang_config.get("config_file")
-    config_path = lang_config.get("config_path", [])
-
-    if not config_file:
-        return None
-
-    config_file_path = project_dir / config_file
-    if not config_file_path.exists():
-        return None
-
-    try:
-        with open(config_file_path, "rb") as f:
-            data = tomllib.load(f)
-
-        # Navigate to the config path (e.g., ["tool", "agent-starter-pack"])
-        result = data
-        for key in config_path:
-            if isinstance(result, dict):
-                result = result.get(key)
-            else:
-                return None
-            if result is None:
-                return None
-
-        return result if isinstance(result, dict) else None
-    except Exception as e:
-        logging.debug(f"Could not read config from {config_file}: {e}")
-        return None
 
 
 def copy_project_files(
@@ -713,10 +618,13 @@ def extract(
         )
         raise SystemExit(1)
 
-    agent_py_path = agent_dir_path / "agent.py"
-    if not agent_py_path.exists():
+    # Check for agent file using shared utility (supports Python, Go, Java)
+    agent_file = find_agent_file(source_dir, language, agent_directory)
+    if not agent_file:
+        lang_config = get_language_config(language)
+        agent_file_name = lang_config.get("agent_file", "agent.py")
         console.print(
-            f"⚠️  [yellow]Warning:[/yellow] No agent.py found in {agent_directory}/",
+            f"⚠️  [yellow]Warning:[/yellow] No {agent_file_name} found in {agent_directory}/",
         )
 
     if output_dir.exists():
@@ -735,16 +643,25 @@ def extract(
     if (source_dir / "tests").exists():
         existing_scaffolding.append("tests")
 
-    # Detect ADK from config or agent.py imports
+    # Detect ADK from config or agent file imports
     is_adk = False
     if asp_config:
         base_template = asp_config.get("base_template", "")
         is_adk = "adk" in base_template.lower()
-    else:
-        # Try to detect from agent.py imports (Python only)
-        if language == "python" and agent_py_path.exists():
-            agent_content = agent_py_path.read_text(encoding="utf-8")
-            is_adk = "google.adk" in agent_content or "from adk" in agent_content
+    elif agent_file and agent_file.exists():
+        # Try to detect from agent file imports
+        try:
+            agent_content = agent_file.read_text(encoding="utf-8")
+            if language == "python":
+                is_adk = "google.adk" in agent_content or "from adk" in agent_content
+            elif language == "java":
+                is_adk = (
+                    "google.adk" in agent_content or "com.google.adk" in agent_content
+                )
+            elif language == "typescript":
+                is_adk = "@google/adk" in agent_content or "google-adk" in agent_content
+        except Exception:
+            pass  # Ignore read errors for ADK detection
 
     if dry_run:
         console.print("[bold cyan]DRY RUN - No changes will be made[/bold cyan]")
@@ -797,9 +714,10 @@ def extract(
         copy_project_files(source_dir, output_dir, language)
 
     console.print("  • Generating minimal Makefile...")
+    project_name = asp_config.get("name", "agent") if asp_config else "agent"
     template_context = {
         "agent_directory": agent_directory,
-        "project_name": asp_config.get("name", "agent") if asp_config else "agent",
+        "project_name": project_name,
         "is_adk": is_adk,
         "is_adk_live": asp_config.get("is_adk_live", False) if asp_config else False,
         "is_a2a": asp_config.get("is_a2a", False) if asp_config else False,
@@ -810,13 +728,17 @@ def extract(
         ),
         "settings": {},  # Required by template for command overrides
     }
+    # Add Java-specific template vars
+    if language == "java":
+        java_vars = generate_java_package_vars(project_name)
+        template_context.update(java_vars)
     try:
         makefile_content = render_makefile_template(language, template_context)
     except Exception as e:
         console.print(
             f"❌ [bold red]Error:[/bold red] Failed to generate Makefile: {e}"
         )
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     (output_dir / "Makefile").write_text(makefile_content, encoding="utf-8")
 
     console.print("  • Generating README.md...")
@@ -831,7 +753,7 @@ def extract(
         readme_content = render_readme_template(language, readme_context)
     except Exception as e:
         console.print(f"❌ [bold red]Error:[/bold red] Failed to generate README: {e}")
-        raise SystemExit(1)
+        raise SystemExit(1) from e
     (output_dir / "README.md").write_text(readme_content, encoding="utf-8")
 
     gitignore_path = source_dir / ".gitignore"

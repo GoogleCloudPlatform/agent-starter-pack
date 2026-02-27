@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ class TestAddBaseTemplateDependencies:
         )
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9"]
+        base_deps = ["google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=True
@@ -45,7 +45,7 @@ class TestAddBaseTemplateDependencies:
 
         assert result is True
         mock_subprocess.assert_called_once_with(
-            ["uv", "add", "google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.9"],
+            ["uv", "add", "google-adk>=1.16.0,<2.0.0", "a2a-sdk~=0.3.22"],
             cwd=project_path,
             capture_output=True,
             text=True,
@@ -68,7 +68,7 @@ class TestAddBaseTemplateDependencies:
         )
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=False
@@ -87,7 +87,7 @@ class TestAddBaseTemplateDependencies:
         mock_confirm.return_value = False
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=False
@@ -109,7 +109,7 @@ class TestAddBaseTemplateDependencies:
         )
 
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         result = add_base_template_dependencies_interactively(
             project_path, base_deps, "adk_a2a", auto_approve=True
@@ -125,7 +125,7 @@ class TestAddBaseTemplateDependencies:
     def test_uv_not_found(self, mock_console: MagicMock) -> None:
         """Test handling when uv is not installed."""
         project_path = pathlib.Path("/test/project")
-        base_deps = ["a2a-sdk~=0.3.9"]
+        base_deps = ["a2a-sdk~=0.3.22"]
 
         with patch(
             "agent_starter_pack.cli.utils.template.subprocess.run"
@@ -151,6 +151,79 @@ class TestAddBaseTemplateDependencies:
         )
 
         assert result is True
+
+
+class TestAddBqAnalyticsDependencies:
+    """Tests for interactive request addition of BQ Analytics dependencies."""
+
+    @patch("agent_starter_pack.cli.utils.template.subprocess.run")
+    @patch("agent_starter_pack.cli.utils.template.Console")
+    def test_bq_auto_approve(
+        self, _mock_console: MagicMock, mock_subprocess: MagicMock
+    ) -> None:
+        """Test that auto-approve mode automatically adds BQ dependencies."""
+        from agent_starter_pack.cli.utils.template import add_bq_analytics_dependencies
+
+        mock_subprocess.return_value = MagicMock(
+            returncode=0, stderr="Resolved 111 packages in 1.2s"
+        )
+
+        project_path = pathlib.Path("/test/project")
+
+        result = add_bq_analytics_dependencies(project_path, auto_approve=True)
+
+        assert result is True
+        mock_subprocess.assert_called_once_with(
+            ["uv", "add", "google-adk[bigquery-analytics]>=1.21.0"],
+            cwd=project_path,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    @patch("agent_starter_pack.cli.utils.template.subprocess.run")
+    @patch("agent_starter_pack.cli.utils.template.Console")
+    @patch("rich.prompt.Confirm.ask")
+    def test_bq_interactive_confirm_yes(
+        self,
+        mock_confirm: MagicMock,
+        _mock_console: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test interactive mode when user confirms BQ dependency addition."""
+        from agent_starter_pack.cli.utils.template import add_bq_analytics_dependencies
+
+        mock_confirm.return_value = True
+        mock_subprocess.return_value = MagicMock(
+            returncode=0, stderr="Resolved 111 packages in 1.2s"
+        )
+
+        project_path = pathlib.Path("/test/project")
+
+        result = add_bq_analytics_dependencies(project_path, auto_approve=False)
+
+        assert result is True
+        mock_confirm.assert_called_once()
+        mock_subprocess.assert_called_once()
+
+    @patch("agent_starter_pack.cli.utils.template.Console")
+    @patch("rich.prompt.Confirm.ask")
+    def test_bq_interactive_confirm_no(
+        self, mock_confirm: MagicMock, mock_console: MagicMock
+    ) -> None:
+        """Test interactive mode when user declines BQ dependency addition."""
+        from agent_starter_pack.cli.utils.template import add_bq_analytics_dependencies
+
+        mock_confirm.return_value = False
+
+        project_path = pathlib.Path("/test/project")
+
+        result = add_bq_analytics_dependencies(project_path, auto_approve=False)
+
+        assert result is False
+        # Verify console shows instructions
+        console_instance = mock_console.return_value
+        assert console_instance.print.call_count >= 3  # Warning + instructions
 
 
 if __name__ == "__main__":

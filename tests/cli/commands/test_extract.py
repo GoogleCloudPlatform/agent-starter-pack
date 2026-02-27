@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,18 +20,20 @@ from unittest.mock import MagicMock, patch
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.extract import (
-    LANGUAGE_CONFIGS,
     SCAFFOLDING_DEPENDENCIES,
     SCAFFOLDING_DIRS,
     SCAFFOLDING_FILES_IN_AGENT_DIR,
     detect_agent_directory,
-    detect_language,
     extract,
     get_asp_config,
-    get_asp_config_for_language,
     is_core_dependency,
     is_scaffolding_dependency,
     process_pyproject_toml,
+)
+from agent_starter_pack.cli.utils.language import (
+    LANGUAGE_CONFIGS,
+    detect_language,
+    get_asp_config_for_language,
 )
 
 
@@ -482,6 +484,16 @@ class TestLanguageConfiguration:
         assert go_config["lock_command"] == ["go", "mod", "tidy"]
         assert go_config["strip_dependencies"] is False
 
+    def test_language_configs_has_java(self) -> None:
+        """Test that Java configuration exists."""
+        assert "java" in LANGUAGE_CONFIGS
+        java_config = LANGUAGE_CONFIGS["java"]
+        assert java_config["detection_files"] == ["pom.xml"]
+        assert java_config["config_file"] == "pom.xml"
+        assert java_config["config_format"] == "maven_properties"
+        assert java_config["lock_command"] == ["mvn", "dependency:resolve"]
+        assert java_config["strip_dependencies"] is False
+
     def test_language_configs_extensible(self) -> None:
         """Test that language configs have consistent structure."""
         required_keys = [
@@ -515,6 +527,15 @@ class TestLanguageDetection:
 
         result = detect_language(tmp_path)
         assert result == "go"
+
+    def test_detect_java_project(self, tmp_path: pathlib.Path) -> None:
+        """Test detection of Java project."""
+        (tmp_path / "pom.xml").write_text(
+            '<?xml version="1.0"?><project><artifactId>test</artifactId></project>'
+        )
+
+        result = detect_language(tmp_path)
+        assert result == "java"
 
     def test_detect_from_asp_toml_language_field(self, tmp_path: pathlib.Path) -> None:
         """Test detection from explicit language field in .asp.toml."""
@@ -569,6 +590,31 @@ deployment_target = "cloud_run"
         assert config["name"] == "test-go-agent"
         assert config["language"] == "go"
         assert config["base_template"] == "adk_go"
+
+    def test_read_java_config(self, tmp_path: pathlib.Path) -> None:
+        """Test reading ASP config from pom.xml Maven properties for Java."""
+        pom_content = """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>test</groupId>
+  <artifactId>test-java-agent</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-agent</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.deployment_target>cloud_run</asp.deployment_target>
+  </properties>
+</project>
+"""
+        (tmp_path / "pom.xml").write_text(pom_content)
+
+        config = get_asp_config_for_language(tmp_path, "java")
+
+        assert config is not None
+        assert config["name"] == "test-java-agent"
+        assert config["language"] == "java"
+        assert config["base_template"] == "adk_java"
 
     def test_missing_config_file_returns_none(self, tmp_path: pathlib.Path) -> None:
         """Test that missing config file returns None."""
@@ -681,3 +727,125 @@ agent_directory = "agent"
                 call[0][0] == ["go", "mod", "tidy"] for call in calls
             )
             assert go_mod_tidy_called
+
+
+class TestJavaProjectExtraction:
+    """Test extraction of Java projects."""
+
+    @patch("agent_starter_pack.cli.commands.extract.subprocess.run")
+    def test_extract_java_project_dry_run(self, mock_subprocess: MagicMock) -> None:
+        """Test dry-run mode for Java project."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create Java project structure with ASP config in pom.xml properties
+            pathlib.Path("pom.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>myagent</groupId>
+  <artifactId>test-agent</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-agent</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.agent_directory>src/main/java</asp.agent_directory>
+  </properties>
+</project>
+""")
+            pathlib.Path("src/main/java/myagent").mkdir(parents=True)
+            pathlib.Path("src/main/java/myagent/RootAgent.java").write_text(
+                "package myagent;\npublic class RootAgent {}"
+            )
+            pathlib.Path("deployment").mkdir()
+
+            result = runner.invoke(
+                extract,
+                ["../output", "--dry-run"],
+            )
+
+            assert result.exit_code == 0
+            assert "DRY RUN" in result.output
+            assert "Java" in result.output
+            assert not pathlib.Path("../output").exists()
+
+    @patch("agent_starter_pack.cli.commands.extract.subprocess.run")
+    def test_extract_java_project_copies_maven_files(
+        self, mock_subprocess: MagicMock
+    ) -> None:
+        """Test that Java project extraction copies pom.xml."""
+        mock_subprocess.return_value = MagicMock(returncode=0)
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create Java project structure with ASP config in pom.xml properties
+            pathlib.Path("pom.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>myagent</groupId>
+  <artifactId>test-agent</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-agent</asp.name>
+    <asp.language>java</asp.language>
+    <asp.base_template>adk_java</asp.base_template>
+    <asp.agent_directory>src/main/java</asp.agent_directory>
+  </properties>
+</project>
+""")
+            pathlib.Path("src/main/java/myagent").mkdir(parents=True)
+            pathlib.Path("src/main/java/myagent/RootAgent.java").write_text(
+                "package myagent;\npublic class RootAgent {}"
+            )
+            pathlib.Path("README.md").write_text("# Test Agent")
+            pathlib.Path(".gitignore").write_text("target/")
+
+            result = runner.invoke(
+                extract,
+                ["output"],
+            )
+
+            assert result.exit_code == 0
+            assert pathlib.Path("output").exists()
+            assert pathlib.Path("output/pom.xml").exists()
+            assert pathlib.Path("output/src/main/java").exists()
+            assert pathlib.Path("output/Makefile").exists()
+
+    @patch("agent_starter_pack.cli.commands.extract.subprocess.run")
+    def test_extract_java_project_runs_mvn_dependency_resolve(
+        self, mock_subprocess: MagicMock
+    ) -> None:
+        """Test that Java extraction runs 'mvn dependency:resolve'."""
+        mock_subprocess.return_value = MagicMock(returncode=0)
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem():
+            # Create Java project with ASP config in pom.xml properties
+            pathlib.Path("pom.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>myagent</groupId>
+  <artifactId>test-agent</artifactId>
+  <version>1.0.0</version>
+  <properties>
+    <asp.name>test-java-agent</asp.name>
+    <asp.language>java</asp.language>
+    <asp.agent_directory>src/main/java</asp.agent_directory>
+  </properties>
+</project>
+""")
+            pathlib.Path("src/main/java/myagent").mkdir(parents=True)
+            pathlib.Path("src/main/java/myagent/RootAgent.java").write_text(
+                "package myagent;\npublic class RootAgent {}"
+            )
+
+            runner.invoke(extract, ["output"])
+
+            # Verify mvn dependency:resolve was called
+            calls = mock_subprocess.call_args_list
+            mvn_resolve_called = any(
+                call[0][0] == ["mvn", "dependency:resolve"] for call in calls
+            )
+            assert mvn_resolve_called

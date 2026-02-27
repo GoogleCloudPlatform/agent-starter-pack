@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
 import os
 import pathlib
 import re
+import stat
 import subprocess
+import tempfile
 from datetime import datetime
 
 from rich.console import Console
@@ -97,21 +99,35 @@ def validate_makefile_usability(
         target_pattern = r"^([a-zA-Z0-9_-]+):"
         matches = re.findall(target_pattern, makefile_content, re.MULTILINE)
 
+        # Targets to always skip (long-running servers, implicit targets)
+        skip_targets = {
+            "all",
+            "clean",
+            "distclean",
+            "local-backend",
+            "eval",
+            "eval-all",
+        }
+
         # Filter out any unwanted targets
         for target in matches:
             if (
                 target
                 and not target.startswith(".")
                 and "%" not in target  # Skip pattern rules
-                and target
-                not in [
-                    "all",
-                    "clean",
-                    "distclean",
-                    "local-backend",
-                ]  # Skip common implicit targets and long-running servers
+                and target not in skip_targets
             ):
                 makefile_targets.append(target)
+
+        # Create mock npm/npx so npm-dependent targets can be tested
+        # for syntax without requiring `npm install`
+        mock_bin = tempfile.mkdtemp(prefix="mock_bin_")
+        for cmd in ("npm", "npx", "tsc", "vite"):
+            mock_path = os.path.join(mock_bin, cmd)
+            with open(mock_path, "w") as f:
+                f.write("#!/bin/sh\nexit 0\n")
+            os.chmod(mock_path, stat.S_IRWXU)
+        mock_env = {**os.environ, "PATH": f"{mock_bin}:{os.environ['PATH']}"}
 
         # Test execution of each target with 2-second timeout
         for target in set(makefile_targets):  # Remove duplicates
@@ -123,6 +139,7 @@ def validate_makefile_usability(
                     text=True,
                     timeout=2,
                     check=True,
+                    env=mock_env,
                 )
                 console.print(f"[green]✓ Target '{target}' executed successfully[/]")
             except subprocess.TimeoutExpired:
@@ -138,6 +155,7 @@ def validate_makefile_usability(
                 dependency_errors = [
                     "command not found",
                     "npm ERR!",
+                    "npm error",
                     "Package not found",
                     "No such file or directory",
                     "ModuleNotFoundError",
@@ -160,10 +178,7 @@ def validate_makefile_usability(
                     console.print(f"[yellow]Error output: {error_output[:200]}...[/]")
                 else:
                     console.print(f"[bold red]Target '{target}' failed execution[/]")
-                    if e.stdout:
-                        console.print(e.stdout)
-                    if e.stderr:
-                        console.print(e.stderr)
+                    console.print(f"[bold red]Full error output:[/]\n{error_output}")
                     raise ValueError(
                         f"Target '{target}' is not valid in Makefile for {agent} with {deployment_target}"
                     ) from e
@@ -189,7 +204,7 @@ def get_makefile_test_combinations() -> list[tuple[str, str, list[str] | None]]:
         (
             "agentic_rag",
             "agent_engine",
-            ["--include-data-ingestion", "--datastore", "vertex_ai_search"],
+            ["--datastore", "vertex_ai_search"],
         ),
         # adk_live - cloud_run only
         ("adk_live", "cloud_run", None),

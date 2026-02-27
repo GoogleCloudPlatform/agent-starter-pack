@@ -26,8 +26,9 @@ playground:
 # ==============================================================================
 
 # Launch local development server with hot-reload
+# Usage: make local-backend [PORT=8000] - Specify PORT for parallel scenario testing
 local-backend:
-	uv run uvicorn test_rag.fast_api_app:app --host localhost --port 8000 --reload
+	uv run uvicorn test_rag.fast_api_app:app --host localhost --port $(or $(PORT),8000) --reload
 
 # ==============================================================================
 # Backend Deployment Targets
@@ -47,12 +48,36 @@ deploy:
 		--labels "" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"DATA_STORE_ID=test-rag-datastore,DATA_STORE_REGION=us" \
+		"DATA_STORE_ID=test-rag-collection_documents,DATA_STORE_REGION=global" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy
+
+# ==============================================================================
+# Data Ingestion (Vertex AI Search)
+# ==============================================================================
+
+# Set up Vertex AI Search datastore (GCS bucket, data connector, search engine)
+setup-datastore:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	(cd deployment/terraform/dev && terraform init && \
+	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve \
+		-target=google_discovery_engine_search_engine.search_engine_dev)
+
+# Upload sample data and trigger initial sync
+data-ingestion:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	DATA_STORE_REGION=$$(grep 'data_store_region' deployment/terraform/dev/vars/env.tfvars | sed 's/.*= *"//;s/".*//') && \
+	gcloud storage cp sample_data/* gs://$$PROJECT_ID-test-rag-docs/ && \
+	uv run deployment/terraform/scripts/start_connector_run.py $$PROJECT_ID $$DATA_STORE_REGION test-rag-collection --wait
+
+# Trigger an on-demand sync for the GCS Data Connector
+sync-data:
+	PROJECT_ID=$$(gcloud config get-value project) && \
+	DATA_STORE_REGION=$$(grep 'data_store_region' deployment/terraform/dev/vars/env.tfvars | sed 's/.*= *"//;s/".*//') && \
+	uv run deployment/terraform/scripts/start_connector_run.py $$PROJECT_ID $$DATA_STORE_REGION test-rag-collection --wait
 
 # ==============================================================================
 # Infrastructure Setup
@@ -62,22 +87,6 @@ backend: deploy
 setup-dev-env:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd deployment/terraform/dev && terraform init && terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve)
-
-# ==============================================================================
-# Data Ingestion (RAG capabilities)
-# ==============================================================================
-
-# Run the data ingestion pipeline for RAG capabilities
-data-ingestion:
-	PROJECT_ID=$$(gcloud config get-value project) && \
-	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
-		--project-id=$$PROJECT_ID \
-		--region="us-central1" \
-		--data-store-id="test-rag-datastore" \
-		--data-store-region="us" \
-		--service-account="test-rag-rag@$$PROJECT_ID.iam.gserviceaccount.com" \
-		--pipeline-root="gs://$$PROJECT_ID-test-rag-rag" \
-		--pipeline-name="data-ingestion-pipeline")
 
 # ==============================================================================
 # Testing & Code Quality

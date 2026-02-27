@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,15 +27,3 @@ resource "google_service_account" "app_sa" {
   project      = each.value
   depends_on   = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
-
-{% if cookiecutter.data_ingestion %}
-# Service account to run Vertex AI pipeline
-resource "google_service_account" "vertexai_pipeline_app_sa" {
-  for_each = local.deploy_project_ids
-
-  account_id   = "${var.project_name}-rag"
-  display_name = "Vertex AI Pipeline app SA"
-  project      = each.value
-  depends_on   = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
-}
-{% endif %}

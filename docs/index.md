@@ -18,7 +18,7 @@ hero:
       link: /guide/development-guide
     - theme: alt
       text: Watch Demo Video
-      link: https://www.youtube.com/watch?v=9zqwym-N3lg
+      link: https://www.youtube.com/watch?v=mtJMYgJkTt8
 
 features:
   - icon: ⚡️
@@ -46,7 +46,7 @@ Help us spread the word by giving us a star on GitHub!
 
 ## Quick Links
 
-- **New Users:** [Getting Started Guide](/guide/getting-started)
+- **New Users:** [Getting Started Guide](/guide/getting-started) (includes Command Cheatsheet)
 - **Setup:** [Installation Guide](/guide/installation)
 - **Going Live:** [Deployment Guide](/guide/deployment)
 - **Explore Templates:** [Agent Templates Overview](/agents/overview)

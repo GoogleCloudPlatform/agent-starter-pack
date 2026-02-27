@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +33,8 @@ if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
+
+from agent_starter_pack.cli.utils.generation_metadata import metadata_to_cli_args
 
 
 def load_asp_metadata(pyproject_path: pathlib.Path) -> dict[str, Any]:
@@ -249,6 +251,44 @@ frontend_type = "None"
         assert create_params["datastore"] == "vertex_ai_search"
 
 
+class TestMetadataSkipValues:
+    """Test that skip/none values are filtered from CLI args."""
+
+    def test_skip_value_filtered(self) -> None:
+        """Test that cicd_runner='skip' is not included in CLI args."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "cloud_run",
+                "cicd_runner": "skip",
+                "session_type": "in_memory",
+            },
+        }
+
+        args = metadata_to_cli_args(metadata)
+
+        assert "--cicd-runner" not in args
+        assert "skip" not in args
+        # Other params should still be present
+        assert "--deployment-target" in args
+        assert "cloud_run" in args
+
+    def test_none_value_filtered(self) -> None:
+        """Test that values of 'none' are still filtered."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "cloud_run",
+                "frontend_type": "None",
+            },
+        }
+
+        args = metadata_to_cli_args(metadata)
+
+        assert "--frontend-type" not in args
+        assert "None" not in args
+
+
 class TestMetadataEnablesRecreation:
     """Test that metadata is sufficient to recreate identical project scaffolding."""
 
@@ -292,9 +332,28 @@ frontend_type = "streamlit"
         assert "cloud_sql" in cli_args
         assert "--cicd-runner" in cli_args
         assert "github_actions" in cli_args
-        assert "--include-data-ingestion" in cli_args or "-i" in cli_args
         assert "--datastore" in cli_args or "-ds" in cli_args
         assert "vertex_ai_vector_search" in cli_args
+
+    def test_skip_value_filtered_from_cli_args(self) -> None:
+        """Test that 'skip' values in create_params are not included in CLI args."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+                "cicd_runner": "skip",
+            },
+        }
+
+        cli_args = metadata_to_cli_args(metadata)
+
+        assert "--agent" in cli_args
+        assert "adk" in cli_args
+        assert "--deployment-target" in cli_args
+        assert "agent_engine" in cli_args
+        # "skip" value should be filtered out
+        assert "--cicd-runner" not in cli_args
+        assert "skip" not in cli_args
 
     def test_metadata_round_trip(self, tmp_path: pathlib.Path) -> None:
         """Test that metadata can be parsed and used to recreate project args."""
@@ -583,50 +642,6 @@ class TestMetadataEnablesIdenticalRecreation:
             )
 
         return differences
-
-
-def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
-    """Convert metadata dictionary to CLI arguments.
-
-    This function maps the pyproject.toml metadata back to CLI arguments
-    that could be used to recreate the project.
-
-    Args:
-        metadata: Dictionary from [tool.agent-starter-pack] section
-
-    Returns:
-        List of CLI arguments
-    """
-    args: list[str] = []
-
-    # Required mappings from metadata
-    if "base_template" in metadata:
-        args.extend(["--agent", metadata["base_template"]])
-
-    if "agent_directory" in metadata and metadata["agent_directory"] != "app":
-        args.extend(["--agent-directory", metadata["agent_directory"]])
-
-    # Get create_params for the rest
-    create_params = metadata.get("create_params", {})
-
-    # Add all create_params dynamically
-    for key, value in create_params.items():
-        # Skip None, "none", "None", False, and empty values
-        if (
-            value is None
-            or value is False
-            or str(value).lower() == "none"
-            or value == ""
-        ):
-            continue
-
-        arg_name = f"--{key.replace('_', '-')}"
-        if value is True:
-            args.append(arg_name)
-        else:
-            args.extend([arg_name, str(value)])
-
-    return args
 
 
 if __name__ == "__main__":

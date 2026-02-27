@@ -1,0 +1,6 @@
+.copy-markdown-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -8px;
+  margin-top: -16px;
+}

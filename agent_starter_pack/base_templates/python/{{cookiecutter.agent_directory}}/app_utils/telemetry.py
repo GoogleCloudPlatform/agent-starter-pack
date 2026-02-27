@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -137,10 +137,9 @@ def _setup_genai_telemetry(bucket: str) -> SpanExporter:
     """Set up full telemetry with GenAI instrumentation and Cloud Logging."""
     import google.auth
     from google.auth.transport.requests import AuthorizedSession
-    from opentelemetry import _events, _logs, trace
+    from opentelemetry import _logs, trace
     from opentelemetry.exporter.cloud_logging import CloudLoggingExporter
     from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-    from opentelemetry.sdk._events import EventLoggerProvider
     from opentelemetry.sdk._logs import LoggerProvider
     from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
     from opentelemetry.sdk.resources import OTELResourceDetector, Resource
@@ -200,7 +199,6 @@ def _setup_genai_telemetry(bucket: str) -> SpanExporter:
         )
     )
     _logs.set_logger_provider(logger_provider)
-    _events.set_event_logger_provider(EventLoggerProvider(logger_provider))
 
     # Set up GenAI SDK instrumentation for prompt/response capture
     try:

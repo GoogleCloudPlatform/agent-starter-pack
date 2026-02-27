@@ -18,7 +18,7 @@ uvx agent-starter-pack enhance [TEMPLATE_PATH] [OPTIONS]
 
 ## Options
 
-The `enhance` command supports all the same options as [`create`](./create.md), including `--agent-directory`, `--deployment-target`, `--include-data-ingestion`, etc., plus enhance-specific options:
+The `enhance` command supports all the same options as [`create`](./create.md), including `--agent-directory`, `--deployment-target`, `--datastore`, etc., plus enhance-specific options:
 
 ### Enhance-Specific Options
 
@@ -38,7 +38,7 @@ Name of the agent directory (overrides template default, usually `app`). This de
 ### Other Shared Options
 - `--name, -n` - Project name (defaults to current directory name)
 - `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
-- `--include-data-ingestion, -i` - Include data ingestion pipeline
+- `--datastore, -ds` - Datastore type for data ingestion
 - `--session-type` - Session storage type
 - `--google-api-key, --api-key, -k` - Use Google AI Studio API key (or placeholder if no value provided)
 - `--auto-approve, --yes, -y` - Skip confirmation prompts and use defaults
@@ -69,7 +69,7 @@ uvx agent-starter-pack enhance . --agent-directory chatbot
 uvx agent-starter-pack enhance adk@data-science --deployment-target cloud_run
 
 # Enhance with data ingestion capabilities
-uvx agent-starter-pack enhance --include-data-ingestion --datastore cloud_sql
+uvx agent-starter-pack enhance --datastore cloud_sql
 
 # Enhance with custom session storage
 uvx agent-starter-pack enhance --session-type cloud_sql
@@ -175,7 +175,7 @@ uvx agent-starter-pack enhance --deployment-target cloud_run
 **Add Data Pipeline:**
 ```bash
 # Add data ingestion to existing agent
-uvx agent-starter-pack enhance --include-data-ingestion --datastore cloud_sql
+uvx agent-starter-pack enhance --datastore cloud_sql
 ```
 
 **Upgrade Agent Base:**
@@ -191,8 +191,8 @@ uvx agent-starter-pack enhance . --base-template langgraph
 
 The `enhance` command automatically creates a complete backup of your project before making any changes:
 
-- **Location:** `.backup_[dirname]_[timestamp]` in the parent directory
-- **Contents:** Complete copy of your entire project directory
+- **Location:** `~/.agent-starter-pack/backups/[dirname]_[timestamp]`
+- **Contents:** Complete copy of your project directory (excluding `.git`, `.venv`, `node_modules`, etc.)
 - **Timing:** Created before any template files are applied
 
 ## Best Practices

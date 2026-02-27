@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,8 +24,19 @@ from typing import Any
 import click
 import google.auth
 import vertexai
+from google.cloud import resourcemanager_v3
+from google.iam.v1 import iam_policy_pb2, policy_pb2
 from vertexai._genai import _agent_engines_utils
-from vertexai._genai.types import AgentEngine, AgentEngineConfig{%- if cookiecutter.is_adk_live %}, AgentServerMode{%- endif %}
+{%- if cookiecutter.is_adk_live %}
+from vertexai._genai.types import (
+    AgentEngine,
+    AgentEngineConfig,
+    AgentServerMode,
+    IdentityType,
+)
+{%- else %}
+from vertexai._genai.types import AgentEngine, AgentEngineConfig, IdentityType
+{%- endif %}
 {%- if cookiecutter.is_adk_live %}
 
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
@@ -66,6 +77,26 @@ def parse_key_value_pairs(kv_string: str | None) -> dict[str, str]:
             else:
                 logging.warning(f"Skipping malformed key-value pair: {pair}")
     return result
+
+
+def parse_secrets(secrets_string: str | None) -> dict[str, dict[str, str]]:
+    """Parse secrets from ENV_VAR=SECRET_ID or ENV_VAR=SECRET_ID:VERSION format."""
+    raw = parse_key_value_pairs(secrets_string)
+    result: dict[str, dict[str, str]] = {}
+    for key, spec in raw.items():
+        if ":" not in spec:
+            secret_id, version = spec, "latest"
+        else:
+            secret_id, _, version = spec.rpartition(":")
+        result[key] = {"secret": secret_id, "version": version}
+    return result
+
+
+def format_env_value(value: Any) -> str:
+    """Format an env var value for display, masking secrets."""
+    if isinstance(value, dict) and "secret" in value and "version" in value:
+        return f"[secret:{value['secret']}:{value['version']}]"
+    return str(value)
 
 
 def write_deployment_metadata(
@@ -129,6 +160,41 @@ def print_deployment_success(
 {%- endif %}
 
 
+def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
+    """Create agent with identity and grant required IAM roles."""
+    click.echo(f"\n🔧 Creating agent identity for: {display_name}")
+    agent = client.agent_engines.create(
+        config={
+            "identity_type": IdentityType.AGENT_IDENTITY,
+            "display_name": display_name,
+        }
+    )
+
+    roles = [
+        "roles/aiplatform.user",
+        "roles/serviceusage.serviceUsageConsumer",
+        "roles/browser",
+        "roles/cloudapiregistry.viewer",
+        "roles/logging.logWriter",
+        "roles/monitoring.metricWriter",
+    ]
+    principal = f"principal://{agent.api_resource.spec.effective_identity}"
+    click.echo(f"🔐 Granting IAM roles to: {principal}")
+    proj_client = resourcemanager_v3.ProjectsClient()
+    policy = proj_client.get_iam_policy(
+        request=iam_policy_pb2.GetIamPolicyRequest(resource=f"projects/{project}")
+    )
+    for role in roles:
+        policy.bindings.append(policy_pb2.Binding(role=role, members=[principal]))
+    proj_client.set_iam_policy(
+        request=iam_policy_pb2.SetIamPolicyRequest(
+            resource=f"projects/{project}", policy=policy
+        )
+    )
+    click.echo("  ✅ Agent identity ready")
+    return agent
+
+
 @click.command()
 @click.option(
     "--project",
@@ -177,6 +243,11 @@ def print_deployment_success(
     help="Comma-separated list of environment variables in KEY=VALUE format",
 )
 @click.option(
+    "--set-secrets",
+    default=None,
+    help="Comma-separated secrets: ENV_VAR=SECRET_ID or ENV_VAR=SECRET_ID:VERSION",
+)
+@click.option(
     "--labels",
     default=None,
     help="Comma-separated list of labels in KEY=VALUE format",
@@ -220,6 +291,12 @@ def print_deployment_success(
     default=1,
     help="Number of worker processes (default: 1)",
 )
+@click.option(
+    "--agent-identity",
+    is_flag=True,
+    default=False,
+    help="Enable agent identity for per-agent IAM access control (Preview feature)",
+)
 def deploy_agent_engine_app(
     project: str | None,
     location: str,
@@ -230,6 +307,7 @@ def deploy_agent_engine_app(
     entrypoint_object: str,
     requirements_file: str,
     set_env_vars: str | None,
+    set_secrets: str | None,
     labels: str | None,
     service_account: str | None,
     min_instances: int,
@@ -238,15 +316,20 @@ def deploy_agent_engine_app(
     memory: str,
     container_concurrency: int,
     num_workers: int,
+    agent_identity: bool,
 ) -> AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
     logging.basicConfig(level=logging.INFO)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
-    # Parse CLI environment variables and labels
-    env_vars = parse_key_value_pairs(set_env_vars)
+    # Parse CLI environment variables, secrets, and labels
+    env_vars: dict[str, Any] = parse_key_value_pairs(set_env_vars)
+    secrets = parse_secrets(set_secrets)
     labels_dict = parse_key_value_pairs(labels)
+
+    # Merge secrets into env_vars (secrets override plain env vars)
+    env_vars.update(secrets)  # type: ignore[arg-type]
 
     # Set deployment-specific environment variables
     env_vars["GOOGLE_CLOUD_REGION"] = location
@@ -269,27 +352,36 @@ def deploy_agent_engine_app(
 
     # Log deployment parameters
     click.echo("\n📋 Deployment Parameters:")
-    click.echo(f"  Project: {project}")
-    click.echo(f"  Location: {location}")
-    click.echo(f"  Display Name: {display_name}")
-    click.echo(f"  Min Instances: {min_instances}")
-    click.echo(f"  Max Instances: {max_instances}")
-    click.echo(f"  CPU: {cpu}")
-    click.echo(f"  Memory: {memory}")
-    click.echo(f"  Container Concurrency: {container_concurrency}")
+    params = [
+        ("Project", project),
+        ("Location", location),
+        ("Display Name", display_name),
+        ("Min Instances", min_instances),
+        ("Max Instances", max_instances),
+        ("CPU", cpu),
+        ("Memory", memory),
+        ("Container Concurrency", container_concurrency),
+    ]
     if service_account:
-        click.echo(f"  Service Account: {service_account}")
+        params.append(("Service Account", service_account))
+    if agent_identity:
+        params.append(("Agent Identity", "Enabled (Preview)"))
+    for name, value in params:
+        click.echo(f"  {name}: {value}")
     if env_vars:
         click.echo("\n🌍 Environment Variables:")
         for key, value in sorted(env_vars.items()):
-            click.echo(f"  {key}: {value}")
+            click.echo(f"  {key}: {format_env_value(value)}")
 
     source_packages_list = list(source_packages)
 
     # Initialize vertexai client
+    # Use v1beta1 API when agent identity is enabled (required for identity_type)
+    http_options = {"api_version": "v1beta1"} if agent_identity else None
     client = vertexai.Client(
         project=project,
         location=location,
+        http_options=http_options,
     )
     vertexai.init(project=project, location=location)
 
@@ -333,12 +425,8 @@ def deploy_agent_engine_app(
         gcs_dir_name=display_name,
         agent_server_mode=AgentServerMode.EXPERIMENTAL,  # Enable bidi streaming
         resource_limits={"cpu": cpu, "memory": memory},
+        identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
     )
-
-    agent_config = {
-        "agent": agent_instance,
-        "config": config,
-    }
 {%- else %}
     # Generate class methods spec from register_operations
     class_methods_list = generate_class_methods_from_agent(agent_instance)
@@ -361,6 +449,7 @@ def deploy_agent_engine_app(
 {%- if cookiecutter.is_adk and not cookiecutter.is_a2a and not cookiecutter.is_adk_live %}
         agent_framework="google-adk",
 {%- endif %}
+        identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
     )
 {%- endif %}
 
@@ -372,34 +461,49 @@ def deploy_agent_engine_app(
         if agent.api_resource.display_name == display_name
     ]
 
+    # Setup agent identity on first deployment
+    if agent_identity and not matching_agents:
+        matching_agents = [setup_agent_identity(client, project, display_name)]
+
     # Deploy the agent (create or update)
+    action = "Updating" if matching_agents else "Creating"
+    click.echo(f"\n🚀 {action} agent: {display_name} (this can take 3-5 minutes)...")
+
     if matching_agents:
-        click.echo(f"\n📝 Updating existing agent: {display_name}")
-    else:
-        click.echo(f"\n🚀 Creating new agent: {display_name}")
-
-    click.echo("🚀 Deploying to Vertex AI Agent Engine (this can take 3-5 minutes)...")
-
 {%- if cookiecutter.is_adk_live %}
-    if matching_agents:
         remote_agent = client.agent_engines.update(
             name=matching_agents[0].api_resource.name,
             agent=agent_instance,
             config=config,
         )
+{%- else %}
+        remote_agent = client.agent_engines.update(
+            name=matching_agents[0].api_resource.name, config=config
+        )
+{%- endif %}
     else:
+{%- if cookiecutter.is_adk_live %}
         remote_agent = client.agent_engines.create(
             agent=agent_instance,
             config=config,
         )
 {%- else %}
-    if matching_agents:
-        remote_agent = client.agent_engines.update(
-            name=matching_agents[0].api_resource.name, config=config
-        )
-    else:
         remote_agent = client.agent_engines.create(config=config)
 {%- endif %}
+
+    # SDK omits secret_env from the update mask when empty, so clear it explicitly.
+    if set_secrets is not None and not secrets and matching_agents:
+        clear_op = client.agent_engines._update(
+            name=remote_agent.api_resource.name,
+            config={
+                "spec": {"deployment_spec": {"secret_env": []}},
+                "update_mask": "spec.deployment_spec.secret_env",
+            },
+        )
+        _agent_engines_utils._await_operation(
+            operation_name=clear_op.name,
+            get_operation_fn=client.agent_engines._get_agent_operation,
+        )
 
     write_deployment_metadata(remote_agent)
     print_deployment_success(remote_agent, location, project)

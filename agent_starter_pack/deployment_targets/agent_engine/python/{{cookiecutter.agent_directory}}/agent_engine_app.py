@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -172,9 +172,11 @@ agent_engine = AgentEngineApp.create(
 {%- else %}
 agent_engine = AgentEngineApp(
     app=adk_app,
-    artifact_service_builder=lambda: GcsArtifactService(bucket_name=logs_bucket_name)
-    if logs_bucket_name
-    else InMemoryArtifactService(),
+    artifact_service_builder=lambda: (
+        GcsArtifactService(bucket_name=logs_bucket_name)
+        if logs_bucket_name
+        else InMemoryArtifactService()
+    ),
 )
 {%- endif -%}
 {% else %}

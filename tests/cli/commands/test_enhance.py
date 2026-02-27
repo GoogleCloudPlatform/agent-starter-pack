@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+import re
 from unittest.mock import MagicMock, patch
 
 import click
@@ -20,9 +21,17 @@ import pytest
 from click.testing import CliRunner
 
 from agent_starter_pack.cli.commands.enhance import (
+    _build_enhance_create_args,
+    _prompt_customize_overrides,
     display_base_template_selection,
     enhance,
 )
+
+
+def strip_ansi(text: str) -> str:
+    """Remove ANSI escape codes from text."""
+    ansi_pattern = re.compile(r"\x1b\[[0-9;]*m")
+    return ansi_pattern.sub("", text)
 
 
 class TestDisplayBaseTemplateSelection:
@@ -117,6 +126,8 @@ class TestEnhanceCommand:
                     [
                         ".",
                         "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
                     ],  # Use auto-approve to skip confirmation prompts
                     input="y\n",  # Confirm enhancement
                 )
@@ -136,7 +147,14 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--base-template", "langgraph", "--auto-approve"],
+                    [
+                        ".",
+                        "--base-template",
+                        "langgraph",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # Should call create with the specified base template
@@ -156,7 +174,14 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--agent-directory", "chatbot", "--auto-approve"],
+                    [
+                        ".",
+                        "--agent-directory",
+                        "chatbot",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # Should call create with the specified agent directory in cli_overrides
@@ -193,7 +218,7 @@ class TestEnhanceCommand:
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--auto-approve"],
+                    [".", "--auto-approve", "--cicd-runner", "skip"],
                 )
 
                 # Should call create and detect 'my_agent' from pyproject.toml
@@ -224,7 +249,14 @@ packages = ["detected_agent", "frontend"]
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--agent-directory", "cli_agent", "--auto-approve"],
+                    [
+                        ".",
+                        "--agent-directory",
+                        "cli_agent",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # CLI parameter should override auto-detection
@@ -244,7 +276,14 @@ packages = ["detected_agent", "frontend"]
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
                     enhance,
-                    [".", "--agent-directory", "missing_agent", "--auto-approve"],
+                    [
+                        ".",
+                        "--agent-directory",
+                        "missing_agent",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
                 )
 
                 # Should show warning about missing directory but still proceed
@@ -271,6 +310,8 @@ packages = ["detected_agent", "frontend"]
                         "--agent-directory",
                         "my_chatbot",
                         "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
                     ],
                 )
 
@@ -296,7 +337,7 @@ packages = ["detected_agent", "frontend"]
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
                     enhance,
-                    [".", "--adk", "--auto-approve"],
+                    [".", "--adk", "--auto-approve", "--cicd-runner", "skip"],
                 )
 
                 # Should call create with base_template set to adk
@@ -315,7 +356,15 @@ packages = ["detected_agent", "frontend"]
 
             result = runner.invoke(
                 enhance,
-                [".", "--adk", "--base-template", "langgraph", "--auto-approve"],
+                [
+                    ".",
+                    "--adk",
+                    "--base-template",
+                    "langgraph",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                ],
             )
 
             # Should fail with an error about conflicting options
@@ -377,6 +426,8 @@ agent = RunnablePassthrough()
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -453,6 +504,8 @@ app = App(root_agent=root_agent, name="app")
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -586,6 +639,8 @@ root_agent = Agent(
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -692,7 +747,7 @@ app = App(root_agent=root_agent, name="app")
             )
 
     def test_data_ingestion_populates_files(self, tmp_path: pathlib.Path) -> None:
-        """Test that --include-data-ingestion actually populates data pipeline files."""
+        """Test that --datastore actually populates data pipeline files."""
         runner = CliRunner()
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
@@ -710,18 +765,21 @@ root_agent = Agent(
 """
             agent_file.write_text(agent_content)
 
-            # Run enhance with data ingestion enabled
+            # Run enhance with data ingestion enabled via --datastore
             result = runner.invoke(
                 enhance,
                 [
                     ".",
                     "--base-template",
-                    "adk",
+                    "agentic_rag",
                     "--deployment-target",
                     "agent_engine",
-                    "--include-data-ingestion",
+                    "--datastore",
+                    "vertex_ai_vector_search",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -752,23 +810,6 @@ root_agent = Agent(
                 assert data_file.exists(), (
                     f"Expected data ingestion file {data_file} was not created"
                 )
-
-            # Verify agent.py was modified to add app object (backward compatibility)
-            preserved_agent_content = agent_file.read_text()
-            expected_content = """from google.adk.agents import Agent
-
-root_agent = Agent(
-    name="test_agent",
-    model="gemini-2.0-flash-001",
-)
-
-from google.adk.apps import App
-
-app = App(root_agent=root_agent, name="app")
-"""
-            assert preserved_agent_content == expected_content, (
-                f"agent.py was not modified correctly! Expected:\n{expected_content}\n\nGot:\n{preserved_agent_content}"
-            )
 
 
 class TestEnhanceYamlAgentShim:
@@ -803,6 +844,8 @@ instruction: You are a helpful assistant.
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -872,6 +915,8 @@ instruction: You are a helpful assistant.
                     "cloud_run",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -922,6 +967,8 @@ model: gemini-2.0-flash-001
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -963,6 +1010,8 @@ model: gemini-2.0-flash-001
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -999,6 +1048,8 @@ model: gemini-2.0-flash-001
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1069,6 +1120,8 @@ root_agent = Agent(
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1115,6 +1168,8 @@ agent = RunnablePassthrough()
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1164,6 +1219,8 @@ app = App(root_agent=root_agent, name="my_agent")
                     "agent_engine",
                     "--auto-approve",
                     "--skip-checks",
+                    "--cicd-runner",
+                    "skip",
                 ],
             )
 
@@ -1207,3 +1264,1298 @@ app = App(root_agent=root_agent, name="my_agent")
             assert is_adk_enhance == is_adk_template, (
                 f"Patterns don't match for {base_template_name}"
             )
+
+
+class TestBuildEnhanceCreateArgs:
+    """Test the _build_enhance_create_args helper function."""
+
+    def test_basic_metadata_conversion(self) -> None:
+        """Test converting project metadata to CLI args."""
+        config = {
+            "base_template": "adk",
+            "agent_directory": "app",
+            "create_params": {
+                "deployment_target": "agent_engine",
+                "session_type": "in_memory",
+            },
+        }
+        args = _build_enhance_create_args(config)
+        assert "--agent" in args
+        assert "adk" in args
+        assert "--deployment-target" in args
+        assert "agent_engine" in args
+        assert "--session-type" in args
+        assert "in_memory" in args
+
+    def test_cli_overrides_take_precedence(self) -> None:
+        """Test that CLI overrides replace saved config values."""
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+            },
+        }
+        overrides = {"deployment_target": "cloud_run"}
+        args = _build_enhance_create_args(config, overrides)
+        assert "cloud_run" in args
+        assert "agent_engine" not in args
+
+    def test_base_template_override_maps_to_agent_flag(self) -> None:
+        """Test that base_template override maps to --agent, not --base-template."""
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+            },
+        }
+        overrides = {"base_template": "agentic_rag"}
+        args = _build_enhance_create_args(config, overrides)
+        # Should replace --agent value, not add --base-template
+        assert "--agent" in args
+        assert "agentic_rag" in args
+        assert "adk" not in args
+        assert "--base-template" not in args
+
+    def test_no_overrides_returns_metadata_args(self) -> None:
+        """Test with no overrides returns metadata-based args only."""
+        config = {
+            "base_template": "adk",
+            "create_params": {"deployment_target": "cloud_run"},
+        }
+        args = _build_enhance_create_args(config, None)
+        assert "--agent" in args
+        assert "adk" in args
+        assert "--deployment-target" in args
+        assert "cloud_run" in args
+
+    def test_skip_values_are_filtered(self) -> None:
+        """Test that skip/none values are filtered from overrides."""
+        config = {
+            "base_template": "adk",
+            "create_params": {},
+        }
+        overrides = {"cicd_runner": "skip", "deployment_target": "cloud_run"}
+        args = _build_enhance_create_args(config, overrides)
+        assert "--cicd-runner" not in args
+        assert "--deployment-target" in args
+
+
+class TestSmartMerge:
+    """Test the smart-merge functionality in enhance command."""
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_auto_updates_unchanged_files(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that unchanged files are auto-updated via smart-merge."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            if "--deployment-target" in args and "cloud_run" in args:
+                # New template (enhanced)
+                (template_dir / "Makefile").write_text("# Enhanced Makefile")
+                (template_dir / "Dockerfile").write_text("FROM python:3.11")
+            else:
+                # Old template (original)
+                (template_dir / "Makefile").write_text("# Original Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create project with ASP metadata
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            # Makefile matches old template (user didn't modify)
+            pathlib.Path("Makefile").write_text("# Original Makefile")
+
+            # Create agent directory
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+
+            # Verify Makefile was auto-updated
+            assert "Enhanced Makefile" in pathlib.Path("Makefile").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_preserves_user_modified_files(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that user-modified files are preserved when template didn't change."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version, args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            # Same content in old and new template
+            (template_dir / "Makefile").write_text("# Template Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            # User modified the Makefile
+            pathlib.Path("Makefile").write_text("# My custom Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+
+            # Verify user's Makefile was preserved
+            assert "My custom Makefile" in pathlib.Path("Makefile").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_detects_conflicts(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that conflicts are detected when both user and template changed."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            if "--deployment-target" in args and "cloud_run" in args:
+                (template_dir / "Makefile").write_text("# New template Makefile")
+            else:
+                (template_dir / "Makefile").write_text("# Old template Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            # User modified (different from both templates)
+            pathlib.Path("Makefile").write_text("# User modified Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "Conflict" in output
+            # With auto-approve, user's version is kept
+            assert "User modified Makefile" in pathlib.Path("Makefile").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_adds_new_files(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that new files from the enhanced template are added."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Makefile")
+            if "--deployment-target" in args and "cloud_run" in args:
+                # New template has a Dockerfile that old doesn't
+                (template_dir / "Dockerfile").write_text("FROM python:3.11")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "Files to add" in output
+            # Verify new file was added
+            assert pathlib.Path("Dockerfile").exists()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_dry_run(self, mock_create, tmp_path: pathlib.Path) -> None:
+        """Test that --dry-run shows changes without applying."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            if "--deployment-target" in args and "cloud_run" in args:
+                (template_dir / "Makefile").write_text("# Enhanced Makefile")
+                (template_dir / "Dockerfile").write_text("FROM python:3.11")
+            else:
+                (template_dir / "Makefile").write_text("# Original Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--dry-run",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "Dry run" in output
+            # Verify files were NOT modified
+            assert "Original Makefile" in pathlib.Path("Makefile").read_text()
+            assert not pathlib.Path("Dockerfile").exists()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_never_modifies_agent_code(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that agent code files are NEVER modified by smart-merge."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version, args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Template Makefile")
+            # Template has agent code that's different from user's
+            (template_dir / "app").mkdir()
+            (template_dir / "app/agent.py").write_text("# Template agent code")
+            (template_dir / "app/tools").mkdir()
+            (template_dir / "app/tools/search.py").write_text("# Template tool")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("# MY CUSTOM AGENT CODE")
+            pathlib.Path("app/tools").mkdir()
+            pathlib.Path("app/tools/search.py").write_text("# MY CUSTOM TOOL")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "Skipping" in output
+
+            # Verify agent code was NOT touched
+            assert "MY CUSTOM AGENT CODE" in pathlib.Path("app/agent.py").read_text()
+            assert "MY CUSTOM TOOL" in pathlib.Path("app/tools/search.py").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_preserves_config_files(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that config files (.env, config.yaml) are never auto-updated."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version, args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Makefile")
+            # Templates have config files
+            (template_dir / ".env").write_text("API_KEY=template_key")
+            (template_dir / "config.yaml").write_text("setting: template_value")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            # User has config files with secrets
+            pathlib.Path(".env").write_text("API_KEY=my_secret_key")
+            pathlib.Path("config.yaml").write_text("setting: my_custom_value")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+
+            # Verify config files were NOT modified (user secrets preserved)
+            assert "my_secret_key" in pathlib.Path(".env").read_text()
+            assert "my_custom_value" in pathlib.Path("config.yaml").read_text()
+            # Should not contain template values
+            assert "template_key" not in pathlib.Path(".env").read_text()
+            assert "template_value" not in pathlib.Path("config.yaml").read_text()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_preserves_user_dependencies(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that user's custom dependencies are kept when merging."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+
+            if "--deployment-target" in args and "cloud_run" in args:
+                # New template adds a new ASP dependency
+                (template_dir / "pyproject.toml").write_text(
+                    """[project]
+name = "test"
+version = "0.1.0"
+dependencies = [
+    "google-cloud-aiplatform>=1.50.0",
+    "uvicorn>=0.30.0",
+]
+"""
+                )
+            else:
+                # Old template (original)
+                (template_dir / "pyproject.toml").write_text(
+                    """[project]
+name = "test"
+version = "0.1.0"
+dependencies = [
+    "google-cloud-aiplatform>=1.50.0",
+]
+"""
+                )
+            (template_dir / "Makefile").write_text("# Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # User's project has custom dependencies
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                """[project]
+name = "test"
+version = "0.1.0"
+dependencies = [
+    "google-cloud-aiplatform>=1.50.0",
+    "my-custom-library>=2.0.0",
+    "another-user-lib>=1.0.0",
+]
+
+[tool.agent-starter-pack]
+name = "test"
+base_template = "adk"
+asp_version = "0.30.0"
+
+[tool.agent-starter-pack.create_params]
+deployment_target = "agent_engine"
+"""
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+
+            # Verify dependencies were merged correctly
+            final_pyproject = pyproject.read_text()
+
+            # User's custom dependencies should be preserved
+            assert "my-custom-library" in final_pyproject
+            assert "another-user-lib" in final_pyproject
+
+            # New ASP dependency should be added
+            assert "uvicorn" in final_pyproject
+
+            # Original ASP dependency should remain
+            assert "google-cloud-aiplatform" in final_pyproject
+
+
+class TestSmartMergeFallback:
+    """Test fallback behavior when smart-merge can't be used."""
+
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
+    def test_force_flag_skips_smart_merge(
+        self, mock_saved_config, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that --force bypasses smart-merge and uses standard overwrite."""
+        # Prevent subprocess execution of saved config
+        mock_saved_config.return_value = False
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Create project with metadata (smart-merge would normally activate)
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
+                runner.invoke(
+                    enhance,
+                    [
+                        ".",
+                        "--force",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                        "--skip-checks",
+                    ],
+                )
+
+                # With --force, should fall through to create command
+                mock_create.assert_called_once()
+
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
+    def test_no_metadata_falls_back_to_standard_mode(
+        self, mock_saved_config, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that enhance falls back to standard mode when no metadata exists."""
+        mock_saved_config.return_value = False
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # No pyproject.toml - no metadata
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
+                result = runner.invoke(
+                    enhance,
+                    [
+                        ".",
+                        "--deployment-target",
+                        "cloud_run",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                        "--skip-checks",
+                    ],
+                )
+
+                output = strip_ansi(result.output)
+                assert "No saved metadata found" in output
+                # Should fall through to create command
+                mock_create.assert_called_once()
+
+    def test_dry_run_without_overrides_shows_error(
+        self, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that --dry-run without CLI overrides and no metadata shows an error."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--dry-run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert "--dry-run requires saved project metadata" in output
+
+    def test_dry_run_without_metadata_shows_error(self, tmp_path: pathlib.Path) -> None:
+        """Test that --dry-run with overrides but no metadata shows an error."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--dry-run",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert "--dry-run requires saved project metadata" in output
+
+    def test_dry_run_with_force_shows_error(self, tmp_path: pathlib.Path) -> None:
+        """Test that --dry-run with --force shows an error."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--dry-run",
+                    "--force",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert "--dry-run is not compatible with --force" in output
+
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_failure_falls_back(
+        self, mock_run_create, mock_saved_config, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that smart-merge failure falls back to standard mode."""
+        # Make template generation fail
+        mock_run_create.return_value = False
+        mock_saved_config.return_value = False
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            with patch(
+                "agent_starter_pack.cli.commands.enhance.create"
+            ) as mock_create_cmd:
+                result = runner.invoke(
+                    enhance,
+                    [
+                        ".",
+                        "--deployment-target",
+                        "cloud_run",
+                        "--auto-approve",
+                        "--cicd-runner",
+                        "skip",
+                    ],
+                )
+
+                output = strip_ansi(result.output)
+                assert "falling back" in output.lower()
+                # Should fall through to create command
+                mock_create_cmd.assert_called_once()
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_no_file_changes_needed(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test smart-merge when templates differ in params but produce same files."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version, args
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            # Both old and new templates produce the same files
+            (template_dir / "Makefile").write_text("# Same Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Same Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "No file changes needed" in output or "No changes" in output
+
+    @patch(
+        "agent_starter_pack.cli.commands.enhance.check_and_execute_with_saved_config"
+    )
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_same_params_runs_smart_merge(
+        self, mock_run_create, mock_saved_config, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that same params as saved config runs smart-merge (shows results)."""
+        mock_saved_config.return_value = False
+        # Smart-merge generates one template and uses it as both old and new
+        mock_run_create.return_value = True
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            # Same params → smart-merge runs with one template as both old and new
+            mock_run_create.assert_called_once()
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            assert "No file changes needed" in output or "No changes" in output
+
+
+class TestCustomizeSmartMerge:
+    """Test the customize → smart-merge flow."""
+
+    @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
+    @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
+    @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
+    def test_customize_routes_to_smart_merge(
+        self,
+        mock_version: MagicMock,
+        mock_display: MagicMock,
+        mock_customize: MagicMock,
+        mock_smart_merge: MagicMock,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that interactive customization routes overrides to smart-merge."""
+        mock_version.return_value = "0.30.0"
+        mock_customize.return_value = {"deployment_target": "cloud_run"}
+        mock_smart_merge.return_value = True
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [".", "--skip-checks"],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            mock_customize.assert_called_once()
+            mock_smart_merge.assert_called_once()
+            # Verify smart-merge was called with the customize overrides
+            call_args = mock_smart_merge.call_args
+            assert call_args[0][2] == {"deployment_target": "cloud_run"}
+
+    @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
+    @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
+    @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
+    def test_customize_no_changes_runs_smart_merge(
+        self,
+        mock_version: MagicMock,
+        mock_display: MagicMock,
+        mock_customize: MagicMock,
+        mock_smart_merge: MagicMock,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that empty overrides still runs smart-merge (same-config comparison)."""
+        mock_version.return_value = "0.30.0"
+        mock_customize.return_value = {}
+        mock_smart_merge.return_value = True
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [".", "--skip-checks"],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            mock_customize.assert_called_once()
+            mock_smart_merge.assert_called_once()
+            # Smart-merge called with None overrides (no changes)
+            call_args = mock_smart_merge.call_args
+            assert call_args[0][2] is None
+
+    @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
+    @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
+    @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
+    def test_customize_smart_merge_fallback(
+        self,
+        mock_version: MagicMock,
+        mock_display: MagicMock,
+        mock_customize: MagicMock,
+        mock_smart_merge: MagicMock,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that smart-merge failure after customize shows fallback message."""
+        mock_version.return_value = "0.30.0"
+        mock_customize.return_value = {"deployment_target": "cloud_run"}
+        mock_smart_merge.return_value = False
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [".", "--skip-checks"],
+                input="n\n",  # Cancel the brute-force confirmation prompt
+            )
+
+            output = strip_ansi(result.output)
+            assert "falling back" in output.lower()
+
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_cicd_runner_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_session_type_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_deployment_target")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.load_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_deployment_targets")
+    def test_prompt_customize_overrides_returns_only_changes(
+        self,
+        mock_targets: MagicMock,
+        mock_load_config: MagicMock,
+        mock_agent_select: MagicMock,
+        mock_deploy_prompt: MagicMock,
+        mock_session_prompt: MagicMock,
+        mock_cicd_prompt: MagicMock,
+    ) -> None:
+        """Test that _prompt_customize_overrides returns only changed params."""
+        mock_targets.return_value = ["agent_engine", "cloud_run"]
+        mock_load_config.return_value = {"settings": {"requires_session": True}}
+        mock_agent_select.return_value = "adk"  # same as current
+        mock_deploy_prompt.return_value = "cloud_run"  # changed
+        mock_session_prompt.return_value = "in_memory"  # same
+        mock_cicd_prompt.return_value = "skip"  # same
+
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+                "session_type": "in_memory",
+                "cicd_runner": "skip",
+            },
+        }
+
+        result = _prompt_customize_overrides(config)
+        assert result == {"deployment_target": "cloud_run"}
+
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_cicd_runner_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_session_type_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_deployment_target")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.load_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_deployment_targets")
+    def test_prompt_customize_overrides_session_type_gated_on_cloud_run(
+        self,
+        mock_targets: MagicMock,
+        mock_load_config: MagicMock,
+        mock_agent_select: MagicMock,
+        mock_deploy_prompt: MagicMock,
+        mock_session_prompt: MagicMock,
+        mock_cicd_prompt: MagicMock,
+    ) -> None:
+        """Test that session_type is only prompted when deployment is cloud_run."""
+        mock_targets.return_value = ["agent_engine", "cloud_run"]
+        mock_load_config.return_value = {"settings": {"requires_session": True}}
+        mock_agent_select.return_value = "adk"  # same
+        mock_deploy_prompt.return_value = "agent_engine"  # same
+        mock_cicd_prompt.return_value = "skip"  # same
+
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "agent_engine",
+                "cicd_runner": "skip",
+            },
+        }
+
+        result = _prompt_customize_overrides(config)
+        assert result == {}
+        # session_type prompt should NOT have been called
+        mock_session_prompt.assert_not_called()
+
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_cicd_runner_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_session_type_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.prompt_deployment_target")
+    @patch("agent_starter_pack.cli.commands.enhance.display_base_template_selection")
+    @patch("agent_starter_pack.cli.commands.enhance.load_template_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_deployment_targets")
+    def test_prompt_customize_overrides_agent_change(
+        self,
+        mock_targets: MagicMock,
+        mock_load_config: MagicMock,
+        mock_agent_select: MagicMock,
+        mock_deploy_prompt: MagicMock,
+        mock_session_prompt: MagicMock,
+        mock_cicd_prompt: MagicMock,
+    ) -> None:
+        """Test that changing agent type is returned as an override."""
+        mock_targets.return_value = ["cloud_run"]
+        mock_load_config.return_value = {"settings": {"requires_session": False}}
+        mock_agent_select.return_value = "agentic_rag"  # changed from adk
+        mock_cicd_prompt.return_value = "skip"  # same
+
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "cloud_run",
+                "cicd_runner": "skip",
+            },
+        }
+
+        result = _prompt_customize_overrides(config)
+        assert result == {"base_template": "agentic_rag"}
+        # Only 1 deployment target available, so prompt_deployment_target not called
+        mock_deploy_prompt.assert_not_called()
+        # Agent doesn't require sessions
+        mock_session_prompt.assert_not_called()
+
+    @patch("agent_starter_pack.cli.commands.enhance._run_smart_merge")
+    @patch("agent_starter_pack.cli.commands.enhance._prompt_customize_overrides")
+    @patch("agent_starter_pack.cli.commands.enhance._display_saved_config")
+    @patch("agent_starter_pack.cli.commands.enhance.get_current_version")
+    def test_dry_run_with_customize(
+        self,
+        mock_version: MagicMock,
+        mock_display: MagicMock,
+        mock_customize: MagicMock,
+        mock_smart_merge: MagicMock,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test that --dry-run works with interactive customization and smart-merge preview."""
+        mock_version.return_value = "0.30.0"
+        mock_customize.return_value = {"deployment_target": "cloud_run"}
+        mock_smart_merge.return_value = True
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [".", "--dry-run", "--skip-checks"],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            mock_smart_merge.assert_called_once()
+            # Verify dry_run was passed through to smart-merge
+            call_args = mock_smart_merge.call_args
+            assert call_args[0][4] is True  # dry_run parameter
+
+    def test_dry_run_auto_approve_no_overrides_with_metadata_shows_error(
+        self,
+        tmp_path: pathlib.Path,
+    ) -> None:
+        """Test --dry-run + --auto-approve + no CLI overrides with saved config shows error."""
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [".", "--dry-run", "--auto-approve", "--skip-checks"],
+            )
+
+            output = strip_ansi(result.output)
+            assert "--dry-run requires specifying what to change" in output
+
+
+class TestSmartMergeBackup:
+    """Test that smart-merge creates backups before applying changes."""
+
+    @patch("agent_starter_pack.cli.commands.enhance.create_project_backup")
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_creates_backup(
+        self, mock_create, mock_backup, tmp_path: pathlib.Path
+    ) -> None:
+        """Verify create_project_backup is called before apply_changes."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            if "--deployment-target" in args and "cloud_run" in args:
+                (template_dir / "Makefile").write_text("# Enhanced Makefile")
+            else:
+                (template_dir / "Makefile").write_text("# Original Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+        mock_backup.return_value = tmp_path / "backup"
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            mock_backup.assert_called_once()
+
+    @patch("agent_starter_pack.cli.commands.enhance.create_project_backup")
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_smart_merge_skips_backup_on_dry_run(
+        self, mock_create, mock_backup, tmp_path: pathlib.Path
+    ) -> None:
+        """Verify no backup is created during dry-run."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            if "--deployment-target" in args and "cloud_run" in args:
+                (template_dir / "Makefile").write_text("# Enhanced Makefile")
+            else:
+                (template_dir / "Makefile").write_text("# Original Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "agent_engine"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "cloud_run",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--dry-run",
+                ],
+            )
+
+            assert result.exit_code == 0, f"Failed with output:\n{result.output}"
+            mock_backup.assert_not_called()

@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 
 import os
 import pathlib
+import shutil
 from datetime import datetime
 
 from rich.console import Console
@@ -23,6 +24,30 @@ from tests.utils.get_agents import get_test_combinations_to_run
 
 console = Console()
 TARGET_DIR = "target"
+
+# Language runtime requirements for each agent type
+AGENT_RUNTIME_REQUIREMENTS: dict[str, tuple[str, str]] = {
+    # agent_suffix: (command_to_check, display_name)
+    "_go": ("go", "Go"),
+    "_java": ("mvn", "Maven"),
+    "_ts": ("node", "Node.js"),
+}
+
+
+def check_runtime_available(agent: str) -> tuple[bool, str]:
+    """Check if the required runtime for an agent is available.
+
+    Returns:
+        Tuple of (is_available, skip_reason)
+    """
+    for suffix, (command, display_name) in AGENT_RUNTIME_REQUIREMENTS.items():
+        if agent.endswith(suffix):
+            if shutil.which(command) is None:
+                return (
+                    False,
+                    f"{display_name} not installed, skipping {agent}",
+                )
+    return True, ""
 
 
 def test_template_linting(
@@ -89,6 +114,12 @@ def test_all_templates() -> None:
     combinations = get_test_combinations_to_run()
 
     for agent, deployment_target, extra_params in combinations:
+        # Check if required runtime is available
+        runtime_available, skip_reason = check_runtime_available(agent)
+        if not runtime_available:
+            console.print(f"\n[bold yellow]Skipping:[/] {skip_reason}")
+            continue
+
         console.print(f"\n[bold cyan]Testing {agent} with {deployment_target}[/]")
         test_template_linting(agent, deployment_target, extra_params)
 

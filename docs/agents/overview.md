@@ -9,6 +9,8 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 |------------|-------------|----------|
 | `adk` | A base ReAct agent implemented using Google's [Agent Development Kit](https://github.com/google/adk-python) | General purpose conversational agent |
 | `adk_go` | A base ReAct agent implemented using Google's [Agent Development Kit for Go](https://github.com/google/adk-go) | Go-based conversational agent |
+| `adk_ts` | A base ReAct agent implemented using Google's [Agent Development Kit for TypeScript](https://github.com/google/adk-node) | TypeScript/Node.js-based conversational agent |
+| `adk_java` | A base ReAct agent implemented using Google's [Agent Development Kit for Java](https://github.com/google/adk-java) | Java-based conversational agent |
 | `adk_a2a` | An ADK agent with [Agent2Agent (A2A) Protocol](https://a2a-protocol.org/) support | Distributed agent communication and interoperability across frameworks |
 | `agentic_rag` | A RAG agent for document retrieval and Q&A | Document search and question answering |
 | `langgraph` | A base ReAct agent implemented using LangChain's [LangGraph](https://github.com/langchain-ai/langgraph) | Graph based conversational agent |
@@ -19,7 +21,7 @@ The Agent Starter Pack follows a "bring your own agent" approach. It provides se
 When selecting a template, consider these factors:
 
 1.  **Primary Goal**: Are you building a conversational bot, a Q&A system over documents, a task-automation network, or something else?
-2.  **Programming Language**: Do you prefer Python or Go? Most templates are Python-based, but `adk_go` provides a Go alternative.
+2.  **Programming Language**: Do you prefer Python, Go, TypeScript, or Java? Most templates are Python-based, but `adk_go`, `adk_ts`, and `adk_java` provide Go, TypeScript, and Java alternatives.
 3.  **Core Pattern/Framework**: Do you have a preference for Google's ADK, LangChain/LangGraph, or implementing a pattern like RAG directly? The Starter Pack supports various approaches.
 4.  **Reasoning Complexity**: Does your agent need complex planning and tool use (like ReAct), or is it more focused on retrieval and synthesis (like basic RAG)?
 5.  **Collaboration Needs**: Do you need multiple specialized agents working together?
@@ -42,6 +44,26 @@ This template provides a minimal example of a ReAct agent built using Google's [
 *   Go developers building agents on Google Cloud.
 *   Teams with existing Go codebases wanting to add AI agent capabilities.
 *   High-performance agent deployments leveraging Go's concurrency model.
+
+**Note:** Currently supports Cloud Run deployment only.
+
+### ADK Base TypeScript (`adk_ts`)
+
+This template provides a minimal example of a ReAct agent built using Google's [Agent Development Kit for TypeScript](https://github.com/google/adk-node). It offers the same core ADK concepts as the Python version but for TypeScript/Node.js developers. Ideal for:
+
+*   TypeScript/Node.js developers building agents on Google Cloud.
+*   Teams with existing JavaScript/TypeScript codebases wanting to add AI agent capabilities.
+*   Full-stack developers comfortable with the Node.js ecosystem.
+
+**Note:** Currently supports Cloud Run deployment only.
+
+### ADK Base Java (`adk_java`)
+
+This template provides a minimal example of a ReAct agent built using Google's [Agent Development Kit for Java](https://github.com/google/adk-java). It offers the same core ADK concepts as the Python version but for Java developers, with Spring Boot integration and A2A protocol support. Ideal for:
+
+*   Java developers building agents on Google Cloud.
+*   Teams with existing Java/Spring Boot codebases wanting to add AI agent capabilities.
+*   Enterprise environments where Java is the standard platform.
 
 **Note:** Currently supports Cloud Run deployment only.
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,9 @@ from .lock_utils import get_agent_configs, get_lock_filename
 
 # Path to Go base template
 GO_BASE_TEMPLATE = pathlib.Path("agent_starter_pack/base_templates/go")
+
+# Path to TypeScript base template
+TS_BASE_TEMPLATE = pathlib.Path("agent_starter_pack/base_templates/typescript")
 
 
 def ensure_lock_dir() -> pathlib.Path:
@@ -59,7 +62,9 @@ def generate_pyproject(
         extra_dependencies: List of additional dependencies from .templateconfig.yaml
     """
     with open(template_path, encoding="utf-8") as f:
-        template = Template(f.read(), trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined)
+        template = Template(
+            f.read(), trim_blocks=True, lstrip_blocks=True, undefined=StrictUndefined
+        )
 
     # Convert list to proper format for template
     tags = list(config.get("tags", []))
@@ -81,6 +86,7 @@ def generate_pyproject(
             "data_ingestion": "false",
             "datastore_type": "",
             "frontend_type": "",
+            "agent_guidance_filename": "GEMINI.md",
         }
     }
 
@@ -145,11 +151,20 @@ def generate_go_lock_file() -> None:
         # Generate a Go project using the CLI
         subprocess.run(
             [
-                "uv", "run", "agent-starter-pack", "create", project_name,
-                "-p", "-s", "-y",
-                "-a", "adk_go",
-                "-d", "cloud_run",
-                "--output-dir", str(tmp_dir),
+                "uv",
+                "run",
+                "agent-starter-pack",
+                "create",
+                project_name,
+                "-p",
+                "-s",
+                "-y",
+                "-a",
+                "adk_go",
+                "-d",
+                "cloud_run",
+                "--output-dir",
+                str(tmp_dir),
             ],
             check=True,
             capture_output=True,
@@ -183,6 +198,70 @@ def generate_go_lock_file() -> None:
             print(f"Updated {go_mod_path} with indirect dependencies")
 
 
+def generate_typescript_lock_file() -> None:
+    """Generate package-lock.json for TypeScript base template.
+
+    Creates a temporary TypeScript project using the CLI, runs npm install,
+    then copies package-lock.json back to the template (with project name
+    replaced by the Jinja variable).
+    """
+    package_json_path = TS_BASE_TEMPLATE / "package.json"
+    lock_path = TS_BASE_TEMPLATE / "package-lock.json"
+
+    if not package_json_path.exists():
+        print("Skipping TypeScript lock generation: package.json template not found")
+        return
+
+    print("Generating package-lock.json for TypeScript base template...")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_dir = pathlib.Path(tmpdir)
+        project_name = "ts-lock-gen"
+
+        # Generate a TypeScript project using the CLI
+        subprocess.run(
+            [
+                "uv",
+                "run",
+                "agent-starter-pack",
+                "create",
+                project_name,
+                "-p",
+                "-s",
+                "-y",
+                "-a",
+                "adk_ts",
+                "-d",
+                "cloud_run",
+                "--output-dir",
+                str(tmp_dir),
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+        project_dir = tmp_dir / project_name
+
+        # Run npm install to generate lock file
+        subprocess.run(
+            ["npm", "install", "--package-lock-only"],
+            cwd=project_dir,
+            check=True,
+        )
+
+        # Copy package-lock.json back to template (replace project name with Jinja var)
+        generated_lock = project_dir / "package-lock.json"
+        if generated_lock.exists():
+            with open(generated_lock, encoding="utf-8") as f:
+                lock_content = f.read()
+            lock_content = lock_content.replace(
+                project_name, "{{cookiecutter.project_name}}"
+            )
+            with open(lock_path, "w", encoding="utf-8") as f:
+                f.write(lock_content)
+            print(f"Generated {lock_path}")
+
+
 @click.command()
 @click.option(
     "--template",
@@ -197,11 +276,13 @@ def main(template: pathlib.Path) -> None:
 
     # Generate Python lock files
     for agent_name, config in agent_configs.items():
-        # Skip Go agents (they use go.sum, not uv.lock)
-        if config.get("language") == "go":
+        # Skip Go, Java, and TypeScript agents (they use their own dependency management)
+        if config.get("language") in ("go", "java", "typescript"):
             continue
 
         for target in config["deployment_targets"]:
+            if target == "none":
+                continue
             print(f"Generating lock file for {agent_name} with {target}...")
 
             # Generate pyproject content
@@ -218,6 +299,9 @@ def main(template: pathlib.Path) -> None:
 
     # Generate Go lock file (go.sum)
     generate_go_lock_file()
+
+    # Generate TypeScript lock file (package-lock.json)
+    generate_typescript_lock_file()
 
 
 if __name__ == "__main__":

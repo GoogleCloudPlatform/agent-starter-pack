@@ -11,3 +11,9 @@ e2e_test_project_mapping = {
   staging = "asp-e2e-stg"
   prod    = "asp-e2e-prd"
 }
+
+e2e_rag_project_mapping = {
+  dev     = "asp-rag-dev"
+  staging = "asp-rag-stg"
+  prod    = "asp-rag-prd"
+}

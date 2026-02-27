@@ -1,4 +1,4 @@
-# Copyright 2025 Google LLC
+# Copyright 2026 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,14 @@
 import logging
 import os
 import pathlib
-import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from typing import Any
 
 import click
+from packaging import version as pkg_version
 from rich.console import Console
 from rich.prompt import IntPrompt, Prompt
 
@@ -29,11 +31,38 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib
 
+from ..utils.backup import create_project_backup
+from ..utils.generation_metadata import metadata_to_cli_args
+from ..utils.language import (
+    detect_language,
+    find_agent_file,
+    get_agent_file_hint,
+    get_asp_config_for_language,
+    get_language_config,
+    validate_agent_file,
+)
 from ..utils.logging import display_welcome_banner, handle_cli_error
+from ..utils.merge import (
+    apply_changes,
+    display_results,
+    run_create_command,
+)
 from ..utils.template import (
     get_available_agents,
+    get_deployment_targets,
+    load_template_config,
+    prompt_cicd_runner_selection,
+    prompt_deployment_target,
+    prompt_session_type_selection,
     resolve_agent_alias,
     validate_agent_directory_name,
+)
+from ..utils.upgrade import (
+    compare_all_files,
+    group_results_by_action,
+    merge_pyproject_dependencies,
+    update_asp_metadata,
+    write_merged_dependencies,
 )
 from ..utils.version import get_current_version
 from .create import (
@@ -64,10 +93,13 @@ _EXCLUDED_DIRS = {
 
 
 def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
-    """Read agent-starter-pack config from project's .asp.toml or pyproject.toml.
+    """Read agent-starter-pack config from project config files.
 
-    For Go projects, config is stored in .asp.toml under [project].
-    For Python projects, config is stored in pyproject.toml under [tool.agent-starter-pack].
+    Uses shared language utilities for config detection.
+
+    For Python projects: config in pyproject.toml under [tool.agent-starter-pack]
+    For Go projects: config in .asp.toml under [project]
+    For Java projects: config in pom.xml as asp.* Maven properties
 
     Args:
         project_dir: Path to the project directory
@@ -77,44 +109,56 @@ def get_project_asp_config(project_dir: pathlib.Path) -> dict[str, Any] | None:
         The returned dict has a consistent structure with keys:
         - base_template, asp_version, agent_directory, create_params, language
     """
-    # First, check for .asp.toml (Go projects)
-    asp_toml_path = project_dir / ".asp.toml"
-    if asp_toml_path.exists():
-        try:
-            with open(asp_toml_path, "rb") as f:
-                asp_data = tomllib.load(f)
+    # Detect language first
+    language = detect_language(project_dir)
 
-            # Config is stored under [project] in .asp.toml
-            project_config = asp_data.get("project", {})
-            if project_config:
-                # Normalize to match pyproject.toml structure
-                return {
-                    "base_template": project_config.get("base_template"),
-                    "asp_version": project_config.get("version"),
-                    "agent_directory": project_config.get("agent_directory", "agent"),
-                    "language": project_config.get("language", "go"),
-                    "create_params": {
-                        "deployment_target": project_config.get("deployment_target"),
-                        "cicd_runner": project_config.get("cicd_runner"),
-                    },
-                }
-        except Exception as e:
-            logging.debug(f"Could not read config from .asp.toml: {e}")
-
-    # Fall back to pyproject.toml (Python projects)
-    pyproject_path = project_dir / "pyproject.toml"
-    if not pyproject_path.exists():
+    # Get config using shared utility
+    config = get_asp_config_for_language(project_dir, language)
+    if not config:
         return None
 
-    try:
-        with open(pyproject_path, "rb") as f:
-            pyproject_data = tomllib.load(f)
+    # For Go projects, normalize the config structure
+    if language == "go":
+        return {
+            "base_template": config.get("base_template"),
+            "asp_version": config.get("version"),
+            "agent_directory": config.get("agent_directory", "agent"),
+            "language": config.get("language", "go"),
+            "create_params": {
+                "deployment_target": config.get("deployment_target"),
+                "cicd_runner": config.get("cicd_runner"),
+            },
+        }
 
-        # Config is stored under [tool.agent-starter-pack]
-        return pyproject_data.get("tool", {}).get("agent-starter-pack")
-    except Exception as e:
-        logging.debug(f"Could not read config from pyproject.toml: {e}")
-        return None
+    # For Java projects, normalize the config structure (same as Go)
+    if language == "java":
+        return {
+            "base_template": config.get("base_template"),
+            "asp_version": config.get("version"),
+            "agent_directory": config.get("agent_directory", "src/main/java"),
+            "language": config.get("language", "java"),
+            "create_params": {
+                "deployment_target": config.get("deployment_target"),
+                "cicd_runner": config.get("cicd_runner"),
+            },
+        }
+
+    # For TypeScript projects, normalize the config structure (same as Go)
+    if language == "typescript":
+        return {
+            "base_template": config.get("base_template"),
+            "asp_version": config.get("version"),
+            "agent_directory": config.get("agent_directory", "app"),
+            "language": config.get("language", "typescript"),
+            "create_params": {
+                "deployment_target": config.get("deployment_target"),
+                "cicd_runner": config.get("cicd_runner"),
+            },
+        }
+
+    # For Python, add language key and return as-is
+    config["language"] = language
+    return config
 
 
 def _should_skip_config_value(value: Any) -> bool:
@@ -122,19 +166,28 @@ def _should_skip_config_value(value: Any) -> bool:
     return value is None or value is False or str(value).lower() in ("none", "skip", "")
 
 
-def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
+def build_args_from_config(
+    project_config: dict[str, Any],
+    auto_approve: bool = False,
+    cli_overrides: dict[str, str] | None = None,
+) -> list[str]:
     """Build CLI arguments from project config.
 
     Args:
         project_config: The [tool.agent-starter-pack] config dict
+        auto_approve: If True, add --auto-approve to args
+        cli_overrides: Additional CLI args to merge (e.g., from original command)
 
     Returns:
         List of CLI arguments to pass to enhance command
     """
     # --skip-deps is added because dependencies were already installed on first run
     # --skip-welcome avoids showing the banner twice
-    # Note: we don't add --auto-approve so user still gets interactive prompts for CI/CD etc.
     args = ["enhance", "--skip-deps", "--skip-welcome"]
+
+    # Pass through auto-approve if it was set on the original command
+    if auto_approve:
+        args.append("--auto-approve")
 
     # Add base template from metadata
     base_template = project_config.get("base_template")
@@ -158,6 +211,29 @@ def build_args_from_config(project_config: dict[str, Any]) -> list[str]:
             args.append(arg_name)
         else:
             args.extend([arg_name, str(value)])
+
+    # Merge CLI overrides (these take precedence over saved config)
+    # This ensures user-provided args like --cicd-runner are passed through
+    if cli_overrides:
+        for arg_name, value in cli_overrides.items():
+            # Convert to CLI format
+            cli_arg = f"--{arg_name.replace('_', '-')}"
+            # Remove existing arg if present (to override)
+            # Find and remove any existing occurrence
+            i = 0
+            while i < len(args):
+                if args[i] == cli_arg:
+                    # Remove the arg and its value if present
+                    args.pop(i)
+                    if i < len(args) and not args[i].startswith("--"):
+                        args.pop(i)
+                else:
+                    i += 1
+            # Add the override
+            if value is True:
+                args.append(cli_arg)
+            elif value is not False and value is not None:
+                args.extend([cli_arg, str(value)])
 
     return args
 
@@ -299,19 +375,29 @@ def _execute_with_saved_config(
 
 
 def check_and_execute_with_saved_config(
-    project_dir: pathlib.Path, auto_approve: bool = False
-) -> bool:
+    project_dir: pathlib.Path,
+    auto_approve: bool = False,
+    cli_overrides: dict[str, Any] | None = None,
+    force: bool = False,
+    dry_run: bool = False,
+) -> bool | dict[str, Any]:
     """Check for saved config and offer to reuse it.
 
     If config is found, displays it to the user and asks whether to use it.
     If yes, executes enhance with the saved parameters.
+    If user chooses "customize", returns interactive overrides dict.
 
     Args:
         project_dir: Path to the project directory
         auto_approve: If True, skip confirmation prompt and use saved config
+        cli_overrides: CLI args to pass through (e.g., cicd_runner from original command)
+        force: If True, include --force in subprocess args (skipped for old versions)
+        dry_run: If True, include --dry-run in subprocess args (skipped for old versions)
 
     Returns:
-        True if config was used and executed, False otherwise
+        True if config was used and executed successfully.
+        False if no saved config found or execution failed.
+        dict if user chose "customize" — contains only the changed parameters.
     """
     # Skip if already executing with saved config (prevents infinite loop)
     if os.environ.get(_ENV_USING_SAVED_CONFIG) == "1":
@@ -331,23 +417,106 @@ def check_and_execute_with_saved_config(
         project_version, current_version
     )
 
-    # Show detected configuration and ask user
+    # Show detected configuration
     _display_saved_config(
         display_params, project_version, current_version, use_different_version
     )
 
     if not auto_approve:
-        use_saved = Prompt.ask(
-            "Use these settings?",
-            choices=["y", "customize"],
-            default="y",
-        )
-        if use_saved != "y":
-            return False
+        # Always go through interactive customization so the user can
+        # configure params they haven't set yet (e.g., cicd_runner).
+        # Pressing Enter on every prompt keeps current values.
+        return _prompt_customize_overrides(project_config)
 
-    # Build and execute the command
-    args = build_args_from_config(project_config)
+    # auto_approve: use saved config as-is via subprocess
+    args = build_args_from_config(project_config, auto_approve, cli_overrides)
+    # --force and --dry-run were introduced in this version; strip them
+    # when re-executing against an older locked version to avoid crashes.
+    is_older_version = (
+        use_different_version
+        and project_version is not None
+        and pkg_version.parse(project_version) < pkg_version.parse(current_version)
+    )
+    if not is_older_version:
+        if force:
+            args.append("--force")
+        if dry_run:
+            args.append("--dry-run")
     return _execute_with_saved_config(args, project_version, use_different_version)
+
+
+def _prompt_customize_overrides(project_config: dict[str, Any]) -> dict[str, Any]:
+    """Prompt user to customize project settings interactively.
+
+    Uses the same rich numbered menus as the create command. Shows each
+    configurable parameter with the current saved value as the default
+    selection. Only shows options that are valid for the selected agent's
+    template (e.g., Go agents don't have session_type).
+
+    Args:
+        project_config: The saved project configuration
+
+    Returns:
+        Dict of only the changed parameter names to new values
+    """
+    create_params = project_config.get("create_params", {})
+    base_template = project_config.get("base_template", "adk")
+    overrides: dict[str, Any] = {}
+
+    # 1. Agent selection
+    new_agent = display_base_template_selection(base_template)
+    if new_agent != base_template:
+        overrides["base_template"] = new_agent
+    effective_agent = new_agent
+
+    # Re-load template config for the (potentially new) agent
+    available_targets = get_deployment_targets(effective_agent)
+    requires_session = False
+    try:
+        template_path = (
+            pathlib.Path(__file__).parent.parent.parent
+            / "agents"
+            / effective_agent
+            / ".template"
+        )
+        template_config = load_template_config(template_path)
+        requires_session = template_config.get("settings", {}).get(
+            "requires_session", False
+        )
+    except Exception:
+        pass
+
+    # 2. Deployment target
+    current_deployment = create_params.get("deployment_target", "cloud_run")
+    if available_targets and len(available_targets) > 1:
+        new_deployment = prompt_deployment_target(
+            effective_agent, default_value=current_deployment
+        )
+        if new_deployment != current_deployment:
+            overrides["deployment_target"] = new_deployment
+    elif available_targets and len(available_targets) == 1:
+        new_deployment = available_targets[0]
+        if new_deployment != current_deployment:
+            overrides["deployment_target"] = new_deployment
+    else:
+        new_deployment = current_deployment
+
+    # 3. Session type — only for cloud_run AND agents that support sessions
+    effective_deployment = overrides.get("deployment_target", current_deployment)
+    if effective_deployment == "cloud_run" and requires_session:
+        current_session = create_params.get("session_type", "in_memory")
+        new_session = prompt_session_type_selection(default_value=current_session)
+        if new_session != current_session:
+            overrides["session_type"] = new_session
+
+    # 4. CI/CD runner
+    current_cicd = create_params.get("cicd_runner", "skip")
+    new_cicd = prompt_cicd_runner_selection(default_value=current_cicd)
+    if new_cicd != current_cicd:
+        overrides["cicd_runner"] = new_cicd
+
+    console.print()
+    return overrides
 
 
 def display_base_template_selection(current_base: str) -> str:
@@ -370,12 +539,17 @@ def display_base_template_selection(current_base: str) -> str:
 
     for agent in agents.values():
         template_choices[choice_num] = agent["name"]
-        current_indicator = " (current)" if agent["name"] == current_base else ""
-        console.print(
-            f"  {choice_num}. [bold]{agent['name']}[/]{current_indicator} - [dim]{agent['description']}[/]"
-        )
         if agent["name"] == current_base:
+            console.print(
+                f"  {choice_num}. [bold cyan]{agent['name']}[/]"
+                f" [dim]{agent['description']}[/]"
+                "  [dim cyan](current)[/]"
+            )
             current_choice = choice_num
+        else:
+            console.print(
+                f"  [dim]{choice_num}. {agent['name']} - {agent['description']}[/]"
+            )
         choice_num += 1
 
     if current_choice is None:
@@ -454,16 +628,7 @@ def display_agent_directory_selection(
         for dir_name in available_dirs:
             directory_choices[choice_num] = dir_name
             # Check if this directory might contain agent code
-            agent_py_exists = (current_dir / dir_name / "agent.py").exists()
-            root_agent_yaml_exists = (
-                current_dir / dir_name / "root_agent.yaml"
-            ).exists()
-            if root_agent_yaml_exists:
-                hint = " (has root_agent.yaml)"
-            elif agent_py_exists:
-                hint = " (has agent.py)"
-            else:
-                hint = ""
+            hint = get_agent_file_hint(current_dir / dir_name, base_template)
             console.print(f"  {choice_num}. [bold]{dir_name}[/]{hint}")
             if (
                 default_choice is None
@@ -522,6 +687,264 @@ def display_agent_directory_selection(
             continue
 
 
+def _build_enhance_create_args(
+    project_config: dict[str, Any],
+    cli_overrides: dict[str, Any] | None = None,
+) -> list[str]:
+    """Build CLI args for create command from project config and enhance overrides.
+
+    Merges saved metadata with any CLI overrides provided by the user.
+
+    Args:
+        project_config: The saved project configuration
+        cli_overrides: CLI args from the enhance command to merge in
+
+    Returns:
+        List of CLI arguments for the create command
+    """
+    # Start with metadata-based args
+    args = metadata_to_cli_args(project_config)
+
+    if not cli_overrides:
+        return args
+
+    # Merge CLI overrides (these take precedence over saved config)
+    for key, value in cli_overrides.items():
+        if _should_skip_config_value(value):
+            continue
+
+        # base_template maps to --agent in the create command
+        if key == "base_template":
+            arg_name = "--agent"
+        else:
+            arg_name = f"--{key.replace('_', '-')}"
+
+        # Remove existing arg if present (to override)
+        while arg_name in args:
+            i = args.index(arg_name)
+            # Remove the arg name
+            args.pop(i)
+            # If it had a value (i.e., the next item is not a flag), remove that too
+            if i < len(args) and not args[i].startswith("--"):
+                args.pop(i)
+
+        # Add the override
+        if value is True:
+            args.append(arg_name)
+        elif value is not False and value is not None:
+            args.extend([arg_name, str(value)])
+
+    return args
+
+
+def _run_smart_merge(
+    project_dir: pathlib.Path,
+    project_config: dict[str, Any],
+    cli_overrides: dict[str, Any] | None,
+    auto_approve: bool,
+    dry_run: bool,
+) -> bool:
+    """Run smart-merge using 3-way comparison.
+
+    Generates the "old" template (what was originally generated) and the "new"
+    template (with enhance params), then does a 3-way comparison to only
+    overwrite files the user hasn't modified.
+
+    Args:
+        project_dir: Path to the current project
+        project_config: Saved project configuration from metadata
+        cli_overrides: CLI arguments from the enhance command
+        auto_approve: If True, auto-apply non-conflicting changes
+        dry_run: If True, preview changes without applying
+
+    Returns:
+        True if smart-merge completed successfully, False otherwise
+    """
+    project_name = project_config.get("name", project_dir.name)
+    agent_directory = project_config.get("agent_directory", "app")
+    language = project_config.get("language", "python")
+
+    # Build args for the "old" template (original generation params)
+    old_args = metadata_to_cli_args(project_config)
+
+    # Build args for the "new" template (with enhance overrides merged)
+    new_args = _build_enhance_create_args(project_config, cli_overrides)
+
+    same_config = old_args == new_args
+
+    # Create temp directories
+    temp_base = pathlib.Path(tempfile.mkdtemp(prefix="asp_enhance_"))
+    old_template_dir = temp_base / "old"
+    new_template_dir = temp_base / "new"
+
+    try:
+        console.print()
+        console.print("[dim]Generating templates for comparison...[/dim]")
+
+        if same_config:
+            # Only generate one template, use as both old and new
+            console.print("[dim]  - Template...[/dim]")
+            if not run_create_command(old_args, old_template_dir, project_name):
+                console.print("[bold red]Error:[/bold red] Failed to generate template")
+                console.print("[dim]Falling back to standard overwrite mode.[/dim]")
+                return False
+            old_template_project = old_template_dir / project_name
+            new_template_project = old_template_project  # same reference
+        else:
+            # Generate old template (what was originally generated)
+            console.print("[dim]  - Original template...[/dim]")
+            if not run_create_command(old_args, old_template_dir, project_name):
+                console.print(
+                    "[bold red]Error:[/bold red] Failed to generate original template"
+                )
+                console.print("[dim]Falling back to standard overwrite mode.[/dim]")
+                return False
+
+            # Generate new template (with enhance params)
+            console.print("[dim]  - Enhanced template...[/dim]")
+            if not run_create_command(new_args, new_template_dir, project_name):
+                console.print(
+                    "[bold red]Error:[/bold red] Failed to generate enhanced template"
+                )
+                console.print("[dim]Falling back to standard overwrite mode.[/dim]")
+                return False
+
+            old_template_project = old_template_dir / project_name
+            new_template_project = new_template_dir / project_name
+
+        console.print()
+
+        # Compare all files
+        console.print("[dim]Comparing files...[/dim]")
+        results = compare_all_files(
+            project_dir,
+            old_template_project,
+            new_template_project,
+            agent_directory,
+        )
+
+        # Group by action
+        groups = group_results_by_action(results)
+
+        # Handle dependency merging (only for Python projects)
+        lang_config = get_language_config(language)
+        dep_result = None
+        if lang_config.get("strip_dependencies", True):
+            dep_result = merge_pyproject_dependencies(
+                project_dir / "pyproject.toml",
+                old_template_project / "pyproject.toml",
+                new_template_project / "pyproject.toml",
+            )
+
+        console.print()
+
+        # Display results
+        display_results(groups, dep_result.changes if dep_result else [], dry_run)
+
+        # Check if there's anything to do
+        total_changes = (
+            len(groups["auto_update"])
+            + len(groups["new"])
+            + len(groups["removed"])
+            + len(groups["conflict"])
+        )
+
+        has_dep_changes = dep_result and dep_result.changes
+        if total_changes == 0 and not has_dep_changes:
+            console.print("[bold green]✅[/bold green] No file changes needed!")
+            return True
+
+        # Confirm before applying
+        if not auto_approve and not dry_run:
+            prompt_text = "\nProceed with enhancement?"
+            if groups["conflict"]:
+                prompt_text = "\nProceed? (you'll resolve conflicts next)"
+            proceed = Prompt.ask(
+                prompt_text,
+                choices=["y", "n"],
+                default="y",
+            )
+            if proceed != "y":
+                console.print("[yellow]Enhancement cancelled.[/yellow]")
+                return True  # Return True since user chose to cancel
+
+        # Back up before applying changes
+        if not dry_run:
+            try:
+                create_project_backup(
+                    project_dir, console=console, auto_approve=auto_approve
+                )
+            except click.Abort:
+                return True  # User cancelled
+
+        # Apply changes
+        counts = apply_changes(
+            groups,
+            project_dir,
+            new_template_project,
+            auto_approve,
+            dry_run,
+        )
+
+        # Apply dependency changes (Python only)
+        if not dry_run and dep_result and dep_result.changes:
+            write_merged_dependencies(
+                project_dir / "pyproject.toml",
+                dep_result.merged_deps,
+            )
+
+        # Update ASP metadata to reflect the new config
+        if not dry_run and cli_overrides:
+            metadata_updates = {
+                k: v
+                for k, v in cli_overrides.items()
+                if isinstance(v, str) and not _should_skip_config_value(v)
+            }
+
+            # Determine stale keys to remove
+            stale_keys: list[str] = []
+            effective_deployment = cli_overrides.get(
+                "deployment_target",
+                project_config.get("create_params", {}).get("deployment_target"),
+            )
+            if effective_deployment and effective_deployment != "cloud_run":
+                stale_keys.append("session_type")
+
+            if metadata_updates or stale_keys:
+                update_asp_metadata(
+                    project_dir,
+                    metadata_updates,
+                    asp_version=get_current_version(),
+                    language=language,
+                    remove_keys=stale_keys or None,
+                )
+
+        # Summary
+        console.print()
+        if dry_run:
+            console.print(
+                "[bold yellow]Dry run complete.[/bold yellow] "
+                "Run without --dry-run to apply changes."
+            )
+        else:
+            console.print(f"  Updated: {counts['updated']} files")
+            console.print(f"  Added: {counts['added']} files")
+            console.print(f"  Removed: {counts['removed']} files")
+            if counts["conflicts_kept"] or counts["conflicts_updated"]:
+                console.print(
+                    f"  Conflicts: {counts['conflicts_updated']} updated, "
+                    f"{counts['conflicts_kept']} kept yours"
+                )
+            console.print()
+            console.print("[bold green]✅ Enhance complete![/bold green]")
+
+        return True
+
+    finally:
+        # Cleanup temp directories
+        shutil.rmtree(temp_base, ignore_errors=True)
+
+
 @click.command()
 @click.pass_context
 @click.argument(
@@ -543,6 +966,18 @@ def display_agent_directory_selection(
     default=False,
 )
 @click.option(
+    "--force",
+    is_flag=True,
+    help="Force overwrite all files (skip smart-merge comparison)",
+    default=False,
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview changes without applying them (requires saved metadata)",
+    default=False,
+)
+@click.option(
     "--skip-welcome",
     is_flag=True,
     hidden=True,
@@ -557,7 +992,6 @@ def enhance(
     deployment_target: str | None,
     cicd_runner: str | None,
     prototype: bool,
-    include_data_ingestion: bool,
     datastore: str | None,
     session_type: str | None,
     debug: bool,
@@ -568,9 +1002,13 @@ def enhance(
     agent_garden: bool,
     base_template: str | None,
     adk: bool,
+    force: bool,
+    dry_run: bool,
     agent_directory: str | None,
     skip_welcome: bool = False,
     google_api_key: str | None = None,
+    bq_analytics: bool = False,
+    agent_guidance_filename: str = "GEMINI.md",
 ) -> None:
     """Enhance your existing project with AI agent capabilities.
 
@@ -597,15 +1035,146 @@ def enhance(
     # Check for saved config and offer to reuse it
     # This handles both version locking AND reusing previous settings
     current_dir = pathlib.Path.cwd()
-    if check_and_execute_with_saved_config(current_dir, auto_approve=auto_approve):
-        # Successfully executed with saved config, exit this process
+
+    # Build CLI overrides from explicitly provided args to pass through
+    cli_override_args: dict[str, Any] = {}
+    if cicd_runner:
+        cli_override_args["cicd_runner"] = cicd_runner
+    if deployment_target:
+        cli_override_args["deployment_target"] = deployment_target
+    if session_type:
+        cli_override_args["session_type"] = session_type
+    if datastore:
+        cli_override_args["datastore"] = datastore
+    if base_template:
+        cli_override_args["base_template"] = base_template
+    if agent_directory:
+        cli_override_args["agent_directory"] = agent_directory
+    if prototype:
+        cli_override_args["prototype"] = prototype
+    if agent_guidance_filename != "GEMINI.md":
+        cli_override_args["agent_guidance_filename"] = agent_guidance_filename
+
+    # Smart-merge is the default when saved config exists (unless --force).
+    # Skip if running in subprocess with saved config (subprocess re-execution
+    # replays the same params, so smart-merge would compare identical templates).
+    is_saved_config_subprocess = os.environ.get(_ENV_USING_SAVED_CONFIG) == "1"
+    has_cli_overrides = any(
+        not _should_skip_config_value(v) for v in cli_override_args.values()
+    )
+
+    if dry_run and force:
+        console.print(
+            "[bold red]Error:[/bold red] --dry-run is not compatible with --force mode."
+        )
         return
+
+    if not force and not is_saved_config_subprocess:
+        project_config = get_project_asp_config(current_dir)
+        if project_config:
+            # Determine overrides source: CLI flags or interactive customize
+            overrides: dict[str, Any] | None = None
+            if has_cli_overrides:
+                overrides = cli_override_args
+            elif not auto_approve:
+                # Show saved config, prompt y/customize
+                saved_config_result = check_and_execute_with_saved_config(
+                    current_dir,
+                    auto_approve=auto_approve,
+                    cli_overrides=cli_override_args,
+                    dry_run=dry_run,
+                )
+                if saved_config_result is True:
+                    return  # "y" → subprocess executed
+                elif isinstance(saved_config_result, dict):
+                    overrides = saved_config_result
+                    # Even if no overrides (user kept all defaults), run
+                    # smart-merge so the file comparison is displayed.
+                # saved_config_result is False → no saved config (shouldn't happen
+                # since we already checked project_config above)
+            else:
+                # auto_approve with no CLI overrides
+                if dry_run:
+                    # Can't do anything non-interactively without overrides
+                    console.print(
+                        "[bold red]Error:[/bold red] --dry-run requires specifying what to change "
+                        "(e.g. --deployment-target cloud_run) or interactive customization."
+                    )
+                    return
+                # Use saved config subprocess
+                if check_and_execute_with_saved_config(
+                    current_dir,
+                    auto_approve=auto_approve,
+                    cli_overrides=cli_override_args,
+                ):
+                    return
+
+            # Run smart-merge: with overrides if provided, or same-config
+            # comparison if user kept all defaults (overrides is empty dict)
+            effective_overrides = overrides if overrides else None
+            if _run_smart_merge(
+                current_dir,
+                project_config,
+                effective_overrides,
+                auto_approve,
+                dry_run,
+            ):
+                return
+            # If smart-merge returned False, fall through to brute-force
+            console.print(
+                "[yellow]⚠️  Smart-merge failed, falling back to standard mode.[/yellow]"
+            )
+        elif dry_run:
+            console.print(
+                "[bold red]Error:[/bold red] --dry-run requires saved project metadata "
+                "(pyproject.toml with [tool.agent-starter-pack] section)."
+            )
+            return
+        elif has_cli_overrides:
+            console.print(
+                "[dim]No saved metadata found - using standard overwrite mode.[/dim]"
+            )
+    else:
+        # --force or subprocess re-execution
+        if not is_saved_config_subprocess:
+            # --force: try saved config subprocess
+            saved_config_result = check_and_execute_with_saved_config(
+                current_dir,
+                auto_approve=auto_approve,
+                cli_overrides=cli_override_args,
+                force=force,
+            )
+            if saved_config_result is True:
+                return
+            # If customize dict returned here (force mode), ignore it —
+            # force means brute-force overwrite
+        elif not force:
+            # Subprocess re-execution without --force: route through smart-merge
+            # so file changes are displayed and confirmation is asked
+            project_config = get_project_asp_config(current_dir)
+            if project_config:
+                if _run_smart_merge(
+                    current_dir,
+                    project_config,
+                    None,
+                    auto_approve,
+                    dry_run=False,
+                ):
+                    return
 
     # Setup debug logging if enabled
     if debug:
         logging.basicConfig(level=logging.DEBUG, force=True)
         console.print("> Debug mode enabled")
         logging.debug("Starting enhance command in debug mode")
+
+    # Default cicd_runner to "skip" for programmatic invocation
+    if auto_approve and not cicd_runner:
+        console.print(
+            "[yellow]Warning: --cicd-runner not specified with --auto-approve. "
+            "Defaulting to 'skip'. Use --cicd-runner to configure CI/CD.[/yellow]"
+        )
+        cicd_runner = "skip"
 
     # Handle --adk shortcut
     if adk:
@@ -653,7 +1222,7 @@ def enhance(
         console.print("[bold]What will happen:[/bold]")
         console.print("• New template files will be added to this directory")
         console.print("• Your existing files will be preserved")
-        console.print("• A backup will be created before any changes")
+        console.print("• A backup will be created in ~/.agent-starter-pack/backups/")
         console.print()
 
         if not click.confirm(
@@ -714,6 +1283,9 @@ def enhance(
                     f"✅ Selected base template: [cyan]{selected_base_template}[/cyan]"
                 )
                 console.print()
+        elif not base_template and auto_approve:
+            # Auto-select the detected base template when auto-approving
+            base_template = original_base_template_name
 
         # Reload config with potential base template override
         if cli_overrides.get("base_template"):
@@ -733,20 +1305,32 @@ def enhance(
     if template_path == pathlib.Path("."):
         current_dir = pathlib.Path.cwd()
 
-        # Detect if this is a Go project from base_template or config
+        # Detect if this is a Go, Java, or TypeScript project from base_template or config
         is_go_project = base_template and base_template.endswith("_go")
+        is_java_project = base_template and base_template.endswith("_java")
+        is_ts_project = base_template and base_template.endswith("_ts")
         asp_config = get_project_asp_config(current_dir)
-        if asp_config and asp_config.get("language") == "go":
-            is_go_project = True
+        if asp_config:
+            if asp_config.get("language") == "go":
+                is_go_project = True
+            elif asp_config.get("language") == "java":
+                is_java_project = True
+            elif asp_config.get("language") == "typescript":
+                is_ts_project = True
 
         # Determine agent directory: CLI param > config detection > language default
-        detected_agent_directory = "agent" if is_go_project else "app"
+        if is_go_project:
+            detected_agent_directory = "agent"
+        elif is_java_project:
+            detected_agent_directory = "src/main/java"
+        else:
+            detected_agent_directory = "app"
         if not agent_directory:  # Only try to detect if not provided via CLI
             # First check .asp.toml/pyproject.toml config
             config_agent_dir = asp_config.get("agent_directory") if asp_config else None
             if config_agent_dir and isinstance(config_agent_dir, str):
                 detected_agent_directory = config_agent_dir
-            elif not is_go_project:
+            elif not is_go_project and not is_java_project:
                 # For Python, also try to detect from hatch config
                 pyproject_path = current_dir / "pyproject.toml"
                 if pyproject_path.exists():
@@ -846,24 +1430,26 @@ def enhance(
                     console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
                     return
         else:
-            # Check for agent files (supports both Python and Go)
-            root_agent_yaml = agent_folder / "root_agent.yaml"
-            agent_py = agent_folder / "agent.py"
-            agent_go = agent_folder / "agent.go"
+            # Detect language for proper agent file handling
+            language = "python"  # default
+            if is_go_project:
+                language = "go"
+            elif is_java_project:
+                language = "java"
+            elif is_ts_project:
+                language = "typescript"
 
-            # Determine if this is a Go project (prioritize Python if both exist)
-            is_go = (base_template and base_template.endswith("_go")) or (
-                agent_go.exists()
-                and not agent_py.exists()
-                and not root_agent_yaml.exists()
-            )
+            lang_config = get_language_config(language)
             is_adk = base_template and "adk" in base_template.lower()
-            required_object = "root_agent" if is_adk else "agent"
+            required_var = lang_config.get("agent_variable", "root_agent")
 
-            if root_agent_yaml.exists():
+            # Find agent file using shared utility
+            agent_file = find_agent_file(current_dir, language, final_agent_directory)
+
+            if agent_file and agent_file.name == "root_agent.yaml":
                 # YAML config agent detected
                 console.print(
-                    f"✅ Found [cyan]/{final_agent_directory}/root_agent.yaml[/cyan] (YAML config agent)"
+                    f"✅ Found [cyan]{agent_file.relative_to(current_dir)}[/cyan] (YAML config agent)"
                 )
                 console.print(
                     "   An agent.py shim will be generated automatically for deployment compatibility."
@@ -872,87 +1458,56 @@ def enhance(
                     console.print(
                         "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/agents/agent-config/]ADK Agent Config guide[/link][/cyan]"
                     )
-            elif agent_go.exists():
-                # Go agent detected
+            elif agent_file:
+                # Agent file found
                 console.print(
-                    f"✅ Found [cyan]/{final_agent_directory}/agent.go[/cyan]"
-                )
-            elif agent_py.exists():
-                console.print(
-                    f"✅ Found [cyan]/{final_agent_directory}/agent.py[/cyan]"
+                    f"✅ Found [cyan]{agent_file.relative_to(current_dir)}[/cyan]"
                 )
 
-                try:
-                    content = agent_py.read_text(encoding="utf-8")
-
-                    # Look for the required object definition using static analysis
-                    patterns = [
-                        rf"^\s*{required_object}\s*=",  # assignment: root_agent = ...
-                        rf"^\s*def\s+{required_object}",  # function: def root_agent(...)
-                        rf"from\s+.*\s+import\s+.*{required_object}",  # import: from ... import root_agent
-                    ]
-
-                    found = any(
-                        re.search(pattern, content, re.MULTILINE)
-                        for pattern in patterns
-                    )
-
-                    if found:
-                        console.print(
-                            f"✅ Found '{required_object}' definition in {final_agent_directory}/agent.py"
-                        )
-                    else:
-                        console.print(
-                            f"⚠️  [yellow]Missing '{required_object}' variable in {final_agent_directory}/agent.py[/yellow]"
-                        )
-                        console.print(
-                            "   This variable should contain your main agent instance for deployment."
-                        )
-                        console.print(
-                            f"   Example: [cyan]{required_object} = YourAgentClass()[/cyan]"
-                        )
-                        # Show ADK docs link for ADK templates
-                        if is_adk:
-                            console.print(
-                                "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/get-started/quickstart/#agentpy]ADK agent.py guide[/link][/cyan]"
-                            )
-                        console.print()
-                        if not auto_approve:
-                            if not click.confirm(
-                                f"Continue enhancement? (You can add '{required_object}' later)",
-                                default=True,
-                            ):
-                                console.print(
-                                    "✋ [yellow]Enhancement cancelled.[/yellow]"
-                                )
-                                return
-
-                except Exception as e:
+                # Validate the agent file contains the required variable
+                is_valid, error_msg = validate_agent_file(agent_file, language)
+                if is_valid:
                     console.print(
-                        f"⚠️  [yellow]Warning: Could not read {final_agent_directory}/agent.py: {e}[/yellow]"
-                    )
-            else:
-                # Suggest the appropriate file based on context
-                if is_go:
-                    agent_file = "agent.go"
-                    console.print(
-                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.go not found[/yellow]"
-                    )
-                    console.print(
-                        f"   Create {final_agent_directory}/agent.go with your agent logic"
+                        f"✅ Found '{required_var}' definition in {agent_file.name}"
                     )
                 else:
-                    agent_file = "agent.py"
+                    console.print(f"⚠️  [yellow]{error_msg}[/yellow]")
                     console.print(
-                        f"⚠️  [yellow]Warning: {final_agent_directory}/agent.py not found[/yellow]"
+                        "   This variable should contain your main agent instance for deployment."
                     )
                     console.print(
-                        f"   Create {final_agent_directory}/agent.py with your agent logic and define: [cyan]{required_object} = your_agent_instance[/cyan]"
+                        f"   Example: [cyan]{required_var} = YourAgentClass()[/cyan]"
+                    )
+                    # Show ADK docs link for ADK templates
+                    if is_adk:
+                        console.print(
+                            "   📖 Learn more: [cyan][link=https://google.github.io/adk-docs/get-started/quickstart/#agentpy]ADK agent.py guide[/link][/cyan]"
+                        )
+                    console.print()
+                    if not auto_approve:
+                        if not click.confirm(
+                            f"Continue enhancement? (You can add '{required_var}' later)",
+                            default=True,
+                        ):
+                            console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
+                            return
+            else:
+                # No agent file found - suggest creating one
+                expected_file = lang_config.get("agent_file", "agent.py")
+                console.print(
+                    f"⚠️  [yellow]Warning: {expected_file} not found in {final_agent_directory}/[/yellow]"
+                )
+                console.print(
+                    f"   Create {final_agent_directory}/{expected_file} with your agent logic"
+                )
+                if language == "python":
+                    console.print(
+                        f"   and define: [cyan]{required_var} = your_agent_instance[/cyan]"
                     )
                 console.print()
                 if not auto_approve:
                     if not click.confirm(
-                        f"Continue enhancement? (An example {final_agent_directory}/{agent_file} will be created for you)",
+                        f"Continue enhancement? (An example {expected_file} will be created for you)",
                         default=True,
                     ):
                         console.print("✋ [yellow]Enhancement cancelled.[/yellow]")
@@ -977,7 +1532,6 @@ def enhance(
         deployment_target=deployment_target,
         cicd_runner=cicd_runner,
         prototype=prototype,
-        include_data_ingestion=include_data_ingestion,
         datastore=datastore,
         session_type=session_type,
         debug=debug,
@@ -995,4 +1549,6 @@ def enhance(
         skip_welcome=True,  # Skip welcome message since enhance shows its own
         cli_overrides=final_cli_overrides if final_cli_overrides else None,
         google_api_key=google_api_key,
+        bq_analytics=bq_analytics,
+        agent_guidance_filename=agent_guidance_filename,
     )

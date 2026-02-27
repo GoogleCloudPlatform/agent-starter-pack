@@ -151,6 +151,21 @@ base_template = "adk"
 name = "My Awesome Template"  # Optional: falls back to [project].name
 description = "Custom description"  # Optional: falls back to [project].description
 
+# Optional: Skill-ready metadata for intent routing and future skill generation
+skill_triggers = [
+  "build a customer support assistant",
+  "create a tool-using chatbot",
+]
+skill_workflow = [
+  "Define tools and model instruction",
+  "Wire agent runtime and local entrypoints",
+  "Test and package for deployment",
+]
+skill_inputs = ["User prompts", "Required API credentials"]
+skill_outputs = ["Structured agent responses"]
+skill_constraints = ["Requires API key configuration"]
+skill_references = ["docs/architecture.md", "notebooks/evaluation.ipynb"]
+
 [tool.agent-starter-pack.settings]
 deployment_targets = ["cloud_run", "agent_engine"]
 frontend_type = "None"
@@ -181,6 +196,23 @@ description = "A template for building chatbots"
 base_template = "adk"  # Override default
 # name and description will use [project] values
 ```
+
+### Skill Metadata Fields (Optional)
+
+Remote template authors can include optional skill metadata under `[tool.agent-starter-pack]`:
+
+- `skill_triggers`: list of user intents/phrases that should map to this template.
+- `skill_workflow`: ordered high-level steps for using or implementing the template.
+- `skill_inputs`: expected inputs (prompts, files, credentials, etc.).
+- `skill_outputs`: expected outputs/artifacts.
+- `skill_constraints`: guardrails, prerequisites, or known limitations.
+- `skill_references`: paths to supporting docs, notebooks, or specs.
+
+Validation rules:
+
+- Every skill field is optional.
+- If present, each field must be a list of strings.
+- Malformed values produce clear CLI validation errors (for invalid type) and warnings (for suspicious but parseable values like empty lists).
 
 ### Agent Directory Configuration
 

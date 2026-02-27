@@ -197,7 +197,17 @@ def list_agents(adk: bool, source: str | None) -> None:
     table.add_column("Number", style="dim", width=12)
     table.add_column("Name", style="bold")
     table.add_column("Description")
+    table.add_column("Skill Triggers", style="cyan")
 
     for i, (_, agent) in enumerate(agents.items()):
-        table.add_row(str(i + 1), agent["name"], agent["description"])
+        triggers = agent.get("skill_triggers", [])
+        triggers_preview = ", ".join(triggers[:2])
+        if len(triggers) > 2:
+            triggers_preview += ", ..."
+        table.add_row(
+            str(i + 1),
+            agent["name"],
+            agent["description"],
+            triggers_preview or "-",
+        )
     console.print(table)

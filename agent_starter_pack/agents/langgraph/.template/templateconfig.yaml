@@ -30,3 +30,19 @@ settings:
   tags: ["langgraph", "a2a"]
   frontend_type: "inspector"
 example_question: "What's the weather in San Francisco?"
+skill_triggers:
+  - "build langgraph workflow agent"
+  - "use a2a with langgraph"
+skill_workflow:
+  - "Model task flow as graph nodes and edges."
+  - "Integrate tools and optional A2A message handling."
+  - "Test graph execution and deployment configuration."
+skill_inputs:
+  - "User requests"
+  - "Optional A2A interactions"
+skill_outputs:
+  - "Structured workflow responses from graph execution"
+skill_constraints:
+  - "Requires LangGraph-compatible dependencies"
+skill_references:
+  - "docs/guide/template-config-reference.md"

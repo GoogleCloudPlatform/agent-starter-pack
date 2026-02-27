@@ -23,3 +23,19 @@ settings:
   tags: ["adk", "go", "a2a"]
   frontend_type: "None"
   agent_directory: "agent"
+skill_triggers:
+  - "build go based adk agent"
+  - "create lightweight go agent"
+skill_workflow:
+  - "Define agent behavior and tools in Go."
+  - "Compile and validate local execution path."
+  - "Prepare deployment assets for cloud run."
+skill_inputs:
+  - "User prompt"
+  - "Service credentials for called tools"
+skill_outputs:
+  - "Agent response produced by Go ADK runtime"
+skill_constraints:
+  - "Cloud Run deployment target only"
+skill_references:
+  - "docs/guide/template-config-reference.md"

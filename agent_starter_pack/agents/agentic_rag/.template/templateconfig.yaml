@@ -30,3 +30,19 @@ settings:
   ]
   tags: ["adk"]
   frontend_type: "None"
+skill_triggers:
+  - "answer docs with rag"
+  - "build document qa assistant"
+skill_workflow:
+  - "Ingest source documents into configured datastore."
+  - "Retrieve relevant chunks for each user query."
+  - "Generate grounded answer with cited context."
+skill_inputs:
+  - "Document corpus"
+  - "User query"
+skill_outputs:
+  - "Grounded answer using retrieved context"
+skill_constraints:
+  - "Requires data ingestion/session configuration"
+skill_references:
+  - "docs/guide/template-config-reference.md"

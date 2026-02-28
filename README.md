@@ -129,7 +129,7 @@ Visit our [documentation site](https://googlecloudplatform.github.io/agent-start
 
 - **[From Demo to Production with Agent Starter Pack](https://www.youtube.com/watch?v=mtJMYgJkTt8)**: Learn how the Agent Starter Pack acts as an Automated Architect, building the professional infrastructure for your AI project in seconds. Covers why most AI projects fail at deployment and how ASP automates Terraform, CI/CD, and observability.
 
-- **[6-minute introduction](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791)** (April 2024): Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
+- **[6-minute introduction](https://www.youtube.com/live/eZ-8UQ_t4YM?feature=shared&t=2791)** (April 2025): Explaining the Agent Starter Pack and demonstrating its key features. Part of the Kaggle GenAI intensive course.
 
 Looking for more examples and resources for Generative AI on Google Cloud? Check out the [GoogleCloudPlatform/generative-ai](https://github.com/GoogleCloudPlatform/generative-ai) repository for notebooks, code samples, and more!
 

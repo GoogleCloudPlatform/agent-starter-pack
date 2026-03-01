@@ -3,8 +3,7 @@
 ## Reference Documentation
 {%- if cookiecutter.is_adk %}
 
-If you have ADK skills available (`/adk-cheatsheet`, `/adk-eval-guide`, `/adk-deploy-guide`),
-use those instead of fetching the URLs below.
+If you have ADK skills available, use those instead of fetching the URLs below.
 
 Otherwise, fetch these resources as needed:
 - **ADK Cheatsheet**: https://raw.githubusercontent.com/GoogleCloudPlatform/agent-starter-pack/refs/heads/main/agent_starter_pack/resources/docs/adk-cheatsheet.md — Agent definitions, tools, callbacks, orchestration

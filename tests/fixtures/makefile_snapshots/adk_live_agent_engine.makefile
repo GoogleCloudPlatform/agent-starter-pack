@@ -86,7 +86,7 @@ playground-dev:
 # ==============================================================================
 
 # Deploy the agent remotely
-# Usage: make deploy [AGENT_IDENTITY=true] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
+# Usage: make deploy [AGENT_IDENTITY=true] [SECRETS="KEY=SECRET_ID,..."] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
 deploy:
 	# Export dependencies to requirements file using uv export.
 	(uv export --no-hashes --no-header --no-dev --no-emit-project --no-annotate > test_adk_live/app_utils/.requirements.txt 2>/dev/null || \
@@ -96,7 +96,8 @@ deploy:
 		--entrypoint-module=test_adk_live.agent_engine_app \
 		--entrypoint-object=agent_engine \
 		--requirements-file=test_adk_live/app_utils/.requirements.txt \
-		$(if $(AGENT_IDENTITY),--agent-identity)
+		$(if $(AGENT_IDENTITY),--agent-identity) \
+		$(if $(filter command line,$(origin SECRETS)),--set-secrets="$(SECRETS)")
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy

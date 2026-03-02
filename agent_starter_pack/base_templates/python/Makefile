@@ -268,7 +268,7 @@ build-inspector-if-needed:
 {%- elif cookiecutter.deployment_target == 'gke' %}
 # Usage: make deploy [IMAGE_TAG=mytag] - Build and deploy to GKE cluster
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
-# Usage: make deploy [AGENT_IDENTITY=true] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
+# Usage: make deploy [AGENT_IDENTITY=true] [SECRETS="KEY=SECRET_ID,..."] - Set AGENT_IDENTITY=true to enable per-agent IAM identity (Preview)
 {%- endif %}
 deploy:
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
@@ -327,7 +327,8 @@ deploy:
 		--entrypoint-module={{cookiecutter.agent_directory}}.agent_engine_app \
 		--entrypoint-object=agent_engine \
 		--requirements-file={{cookiecutter.agent_directory}}/app_utils/.requirements.txt \
-		$(if $(AGENT_IDENTITY),--agent-identity)
+		$(if $(AGENT_IDENTITY),--agent-identity) \
+		$(if $(filter command line,$(origin SECRETS)),--set-secrets="$(SECRETS)")
 {%- endif %}
 
 # Alias for 'make deploy' for backward compatibility

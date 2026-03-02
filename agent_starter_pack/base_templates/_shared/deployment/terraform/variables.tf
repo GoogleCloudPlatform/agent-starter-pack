@@ -56,7 +56,9 @@ variable "app_sa_roles" {
   default = [
 
     "roles/aiplatform.user",
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "roles/discoveryengine.editor",
+{%- endif %}
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/storage.admin",
@@ -81,9 +83,14 @@ variable "cicd_roles" {
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "roles/run.invoker",
 {%- endif %}
+{%- if cookiecutter.deployment_target == 'gke' %}
+    "roles/container.developer",
+{%- endif %}
     "roles/storage.admin",
     "roles/aiplatform.user",
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "roles/discoveryengine.editor",
+{%- endif %}
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/artifactregistry.writer",
@@ -97,7 +104,10 @@ variable "cicd_sa_deployment_required_roles" {
   default = [
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     "roles/run.developer",
-{%- endif %}    
+{%- endif %}
+{%- if cookiecutter.deployment_target == 'gke' %}
+    "roles/container.developer",
+{%- endif %}
     "roles/iam.serviceAccountUser",
     "roles/aiplatform.user",
     "roles/storage.admin"

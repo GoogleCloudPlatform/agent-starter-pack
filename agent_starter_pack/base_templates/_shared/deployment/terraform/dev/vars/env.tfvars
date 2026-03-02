@@ -2,7 +2,7 @@
 project_name = "{{ cookiecutter.project_name | replace('_', '-') }}"
 
 # Your Dev Google Cloud project id
-dev_project_id = "your-dev-project-id"
+dev_project_id = "{{ cookiecutter.google_cloud_project }}"
 
 # The Google Cloud region you will use to deploy the infrastructure
 region = "us-central1"

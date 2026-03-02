@@ -73,6 +73,25 @@ resource "google_project_iam_member" "cicd_run_invoker_artifact_registry_reader"
 }
 
 {% endif %}
+{% if cookiecutter.deployment_target == 'gke' %}
+# Allow GKE nodes to pull containers from CICD project Artifact Registry
+resource "google_project_iam_member" "cicd_gke_artifact_registry_reader" {
+  for_each = local.deploy_project_ids
+  project  = var.cicd_runner_project_id
+
+  role       = "roles/artifactregistry.reader"
+  member     = "serviceAccount:${data.google_project.projects[each.key].number}-compute@developer.gserviceaccount.com"
+  depends_on = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
+}
+
+# Allow GKE Kubernetes ServiceAccount to impersonate the application GCP SA via Workload Identity
+resource "google_service_account_iam_member" "workload_identity_binding" {
+  for_each           = local.deploy_project_ids
+  service_account_id = google_service_account.app_sa[each.key].name
+  role               = "roles/iam.workloadIdentityUser"
+  member             = "serviceAccount:${each.value}.svc.id.goog[${var.project_name}/${var.project_name}]"
+}
+{% endif %}
 
 
 # Special assignment: Allow the CICD SA to create tokens
@@ -82,7 +101,7 @@ resource "google_service_account_iam_member" "cicd_run_invoker_token_creator" {
   member             = "serviceAccount:${resource.google_service_account.cicd_runner_sa.email}"
   depends_on         = [resource.google_project_service.cicd_services, resource.google_project_service.deploy_project_services]
 }
-# Special assignment: Allow the CICD SA to impersonate himself for trigger creation
+# Special assignment: Allow the CICD SA to impersonate itself for trigger creation
 resource "google_service_account_iam_member" "cicd_run_invoker_account_user" {
   service_account_id = google_service_account.cicd_runner_sa.name
   role               = "roles/iam.serviceAccountUser"

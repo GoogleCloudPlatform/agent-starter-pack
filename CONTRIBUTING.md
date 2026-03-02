@@ -20,7 +20,7 @@ Agent Starter Pack is a **template generator**, not a runtime framework. The CLI
 Templates are processed in order, with later layers overriding earlier ones:
 
 1. **Base Templates** (`agent_starter_pack/base_templates/<language>/`) - Core Jinja scaffolding (Python, Go, more coming)
-2. **Deployment Targets** (`agent_starter_pack/deployment_targets/`) - Environment-specific overrides (cloud_run, agent_engine)
+2. **Deployment Targets** (`agent_starter_pack/deployment_targets/`) - Environment-specific overrides (cloud_run, gke, agent_engine)
 3. **Frontend Types** (`agent_starter_pack/frontends/`) - UI-specific files
 4. **Agent Templates** (`agent_starter_pack/agents/*/`) - Agent-specific logic and configurations
 

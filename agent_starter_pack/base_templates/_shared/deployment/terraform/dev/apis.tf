@@ -16,16 +16,23 @@ locals {
   services = [
     "aiplatform.googleapis.com",
     "cloudbuild.googleapis.com",
+{%- if cookiecutter.deployment_target != 'gke' %}
     "run.googleapis.com",
+{%- endif %}
     "bigquery.googleapis.com",
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "discoveryengine.googleapis.com",
+{%- endif %}
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
-    "bigquery.googleapis.com",
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
+{%- if cookiecutter.deployment_target == "gke" %}
+    "compute.googleapis.com",
+    "container.googleapis.com",
+{%- endif %}
 {%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
     "vectorsearch.googleapis.com",
 {%- endif %}

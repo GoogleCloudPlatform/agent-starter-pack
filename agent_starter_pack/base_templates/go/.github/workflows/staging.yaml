@@ -56,10 +56,12 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %} \
+          docker build -t {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}{%- if cookiecutter.deployment_target == 'gke' %}:{% raw %}${{ github.sha }}{% endraw %}{%- endif %} \
             --build-arg COMMIT_SHA={% raw %}${{ github.sha }}{% endraw %} \
             .
-          docker push {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}
+          docker push {% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}{%- if cookiecutter.deployment_target == 'gke' %}:{% raw %}${{ github.sha }}{% endraw %}{%- endif %}
+
+      {%- if cookiecutter.deployment_target == 'cloud_run' %}
 
       - name: Deploy to Cloud Run (Staging)
         run: |
@@ -97,6 +99,51 @@ jobs:
         env:
           _ID_TOKEN: {% raw %}${{ steps.id-token.outputs.token }}{% endraw %}
           _STAGING_URL: {% raw %}${{ steps.staging-url.outputs.url }}{% endraw %}
+
+      {%- elif cookiecutter.deployment_target == 'gke' %}
+
+      - name: Get GKE Credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: {% raw %}${{ vars.GKE_CLUSTER_NAME }}{% endraw %}
+          location: {% raw %}${{ vars.REGION }}{% endraw %}
+          project_id: {% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %}
+
+      - name: Deploy to GKE (Staging)
+        run: |
+          kubectl apply -f deployment/k8s/hpa.yaml -f deployment/k8s/pdb.yaml
+          kubectl set image deployment/{{cookiecutter.project_name}} \
+            {{cookiecutter.project_name}}={% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %} \
+            --namespace={{cookiecutter.project_name}}
+          EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} --namespace={{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          [ -n "$EXTERNAL_IP" ] && kubectl set env deployment/{{cookiecutter.project_name}} APP_URL=http://$EXTERNAL_IP:8080 --namespace={{cookiecutter.project_name}}
+          kubectl rollout status deployment/{{cookiecutter.project_name}} \
+            --namespace={{cookiecutter.project_name}} \
+            --timeout=300s
+
+      - name: Get Staging URL
+        id: staging-url
+        run: |
+          EXTERNAL_IP=$(kubectl get svc {{cookiecutter.project_name}} \
+            --namespace={{cookiecutter.project_name}} \
+            -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+          URL="http://${EXTERNAL_IP}:8080"
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Run Load Tests
+        run: |
+          go test -v -tags=load ./e2e/load_test/... \
+            -staging-url={% raw %}${{ steps.staging-url.outputs.url }}{% endraw %} \
+            -duration=30s -users=10 -ramp=0.5
+        env:
+          _STAGING_URL: {% raw %}${{ steps.staging-url.outputs.url }}{% endraw %}
+
+      {%- endif %}
 
   call_production_workflow:
     needs: deploy_and_test_staging

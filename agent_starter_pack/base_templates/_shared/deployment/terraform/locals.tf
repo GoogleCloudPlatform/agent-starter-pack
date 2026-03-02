@@ -15,10 +15,14 @@
 locals {
   cicd_services = [
     "cloudbuild.googleapis.com",
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "discoveryengine.googleapis.com",
+{%- endif %}
     "aiplatform.googleapis.com",
     "serviceusage.googleapis.com",
+{%- if cookiecutter.language == "python" %}
     "bigquery.googleapis.com",
+{%- endif %}
     "cloudresourcemanager.googleapis.com",
     "cloudtrace.googleapis.com",
     "telemetry.googleapis.com",
@@ -32,11 +36,21 @@ locals {
 
   deploy_project_services = [
     "aiplatform.googleapis.com",
+{%- if cookiecutter.deployment_target != 'gke' %}
     "run.googleapis.com",
+{%- endif %}
+{%- if cookiecutter.deployment_target == "gke" %}
+    "compute.googleapis.com",
+    "container.googleapis.com",
+{%- endif %}
+{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "discoveryengine.googleapis.com",
+{%- endif %}
     "cloudresourcemanager.googleapis.com",
     "iam.googleapis.com",
+{%- if cookiecutter.language == "python" %}
     "bigquery.googleapis.com",
+{%- endif %}
     "serviceusage.googleapis.com",
     "logging.googleapis.com",
     "cloudtrace.googleapis.com",

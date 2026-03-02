@@ -37,7 +37,7 @@ Name of the agent directory (overrides template default, usually `app`). This de
 
 ### Other Shared Options
 - `--name, -n` - Project name (defaults to current directory name)
-- `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`)
+- `--deployment-target, -d` - Deployment target (`agent_engine`, `cloud_run`, `gke`)
 - `--datastore, -ds` - Datastore type for data ingestion
 - `--session-type` - Session storage type
 - `--google-api-key, --api-key, -k` - Use Google AI Studio API key (or placeholder if no value provided)

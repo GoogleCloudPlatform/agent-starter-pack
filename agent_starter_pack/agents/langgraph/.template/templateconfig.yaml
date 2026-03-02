@@ -16,7 +16,7 @@ display_name: "custom_a2a"
 description: "Bring your own framework, A2A-ready"
 settings:
   requires_data_ingestion: false
-  deployment_targets: ["agent_engine", "cloud_run", "none"]
+  deployment_targets: ["agent_engine", "cloud_run", "gke", "none"]
   extra_dependencies: [
     "langchain-google-genai>=4.0.0",
     "langchain~=1.0.7",

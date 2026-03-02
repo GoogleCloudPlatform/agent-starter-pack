@@ -382,13 +382,13 @@ def fetch_agent_card_from_url(url: str, deployment_target: str) -> dict | None:
         if deployment_target == "agent_engine":
             access_token = get_access_token()
             headers["Authorization"] = f"Bearer {access_token}"
-        elif deployment_target == "cloud_run":
+        elif deployment_target in ("cloud_run", "gke"):
             identity_token = get_identity_token()
             headers["Authorization"] = f"Bearer {identity_token}"
         else:
             raise ValueError(
                 f"Unknown deployment target: {deployment_target}. "
-                f"Expected 'agent_engine' or 'cloud_run'"
+                f"Expected 'agent_engine', 'cloud_run', or 'gke'"
             )
 
         response = requests.get(url, headers=headers, timeout=10)
@@ -1309,8 +1309,8 @@ def register_agent(
 @click.option(
     "--deployment-target",
     envvar="DEPLOYMENT_TARGET",
-    type=click.Choice(["agent_engine", "cloud_run"], case_sensitive=False),
-    help="Deployment target (agent_engine or cloud_run).",
+    type=click.Choice(["agent_engine", "cloud_run", "gke"], case_sensitive=False),
+    help="Deployment target (agent_engine, cloud_run, or gke).",
 )
 @click.option(
     "--project-number",

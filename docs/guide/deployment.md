@@ -80,14 +80,14 @@ The deployment uses Terraform variables that need to be configured for your envi
 - **`host_connection_name`**: Name for Cloud Build connection (default: auto-generated)
 
 ### Service Account Permissions
-- **`cloud_run_app_roles`** / **`agentengine_sa_roles`**: Roles for the application service account
+- **`app_sa_roles`**: Roles for the application service account
 - **`cicd_roles`**: Roles for CI/CD runner service account
 - **`cicd_sa_deployment_required_roles`**: Deployment roles for staging/prod projects
 
 ### CI/CD Provider Specific
 For **Cloud Build**:
 - **`github_app_installation_id`**: GitHub App Installation ID
-- **`github_pat`** / **`github_pat_secret_id`**: GitHub Personal Access Token
+- **`github_pat_secret_id`**: GitHub Personal Access Token Secret ID
 - **`create_cb_connection`**: Whether to create new Cloud Build connection
 
 For **GitHub Actions**:

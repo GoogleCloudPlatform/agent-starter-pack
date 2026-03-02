@@ -54,6 +54,13 @@ resource "google_storage_bucket_iam_member" "telemetry_connection_access" {
 # Dedicated Cloud Logging Bucket for GenAI Telemetry
 # ====================================================================
 
+# Wait for the Logging API to fully propagate after enablement
+resource "time_sleep" "wait_for_logging_api" {
+  create_duration = "30s"
+
+  depends_on = [google_project_service.services]
+}
+
 # Create a custom Cloud Logging bucket for GenAI telemetry logs with long-term retention
 resource "google_logging_project_bucket_config" "genai_telemetry_bucket" {
   project          = var.dev_project_id
@@ -63,7 +70,7 @@ resource "google_logging_project_bucket_config" "genai_telemetry_bucket" {
   enable_analytics = true  # Required for linked datasets
   description      = "Dedicated Cloud Logging bucket for ${var.project_name} GenAI telemetry with 10 year retention"
 
-  depends_on = [google_project_service.services]
+  depends_on = [time_sleep.wait_for_logging_api]
 }
 
 # Log sink to route only GenAI telemetry logs to the dedicated bucket

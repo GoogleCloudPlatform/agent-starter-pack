@@ -28,7 +28,7 @@ Template processing follows this hierarchy (later layers override earlier ones):
 | Layer | Directory | Purpose |
 |-------|-----------|---------|
 | 1. Base | `agent_starter_pack/base_templates/<language>/` | Core Jinja scaffolding (Python, Go, more coming) |
-| 2. Deployment | `agent_starter_pack/deployment_targets/` | Environment overrides (cloud_run, agent_engine) |
+| 2. Deployment | `agent_starter_pack/deployment_targets/` | Environment overrides (cloud_run, gke, agent_engine) |
 | 3. Frontend | `agent_starter_pack/frontends/` | UI-specific files |
 | 4. Agent | `agent_starter_pack/agents/*/` | Agent-specific logic and configurations |
 
@@ -54,7 +54,8 @@ agent_starter_pack/
 │   └── go/                    # Go project template
 ├── deployment_targets/        # Environment-specific overrides
 │   ├── agent_engine/          # Agent Engine deployment
-│   └── cloud_run/             # Cloud Run deployment
+│   ├── cloud_run/             # Cloud Run deployment
+│   └── gke/                   # GKE Autopilot deployment
 ├── frontends/                 # UI templates
 └── cli/                       # CLI implementation
     ├── commands/              # create, setup-cicd, enhance, etc.
@@ -368,7 +369,7 @@ some_code()
 | Dimension | Options |
 |-----------|---------|
 | Agents | adk, adk_a2a, adk_go, adk_live, agentic_rag, langgraph |
-| Deployments | cloud_run, agent_engine |
+| Deployments | cloud_run, gke, agent_engine |
 | Session types | in_memory, cloud_sql, agent_engine |
 | Features | data_ingestion, frontend_type |
 
@@ -402,8 +403,14 @@ _TEST_AGENT_COMBINATION="adk,agent_engine" make lint-templated-agents
 _TEST_AGENT_COMBINATION="adk_live,agent_engine" make lint-templated-agents
 _TEST_AGENT_COMBINATION="langgraph,agent_engine" make lint-templated-agents
 
+# GKE combinations (Python)
+_TEST_AGENT_COMBINATION="adk,gke,--session-type,in_memory" make lint-templated-agents
+
 # Go template testing
 _TEST_AGENT_COMBINATION="adk_go,cloud_run" make lint-templated-agents
+
+# Go template testing (GKE)
+_TEST_AGENT_COMBINATION="adk_go,gke" make lint-templated-agents
 
 # With session type variations
 _TEST_AGENT_COMBINATION="adk,cloud_run,--session-type,agent_engine" make lint-templated-agents
@@ -662,6 +669,9 @@ uv run agent-starter-pack create test-$(date +%s) -p -s -y -d agent_engine --out
 
 # Cloud Run with session type
 uv run agent-starter-pack create test-$(date +%s) -p -s -y -d cloud_run --session-type in_memory --output-dir target
+
+# GKE with session type
+uv run agent-starter-pack create test-$(date +%s) -p -s -y -d gke --session-type in_memory --output-dir target
 
 # Full project with CI/CD
 uv run agent-starter-pack create test-$(date +%s) -s -y -d agent_engine --cicd-runner google_cloud_build --output-dir target

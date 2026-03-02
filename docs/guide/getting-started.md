@@ -31,7 +31,7 @@ agent-starter-pack create
 
 No matter which method you choose, the `create` command will:
 *   Let you choose an agent template (e.g., `adk`, `adk_go`, `adk_ts`, `agentic_rag`).
-*   Let you select a deployment target (e.g., `cloud_run`, `agent_engine`).
+*   Let you select a deployment target (e.g., `cloud_run`, `gke`, `agent_engine`).
 *   Generate a complete project structure (backend, optional frontend, deployment infra).
 
 **Examples:**
@@ -100,7 +100,7 @@ Quick reference for all available commands.
 
 | Command | What It Does |
 |---------|--------------|
-| `make deploy` | **Deploy your agent to Google Cloud** (Agent Engine or Cloud Run) in one command |
+| `make deploy` | **Deploy your agent to Google Cloud** (Agent Engine, Cloud Run, or GKE) in one command |
 | `make setup-dev-env` | **Provision infrastructure** using Terraform |
 | `make register-gemini-enterprise` | **Integrate with Gemini Enterprise** - make your agent available to your org |
 

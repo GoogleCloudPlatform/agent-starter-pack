@@ -46,8 +46,9 @@ If omitted, you'll see an interactive list of available agents.
 
 ### `--deployment-target`, `-d` TARGET
 Deployment target for your agent:
-- `cloud_run` - Deploy to Google Cloud Run
-- `agent_engine` - Deploy to Google Cloud Agent Engine
+- `cloud_run` - Deploy to Google Cloud Run (serverless containers)
+- `gke` - Deploy to Google Kubernetes Engine (Autopilot)
+- `agent_engine` - Deploy to Google Cloud Agent Engine (managed platform)
 
 ### `--cicd-runner` RUNNER
 CI/CD runner to use:
@@ -81,7 +82,7 @@ Type of datastore for data ingestion. Automatically enables data ingestion when 
 - `cloud_sql`
 
 ### `--session-type` TYPE
-Session storage type (for Cloud Run deployment):
+Session storage type (for Cloud Run and GKE deployments):
 - `in_memory` - Store sessions in memory
 - `cloud_sql` - Store sessions in Cloud SQL (PostgreSQL)
 - `agent_engine` - Use Agent Engine session management

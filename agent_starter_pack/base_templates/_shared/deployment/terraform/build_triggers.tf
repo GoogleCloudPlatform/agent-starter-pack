@@ -79,6 +79,10 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     _CONTAINER_NAME                = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
+{%- elif cookiecutter.deployment_target == 'gke' %}
+    _CONTAINER_NAME                = var.project_name
+    _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
+    _GKE_CLUSTER_NAME              = "${var.project_name}-staging"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 {%- endif %}
 {%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
@@ -125,6 +129,10 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
 {%- if cookiecutter.deployment_target == 'cloud_run' %}
     _CONTAINER_NAME              = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
+{%- elif cookiecutter.deployment_target == 'gke' %}
+    _CONTAINER_NAME                = var.project_name
+    _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
+    _GKE_CLUSTER_NAME              = "${var.project_name}-prod"
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 {%- endif %}
 {%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}

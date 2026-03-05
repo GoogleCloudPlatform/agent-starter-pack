@@ -152,10 +152,10 @@ def print_deployment_success(
         )
         print(f"Service Account: {default_sa}")
 {%- if cookiecutter.is_adk and not cookiecutter.is_adk_live and not cookiecutter.is_a2a %}
-    playground_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}/playground?project={project}"
+    playground_url = f"https://console.cloud.google.com/vertex-ai/agents/agent-engines/locations/{location}/agent-engines/{agent_engine_id}/playground?project={project}"
     print(f"\n📊 Open Console Playground: {playground_url}\n")
 {%- else %}
-    console_url = f"https://console.cloud.google.com/vertex-ai/agents/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
+    console_url = f"https://console.cloud.google.com/vertex-ai/agents/agent-engines/locations/{location}/agent-engines/{agent_engine_id}?project={project}"
     print(f"\n📊 View in Console: {console_url}\n")
 {%- endif %}
 

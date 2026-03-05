@@ -726,30 +726,37 @@ def create(
 
         final_deployment = deployment_target
         if not final_deployment:
-            available_targets = get_deployment_targets(
-                deployment_agent_name, remote_config=remote_config
-            )
-            if not available_targets:
-                raise click.ClickException(
-                    f"Error: No deployment targets available for agent '{deployment_agent_name}'."
-                )
-            # Auto-select if only one target available or in auto-approve mode
-            if len(available_targets) == 1:
-                final_deployment = available_targets[0]
+            if prototype:
+                final_deployment = "none"
                 console.print(
-                    f"Info: Using '{final_deployment}' (only available deployment target for this agent).",
-                    style="yellow",
-                )
-            elif auto_approve:
-                final_deployment = available_targets[0]
-                console.print(
-                    f"Info: --deployment-target not specified. Defaulting to '{final_deployment}' in auto-approve mode.",
+                    "Info: Prototype mode: using deployment_target='none'.",
                     style="yellow",
                 )
             else:
-                final_deployment = prompt_deployment_target(
+                available_targets = get_deployment_targets(
                     deployment_agent_name, remote_config=remote_config
                 )
+                if not available_targets:
+                    raise click.ClickException(
+                        f"Error: No deployment targets available for agent '{deployment_agent_name}'."
+                    )
+                # Auto-select if only one target available or in auto-approve mode
+                if len(available_targets) == 1 or auto_approve:
+                    final_deployment = available_targets[0]
+                    if len(available_targets) == 1:
+                        console.print(
+                            f"Info: Using '{final_deployment}' (only available deployment target for this agent).",
+                            style="yellow",
+                        )
+                    else:
+                        console.print(
+                            f"Info: --deployment-target not specified. Defaulting to '{final_deployment}' in auto-approve mode.",
+                            style="yellow",
+                        )
+                else:
+                    final_deployment = prompt_deployment_target(
+                        deployment_agent_name, remote_config=remote_config
+                    )
         if debug:
             logging.debug(f"Selected deployment target: {final_deployment}")
 

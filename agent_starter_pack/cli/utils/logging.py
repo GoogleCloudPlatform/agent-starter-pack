@@ -55,7 +55,7 @@ def _build_banner(line1: str, version: str, motto: str) -> Panel:
     logo = (
         f"[{a}]▄▀▄[/] [{s}]█▀▀[/] [{p}]█▀▄[/]\n"
         f"[{a}]█▀█[/] [{s}]▀▀█[/] [{p}]█▀▀[/]\n"
-        f"[{s}]▀ ▀[/] [{s}]▀▀▀[/] [{p}]▀[/]  "
+        f"[{a}]▀ ▀[/] [{s}]▀▀▀[/] [{p}]▀[/]  "
     )
     right_text = f' [italic dim]"{motto}"[/]\n\n {line1}'
     table = Table(

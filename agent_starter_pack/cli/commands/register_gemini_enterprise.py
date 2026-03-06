@@ -34,6 +34,7 @@ from agent_starter_pack.cli.utils.gcp import (
     get_user_agent,
     get_x_goog_api_client_header,
 )
+from agent_starter_pack.cli.utils.logging import display_welcome_banner
 
 # TOML parser - use standard library for Python 3.11+, fallback to tomli
 if sys.version_info >= (3, 11):
@@ -1354,7 +1355,7 @@ def register_gemini_enterprise(
     This command can run interactively or accept all parameters via command-line options.
     If key parameters are missing, it will prompt the user for input.
     """
-    console.print("\n🤖 Agent → Gemini Enterprise Registration\n")
+    display_welcome_banner(register_mode=True, quiet=yes)
 
     # Read metadata file once to determine agent type and deployment target
     metadata = None

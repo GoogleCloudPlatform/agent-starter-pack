@@ -335,7 +335,7 @@ def create(
 
         # Display welcome banner (unless skipped)
         if not skip_welcome:
-            display_welcome_banner(agent, agent_garden=agent_garden)
+            display_welcome_banner(agent, agent_garden=agent_garden, quiet=auto_approve)
 
         # Handle missing project name
         if not project_name:

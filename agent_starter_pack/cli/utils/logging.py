@@ -12,20 +12,77 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.metadata
+import random
 import sys
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, TypeVar, cast
 
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 
 console = Console()
+
+MOTTOS = [
+    "Your agents are cleared for takeoff.",
+    "Launching agents into production, one deploy at a time.",
+    "Houston, we have an agent.",
+    "To production... and beyond!",
+    "One small step for code, one giant leap for agents.",
+    "Fueling your AI agents with Google Cloud.",
+    "3... 2... 1... Agent deployed!",
+    "The sky is not the limit when you have agents.",
+]
 
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+def _get_version() -> str:
+    """Get the package version, with fallback to 'dev'."""
+    try:
+        return importlib.metadata.version("agent-starter-pack")
+    except Exception:
+        return "dev"
+
+
+def _build_banner(line1: str, version: str, motto: str) -> Panel:
+    """Build a compact banner panel with ASP ASCII art logo."""
+    a = "bold blue"
+    s = "bold cyan"
+    p = "bold magenta"
+    logo = (
+        f"[{a}]▄▀▄[/] [{s}]█▀▀[/] [{p}]█▀▄[/]\n"
+        f"[{a}]█▀█[/] [{s}]▀▀█[/] [{p}]█▀▀[/]\n"
+        f"[{s}]▀ ▀[/] [{s}]▀▀▀[/] [{p}]▀[/]  "
+    )
+    right_text = f' [italic dim]"{motto}"[/]\n\n {line1}'
+    table = Table(
+        show_header=False,
+        show_edge=False,
+        show_lines=False,
+        padding=0,
+        pad_edge=False,
+    )
+    table.add_column(width=12)
+    table.add_column()
+    table.add_row(logo, right_text)
+    return Panel(
+        table,
+        title=f"Agent Starter Pack v{version}",
+        border_style="blue",
+        padding=(1, 2),
+    )
+
+
 def display_welcome_banner(
-    agent: str | None = None, enhance_mode: bool = False, agent_garden: bool = False
+    agent: str | None = None,
+    enhance_mode: bool = False,
+    agent_garden: bool = False,
+    setup_cicd_mode: bool = False,
+    register_mode: bool = False,
+    quiet: bool = False,
 ) -> None:
     """Display the Agent Starter Pack welcome banner.
 
@@ -33,47 +90,62 @@ def display_welcome_banner(
         agent: Optional agent specification to customize the welcome message
         enhance_mode: Whether this is for enhancement mode
         agent_garden: Whether this deployment is from Agent Garden
+        setup_cicd_mode: Whether this is for CI/CD setup
+        register_mode: Whether this is for Gemini Enterprise registration
+        quiet: If True, skip the banner (e.g. in auto-approve/programmatic mode)
     """
+    version = _get_version()
+    if quiet:
+        console.print(f"[bold blue]Agent Starter Pack[/] [dim]v{version}[/]")
+        return
+
+    motto = random.choice(MOTTOS)
+
     if enhance_mode:
-        console.print(
-            "\n=== Google Cloud Agent Starter Pack 🚀===",
-            style="bold blue",
+        panel = _build_banner(
+            line1="Enhancing your project with production-ready capabilities!",
+            version=version,
+            motto=motto,
         )
-        console.print(
-            "Enhancing your existing project with production-ready agent capabilities!\n",
-            style="green",
+    elif setup_cicd_mode:
+        panel = _build_banner(
+            line1="Setting up CI/CD infrastructure for your agent!",
+            version=version,
+            motto=motto,
+        )
+    elif register_mode:
+        panel = _build_banner(
+            line1="Registering your agent to Gemini Enterprise!",
+            version=version,
+            motto=motto,
         )
     elif agent_garden:
-        console.print(
-            "\n=== Welcome to Agent Garden! 🌱 ===",
-            style="bold blue",
-        )
-        console.print(
-            "Powered by [link=https://goo.gle/agent-starter-pack]Google Cloud - Agent Starter Pack [/link]\n",
-        )
-        console.print(
-            "This tool will help you deploy production-ready AI agents from Agent Garden to Google Cloud!\n"
+        panel = _build_banner(
+            line1=(
+                "Powered by [link=https://goo.gle/agent-starter-pack]"
+                "Google Cloud - Agent Starter Pack[/link]"
+            ),
+            version=version,
+            motto=motto,
         )
     elif agent and agent.startswith("adk@"):
-        console.print(
-            "\n=== Welcome to [link=https://github.com/google/adk-samples]google/adk-samples[/link]! ✨ ===",
-            style="bold blue",
-        )
-        console.print(
-            "Powered by [link=https://goo.gle/agent-starter-pack]Google Cloud - Agent Starter Pack [/link]\n",
-        )
-        console.print(
-            "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
+        panel = _build_banner(
+            line1=(
+                "Powered by [link=https://goo.gle/agent-starter-pack]"
+                "Google Cloud - Agent Starter Pack[/link]"
+            ),
+            version=version,
+            motto=motto,
         )
     else:
-        console.print(
-            "\n=== Google Cloud Agent Starter Pack 🚀===",
-            style="bold blue",
+        panel = _build_banner(
+            line1="Create production-ready AI agents on Google Cloud!",
+            version=version,
+            motto=motto,
         )
-        console.print("Welcome to the Agent Starter Pack!")
-        console.print(
-            "This tool will help you create an end-to-end production-ready AI agent in Google Cloud!\n"
-        )
+
+    console.print()
+    console.print(panel)
 
 
 def handle_cli_error(f: F) -> F:

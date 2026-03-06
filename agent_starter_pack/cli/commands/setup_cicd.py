@@ -32,6 +32,7 @@ from agent_starter_pack.cli.utils.cicd import (
     is_github_authenticated,
     run_command,
 )
+from agent_starter_pack.cli.utils.logging import display_welcome_banner
 
 console = Console()
 
@@ -596,6 +597,7 @@ def setup_cicd(
     cicd_runner: str | None = None,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
+    display_welcome_banner(setup_cicd_mode=True, quiet=auto_approve)
 
     # Validate mutually exclusive flags
     if create_repository and use_existing_repository:

@@ -348,6 +348,19 @@ locals {
   # All other combos only watch agent-specific + deployment-target-specific paths.
   e2e_sentinel_combos = toset(["adk-agent_engine", "adk-cloud_run", "adk-gke"])
 
+  # Release combos additionally watch pyproject.toml/uv.lock so they trigger
+  # on version bumps and dependency changes (e.g. release commits).
+  # Covers key agent types and all languages for broader release validation.
+  e2e_release_combos = toset([
+    "langgraph-agent_engine",
+    "agentic_rag-agent_engine-vertex_ai_search",
+    "adk_live-cloud_run",
+    "adk_a2a-cloud_run",
+    "adk_go-cloud_run",
+    "adk_java-cloud_run",
+    "adk_ts-cloud_run",
+  ])
+
   # Go-specific E2E included files - auto-derives deployment target from combo value
   go_e2e_agent_deployment_included_files = {
     for combo in local.e2e_agent_deployment_combinations :
@@ -393,7 +406,7 @@ locals {
   }
 
   e2e_agent_deployment_included_files = { for combo in local.e2e_agent_deployment_combinations :
-    combo.name => (
+    combo.name => concat(
       endswith(split(",", combo.value)[0], "_go") ? local.go_e2e_agent_deployment_included_files[combo.name] :
       endswith(split(",", combo.value)[0], "_java") ? local.java_e2e_agent_deployment_included_files[combo.name] :
       endswith(split(",", combo.value)[0], "_ts") ? local.ts_e2e_agent_deployment_included_files[combo.name] :
@@ -430,7 +443,9 @@ locals {
         "agent_starter_pack/agents/${split(",", combo.value)[0]}/**",
         "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/_shared/**",
         "agent_starter_pack/deployment_targets/${split(",", combo.value)[1]}/python/**",
-      ]
+      ],
+      # Release combos additionally watch pyproject.toml/uv.lock
+      contains(local.e2e_release_combos, combo.name) ? ["pyproject.toml", "uv.lock"] : []
     )
   }
 }

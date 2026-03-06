@@ -1030,7 +1030,7 @@ def enhance(
 
     # Display welcome banner for enhance command (unless skipped by nested command)
     if not skip_welcome:
-        display_welcome_banner(enhance_mode=True)
+        display_welcome_banner(enhance_mode=True, quiet=auto_approve)
 
     # Check for saved config and offer to reuse it
     # This handles both version locking AND reusing previous settings

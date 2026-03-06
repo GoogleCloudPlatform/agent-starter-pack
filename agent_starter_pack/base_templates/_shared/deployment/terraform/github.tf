@@ -154,6 +154,34 @@ resource "github_actions_variable" "artifact_registry_repo_name" {
   value         = google_artifact_registry_repository.repo-artifacts-genai.repository_id
   depends_on    = [github_repository.repo]
 }
+{% elif cookiecutter.deployment_target == 'gke' %}
+resource "github_actions_variable" "container_name" {
+  repository    = var.repository_name
+  variable_name = "CONTAINER_NAME"
+  value         = var.project_name
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "artifact_registry_repo_name" {
+  repository    = var.repository_name
+  variable_name = "ARTIFACT_REGISTRY_REPO_NAME"
+  value         = google_artifact_registry_repository.repo-artifacts-genai.repository_id
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "gke_cluster_name_staging" {
+  repository    = var.repository_name
+  variable_name = "GKE_CLUSTER_NAME_STAGING"
+  value         = "${var.project_name}-staging"
+  depends_on    = [github_repository.repo]
+}
+
+resource "github_actions_variable" "gke_cluster_name_prod" {
+  repository    = var.repository_name
+  variable_name = "GKE_CLUSTER_NAME_PROD"
+  value         = "${var.project_name}-prod"
+  depends_on    = [github_repository.repo]
+}
 {% endif %}
 
 resource "github_repository_environment" "production_environment" {

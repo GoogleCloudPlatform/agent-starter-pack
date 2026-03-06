@@ -905,6 +905,31 @@ class TestE2EDeployment:
                         logger.error(
                             f"Error cleaning up Agent Engine service {project_name}: {e}"
                         )
+                elif deployment_target == "gke":
+                    logger.info(
+                        f"Cleaning up GKE clusters in project {env_project}..."
+                    )
+                    try:
+                        for suffix in ["dev", "staging", "prod"]:
+                            cluster_name = f"{project_name}-{suffix}"
+                            logger.info(f"Deleting GKE cluster: {cluster_name}")
+                            run_command(
+                                [
+                                    "gcloud",
+                                    "container",
+                                    "clusters",
+                                    "delete",
+                                    cluster_name,
+                                    f"--project={env_project}",
+                                    f"--region={region}",
+                                    "--quiet",
+                                ],
+                                check=False,
+                            )
+                    except Exception as e:
+                        logger.error(
+                            f"Error cleaning up GKE clusters: {e}"
+                        )
 
             # 2. Try to manually delete specific BigQuery datasets (feedback and telemetry)
             for env_project in [

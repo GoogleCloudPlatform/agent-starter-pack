@@ -70,13 +70,14 @@ jobs:
       - name: Get GKE Credentials
         uses: google-github-actions/get-gke-credentials@v2
         with:
-          cluster_name: {% raw %}${{ vars.GKE_CLUSTER_NAME }}{% endraw %}
+          cluster_name: {% raw %}${{ vars.GKE_CLUSTER_NAME_PROD }}{% endraw %}
           location: {% raw %}${{ vars.REGION }}{% endraw %}
           project_id: {% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}
 
       - name: Deploy to GKE (Production)
         run: |
-          kubectl apply -f deployment/k8s/hpa.yaml -f deployment/k8s/pdb.yaml
+          kubectl create namespace {{cookiecutter.project_name}} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl apply -f deployment/k8s/
           kubectl set image deployment/{{cookiecutter.project_name}} \
             {{cookiecutter.project_name}}={% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %} \
             --namespace={{cookiecutter.project_name}}

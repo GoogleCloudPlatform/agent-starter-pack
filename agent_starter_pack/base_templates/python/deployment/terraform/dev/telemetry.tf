@@ -198,8 +198,3 @@ resource "google_bigquery_table" "completions_view" {
     time_sleep.wait_for_linked_dataset
   ]
 }
-
-output "telemetry_dataset_id" {
-  description = "BigQuery dataset ID for telemetry data"
-  value       = google_bigquery_dataset.telemetry_dataset.dataset_id
-}

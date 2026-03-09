@@ -14,7 +14,7 @@ variable "pipelines_roles" {
     "roles/bigquery.jobUser",
     "roles/bigquery.readSessionUser",
     "roles/bigquery.connectionAdmin",
-    "roles/resourcemanager.projectIamAdmin"
+    "roles/vectorsearch.dataObjectWriter"
   ]
 }
 

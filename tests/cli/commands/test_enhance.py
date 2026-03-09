@@ -1510,8 +1510,8 @@ class TestSmartMerge:
             output = strip_ansi(result.output)
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
             assert "Conflict" in output
-            # With auto-approve, user's version is kept
-            assert "User modified Makefile" in pathlib.Path("Makefile").read_text()
+            # With auto-approve and config change, new template version is preferred
+            assert "New template Makefile" in pathlib.Path("Makefile").read_text()
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_adds_new_files(

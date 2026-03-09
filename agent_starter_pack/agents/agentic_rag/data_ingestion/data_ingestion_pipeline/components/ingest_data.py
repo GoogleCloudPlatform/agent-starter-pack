@@ -43,6 +43,7 @@ def ingest_data(
     import logging
 
     import bigframes.pandas as bpd
+    import google.api_core.exceptions
     from google.cloud import vectorsearch_v1beta
 
     # Initialize logging
@@ -104,14 +105,11 @@ def ingest_data(
             )
             data_object_client.batch_create_data_objects(request)
             created += len(batch_df)
-        except Exception as e:
-            if "already exists" in str(e).lower():
-                skipped += len(batch_df)
-                logging.info(
-                    f"Batch {batch_start // batch_size + 1} skipped (already exists)"
-                )
-            else:
-                raise
+        except google.api_core.exceptions.AlreadyExists:
+            skipped += len(batch_df)
+            logging.info(
+                f"Batch {batch_start // batch_size + 1} skipped (already exists)"
+            )
 
         if (batch_start // batch_size + 1) % 10 == 0:
             logging.info(f"Processed {batch_end}/{len(df)} data objects...")

@@ -1193,7 +1193,9 @@ class TestE2EDeployment:
 
         telemetry_files = [
             project_dir / "deployment" / "terraform" / "telemetry.tf",
+            project_dir / "deployment" / "terraform" / "telemetry_outputs.tf",
             project_dir / "deployment" / "terraform" / "dev" / "telemetry.tf",
+            project_dir / "deployment" / "terraform" / "dev" / "telemetry_outputs.tf",
         ]
 
         for tf_file in telemetry_files:

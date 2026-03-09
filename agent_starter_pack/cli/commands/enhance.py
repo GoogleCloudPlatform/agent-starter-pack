@@ -743,6 +743,7 @@ def _run_smart_merge(
     cli_overrides: dict[str, Any] | None,
     auto_approve: bool,
     dry_run: bool,
+    prefer_new: bool = False,
 ) -> bool:
     """Run smart-merge using 3-way comparison.
 
@@ -756,6 +757,7 @@ def _run_smart_merge(
         cli_overrides: CLI arguments from the enhance command
         auto_approve: If True, auto-apply non-conflicting changes
         dry_run: If True, preview changes without applying
+        prefer_new: If True, resolve conflicts in favor of new template
 
     Returns:
         True if smart-merge completed successfully, False otherwise
@@ -771,6 +773,7 @@ def _run_smart_merge(
     new_args = _build_enhance_create_args(project_config, cli_overrides)
 
     same_config = old_args == new_args
+    config_changed = not same_config
 
     # Create temp directories
     temp_base = pathlib.Path(tempfile.mkdtemp(prefix="asp_enhance_"))
@@ -884,6 +887,7 @@ def _run_smart_merge(
             new_template_project,
             auto_approve,
             dry_run,
+            prefer_new=prefer_new or config_changed,
         )
 
         # Apply dependency changes (Python only)
@@ -978,6 +982,12 @@ def _run_smart_merge(
     default=False,
 )
 @click.option(
+    "--prefer-new",
+    is_flag=True,
+    help="Resolve conflicts in favor of the new template version",
+    default=False,
+)
+@click.option(
     "--skip-welcome",
     is_flag=True,
     hidden=True,
@@ -1004,6 +1014,7 @@ def enhance(
     adk: bool,
     force: bool,
     dry_run: bool,
+    prefer_new: bool,
     agent_directory: str | None,
     skip_welcome: bool = False,
     google_api_key: str | None = None,
@@ -1118,6 +1129,7 @@ def enhance(
                 effective_overrides,
                 auto_approve,
                 dry_run,
+                prefer_new=prefer_new,
             ):
                 return
             # If smart-merge returned False, fall through to brute-force
@@ -1159,6 +1171,7 @@ def enhance(
                     None,
                     auto_approve,
                     dry_run=False,
+                    prefer_new=prefer_new,
                 ):
                     return
 

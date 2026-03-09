@@ -75,6 +75,8 @@ def ingest_data(
 
     # Batch create data objects in Vector Search 2.0
     # Max 250 per request for auto-embeddings
+    created = 0
+    skipped = 0
     batch_size = min(ingestion_batch_size, 250)
     for batch_start in range(0, len(df), batch_size):
         batch_end = min(batch_start + batch_size, len(df))
@@ -101,13 +103,19 @@ def ingest_data(
                 requests=batch_request,
             )
             data_object_client.batch_create_data_objects(request)
+            created += len(batch_df)
         except Exception as e:
-            if "already exists" not in str(e).lower():
-                logging.warning(
-                    f"Batch {batch_start // batch_size + 1} error: {str(e)[:200]}"
+            if "already exists" in str(e).lower():
+                skipped += len(batch_df)
+                logging.info(
+                    f"Batch {batch_start // batch_size + 1} skipped (already exists)"
                 )
+            else:
+                raise
 
         if (batch_start // batch_size + 1) % 10 == 0:
             logging.info(f"Processed {batch_end}/{len(df)} data objects...")
 
-    logging.info(f"Ingestion complete. {len(df)} data objects created.")
+    logging.info(
+        f"Ingestion complete. {created} created, {skipped} skipped (already existed)."
+    )

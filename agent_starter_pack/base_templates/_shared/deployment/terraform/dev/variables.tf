@@ -54,6 +54,9 @@ variable "app_sa_roles" {
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
     "roles/discoveryengine.editor",
 {%- endif %}
+{%- if cookiecutter.datastore_type == "vertex_ai_vector_search" %}
+    "roles/vectorsearch.viewer",
+{%- endif %}
     "roles/logging.logWriter",
     "roles/cloudtrace.agent",
     "roles/storage.admin",

@@ -469,6 +469,107 @@ app: FastAPI = get_fast_api_app(
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
+{% elif cookiecutter.agent_name == "ag2" %}
+import os
+
+from a2a.server.apps import A2AFastAPIApplication
+from a2a.types import AgentSkill
+from autogen.a2a import A2aAgentServer
+from autogen.a2a.server import CardSettings
+from fastapi import FastAPI
+from google.cloud import logging as google_cloud_logging
+
+from autogen.agentchat import initiate_group_chat
+from pydantic import BaseModel
+
+from {{cookiecutter.agent_directory}}.agent import architect, coder, pattern, reviewer
+from {{cookiecutter.agent_directory}}.app_utils.telemetry import setup_telemetry
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+setup_telemetry()
+
+# Define agent configurations with A2A skills
+AGENT_CONFIGS = {
+    "architect": {
+        "agent": architect,
+        "skills": [AgentSkill(
+            id="system_design",
+            name="System Design",
+            description="Design distributed system architecture",
+            tags=["architecture", "design"],
+            examples=["Design a REST API for a wiki service with article CRUD and search"],
+        )],
+    },
+    "coder": {
+        "agent": coder,
+        "skills": [AgentSkill(
+            id="implementation",
+            name="Code Implementation",
+            description="Implement system components from a design",
+            tags=["coding", "python"],
+            examples=["Implement the article storage module"],
+        )],
+    },
+    "reviewer": {
+        "agent": reviewer,
+        "skills": [AgentSkill(
+            id="code_review",
+            name="Code Review",
+            description="Review code for correctness and scalability",
+            tags=["review", "quality"],
+            examples=["Review this API implementation"],
+        )],
+    },
+}
+
+# Build FastAPI app with all agents mounted as A2A endpoints
+app = FastAPI(
+    title="{{cookiecutter.project_name}}",
+    description="AG2 multi-agent system with A2A protocol support",
+)
+
+for name, config in AGENT_CONFIGS.items():
+    server = A2aAgentServer(
+        config["agent"],
+        url=f"{os.getenv('APP_URL', 'http://0.0.0.0:8000')}/a2a/{name}/",
+        agent_card=CardSettings(skills=config["skills"]),
+    )
+    a2a_app = A2AFastAPIApplication(
+        agent_card=server.card,
+        extended_agent_card=server.extended_agent_card,
+        http_handler=server.build_request_handler(),
+    )
+    a2a_app.add_routes_to_app(
+        app,
+        agent_card_url=f"/a2a/{name}/.well-known/agent-card.json",
+        rpc_url=f"/a2a/{name}/",
+        extended_agent_card_url=f"/a2a/{name}/agent/authenticatedExtendedCard",
+    )
+
+logging_client = google_cloud_logging.Client()
+logger = logging_client.logger(__name__)
+
+
+class PipelineRequest(BaseModel):
+    """Request model for the multi-agent pipeline."""
+
+    message: str
+    max_rounds: int = 20
+
+
+@app.post("/run")
+def run_pipeline(request: PipelineRequest) -> dict:
+    """Run the full architect -> coder -> reviewer pipeline."""
+    result, final_context, last_agent = initiate_group_chat(
+        pattern=pattern,
+        messages=request.message,
+        max_rounds=request.max_rounds,
+    )
+    return {
+        "last_agent": last_agent.name,
+        "chat_history": result.chat_history,
+        "context": final_context.to_dict(),
+    }
 {% else %}
 import os
 from collections.abc import AsyncIterator

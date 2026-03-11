@@ -550,6 +550,9 @@ logging_client = google_cloud_logging.Client()
 logger = logging_client.logger(__name__)
 
 
+MAX_ROUNDS_LIMIT = 20
+
+
 class PipelineRequest(BaseModel):
     """Request model for the multi-agent pipeline."""
 
@@ -557,19 +560,28 @@ class PipelineRequest(BaseModel):
     max_rounds: int = 20
 
 
+class PipelineResponse(BaseModel):
+    """Response model for the multi-agent pipeline."""
+
+    last_agent: str
+    chat_history: list[dict]
+    context: dict
+
+
 @app.post("/run")
-def run_pipeline(request: PipelineRequest) -> dict:
+def run_pipeline(request: PipelineRequest) -> PipelineResponse:
     """Run the full architect -> coder -> reviewer pipeline."""
+    capped_rounds = min(request.max_rounds, MAX_ROUNDS_LIMIT)
     result, final_context, last_agent = initiate_group_chat(
         pattern=pattern,
         messages=request.message,
-        max_rounds=request.max_rounds,
+        max_rounds=capped_rounds,
     )
-    return {
-        "last_agent": last_agent.name,
-        "chat_history": result.chat_history,
-        "context": final_context.to_dict(),
-    }
+    return PipelineResponse(
+        last_agent=last_agent.name,
+        chat_history=result.chat_history,
+        context=final_context.to_dict(),
+    )
 {% else %}
 import os
 from collections.abc import AsyncIterator

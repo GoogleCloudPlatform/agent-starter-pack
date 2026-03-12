@@ -1841,6 +1841,180 @@ deployment_target = "agent_engine"
             assert "google-cloud-aiplatform" in final_pyproject
 
 
+class TestSmartMergePrototypeToDeployment:
+    """Test enhancing a prototype project (deployment_target=none) with a deployment target.
+
+    Regression tests for the bug where enhancing a prototype project to
+    agent_engine produced zero changes or incorrectly removed all files.
+    """
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_prototype_to_agent_engine_adds_deployment_files(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that enhancing a prototype project to agent_engine adds new files."""
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Makefile")
+            (template_dir / "README.md").write_text("# README")
+            if "--deployment-target" in args:
+                dt_idx = args.index("--deployment-target")
+                dt_value = args[dt_idx + 1] if dt_idx + 1 < len(args) else None
+            else:
+                dt_value = None
+
+            if dt_value == "agent_engine":
+                # agent_engine adds deployment files
+                deploy_dir = template_dir / "deployment"
+                deploy_dir.mkdir(parents=True)
+                (deploy_dir / "deploy.sh").write_text("#!/bin/bash\ndeploy")
+                (template_dir / "agent_engine_app.py").write_text("# AE app")
+            # Prototype (none) template has no deployment files
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            # Simulate a prototype project (deployment_target=none)
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "none"\n'
+                'session_type = "in_memory"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("README.md").write_text("# README")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            result = runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            output = strip_ansi(result.output)
+            assert result.exit_code == 0, f"Failed with output:\n{output}"
+
+            # Deployment files should be added, not removed
+            assert pathlib.Path("agent_engine_app.py").exists()
+            assert pathlib.Path("deployment/deploy.sh").exists()
+
+            # Existing files should NOT be removed
+            assert pathlib.Path("Makefile").exists()
+            assert pathlib.Path("README.md").exists()
+
+            # Should not list any files for removal
+            assert "Files to remove" not in output
+
+    @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
+    def test_prototype_to_agent_engine_strips_session_type(
+        self, mock_create, tmp_path: pathlib.Path
+    ) -> None:
+        """Test that session_type is stripped when enhancing to agent_engine.
+
+        Prototype mode saves session_type=in_memory. Agent Engine does not
+        accept --session-type. The enhance command must strip it to avoid
+        the create command silently failing.
+        """
+        captured_args: list[list[str]] = []
+
+        def create_template(args, output_dir, project_name, version=None):
+            del version
+            captured_args.append(list(args))
+            template_dir = output_dir / project_name
+            template_dir.mkdir(parents=True)
+            (template_dir / "pyproject.toml").write_text(
+                '[project]\nname = "test"\ndependencies = []'
+            )
+            (template_dir / "Makefile").write_text("# Makefile")
+            return True
+
+        mock_create.side_effect = create_template
+
+        runner = CliRunner()
+
+        with runner.isolated_filesystem(temp_dir=tmp_path):
+            pyproject = pathlib.Path("pyproject.toml")
+            pyproject.write_text(
+                '[project]\nname = "test"\ndependencies = []\n\n'
+                '[tool.agent-starter-pack]\nname = "test"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n\n'
+                "[tool.agent-starter-pack.create_params]\n"
+                'deployment_target = "none"\n'
+                'session_type = "in_memory"\n'
+            )
+            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("app").mkdir()
+            pathlib.Path("app/agent.py").write_text("root_agent = None")
+
+            runner.invoke(
+                enhance,
+                [
+                    ".",
+                    "--deployment-target",
+                    "agent_engine",
+                    "--auto-approve",
+                    "--cicd-runner",
+                    "skip",
+                    "--skip-checks",
+                ],
+            )
+
+            # The "new" template args (second call) should NOT have --session-type
+            assert len(captured_args) == 2
+            new_template_args = captured_args[1]
+            assert "--deployment-target" in new_template_args
+            assert "agent_engine" in new_template_args
+            assert "--session-type" not in new_template_args
+
+    def test_build_enhance_create_args_strips_session_for_agent_engine(self) -> None:
+        """Test _build_enhance_create_args strips session_type for agent_engine."""
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "none",
+                "session_type": "in_memory",
+            },
+        }
+        overrides = {"deployment_target": "agent_engine"}
+        args = _build_enhance_create_args(config, overrides)
+        assert "--deployment-target" in args
+        assert "agent_engine" in args
+        assert "--session-type" not in args
+        assert "in_memory" not in args
+
+    def test_build_enhance_create_args_preserves_deployment_target_none(self) -> None:
+        """Test _build_enhance_create_args preserves deployment_target=none in old args."""
+        config = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "none",
+            },
+        }
+        args = _build_enhance_create_args(config, None)
+        assert "--deployment-target" in args
+        assert "none" in args
+
+
 class TestSmartMergeFallback:
     """Test fallback behavior when smart-merge can't be used."""
 

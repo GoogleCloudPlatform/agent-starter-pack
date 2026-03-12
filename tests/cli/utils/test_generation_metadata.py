@@ -288,6 +288,23 @@ class TestMetadataSkipValues:
         assert "--frontend-type" not in args
         assert "None" not in args
 
+    def test_deployment_target_none_preserved(self) -> None:
+        """Test that deployment_target='none' is preserved (valid CLI value for prototype)."""
+        metadata = {
+            "base_template": "adk",
+            "create_params": {
+                "deployment_target": "none",
+                "cicd_runner": "skip",
+            },
+        }
+
+        args = metadata_to_cli_args(metadata)
+
+        assert "--deployment-target" in args
+        assert "none" in args
+        # cicd_runner='skip' should still be filtered
+        assert "--cicd-runner" not in args
+
 
 class TestMetadataEnablesRecreation:
     """Test that metadata is sufficient to recreate identical project scaffolding."""

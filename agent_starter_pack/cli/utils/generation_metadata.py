@@ -37,12 +37,10 @@ def metadata_to_cli_args(metadata: dict[str, Any]) -> list[str]:
     for key, value in create_params.items():
         if key in skip_keys:
             continue
-        if (
-            value is None
-            or value is False
-            or str(value).lower() in ("none", "skip")
-            or value == ""
-        ):
+        # "none" is a valid value for deployment_target (prototype mode)
+        if key != "deployment_target" and str(value).lower() in ("none", "skip"):
+            continue
+        if value is None or value is False or value == "":
             continue
 
         arg_name = f"--{key.replace('_', '-')}"

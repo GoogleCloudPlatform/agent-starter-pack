@@ -204,6 +204,27 @@ class TestThreeWayCompare:
         assert result.action == "new"
         assert "new file" in result.reason.lower()
 
+    def test_new_file_in_asp_with_old_template_version(
+        self, temp_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
+    ) -> None:
+        """Test that a file not in the project is treated as new even if it exists in old template.
+
+        This covers the case of switching deployment targets (e.g. none -> agent_engine)
+        where the file exists in both templates with different content but not in the project.
+        """
+        project, old_template, new_template = temp_dirs
+
+        # File exists in both templates (different content) but NOT in the project
+        (old_template / "deploy_file.py").write_text("cloud_run version")
+        (new_template / "deploy_file.py").write_text("agent_engine version")
+
+        result = three_way_compare(
+            "deploy_file.py", project, old_template, new_template
+        )
+
+        assert result.action == "new"
+        assert "new file" in result.reason.lower()
+
     def test_removed_file_in_asp_user_unchanged(
         self, temp_dirs: tuple[pathlib.Path, pathlib.Path, pathlib.Path]
     ) -> None:

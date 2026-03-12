@@ -734,6 +734,16 @@ def _build_enhance_create_args(
         elif value is not False and value is not None:
             args.extend([arg_name, str(value)])
 
+    # Strip --session-type when deploying to agent_engine (it handles sessions internally)
+    if "--deployment-target" in args:
+        dt_idx = args.index("--deployment-target")
+        if dt_idx + 1 < len(args) and args[dt_idx + 1] == "agent_engine":
+            while "--session-type" in args:
+                i = args.index("--session-type")
+                args.pop(i)
+                if i < len(args) and not args[i].startswith("--"):
+                    args.pop(i)
+
     return args
 
 

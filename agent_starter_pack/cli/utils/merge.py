@@ -80,6 +80,19 @@ def run_create_command(
             logging.error(f"Command failed: {result.stderr}")
             return False
 
+        # Verify the project was actually created (create command may
+        # silently return without generating output on validation errors)
+        expected_dir = output_dir / project_name
+        if not expected_dir.exists():
+            logging.error(
+                f"Create command succeeded but project directory not found: {expected_dir}"
+            )
+            if result.stderr:
+                logging.error(f"stderr: {result.stderr}")
+            if result.stdout:
+                logging.error(f"stdout: {result.stdout}")
+            return False
+
         return True
     except subprocess.TimeoutExpired:
         logging.error("Command timed out")

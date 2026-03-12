@@ -202,8 +202,8 @@ def three_way_compare(
     old_hash = _file_hash(old_template_file)
     new_hash = _file_hash(new_template_file)
 
-    # New file in ASP
-    if current_hash is None and old_hash is None and new_hash is not None:
+    # New file in ASP (not in project, regardless of old template)
+    if current_hash is None and new_hash is not None:
         return FileCompareResult(
             path=relative_path,
             category=category,

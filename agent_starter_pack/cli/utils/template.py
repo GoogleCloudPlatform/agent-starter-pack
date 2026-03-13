@@ -528,6 +528,7 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
         "adk_live": 2,
         "agentic_rag": 3,
         "langgraph": 4,  # displayed as "custom_a2a"
+        "ag2": 5,
         "adk_go": 0,
         "adk_java": 0,
         "adk_ts": 0,
@@ -561,6 +562,8 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
                     tags = settings.get("tags", [])
                     if "langgraph" in tags:
                         framework = "langgraph"
+                    elif "ag2" in tags:
+                        framework = "ag2"
                     elif "adk" in tags:
                         framework = "adk"
                     else:

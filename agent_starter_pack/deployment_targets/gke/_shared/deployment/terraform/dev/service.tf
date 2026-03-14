@@ -84,6 +84,17 @@ resource "google_secret_manager_secret_version" "db_password" {
   secret_data = random_password.db_password.result
 }
 
+resource "kubernetes_secret_v1" "db_password" {
+  metadata {
+    name      = "${var.project_name}-db-password"
+    namespace = kubernetes_namespace_v1.app.metadata[0].name
+  }
+  data = {
+    password = random_password.db_password.result
+  }
+  depends_on = [kubernetes_namespace_v1.app]
+}
+
 {%- endif %}
 {%- endif %}
 

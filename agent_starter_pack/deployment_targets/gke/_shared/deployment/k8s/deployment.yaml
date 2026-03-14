@@ -104,10 +104,14 @@ spec:
             periodSeconds: 20
 {%- if cookiecutter.language == "python" %}
 {%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+          volumeMounts:
+            - name: cloudsql
+              mountPath: /cloudsql
         - name: cloud-sql-proxy
           image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.14.3
           args:
             - "--structured-logs"
+            - "--unix-socket=/cloudsql"
             - "$(INSTANCE_CONNECTION_NAME)"
           env:
             - name: INSTANCE_CONNECTION_NAME
@@ -118,5 +122,11 @@ spec:
             requests:
               cpu: "0.5"
               memory: "512Mi"
+          volumeMounts:
+            - name: cloudsql
+              mountPath: /cloudsql
+      volumes:
+        - name: cloudsql
+          emptyDir: {}
 {%- endif %}
 {%- endif %}

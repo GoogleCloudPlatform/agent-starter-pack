@@ -302,9 +302,6 @@ deploy:
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
 	kubectl apply -f deployment/k8s/deployment.yaml && \
-	kubectl set image deployment/{{cookiecutter.project_name}} \
-		{{cookiecutter.project_name}}=$$IMAGE \
-		-n {{cookiecutter.project_name}} && \
 {%- if cookiecutter.is_adk and cookiecutter.get("session_type", "") == "cloud_sql" %}
 	INSTANCE_CONN=$$(cd deployment/terraform/dev && terraform output -raw instance_connection_name) && \
 	kubectl set env deployment/{{cookiecutter.project_name}} \
@@ -315,6 +312,9 @@ deploy:
 		INSTANCE_CONNECTION_NAME=$$INSTANCE_CONN \
 		-n {{cookiecutter.project_name}} && \
 {%- endif %}
+	kubectl set image deployment/{{cookiecutter.project_name}} \
+		{{cookiecutter.project_name}}=$$IMAGE \
+		-n {{cookiecutter.project_name}} && \
 	echo "Waiting for rollout to complete..." && \
 	kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} --timeout=300s && \
 	EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \

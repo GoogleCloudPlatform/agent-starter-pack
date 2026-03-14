@@ -111,6 +111,9 @@ variable "cicd_sa_deployment_required_roles" {
 {%- if cookiecutter.deployment_target == 'gke' %}
     "roles/container.developer",
 {%- endif %}
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    "roles/secretmanager.secretAccessor",
+{%- endif %}
     "roles/iam.serviceAccountUser",
     "roles/aiplatform.user",
     "roles/storage.admin"

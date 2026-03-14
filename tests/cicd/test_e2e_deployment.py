@@ -1288,7 +1288,7 @@ class TestE2EDeployment:
                 cmd.extend(["--cicd-runner", "google_cloud_build"])
 
             # Add default session type for cloud_run deployment if not explicitly set
-            if config.deployment_target == "cloud_run":
+            if config.deployment_target in ("cloud_run", "gke"):
                 # Check if session-type is already in extra_params
                 has_session_type = False
                 if hasattr(config, "extra_params") and config.extra_params:

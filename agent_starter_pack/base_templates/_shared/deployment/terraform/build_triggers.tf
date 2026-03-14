@@ -83,6 +83,10 @@ resource "google_cloudbuild_trigger" "cd_pipeline" {
     _CONTAINER_NAME                = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
     _GKE_CLUSTER_NAME              = "${var.project_name}-staging"
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    _INSTANCE_CONNECTION_NAME      = google_sql_database_instance.session_db["staging"].connection_name
+    _DB_PASSWORD_SECRET_ID         = google_secret_manager_secret.db_password["staging"].secret_id
+{%- endif %}
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 {%- endif %}
 {%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}
@@ -133,6 +137,10 @@ resource "google_cloudbuild_trigger" "deploy_to_prod_pipeline" {
     _CONTAINER_NAME                = var.project_name
     _ARTIFACT_REGISTRY_REPO_NAME   = resource.google_artifact_registry_repository.repo-artifacts-genai.repository_id
     _GKE_CLUSTER_NAME              = "${var.project_name}-prod"
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+    _INSTANCE_CONNECTION_NAME      = google_sql_database_instance.session_db["prod"].connection_name
+    _DB_PASSWORD_SECRET_ID         = google_secret_manager_secret.db_password["prod"].secret_id
+{%- endif %}
 {%- elif cookiecutter.deployment_target == 'agent_engine' %}
 {%- endif %}
 {%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_vector_search" %}

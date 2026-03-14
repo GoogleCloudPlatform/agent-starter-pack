@@ -305,6 +305,16 @@ deploy:
 	kubectl set image deployment/{{cookiecutter.project_name}} \
 		{{cookiecutter.project_name}}=$$IMAGE \
 		-n {{cookiecutter.project_name}} && \
+{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+	INSTANCE_CONN=$$(cd deployment/terraform/dev && terraform output -raw instance_connection_name) && \
+	kubectl set env deployment/{{cookiecutter.project_name}} \
+		INSTANCE_CONNECTION_NAME=$$INSTANCE_CONN \
+		-n {{cookiecutter.project_name}} && \
+	kubectl set env deployment/{{cookiecutter.project_name}} \
+		-c cloud-sql-proxy \
+		INSTANCE_CONNECTION_NAME=$$INSTANCE_CONN \
+		-n {{cookiecutter.project_name}} && \
+{%- endif %}
 	echo "Waiting for rollout to complete..." && \
 	kubectl rollout status deployment/{{cookiecutter.project_name}} -n {{cookiecutter.project_name}} --timeout=300s && \
 	EXTERNAL_IP=$$(kubectl get svc {{cookiecutter.project_name}} -n {{cookiecutter.project_name}} -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null) && \

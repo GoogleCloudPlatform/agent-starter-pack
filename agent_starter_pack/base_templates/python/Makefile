@@ -305,7 +305,7 @@ deploy:
 	kubectl set image deployment/{{cookiecutter.project_name}} \
 		{{cookiecutter.project_name}}=$$IMAGE \
 		-n {{cookiecutter.project_name}} && \
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
+{%- if cookiecutter.is_adk and cookiecutter.get("session_type", "") == "cloud_sql" %}
 	INSTANCE_CONN=$$(cd deployment/terraform/dev && terraform output -raw instance_connection_name) && \
 	kubectl set env deployment/{{cookiecutter.project_name}} \
 		INSTANCE_CONNECTION_NAME=$$INSTANCE_CONN \

@@ -796,3 +796,48 @@ class TestCreateCommand:
         mock_process_template.assert_called_once()
         call_kwargs = mock_process_template.call_args[1]
         assert call_kwargs["bq_analytics"] is True
+
+    def test_create_with_bq_analytics_in_config(
+        self,
+        mock_console: MagicMock,
+        mock_verify_credentials_and_vertex: MagicMock,
+        mock_process_template: MagicMock,
+        mock_get_available_agents: MagicMock,
+        mock_get_template_path: MagicMock,
+        mock_cwd: MagicMock,
+        mock_mkdir: MagicMock,
+        mock_resolve: MagicMock,
+        mock_load_template_config: MagicMock,
+        mock_get_deployment_targets: MagicMock,
+    ) -> None:
+        """Test create command honors bq_analytics setting in template config"""
+        runner = CliRunner()
+
+        mock_get_available_agents.return_value = {
+            1: {
+                "name": "adk",
+                "description": "ADK Base Agent",
+                "language": "python",
+                "framework": "adk",
+            },
+        }
+
+        # Override mock config settings to include bq_analytics directly
+        config = mock_load_template_config.return_value
+        config["settings"]["bq_analytics"] = True
+
+        with patch("pathlib.Path.exists", return_value=False):
+            result = runner.invoke(
+                create,
+                [
+                    "test-project",
+                    "--agent",
+                    "adk",
+                    "--auto-approve",
+                ],
+            )
+
+        assert result.exit_code == 0, result.output
+        mock_process_template.assert_called_once()
+        call_kwargs = mock_process_template.call_args[1]
+        assert call_kwargs["bq_analytics"] is True

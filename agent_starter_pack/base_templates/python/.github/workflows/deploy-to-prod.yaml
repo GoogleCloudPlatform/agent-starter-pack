@@ -157,8 +157,8 @@ jobs:
             -c cloud-sql-proxy \
             INSTANCE_CONNECTION_NAME={% raw %}${{ vars.INSTANCE_CONNECTION_NAME_PROD }}{% endraw %} \
             -n {{cookiecutter.project_name}}
-{%- endif %}
-{%- if cookiecutter.data_ingestion %}
+{%- endif -%}
+{%- if cookiecutter.data_ingestion -%}
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}
           kubectl set env deployment/{{cookiecutter.project_name}} \
             DATA_STORE_ID={% raw %}${{ vars.DATA_STORE_ID_PROD }}{% endraw %} \
@@ -168,7 +168,7 @@ jobs:
           kubectl set env deployment/{{cookiecutter.project_name}} \
             VECTOR_SEARCH_COLLECTION=projects/{% raw %}${{ vars.PROD_PROJECT_ID }}{% endraw %}/locations/{% raw %}${{ vars.VECTOR_SEARCH_LOCATION }}{% endraw %}/collections/{% raw %}${{ vars.VECTOR_SEARCH_COLLECTION_ID }}{% endraw %} \
             -n {{cookiecutter.project_name}}
-{%- endif %}
+{%- endif -%}
 {%- endif %}
           kubectl set image deployment/{{cookiecutter.project_name}} \
             {{cookiecutter.project_name}}={% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %} \

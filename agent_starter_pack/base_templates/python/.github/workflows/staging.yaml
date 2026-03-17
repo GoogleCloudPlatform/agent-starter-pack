@@ -148,25 +148,6 @@ jobs:
 
       - name: Deploy to GKE (Staging)
         run: |
-          kubectl create namespace {{cookiecutter.project_name}} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl apply -f deployment/k8s/
-          kubectl annotate serviceaccount {{cookiecutter.project_name}} \
-            iam.gke.io/gcp-service-account={% raw %}${{ vars.APP_SA_EMAIL_STAGING }}{% endraw %} \
-            -n {{cookiecutter.project_name}} --overwrite
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
-          # Create k8s secret and set Cloud SQL env vars before setting image to avoid proxy starting with empty connection name
-          DB_PASS=$(gcloud secrets versions access latest --secret={% raw %}${{ secrets.DB_PASSWORD_SECRET_ID_STAGING }}{% endraw %} --project={% raw %}${{ vars.STAGING_PROJECT_ID }}{% endraw %})
-          kubectl create secret generic {{cookiecutter.project_name}}-db-password \
-            --from-literal=password="$DB_PASS" \
-            -n {{cookiecutter.project_name}} --dry-run=client -o yaml | kubectl apply -f -
-          kubectl set env deployment/{{cookiecutter.project_name}} \
-            INSTANCE_CONNECTION_NAME={% raw %}${{ vars.INSTANCE_CONNECTION_NAME_STAGING }}{% endraw %} \
-            -n {{cookiecutter.project_name}}
-          kubectl set env deployment/{{cookiecutter.project_name}} \
-            -c cloud-sql-proxy \
-            INSTANCE_CONNECTION_NAME={% raw %}${{ vars.INSTANCE_CONNECTION_NAME_STAGING }}{% endraw %} \
-            -n {{cookiecutter.project_name}}
-{%- endif %}
           kubectl set image deployment/{{cookiecutter.project_name}} \
             {{cookiecutter.project_name}}={% raw %}${{ vars.REGION }}{% endraw %}-docker.pkg.dev/{% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}/{% raw %}${{ vars.ARTIFACT_REGISTRY_REPO_NAME }}{% endraw %}/{% raw %}${{ vars.CONTAINER_NAME }}{% endraw %}:{% raw %}${{ github.sha }}{% endraw %} \
             -n {{cookiecutter.project_name}}

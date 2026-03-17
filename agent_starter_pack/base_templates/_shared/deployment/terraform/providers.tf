@@ -28,6 +28,12 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.7.0"
     }
+{%- if cookiecutter.deployment_target == 'gke' %}
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.37.0"
+    }
+{%- endif %}
 {%- if cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_search" %}
     null = {
       source  = "hashicorp/null"
@@ -54,3 +60,22 @@ provider "google" {
   region = var.region
   user_project_override = true
 }
+
+{%- if cookiecutter.deployment_target == 'gke' %}
+
+data "google_client_config" "default" {}
+
+provider "kubernetes" {
+  alias                  = "staging"
+  host                   = "https://${google_container_cluster.app["staging"].endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(google_container_cluster.app["staging"].master_auth[0].cluster_ca_certificate)
+}
+
+provider "kubernetes" {
+  alias                  = "prod"
+  host                   = "https://${google_container_cluster.app["prod"].endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(google_container_cluster.app["prod"].master_auth[0].cluster_ca_certificate)
+}
+{%- endif %}

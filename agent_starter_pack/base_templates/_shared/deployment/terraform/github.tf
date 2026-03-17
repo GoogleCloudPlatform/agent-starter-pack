@@ -182,36 +182,6 @@ resource "github_actions_variable" "gke_cluster_name_prod" {
   value         = "${var.project_name}-prod"
   depends_on    = [github_repository.repo]
 }
-{%- if cookiecutter.is_adk and cookiecutter.session_type == "cloud_sql" %}
-
-resource "github_actions_variable" "instance_connection_name_staging" {
-  repository    = var.repository_name
-  variable_name = "INSTANCE_CONNECTION_NAME_STAGING"
-  value         = google_sql_database_instance.session_db["staging"].connection_name
-  depends_on    = [github_repository.repo]
-}
-
-resource "github_actions_variable" "instance_connection_name_prod" {
-  repository    = var.repository_name
-  variable_name = "INSTANCE_CONNECTION_NAME_PROD"
-  value         = google_sql_database_instance.session_db["prod"].connection_name
-  depends_on    = [github_repository.repo]
-}
-
-resource "github_actions_secret" "db_password_secret_id_staging" {
-  repository      = var.repository_name
-  secret_name     = "DB_PASSWORD_SECRET_ID_STAGING"
-  plaintext_value = google_secret_manager_secret.db_password["staging"].secret_id
-  depends_on      = [github_repository.repo, data.github_repository.existing_repo]
-}
-
-resource "github_actions_secret" "db_password_secret_id_prod" {
-  repository      = var.repository_name
-  secret_name     = "DB_PASSWORD_SECRET_ID_PROD"
-  plaintext_value = google_secret_manager_secret.db_password["prod"].secret_id
-  depends_on      = [github_repository.repo, data.github_repository.existing_repo]
-}
-{%- endif %}
 {% endif %}
 
 resource "github_repository_environment" "production_environment" {

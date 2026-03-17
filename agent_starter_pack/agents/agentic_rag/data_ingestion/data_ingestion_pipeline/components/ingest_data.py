@@ -81,38 +81,41 @@ def ingest_data(
     df = bpd.read_gbq(query).to_pandas()
     logging.info(f"Read {len(df)} rows from BigQuery.")
 
-    # Delete existing chunks for each question_id in the batch
-    question_ids = df["question_id"].astype(str).unique()
+    # Delete existing chunks for all question_ids in the batch
+    question_ids = df["question_id"].astype(str).unique().tolist()
     total_deleted = 0
-    for qid in question_ids:
-        # Query existing chunks for this question_id
-        search_request = vectorsearch_v1beta.QueryDataObjectsRequest(
-            parent=collection_path,
-            filter={"question_id": {"$eq": str(qid)}},
-        )
-        response = search_client.query_data_objects(search_request)
 
-        existing_names = [obj.name for obj in response.data_objects]
-        if not existing_names:
-            continue
-
-        # Delete in batches of 1000 (API limit)
-        for i in range(0, len(existing_names), 1000):
-            batch_names = existing_names[i : i + 1000]
-            delete_requests = [
-                vectorsearch_v1beta.DeleteDataObjectRequest(name=name)
-                for name in batch_names
-            ]
-            delete_request = vectorsearch_v1beta.BatchDeleteDataObjectsRequest(
+    if question_ids:
+        # Query all existing chunks using $in operator, handling pagination
+        existing_names = []
+        page_token = None
+        while True:
+            search_request = vectorsearch_v1beta.QueryDataObjectsRequest(
                 parent=collection_path,
-                requests=delete_requests,
+                filter={"question_id": {"$in": question_ids}},
+                **({"page_token": page_token} if page_token else {}),
             )
-            data_object_client.batch_delete_data_objects(delete_request)
+            response = search_client.query_data_objects(search_request)
+            existing_names.extend(obj.name for obj in response.data_objects)
+            if not response.next_page_token:
+                break
+            page_token = response.next_page_token
 
-        total_deleted += len(existing_names)
-        logging.info(
-            f"Deleted {len(existing_names)} existing chunks for question_id={qid}"
-        )
+        if existing_names:
+            # Delete in batches of 1000 (API limit)
+            for i in range(0, len(existing_names), 1000):
+                batch_names = existing_names[i : i + 1000]
+                delete_requests = [
+                    vectorsearch_v1beta.DeleteDataObjectRequest(name=name)
+                    for name in batch_names
+                ]
+                delete_request = vectorsearch_v1beta.BatchDeleteDataObjectsRequest(
+                    parent=collection_path,
+                    requests=delete_requests,
+                )
+                data_object_client.batch_delete_data_objects(delete_request)
+
+            total_deleted = len(existing_names)
 
     logging.info(f"Deletion phase complete. {total_deleted} old chunks removed.")
 

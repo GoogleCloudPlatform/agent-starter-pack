@@ -696,10 +696,13 @@ def create(
                 )
                 datastore = None
 
+        # Safely extract settings dictionary
+        settings = (config.get("settings") if config else None) or {}
+        if not isinstance(settings, dict):
+            settings = {}
+
         # Auto-enable data ingestion when agent requires it or --datastore is provided
-        requires_data_ingestion = config and config.get("settings", {}).get(
-            "requires_data_ingestion"
-        )
+        requires_data_ingestion = settings.get("requires_data_ingestion")
         include_data_ingestion = bool(datastore) or bool(requires_data_ingestion)
 
         if include_data_ingestion and not datastore and early_agent_language != "go":
@@ -714,6 +717,10 @@ def create(
         if debug and include_data_ingestion:
             logging.debug(f"Data ingestion enabled: {include_data_ingestion}")
             logging.debug(f"Selected datastore type: {datastore}")
+
+        # Auto-enable bq_analytics when agent requires it
+        if settings.get("bq_analytics"):
+            bq_analytics = True
 
         # Deployment target selection
         # For remote templates, we need to use the base template name for deployment target selection

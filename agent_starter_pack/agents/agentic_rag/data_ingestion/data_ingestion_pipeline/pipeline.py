@@ -23,7 +23,7 @@ def pipeline(
     location: str,
     schedule_time: str = "1970-01-01T00:00:00Z",
     is_incremental: bool = True,
-    look_back_days: int = 1,
+    look_back_days: int = 7,
     chunk_size: int = 1500,
     chunk_overlap: int = 20,
     max_rows: int = 100,
@@ -57,4 +57,5 @@ def pipeline(
         collection_id=collection_id,
         input_table=processed_data.output,
         ingestion_batch_size=ingestion_batch_size,
+        look_back_days=look_back_days,
     ).set_retry(num_retries=2)

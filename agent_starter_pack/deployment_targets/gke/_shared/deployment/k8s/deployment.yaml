@@ -92,10 +92,16 @@ spec:
             limits:
               cpu: "1"
               memory: "2Gi"
-          readinessProbe:
+          startupProbe:
             tcpSocket:
               port: 8080
             initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 18
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 15
             periodSeconds: 10
           livenessProbe:
             tcpSocket:

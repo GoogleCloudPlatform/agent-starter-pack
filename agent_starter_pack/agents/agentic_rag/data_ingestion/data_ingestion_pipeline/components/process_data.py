@@ -210,13 +210,17 @@ def process_data(
     )
     logging.info("Text split into chunks.")
 
-    # Create chunk IDs and explode chunks into rows
+    # Create chunk IDs and explode chunks into rows.
+    # Include a run timestamp in chunk_id to ensure uniqueness across runs.
+    # This allows create-before-delete ingestion: new chunks never collide
+    # with old ones, so we can safely create first, then delete stale data.
     logging.info("Creating chunk IDs and exploding chunks into rows...")
+    run_ts = datetime.now().strftime("%Y%m%d%H%M%S")
     chunk_ids = [
         str(idx) for text_chunk in df["text_chunk"] for idx in range(len(text_chunk))
     ]
     df = df.explode("text_chunk").reset_index(drop=True)
-    df["chunk_id"] = df["question_id"].astype("string") + "__" + chunk_ids
+    df["chunk_id"] = df["question_id"].astype("string") + "__" + run_ts + "__" + chunk_ids
     logging.info("Chunk IDs created and chunks exploded.")
 
     # No embedding generation needed — Vector Search 2.0 auto-generates embeddings

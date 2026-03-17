@@ -70,7 +70,6 @@ deploy:
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
-	kubectl apply -f deployment/k8s/deployment.yaml && \
 	kubectl set image deployment/test-adk-live \
 		test-adk-live=$$IMAGE \
 		-n test-adk-live && \

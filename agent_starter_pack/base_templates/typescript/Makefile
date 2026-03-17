@@ -72,7 +72,6 @@ deploy:
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
-	kubectl apply -f deployment/k8s/deployment.yaml && \
 	kubectl set image deployment/{{cookiecutter.project_name}} \
 		{{cookiecutter.project_name}}=$$IMAGE \
 		-n {{cookiecutter.project_name}} && \

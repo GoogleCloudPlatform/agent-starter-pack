@@ -301,30 +301,6 @@ deploy:
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
-	kubectl apply -f deployment/k8s/deployment.yaml && \
-{%- if cookiecutter.is_adk and cookiecutter.get("session_type", "") == "cloud_sql" %}
-	INSTANCE_CONN=$$(cd deployment/terraform/dev && terraform output -raw instance_connection_name) && \
-	kubectl set env deployment/{{cookiecutter.project_name}} \
-		INSTANCE_CONNECTION_NAME=$$INSTANCE_CONN \
-		-n {{cookiecutter.project_name}} && \
-	kubectl set env deployment/{{cookiecutter.project_name}} \
-		-c cloud-sql-proxy \
-		INSTANCE_CONNECTION_NAME=$$INSTANCE_CONN \
-		-n {{cookiecutter.project_name}} && \
-{%- endif -%}
-{%- if cookiecutter.data_ingestion -%}
-{%- if cookiecutter.datastore_type == "vertex_ai_search" %}
-	DATA_STORE_ID=$$(cd deployment/terraform/dev && terraform output -raw data_store_id) && \
-	kubectl set env deployment/{{cookiecutter.project_name}} \
-		DATA_STORE_ID=$$DATA_STORE_ID \
-		DATA_STORE_REGION=global \
-		-n {{cookiecutter.project_name}} && \
-{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}
-	kubectl set env deployment/{{cookiecutter.project_name}} \
-		VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-central1/collections/{{cookiecutter.project_name}}-collection \
-		-n {{cookiecutter.project_name}} && \
-{%- endif -%}
-{%- endif %}
 	kubectl set image deployment/{{cookiecutter.project_name}} \
 		{{cookiecutter.project_name}}=$$IMAGE \
 		-n {{cookiecutter.project_name}} && \

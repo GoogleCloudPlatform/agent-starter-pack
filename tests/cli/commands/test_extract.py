@@ -257,7 +257,8 @@ class TestExtractCommand:
 
         with runner.isolated_filesystem():
             # Create minimal source project
-            pathlib.Path("pyproject.toml").write_text("""
+            pathlib.Path("pyproject.toml").write_text(
+                """
 [project]
 name = "test-agent"
 
@@ -265,9 +266,13 @@ name = "test-agent"
 name = "test-agent"
 base_template = "adk"
 agent_directory = "app"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
             pathlib.Path("app/__init__.py").touch()
             pathlib.Path("deployment").mkdir()
             pathlib.Path(".github").mkdir()
@@ -299,10 +304,13 @@ agent_directory = "app"
         runner = CliRunner()
 
         with runner.isolated_filesystem():
-            pathlib.Path("pyproject.toml").write_text("""
+            pathlib.Path("pyproject.toml").write_text(
+                """
 [project]
 name = "test-agent"
-""")
+""",
+                encoding="utf-8",
+            )
 
             result = runner.invoke(
                 extract,
@@ -319,13 +327,16 @@ name = "test-agent"
 
         with runner.isolated_filesystem():
             # Create source
-            pathlib.Path("pyproject.toml").write_text("""
+            pathlib.Path("pyproject.toml").write_text(
+                """
 [project]
 name = "test-agent"
 
 [tool.agent-starter-pack]
 agent_directory = "app"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").touch()
 
@@ -351,7 +362,8 @@ agent_directory = "app"
 
         with runner.isolated_filesystem():
             # Create source project
-            pathlib.Path("pyproject.toml").write_text("""
+            pathlib.Path("pyproject.toml").write_text(
+                """
 [project]
 name = "test-agent"
 dependencies = [
@@ -363,17 +375,22 @@ dependencies = [
 name = "test-agent"
 base_template = "adk"
 agent_directory = "app"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").write_text(
-                "from google.adk.agents import Agent\nroot_agent = Agent()"
+                "from google.adk.agents import Agent\nroot_agent = Agent()",
+                encoding="utf-8",
             )
             pathlib.Path("app/__init__.py").touch()
-            pathlib.Path("app/custom_module.py").write_text("# Custom code")
+            pathlib.Path("app/custom_module.py").write_text(
+                "# Custom code", encoding="utf-8"
+            )
             pathlib.Path("app/app_utils").mkdir()
             pathlib.Path("app/app_utils/telemetry.py").touch()
-            pathlib.Path("README.md").write_text("# Test Agent")
-            pathlib.Path(".gitignore").write_text(".venv/")
+            pathlib.Path("README.md").write_text("# Test Agent", encoding="utf-8")
+            pathlib.Path(".gitignore").write_text(".venv/", encoding="utf-8")
             pathlib.Path("deployment").mkdir()
             pathlib.Path("deployment/terraform").mkdir()
             pathlib.Path(".github").mkdir()
@@ -409,13 +426,16 @@ agent_directory = "app"
 
         with runner.isolated_filesystem():
             # Create source project
-            pathlib.Path("pyproject.toml").write_text("""
+            pathlib.Path("pyproject.toml").write_text(
+                """
 [project]
 name = "test-agent"
 
 [tool.agent-starter-pack]
 agent_directory = "app"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").touch()
             pathlib.Path("tests").mkdir()
@@ -438,19 +458,24 @@ agent_directory = "app"
 
         with runner.isolated_filesystem():
             # Create source
-            pathlib.Path("pyproject.toml").write_text("""
+            pathlib.Path("pyproject.toml").write_text(
+                """
 [project]
 name = "test-agent"
 
 [tool.agent-starter-pack]
 agent_directory = "app"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("app").mkdir()
             pathlib.Path("app/agent.py").touch()
 
             # Create existing output with a file
             pathlib.Path("output").mkdir()
-            pathlib.Path("output/old_file.txt").write_text("old content")
+            pathlib.Path("output/old_file.txt").write_text(
+                "old content", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 extract,
@@ -637,17 +662,22 @@ class TestGoProjectExtraction:
 
         with runner.isolated_filesystem():
             # Create Go project structure
-            pathlib.Path("go.mod").write_text("module test-agent\n\ngo 1.21")
+            pathlib.Path("go.mod").write_text(
+                "module test-agent\n\ngo 1.21", encoding="utf-8"
+            )
             pathlib.Path("go.sum").touch()
-            pathlib.Path(".asp.toml").write_text("""
+            pathlib.Path(".asp.toml").write_text(
+                """
 [project]
 name = "test-go-agent"
 language = "go"
 base_template = "adk_go"
 agent_directory = "agent"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("agent").mkdir()
-            pathlib.Path("agent/agent.go").write_text("package agent")
+            pathlib.Path("agent/agent.go").write_text("package agent", encoding="utf-8")
             pathlib.Path("deployment").mkdir()
 
             result = runner.invoke(
@@ -671,19 +701,24 @@ agent_directory = "agent"
 
         with runner.isolated_filesystem():
             # Create Go project structure
-            pathlib.Path("go.mod").write_text("module test-agent\n\ngo 1.21")
-            pathlib.Path("go.sum").write_text("// checksums")
-            pathlib.Path(".asp.toml").write_text("""
+            pathlib.Path("go.mod").write_text(
+                "module test-agent\n\ngo 1.21", encoding="utf-8"
+            )
+            pathlib.Path("go.sum").write_text("// checksums", encoding="utf-8")
+            pathlib.Path(".asp.toml").write_text(
+                """
 [project]
 name = "test-go-agent"
 language = "go"
 base_template = "adk_go"
 agent_directory = "agent"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("agent").mkdir()
-            pathlib.Path("agent/agent.go").write_text("package agent")
-            pathlib.Path("README.md").write_text("# Test Agent")
-            pathlib.Path(".gitignore").write_text("bin/")
+            pathlib.Path("agent/agent.go").write_text("package agent", encoding="utf-8")
+            pathlib.Path("README.md").write_text("# Test Agent", encoding="utf-8")
+            pathlib.Path(".gitignore").write_text("bin/", encoding="utf-8")
 
             result = runner.invoke(
                 extract,
@@ -709,15 +744,20 @@ agent_directory = "agent"
 
         with runner.isolated_filesystem():
             # Create Go project
-            pathlib.Path("go.mod").write_text("module test-agent\n\ngo 1.21")
-            pathlib.Path(".asp.toml").write_text("""
+            pathlib.Path("go.mod").write_text(
+                "module test-agent\n\ngo 1.21", encoding="utf-8"
+            )
+            pathlib.Path(".asp.toml").write_text(
+                """
 [project]
 name = "test-go-agent"
 language = "go"
 agent_directory = "agent"
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("agent").mkdir()
-            pathlib.Path("agent/agent.go").write_text("package agent")
+            pathlib.Path("agent/agent.go").write_text("package agent", encoding="utf-8")
 
             runner.invoke(extract, ["output"])
 
@@ -739,7 +779,8 @@ class TestJavaProjectExtraction:
 
         with runner.isolated_filesystem():
             # Create Java project structure with ASP config in pom.xml properties
-            pathlib.Path("pom.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+            pathlib.Path("pom.xml").write_text(
+                """<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <groupId>myagent</groupId>
@@ -752,10 +793,12 @@ class TestJavaProjectExtraction:
     <asp.agent_directory>src/main/java</asp.agent_directory>
   </properties>
 </project>
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("src/main/java/myagent").mkdir(parents=True)
             pathlib.Path("src/main/java/myagent/RootAgent.java").write_text(
-                "package myagent;\npublic class RootAgent {}"
+                "package myagent;\npublic class RootAgent {}", encoding="utf-8"
             )
             pathlib.Path("deployment").mkdir()
 
@@ -780,7 +823,8 @@ class TestJavaProjectExtraction:
 
         with runner.isolated_filesystem():
             # Create Java project structure with ASP config in pom.xml properties
-            pathlib.Path("pom.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+            pathlib.Path("pom.xml").write_text(
+                """<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <groupId>myagent</groupId>
@@ -793,13 +837,15 @@ class TestJavaProjectExtraction:
     <asp.agent_directory>src/main/java</asp.agent_directory>
   </properties>
 </project>
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("src/main/java/myagent").mkdir(parents=True)
             pathlib.Path("src/main/java/myagent/RootAgent.java").write_text(
-                "package myagent;\npublic class RootAgent {}"
+                "package myagent;\npublic class RootAgent {}", encoding="utf-8"
             )
-            pathlib.Path("README.md").write_text("# Test Agent")
-            pathlib.Path(".gitignore").write_text("target/")
+            pathlib.Path("README.md").write_text("# Test Agent", encoding="utf-8")
+            pathlib.Path(".gitignore").write_text("target/", encoding="utf-8")
 
             result = runner.invoke(
                 extract,
@@ -823,7 +869,8 @@ class TestJavaProjectExtraction:
 
         with runner.isolated_filesystem():
             # Create Java project with ASP config in pom.xml properties
-            pathlib.Path("pom.xml").write_text("""<?xml version="1.0" encoding="UTF-8"?>
+            pathlib.Path("pom.xml").write_text(
+                """<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
   <groupId>myagent</groupId>
@@ -835,10 +882,12 @@ class TestJavaProjectExtraction:
     <asp.agent_directory>src/main/java</asp.agent_directory>
   </properties>
 </project>
-""")
+""",
+                encoding="utf-8",
+            )
             pathlib.Path("src/main/java/myagent").mkdir(parents=True)
             pathlib.Path("src/main/java/myagent/RootAgent.java").write_text(
-                "package myagent;\npublic class RootAgent {}"
+                "package myagent;\npublic class RootAgent {}", encoding="utf-8"
             )
 
             runner.invoke(extract, ["output"])

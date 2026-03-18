@@ -69,7 +69,7 @@ def test_create_with_local_path(
     assert "Using local template:" in result.output
 
     mock_process_template.assert_called_once()
-    call_args, call_kwargs = mock_process_template.call_args
+    _call_args, call_kwargs = mock_process_template.call_args
 
     # The template path should now be inside a temporary directory
     actual_template_path = call_kwargs["template_dir"]

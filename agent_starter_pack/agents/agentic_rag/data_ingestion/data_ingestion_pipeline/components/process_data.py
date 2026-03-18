@@ -220,7 +220,9 @@ def process_data(
         str(idx) for text_chunk in df["text_chunk"] for idx in range(len(text_chunk))
     ]
     df = df.explode("text_chunk").reset_index(drop=True)
-    df["chunk_id"] = df["question_id"].astype("string") + "__" + run_ts + "__" + chunk_ids
+    df["chunk_id"] = (
+        df["question_id"].astype("string") + "__" + run_ts + "__" + chunk_ids
+    )
     logging.info("Chunk IDs created and chunks exploded.")
 
     # No embedding generation needed — Vector Search 2.0 auto-generates embeddings

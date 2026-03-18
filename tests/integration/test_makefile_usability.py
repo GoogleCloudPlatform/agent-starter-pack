@@ -124,7 +124,7 @@ def validate_makefile_usability(
         mock_bin = tempfile.mkdtemp(prefix="mock_bin_")
         for cmd in ("npm", "npx", "tsc", "vite"):
             mock_path = os.path.join(mock_bin, cmd)
-            with open(mock_path, "w") as f:
+            with open(mock_path, "w", encoding="utf-8") as f:
                 f.write("#!/bin/sh\nexit 0\n")
             os.chmod(mock_path, stat.S_IRWXU)
         mock_env = {**os.environ, "PATH": f"{mock_bin}:{os.environ['PATH']}"}

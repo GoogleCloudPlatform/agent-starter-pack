@@ -166,7 +166,9 @@ class TestGeminiEnterpriseRegistration:
 
                 # Create minimal deployment_metadata.json for the register command
                 metadata = {"remote_agent_engine_id": agent_engine_id}
-                with open(project_path / "deployment_metadata.json", "w") as f:
+                with open(
+                    project_path / "deployment_metadata.json", "w", encoding="utf-8"
+                ) as f:
                     json.dump(metadata, f)
 
             else:
@@ -222,7 +224,7 @@ class TestGeminiEnterpriseRegistration:
                     "deployment_metadata.json was not created"
                 )
 
-                with open(metadata_file) as f:
+                with open(metadata_file, encoding="utf-8") as f:
                     metadata = json.load(f)
 
                 agent_engine_id = metadata.get("remote_agent_engine_id")

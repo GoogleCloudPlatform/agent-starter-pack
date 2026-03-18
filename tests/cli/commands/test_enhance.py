@@ -556,7 +556,9 @@ class TestEnhanceAgentDirectoryPrompt:
 
         with runner.isolated_filesystem():
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             with patch("agent_starter_pack.cli.commands.enhance.create"):
                 runner.invoke(
@@ -590,7 +592,7 @@ class TestEnhanceAgentDirectoryPrompt:
 
         with runner.isolated_filesystem():
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("agent = None")
+            pathlib.Path("app/agent.py").write_text("agent = None", encoding="utf-8")
 
             with patch("agent_starter_pack.cli.commands.enhance.create"):
                 runner.invoke(
@@ -1377,14 +1379,17 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             # Makefile matches old template (user didn't modify)
-            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("Makefile").write_text("# Original Makefile", encoding="utf-8")
 
             # Create agent directory
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1402,7 +1407,9 @@ class TestSmartMerge:
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify Makefile was auto-updated
-            assert "Enhanced Makefile" in pathlib.Path("Makefile").read_text()
+            assert "Enhanced Makefile" in pathlib.Path("Makefile").read_text(
+                encoding="utf-8"
+            )
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_preserves_user_modified_files(
@@ -1432,12 +1439,17 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             # User modified the Makefile
-            pathlib.Path("Makefile").write_text("# My custom Makefile")
+            pathlib.Path("Makefile").write_text(
+                "# My custom Makefile", encoding="utf-8"
+            )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1455,7 +1467,9 @@ class TestSmartMerge:
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify user's Makefile was preserved
-            assert "My custom Makefile" in pathlib.Path("Makefile").read_text()
+            assert "My custom Makefile" in pathlib.Path("Makefile").read_text(
+                encoding="utf-8"
+            )
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_detects_conflicts(
@@ -1487,12 +1501,17 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             # User modified (different from both templates)
-            pathlib.Path("Makefile").write_text("# User modified Makefile")
+            pathlib.Path("Makefile").write_text(
+                "# User modified Makefile", encoding="utf-8"
+            )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1511,7 +1530,9 @@ class TestSmartMerge:
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
             assert "Conflict" in output
             # With auto-approve and config change, new template version is preferred
-            assert "New template Makefile" in pathlib.Path("Makefile").read_text()
+            assert "New template Makefile" in pathlib.Path("Makefile").read_text(
+                encoding="utf-8"
+            )
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_adds_new_files(
@@ -1543,11 +1564,14 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("Makefile").write_text("# Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1597,11 +1621,14 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("Makefile").write_text("# Original Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1620,7 +1647,9 @@ class TestSmartMerge:
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
             assert "Dry run" in output
             # Verify files were NOT modified
-            assert "Original Makefile" in pathlib.Path("Makefile").read_text()
+            assert "Original Makefile" in pathlib.Path("Makefile").read_text(
+                encoding="utf-8"
+            )
             assert not pathlib.Path("Dockerfile").exists()
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
@@ -1655,13 +1684,18 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("Makefile").write_text("# Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("# MY CUSTOM AGENT CODE")
+            pathlib.Path("app/agent.py").write_text(
+                "# MY CUSTOM AGENT CODE", encoding="utf-8"
+            )
             pathlib.Path("app/tools").mkdir()
-            pathlib.Path("app/tools/search.py").write_text("# MY CUSTOM TOOL")
+            pathlib.Path("app/tools/search.py").write_text(
+                "# MY CUSTOM TOOL", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1681,8 +1715,12 @@ class TestSmartMerge:
             assert "Skipping" in output
 
             # Verify agent code was NOT touched
-            assert "MY CUSTOM AGENT CODE" in pathlib.Path("app/agent.py").read_text()
-            assert "MY CUSTOM TOOL" in pathlib.Path("app/tools/search.py").read_text()
+            assert "MY CUSTOM AGENT CODE" in pathlib.Path("app/agent.py").read_text(
+                encoding="utf-8"
+            )
+            assert "MY CUSTOM TOOL" in pathlib.Path("app/tools/search.py").read_text(
+                encoding="utf-8"
+            )
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_preserves_config_files(
@@ -1714,14 +1752,19 @@ class TestSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("Makefile").write_text("# Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
             # User has config files with secrets
-            pathlib.Path(".env").write_text("API_KEY=my_secret_key")
-            pathlib.Path("config.yaml").write_text("setting: my_custom_value")
+            pathlib.Path(".env").write_text("API_KEY=my_secret_key", encoding="utf-8")
+            pathlib.Path("config.yaml").write_text(
+                "setting: my_custom_value", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1739,11 +1782,17 @@ class TestSmartMerge:
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify config files were NOT modified (user secrets preserved)
-            assert "my_secret_key" in pathlib.Path(".env").read_text()
-            assert "my_custom_value" in pathlib.Path("config.yaml").read_text()
+            assert "my_secret_key" in pathlib.Path(".env").read_text(encoding="utf-8")
+            assert "my_custom_value" in pathlib.Path("config.yaml").read_text(
+                encoding="utf-8"
+            )
             # Should not contain template values
-            assert "template_key" not in pathlib.Path(".env").read_text()
-            assert "template_value" not in pathlib.Path("config.yaml").read_text()
+            assert "template_key" not in pathlib.Path(".env").read_text(
+                encoding="utf-8"
+            )
+            assert "template_value" not in pathlib.Path("config.yaml").read_text(
+                encoding="utf-8"
+            )
 
     @patch("agent_starter_pack.cli.commands.enhance.run_create_command")
     def test_smart_merge_preserves_user_dependencies(
@@ -1806,11 +1855,14 @@ asp_version = "0.30.0"
 
 [tool.agent-starter-pack.create_params]
 deployment_target = "agent_engine"
-"""
+""",
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("Makefile").write_text("# Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1828,7 +1880,7 @@ deployment_target = "agent_engine"
             assert result.exit_code == 0, f"Failed with output:\n{result.output}"
 
             # Verify dependencies were merged correctly
-            final_pyproject = pyproject.read_text()
+            final_pyproject = pyproject.read_text(encoding="utf-8")
 
             # User's custom dependencies should be preserved
             assert "my-custom-library" in final_pyproject
@@ -1891,12 +1943,15 @@ class TestSmartMergePrototypeToDeployment:
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
                 'deployment_target = "none"\n'
-                'session_type = "in_memory"\n'
+                'session_type = "in_memory"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Makefile")
-            pathlib.Path("README.md").write_text("# README")
+            pathlib.Path("Makefile").write_text("# Makefile", encoding="utf-8")
+            pathlib.Path("README.md").write_text("# README", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -1960,11 +2015,14 @@ class TestSmartMergePrototypeToDeployment:
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
                 'deployment_target = "none"\n'
-                'session_type = "in_memory"\n'
+                'session_type = "in_memory"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Makefile")
+            pathlib.Path("Makefile").write_text("# Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             runner.invoke(
                 enhance,
@@ -2038,10 +2096,13 @@ class TestSmartMergeFallback:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 runner.invoke(
@@ -2073,7 +2134,9 @@ class TestSmartMergeFallback:
         with runner.isolated_filesystem(temp_dir=tmp_path):
             # No pyproject.toml - no metadata
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             with patch("agent_starter_pack.cli.commands.enhance.create") as mock_create:
                 result = runner.invoke(
@@ -2102,7 +2165,9 @@ class TestSmartMergeFallback:
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2125,7 +2190,9 @@ class TestSmartMergeFallback:
 
         with runner.isolated_filesystem(temp_dir=tmp_path):
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2153,10 +2220,13 @@ class TestSmartMergeFallback:
             pyproject.write_text(
                 '[project]\nname = "test"\n\n'
                 '[tool.agent-starter-pack]\nname = "test"\n'
-                'base_template = "adk"\nasp_version = "0.30.0"\n'
+                'base_template = "adk"\nasp_version = "0.30.0"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2197,10 +2267,13 @@ class TestSmartMergeFallback:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             with patch(
                 "agent_starter_pack.cli.commands.enhance.create"
@@ -2250,11 +2323,14 @@ class TestSmartMergeFallback:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Same Makefile")
+            pathlib.Path("Makefile").write_text("# Same Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2294,10 +2370,13 @@ class TestSmartMergeFallback:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2348,10 +2427,13 @@ class TestCustomizeSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2391,10 +2473,13 @@ class TestCustomizeSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2434,10 +2519,13 @@ class TestCustomizeSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2580,10 +2668,13 @@ class TestCustomizeSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2610,10 +2701,13 @@ class TestCustomizeSmartMerge:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2659,11 +2753,14 @@ class TestSmartMergeBackup:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("Makefile").write_text("# Original Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,
@@ -2712,11 +2809,14 @@ class TestSmartMergeBackup:
                 '[tool.agent-starter-pack]\nname = "test"\n'
                 'base_template = "adk"\nasp_version = "0.30.0"\n\n'
                 "[tool.agent-starter-pack.create_params]\n"
-                'deployment_target = "agent_engine"\n'
+                'deployment_target = "agent_engine"\n',
+                encoding="utf-8",
             )
-            pathlib.Path("Makefile").write_text("# Original Makefile")
+            pathlib.Path("Makefile").write_text("# Original Makefile", encoding="utf-8")
             pathlib.Path("app").mkdir()
-            pathlib.Path("app/agent.py").write_text("root_agent = None")
+            pathlib.Path("app/agent.py").write_text(
+                "root_agent = None", encoding="utf-8"
+            )
 
             result = runner.invoke(
                 enhance,

@@ -77,7 +77,7 @@ resource "google_vertex_ai_reasoning_engine" "app" {
 
       env {
         name  = "GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY"
-        value = "true"
+        value = "false"
       }
 {%- if cookiecutter.bq_analytics %}
       env {

@@ -27,7 +27,7 @@ from google.adk.telemetry.setup import maybe_set_otel_providers
 def setup_telemetry() -> str | None:
     """Configure OpenTelemetry and GenAI telemetry with GCS upload."""
 {%- if cookiecutter.deployment_target == 'agent_engine' %}
-    os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+    os.environ.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "false")
 {%- endif %}
 
     bucket = os.environ.get("LOGS_BUCKET_NAME")

@@ -336,7 +336,7 @@ def deploy_agent_engine_app(
     env_vars["NUM_WORKERS"] = str(num_workers)
 
     # Enable telemetry by default for Agent Engine
-    env_vars.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "true")
+    env_vars.setdefault("GOOGLE_CLOUD_AGENT_ENGINE_ENABLE_TELEMETRY", "false")
     env_vars.setdefault("OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT", "true")
 
     if not project:

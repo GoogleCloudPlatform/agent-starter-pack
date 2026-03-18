@@ -320,10 +320,13 @@ class TestE2EDeployment:
         )
 
         build_info = json.loads(build_result.stdout)
-        if build_info.get("status") == "FAILURE":
+        build_status = build_info.get("status")
+        if build_status != "SUCCESS":
             failure_info = build_info.get("failureInfo", {})
             failure_detail = failure_info.get("detail", "Unknown failure")
-            raise Exception(f"Build {build_id} failed: {failure_detail}")
+            raise Exception(
+                f"Build {build_id} ended with status {build_status}: {failure_detail}"
+            )
 
     @backoff.on_exception(backoff.expo, Exception, max_tries=5)
     def monitor_cb_deployment(

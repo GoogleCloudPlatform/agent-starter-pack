@@ -47,6 +47,7 @@ substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID
   _REGION: us-central1
 
+timeout: 1800s
 logsBucket: gs://${PROJECT_ID}-{{cookiecutter.project_name}}-logs/build-logs
 options:
   substitutionOption: ALLOW_LOOSE

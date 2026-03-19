@@ -53,7 +53,7 @@ cp .env.example .env
 # For Vertex AI (recommended):
 GOOGLE_GENAI_USE_VERTEXAI=true
 GOOGLE_CLOUD_PROJECT=your-gcp-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
+GOOGLE_CLOUD_LOCATION=global
 
 # Or for Gemini API:
 # GEMINI_API_KEY=your-api-key

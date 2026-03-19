@@ -69,5 +69,5 @@ jobs:
         run: npx vitest run tests/integration
         env:
           GOOGLE_CLOUD_PROJECT: {% raw %}${{ vars.CICD_PROJECT_ID }}{% endraw %}
-          GOOGLE_CLOUD_LOCATION: us-central1
+          GOOGLE_CLOUD_LOCATION: global
           GOOGLE_GENAI_USE_VERTEXAI: "true"

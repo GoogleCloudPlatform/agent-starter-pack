@@ -38,7 +38,7 @@ steps:
     env:
       - "GOOGLE_GENAI_USE_VERTEXAI=true"
       - "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
-      - "GOOGLE_CLOUD_LOCATION=us-central1"
+      - "GOOGLE_CLOUD_LOCATION=global"
     args:
       - "-c"
       - |
@@ -51,7 +51,7 @@ steps:
     env:
       - "GOOGLE_GENAI_USE_VERTEXAI=true"
       - "GOOGLE_CLOUD_PROJECT=${PROJECT_ID}"
-      - "GOOGLE_CLOUD_LOCATION=us-central1"
+      - "GOOGLE_CLOUD_LOCATION=global"
     args:
       - "-c"
       - |

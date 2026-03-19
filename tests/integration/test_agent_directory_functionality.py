@@ -421,6 +421,7 @@ instruction: You are a helpful assistant.
         # Run integration tests (excluding test_agent.py) to verify app works
         test_env = os.environ.copy()
         test_env["INTEGRATION_TEST"] = "TRUE"
+        test_env["GOOGLE_CLOUD_LOCATION"] = "global"
 
         run_command(
             [

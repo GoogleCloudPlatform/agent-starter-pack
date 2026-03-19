@@ -378,7 +378,7 @@ session_type = "in_memory"
 
         # Create root_agent.yaml
         yaml_content = """name: my_agent
-model: gemini-2.5-flash
+model: gemini-3-flash-preview
 instruction: You are a helpful assistant.
 """
         (agent_dir / "root_agent.yaml").write_text(yaml_content)
@@ -421,6 +421,7 @@ instruction: You are a helpful assistant.
         # Run integration tests (excluding test_agent.py) to verify app works
         test_env = os.environ.copy()
         test_env["INTEGRATION_TEST"] = "TRUE"
+        test_env["GOOGLE_CLOUD_LOCATION"] = "global"
 
         run_command(
             [

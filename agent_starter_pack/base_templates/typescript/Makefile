@@ -51,7 +51,7 @@ deploy:
 		--labels "created-by=adk" \
 		--update-build-env-vars "AGENT_VERSION=$$AGENT_VERSION" \
 		--update-env-vars \
-		"COMMIT_SHA=$(shell git rev-parse HEAD),GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1" \
+		"COMMIT_SHA=$(shell git rev-parse HEAD),GOOGLE_GENAI_USE_VERTEXAI=true,GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'gke' %}

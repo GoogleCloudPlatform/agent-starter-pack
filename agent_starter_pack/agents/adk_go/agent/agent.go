@@ -46,7 +46,7 @@ func GetWeather(_ tool.Context, args GetWeatherArgs) (GetWeatherResult, error) {
 
 // NewRootAgent creates and returns the root agent with all configured tools.
 func NewRootAgent(ctx context.Context) (agent.Agent, error) {
-	model, err := gemini.NewModel(ctx, "gemini-2.5-flash", &genai.ClientConfig{
+	model, err := gemini.NewModel(ctx, "gemini-3-flash-preview", &genai.ClientConfig{
 		Backend: genai.BackendVertexAI,
 	})
 	if err != nil {

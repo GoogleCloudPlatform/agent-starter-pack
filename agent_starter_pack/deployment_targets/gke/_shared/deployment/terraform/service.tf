@@ -291,7 +291,7 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app_staging" {
       kind        = "Deployment"
       name        = var.project_name
     }
-    min_replicas = 2
+    min_replicas = 1
     max_replicas = 10
     metric {
       type = "Resource"
@@ -381,7 +381,7 @@ resource "kubernetes_deployment_v1" "app_staging" {
 {%- if cookiecutter.language != "python" %}
           env {
             name  = "GOOGLE_CLOUD_PROJECT"
-            value = "{{ cookiecutter.google_cloud_project }}"
+            value = var.staging_project_id
           }
           env {
             name  = "GOOGLE_CLOUD_LOCATION"
@@ -613,7 +613,7 @@ resource "kubernetes_horizontal_pod_autoscaler_v2" "app_prod" {
       kind        = "Deployment"
       name        = var.project_name
     }
-    min_replicas = 2
+    min_replicas = 1
     max_replicas = 10
     metric {
       type = "Resource"
@@ -703,7 +703,7 @@ resource "kubernetes_deployment_v1" "app_prod" {
 {%- if cookiecutter.language != "python" %}
           env {
             name  = "GOOGLE_CLOUD_PROJECT"
-            value = "{{ cookiecutter.google_cloud_project }}"
+            value = var.prod_project_id
           }
           env {
             name  = "GOOGLE_CLOUD_LOCATION"

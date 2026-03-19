@@ -7,7 +7,7 @@
 
 A basic agent built using the **[Google Agent Development Kit (ADK)](https://google.github.io/adk-docs/)** with **[Agent2Agent (A2A) Protocol](https://a2a-protocol.org/)** support. This example demonstrates core ADK concepts like agent creation and tool integration, while enabling distributed agent communication through the A2A protocol for interoperability with agents across different frameworks and languages.
 
-This agent uses the `gemini-2.5-flash` model and is equipped with two simple tools:
+This agent uses the `gemini-3-flash-preview` model and is equipped with two simple tools:
 *   `get_weather`: Simulates fetching weather (hardcoded for SF).
 *   `get_current_time`: Simulates fetching the time (hardcoded for SF).
 

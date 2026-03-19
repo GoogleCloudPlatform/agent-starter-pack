@@ -15,7 +15,7 @@ const getWeather = new FunctionTool({
 
 export const rootAgent = new LlmAgent({
   name: '{{cookiecutter.project_name | replace("-", "_")}}_agent',
-  model: 'gemini-2.5-flash',
+  model: 'gemini-3-flash-preview',
   description: 'Tells the current weather in a specified city.',
   instruction: `You are a helpful assistant that tells the current weather in a city.
                 Use the 'getWeather' tool for this purpose.`,

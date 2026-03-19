@@ -11,7 +11,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '../..');
 
 // Load .env vars to pass explicitly to the server subprocess
-const dotenvVars = parse(readFileSync(resolve(rootDir, '.env')));
+let dotenvVars: Record<string, string> = {};
+try {
+  dotenvVars = parse(readFileSync(resolve(rootDir, '.env')));
+} catch {
+  // .env not present (e.g. CI environment) — env vars are set directly
+}
 
 async function waitForServer(url: string, maxRetries = 180): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {

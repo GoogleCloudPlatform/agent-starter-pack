@@ -270,19 +270,27 @@ def fetch_remote_template(
     # Attempt Git Clone
     try:
         clone_url = spec.repo_url
+        git_env = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
 
-        # Build clone command with --single-branch (optimized for branches)
-        clone_cmd = [
-            "git",
-            "clone",
-            "--depth",
-            "1",
-            "--single-branch",
-            "--branch",
-            spec.git_ref,
-            clone_url,
-            str(repo_path),
-        ]
+        # Use sparse checkout when a specific template path is known — significantly
+        # faster for large monorepos since only the needed subdirectory is downloaded.
+        use_sparse_checkout = bool(spec.template_path)
+
+        clone_cmd = ["git", "clone"]
+        if use_sparse_checkout:
+            clone_cmd.append("--no-checkout")
+        clone_cmd.extend(
+            [
+                "--depth",
+                "1",
+                "--single-branch",
+                "--branch",
+                spec.git_ref,
+            ]
+        )
+        if use_sparse_checkout:
+            clone_cmd.append("--filter=tree:0")
+        clone_cmd.extend([clone_url, str(repo_path)])
 
         logging.debug(
             f"Attempting to clone remote template with Git: {' '.join(clone_cmd)}"
@@ -293,7 +301,7 @@ def fetch_remote_template(
             capture_output=True,
             text=True,
             encoding="utf-8",
-            env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+            env=git_env,
         )
 
         # If clone with --single-branch fails, retry without it (for tags)
@@ -303,23 +311,25 @@ def fetch_remote_template(
                 logging.debug(
                     f"Clone with --single-branch failed, retrying without it (git_ref '{spec.git_ref}' is likely a tag)"
                 )
-                clone_cmd_without_single_branch = [
+                clone_cmd_retry = [
                     "git",
                     "clone",
                     "--depth",
                     "1",
                     "--branch",
                     spec.git_ref,
-                    clone_url,
-                    str(repo_path),
                 ]
+                if use_sparse_checkout:
+                    clone_cmd_retry.extend(["--no-checkout", "--filter=tree:0"])
+                clone_cmd_retry.extend([clone_url, str(repo_path)])
+
                 subprocess.run(
-                    clone_cmd_without_single_branch,
+                    clone_cmd_retry,
                     capture_output=True,
                     text=True,
                     check=True,
                     encoding="utf-8",
-                    env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+                    env=git_env,
                 )
                 logging.debug("Git clone successful (without --single-branch).")
             else:
@@ -329,6 +339,24 @@ def fetch_remote_template(
                 )
         else:
             logging.debug("Git clone successful.")
+
+        # Set up sparse checkout to materialize only the needed template path
+        if use_sparse_checkout:
+            sparse_cmds = [
+                ["git", "sparse-checkout", "set", spec.template_path + "/"],
+                ["git", "checkout", spec.git_ref],
+            ]
+            for cmd in sparse_cmds:
+                subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                    encoding="utf-8",
+                    cwd=str(repo_path),
+                    env=git_env,
+                )
+            logging.debug(f"Sparse checkout configured for path: {spec.template_path}")
     except subprocess.CalledProcessError as e:
         shutil.rmtree(temp_path, ignore_errors=True)
         raise RuntimeError(f"Git clone failed: {e.stderr.strip()}") from e

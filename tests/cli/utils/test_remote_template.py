@@ -184,6 +184,92 @@ class TestFetchRemoteTemplate:
 
         mock_rmtree.assert_called_once()
 
+    @patch("subprocess.run")
+    @patch("tempfile.mkdtemp")
+    @patch("shutil.rmtree")
+    def test_fetch_uses_sparse_checkout_when_template_path_set(
+        self,
+        mock_rmtree: MagicMock,
+        mock_mkdtemp: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test that fetch uses treeless clone + sparse checkout when template_path is set"""
+        mock_mkdtemp.return_value = "/tmp/test_dir"
+        mock_subprocess.return_value = MagicMock(returncode=0, stderr="")
+
+        spec = RemoteTemplateSpec(
+            repo_url="https://github.com/google/adk-samples",
+            template_path="python/agents/data-science",
+            git_ref="main",
+            is_adk_samples=True,
+        )
+
+        # Make template_dir.exists() return True to avoid FileNotFoundError
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.check_and_execute_with_version_lock",
+                return_value=False,
+            ),
+        ):
+            fetch_remote_template(spec)
+
+        # Verify the clone command uses --filter=tree:0 and --no-checkout
+        clone_call = mock_subprocess.call_args_list[0]
+        clone_cmd = clone_call[0][0]
+        assert "--filter=tree:0" in clone_cmd
+        assert "--no-checkout" in clone_cmd
+
+        # Verify sparse checkout commands were called
+        sparse_set_call = mock_subprocess.call_args_list[1]
+        sparse_cmd = sparse_set_call[0][0]
+        assert sparse_cmd == [
+            "git",
+            "sparse-checkout",
+            "set",
+            "python/agents/data-science/",
+        ]
+
+        checkout_call = mock_subprocess.call_args_list[2]
+        checkout_cmd = checkout_call[0][0]
+        assert checkout_cmd == ["git", "checkout", "main"]
+
+    @patch("subprocess.run")
+    @patch("tempfile.mkdtemp")
+    @patch("shutil.rmtree")
+    def test_fetch_uses_full_clone_when_no_template_path(
+        self,
+        mock_rmtree: MagicMock,
+        mock_mkdtemp: MagicMock,
+        mock_subprocess: MagicMock,
+    ) -> None:
+        """Test that fetch uses full shallow clone when template_path is empty"""
+        mock_mkdtemp.return_value = "/tmp/test_dir"
+        mock_subprocess.return_value = MagicMock(returncode=0, stderr="")
+
+        spec = RemoteTemplateSpec(
+            repo_url="https://github.com/google/adk-samples",
+            template_path="",
+            git_ref="main",
+        )
+
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "agent_starter_pack.cli.utils.remote_template.check_and_execute_with_version_lock",
+                return_value=False,
+            ),
+        ):
+            fetch_remote_template(spec)
+
+        # Verify the clone command does NOT use --filter=tree:0
+        clone_call = mock_subprocess.call_args_list[0]
+        clone_cmd = clone_call[0][0]
+        assert "--filter=tree:0" not in clone_cmd
+        assert "--no-checkout" not in clone_cmd
+        # Should only have the clone call, no sparse checkout commands
+        assert len(mock_subprocess.call_args_list) == 1
+
 
 class TestLoadRemoteTemplateConfig:
     def test_load_remote_template_config_primary_location(self) -> None:

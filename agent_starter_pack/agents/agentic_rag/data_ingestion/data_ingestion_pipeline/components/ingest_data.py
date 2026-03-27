@@ -100,20 +100,23 @@ def ingest_data(
     existing_names = []
 
     if question_ids:
-        # Use $in operator for batch filtering, with pagination
-        # (query_data_objects returns max 100 results per page)
-        page_token = None
-        while True:
-            search_request = vectorsearch_v1beta.QueryDataObjectsRequest(
-                parent=collection_path,
-                filter={"question_id": {"$in": question_ids}},
-                **({"page_token": page_token} if page_token else {}),
-            )
-            response = search_client.query_data_objects(search_request)
-            existing_names.extend(obj.name for obj in response.data_objects)
-            if not response.next_page_token:
-                break
-            page_token = response.next_page_token
+        # Batch question_ids into groups of 500 to avoid oversized $in requests,
+        # then paginate each batch's response (max 100 results per page).
+        query_batch_size = 500
+        for qid_start in range(0, len(question_ids), query_batch_size):
+            qid_batch = question_ids[qid_start : qid_start + query_batch_size]
+            page_token = None
+            while True:
+                search_request = vectorsearch_v1beta.QueryDataObjectsRequest(
+                    parent=collection_path,
+                    filter={"question_id": {"$in": qid_batch}},
+                    **({"page_token": page_token} if page_token else {}),
+                )
+                response = search_client.query_data_objects(search_request)
+                existing_names.extend(obj.name for obj in response.data_objects)
+                if not response.next_page_token:
+                    break
+                page_token = response.next_page_token
 
     # Separate chunks into: new (to create), unchanged (skip), stale (to delete).
     # Extract chunk_id from resource name (format: .../dataObjects/{chunk_id})
@@ -136,9 +139,7 @@ def ingest_data(
 
     # --- Step 2: Create new chunks FIRST (safe — unique timestamped IDs) ---
     created = 0
-    batch_size = min(
-        ingestion_batch_size, 250
-    )  # Max 250 per request for auto-embeddings
+    batch_size = min(ingestion_batch_size, 250)  # Max 250 per request for auto-embeddings
     for batch_start in range(0, len(df_to_create), batch_size):
         batch_end = min(batch_start + batch_size, len(df_to_create))
         batch_df = df_to_create.iloc[batch_start:batch_end]

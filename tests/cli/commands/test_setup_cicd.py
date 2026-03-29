@@ -524,6 +524,149 @@ class TestSetupCICD:
 
         assert result.exit_code == 0
 
+    def test_skip_terraform(
+        self,
+        mock_cwd: MagicMock,
+        mock_console: MagicMock,
+        mock_run_command: MagicMock,
+        mock_setup_terraform_backend: MagicMock,
+        mock_create_github_connection: MagicMock,
+        mock_template_files: None,
+    ) -> None:
+        """Test setup with --skip-terraform flag"""
+        runner = CliRunner()
+
+        # Set up mock responses for different command calls
+        def run_command_side_effect(*args: Any, **kwargs: Any) -> MagicMock:
+            command = args[0]
+            mock_response = MagicMock()
+
+            print(f"\nMocked command: {command}")
+
+            # Mock gcloud services list
+            if "gcloud" in command and "services" in command and "list" in command:
+                mock_response.stdout = "[]"
+                mock_response.returncode = 0
+                print("Mocking gcloud services list")
+            # Mock GitHub auth status with scopes
+            elif "gh" in command and "auth" in command and "status" in command:
+                mock_response.stdout = "- Token scopes: 'repo', 'workflow'\n"
+                mock_response.returncode = 0
+                print("Mocking GitHub auth status")
+            # Mock GitHub username API call
+            elif "gh" in command and "api" in command and "user" in command:
+                mock_response.stdout = "test-user"
+                mock_response.returncode = 0
+                print("Mocking GitHub username API call")
+            # Mock git remote get-url
+            elif "git" in command and "remote" in command and "get-url" in command:
+                mock_response.stdout = "git@github.com:test-user/test-repo.git"
+                mock_response.returncode = 0
+                print("Mocking git remote get-url")
+            # Mock terraform commands
+            elif "terraform" in command:
+                mock_response.stdout = ""
+                mock_response.returncode = 0
+                print("Mocking terraform command")
+            # Mock repository view command
+            elif "gh" in command and "repo" in command and "view" in command:
+                mock_response.stdout = '{"isEmpty": true}'
+                mock_response.returncode = 0
+                print("Mocking repository view command")
+            # Mock gcloud storage commands
+            elif "gcloud" in command and "storage" in command:
+                mock_response.stdout = ""
+                mock_response.returncode = 0
+                print("Mocking gcloud storage command")
+            # Mock git init
+            elif "git" in command and "init" in command:
+                mock_response.stdout = ""
+                mock_response.returncode = 0
+                print("Mocking git init")
+            # Mock gcloud builds commands
+            elif "gcloud" in command and "builds" in command:
+                mock_response.stdout = json.dumps(
+                    {
+                        "installationState": {"stage": "COMPLETE"},
+                        "githubConfig": {
+                            "authorizerCredential": {
+                                "oauthTokenSecretVersion": "projects/test-project/secrets/oauth-token/versions/1"
+                            },
+                            "appInstallationId": "test-installation-id",
+                        },
+                    }
+                )
+                mock_response.returncode = 0
+                print("Mocking gcloud builds command")
+            # Mock gcloud projects commands
+            elif "gcloud" in command and "projects" in command:
+                mock_response.stdout = "123456789"  # Mock project number
+                mock_response.returncode = 0
+                print("Mocking gcloud projects command")
+            # Default response for any other command
+            else:
+                mock_response.stdout = ""
+                mock_response.returncode = 0
+                print(f"Default mock for command: {command}")
+
+            return mock_response
+
+        mock_run_command.side_effect = run_command_side_effect
+        mock_create_github_connection.return_value = (
+            "oauth-token",
+            "test-installation-id",
+        )
+
+        # Mock required dependencies
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("shutil.copy2"),
+            patch("builtins.open", mock_open()),
+            patch("agent_starter_pack.cli.utils.cicd.ensure_apis_enabled"),
+            patch(
+                "agent_starter_pack.cli.utils.cicd.run_command",
+                side_effect=run_command_side_effect,
+            ),
+            patch(
+                "click.prompt",
+                side_effect=[
+                    "1",  # Repository option (1 for new repo)
+                    "test-repo",  # Repository name
+                    "test-user",  # Repository owner
+                ],
+            ),
+            patch("click.confirm", return_value=True),
+            patch("pathlib.Path.glob") as mock_glob,
+            patch(
+                "agent_starter_pack.cli.utils.gcp.verify_credentials_and_vertex",
+                return_value={"account": "test@example.com", "project": "test-project"},
+            ),
+        ):
+            mock_glob.return_value = [Path("mock.tf")]
+
+            print("\nInvoking setup_cicd command...")
+            result = runner.invoke(
+                setup_cicd,
+                [
+                    "--staging-project",
+                    "test-staging",
+                    "--prod-project",
+                    "test-prod",
+                    "--cicd-project",
+                    "test-cicd",
+                    "--auto-approve",
+                    "--skip-terraform"
+                ],
+            )
+
+            if result.exception:
+                print(f"Exception: {result.exception}")
+                print(f"Output: {result.output}")
+                print(f"\nCommand exit code: {result.exit_code}")
+
+            assert result.exit_code == 0
+            mock_setup_terraform_backend.assert_not_called()
+
 
 @pytest.fixture
 def mock_path_exists() -> MagicMock:

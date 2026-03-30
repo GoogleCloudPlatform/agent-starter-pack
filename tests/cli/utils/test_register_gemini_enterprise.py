@@ -224,10 +224,16 @@ class TestListGeminiEnterpriseApps:
                 {
                     "name": "projects/123/locations/global/collections/default_collection/engines/engine1",
                     "displayName": "Test App 1",
+                    "appType": "APP_TYPE_INTRANET",
                 },
                 {
                     "name": "projects/123/locations/global/collections/default_collection/engines/engine2",
                     "displayName": "Test App 2",
+                    "appType": "APP_TYPE_INTRANET",
+                },
+                {
+                    "name": "projects/123/locations/global/collections/default_collection/engines/engine3",
+                    "displayName": "Test App 3",
                 },
             ]
         }

@@ -110,7 +110,7 @@ def generate_lock_file(pyproject_content: str, output_path: pathlib.Path) -> Non
         # Run uv pip compile to generate lock file
         # Explicitly use PyPI to ensure consistent lock files
         subprocess.run(
-            ["uv", "lock", "--default-index", "https://pypi.org/simple"],
+            ["uv", "lock", "--no-config", "--default-index", "https://pypi.org/simple"],
             cwd=tmp_dir,
             check=True,
         )
@@ -153,6 +153,7 @@ def generate_go_lock_file() -> None:
             [
                 "uv",
                 "run",
+                "--no-config",
                 "agent-starter-pack",
                 "create",
                 project_name,
@@ -223,6 +224,7 @@ def generate_typescript_lock_file() -> None:
             [
                 "uv",
                 "run",
+                "--no-config",
                 "agent-starter-pack",
                 "create",
                 project_name,

@@ -329,7 +329,7 @@ def deploy_agent_engine_app(
     labels_dict = parse_key_value_pairs(labels)
 
     # Merge secrets into env_vars (secrets override plain env vars)
-    env_vars.update(secrets)  # type: ignore[arg-type]
+    env_vars.update(secrets)  # type: ignore
 
     # Set deployment-specific environment variables
     env_vars["GOOGLE_CLOUD_REGION"] = location

@@ -484,9 +484,7 @@ def list_gemini_enterprise_apps(
         engines = data.get("engines", [])
 
         # Filter for Gemini Enterprise apps
-        return [
-            e for e in engines if e.get("appType") == "APP_TYPE_INTRANET"
-        ]
+        return [e for e in engines if e.get("appType") == "APP_TYPE_INTRANET"]
 
     except requests.exceptions.HTTPError as e:
         if (

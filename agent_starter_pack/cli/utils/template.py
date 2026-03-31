@@ -120,7 +120,9 @@ CONDITIONAL_FILES = {
     "{agent_directory}/app_utils/expose_app.py": lambda c: c.get("is_adk_live"),
     "tests/helpers.py": lambda c: c.get("is_a2a"),
     "deployment/terraform/service.tf": _exclude_adk_live_agent_engine,
+    "deployment/terraform/service_outputs.tf": _exclude_adk_live_agent_engine,
     "deployment/terraform/dev/service.tf": _exclude_adk_live_agent_engine,
+    "deployment/terraform/dev/service_outputs.tf": _exclude_adk_live_agent_engine,
     # Data ingestion conditional (only for vertex_ai_vector_search)
     "data_ingestion": lambda c: c.get("datastore_type") == "vertex_ai_vector_search",
     # Datastore-specific terraform files (vertex_ai_search vs vertex_ai_vector_search)

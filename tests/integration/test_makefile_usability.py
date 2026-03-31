@@ -107,6 +107,9 @@ def validate_makefile_usability(
             "local-backend",
             "eval",
             "eval-all",
+            "inspector",
+            "setup-inspector-if-needed",
+            "build-inspector-if-needed",
         }
 
         # Filter out any unwanted targets

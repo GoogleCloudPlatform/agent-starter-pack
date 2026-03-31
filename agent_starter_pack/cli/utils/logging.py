@@ -128,7 +128,7 @@ def display_welcome_banner(
             version=version,
             motto=motto,
         )
-    elif agent and agent.startswith("adk@"):
+    elif agent and (agent.startswith("adk@") or agent.startswith("adk-py@")):
         panel = _build_banner(
             line1=(
                 "Powered by [link=https://goo.gle/agent-starter-pack]"

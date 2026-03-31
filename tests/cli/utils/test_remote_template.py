@@ -69,6 +69,24 @@ class TestParseAgentSpec:
         assert spec.git_ref == "main"
         assert spec.is_adk_samples is True
 
+    def test_parse_adk_py_shortcut(self) -> None:
+        """Test parsing ADK Python shortcut format"""
+        spec = parse_agent_spec("adk-py@code-execution")
+        assert spec is not None
+        assert spec.repo_url == "https://github.com/google/adk-python"
+        assert spec.template_path == "contributing/samples/code-execution"
+        assert spec.git_ref == "main"
+        assert spec.is_adk_samples is True
+
+    def test_parse_adk_py_shortcut_underscore_name(self) -> None:
+        """Test parsing ADK Python shortcut with underscore name"""
+        spec = parse_agent_spec("adk-py@agent_engine_code_execution")
+        assert spec is not None
+        assert spec.repo_url == "https://github.com/google/adk-python"
+        assert spec.template_path == "contributing/samples/agent_engine_code_execution"
+        assert spec.git_ref == "main"
+        assert spec.is_adk_samples is True
+
     def test_parse_full_url_with_path_and_ref(self) -> None:
         """Test parsing full URL with path and ref"""
         spec = parse_agent_spec("https://github.com/org/repo/path/to/template@develop")
@@ -504,6 +522,9 @@ settings:
             # ADK samples
             ("adk@academic-research", True),
             ("adk@custom-agent", True),
+            # ADK Python samples
+            ("adk-py@code-execution", True),
+            ("adk-py@agent_engine_code_execution", True),
             # GitHub URLs
             ("https://github.com/org/repo", True),
             ("https://github.com/org/repo/path@branch", True),
@@ -582,6 +603,15 @@ class TestParseAgentSpecWithGitSuffix:
         assert spec is not None
         assert spec.repo_url == "https://github.com/google/adk-samples"
         assert spec.template_path == "python/agents/academic-research"
+        assert spec.git_ref == "main"
+        assert spec.is_adk_samples is True
+
+    def test_parse_adk_py_shortcut_not_affected(self) -> None:
+        """Ensure the adk-py@ shortcut remains unaffected."""
+        spec = parse_agent_spec("adk-py@code-execution")
+        assert spec is not None
+        assert spec.repo_url == "https://github.com/google/adk-python"
+        assert spec.template_path == "contributing/samples/code-execution"
         assert spec.git_ref == "main"
         assert spec.is_adk_samples is True
 

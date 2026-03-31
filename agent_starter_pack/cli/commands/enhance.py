@@ -1044,7 +1044,7 @@ def enhance(
     TEMPLATE_PATH can be:
     - A local directory path (e.g., . for current directory)
     - An agent name (e.g., adk)
-    - A remote template (e.g., adk@data-science)
+    - A remote template (e.g., adk@data-science, adk-py@code-execution)
 
     The command will validate your project structure and provide guidance if needed.
     """

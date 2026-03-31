@@ -101,7 +101,6 @@ def run_agent(message: str) -> str:
     user_proxy.reset()
 
     response = user_proxy.run(assistant, message=message)
-    response.process()
 
     # Extract the summary or last assistant message
     if response.summary:

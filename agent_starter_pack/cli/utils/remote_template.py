@@ -65,6 +65,16 @@ def parse_agent_spec(agent_spec: str) -> RemoteTemplateSpec | None:
             is_adk_samples=True,
         )
 
+    # Check for adk-py@ shortcut (maps to google/adk-python contributing samples)
+    if agent_spec.startswith("adk-py@"):
+        sample_name = agent_spec[7:]  # Remove "adk-py@" prefix
+        return RemoteTemplateSpec(
+            repo_url="https://github.com/google/adk-python",
+            template_path=f"contributing/samples/{sample_name}",
+            git_ref="main",
+            is_adk_samples=True,
+        )
+
     # GitHub /tree/ URL pattern
     tree_pattern = r"^(https?://[^/]+/[^/]+/[^/]+)/tree/([^/]+)/(.*)$"
     match = re.match(tree_pattern, agent_spec)

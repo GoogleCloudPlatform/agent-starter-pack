@@ -506,7 +506,7 @@ app = FastAPI(
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest) -> QueryResponse:
     """Run the AG2 agent with the given message."""
-    logging.info(f"Received query: {request.message}")
+    logger.info(f"Received query: {request.message}")
     response = run_agent(request.message)
     return QueryResponse(response=response)
 

@@ -106,7 +106,7 @@ def run_agent(message: str) -> str:
     if response.summary:
         return response.summary.replace("TERMINATE", "").strip()
 
-    for msg in reversed(response.messages):
+    for msg in reversed(list(response.messages)):
         if msg.get("role") == "assistant":
             content = msg.get("content", "")
             return content.replace("TERMINATE", "").strip()

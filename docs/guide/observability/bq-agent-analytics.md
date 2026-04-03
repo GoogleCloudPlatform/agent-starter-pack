@@ -66,7 +66,7 @@ bq_config = BigQueryLoggerConfig(
     connection_id=os.environ.get("BQ_ANALYTICS_CONNECTION_ID"), # (Optional) For GCS access from BQ
     log_multi_modal_content=True,
     max_content_length=500 * 1024, # Max inline text size before GCS offload
-    table_id="agent_events_v2" # Default table name
+    table_id="agent_events" # Default table name
 )
 
 # Plugin instance
@@ -93,7 +93,7 @@ app = App(
 *   `connection_id` **(Optional)**: Fully qualified BigQuery Connection ID (e.g., `us-central1.conn-id`) for GCS access. Set by `BQ_ANALYTICS_CONNECTION_ID` env var from Terraform. Required only if you have multimodal data to offload.
 *   `log_multi_modal_content`: Whether to handle content parts and offload to GCS.
 *   `max_content_length`: Threshold for offloading text parts to GCS.
-*   `table_id`: Name of the BigQuery table to write to (defaults to `agent_events_v2`).
+*   `table_id`: Name of the BigQuery table to write to (defaults to `agent_events`).
 *   `event_allowlist` / `event_denylist`: Filter which event types are logged.
 *   `batch_size`: Number of rows to batch before writing to BigQuery.
 
@@ -104,11 +104,11 @@ When deployed with Terraform (`make setup-dev-env`):
 *   **Dataset:** A BigQuery dataset named `{project_name}_telemetry` is created. The `BQ_ANALYTICS_DATASET_ID` environment variable is set to this ID.
 *   **GCS Bucket (Optional):** A bucket named `{project_id}-{project_name}-logs` is created for GCS offloading. The `BQ_ANALYTICS_GCS_BUCKET` env var is set to this name.
 *   **BigQuery Connection (Optional):** A connection named `{project_name}-genai-telemetry` is created to allow BigQuery to read from the GCS bucket. The `BQ_ANALYTICS_CONNECTION_ID` env var is set to its fully qualified ID.
-*   **Table:** The `agent_events_v2` table is **auto-created** by the plugin within the telemetry dataset on the first event.
+*   **Table:** The `agent_events` table is **auto-created** by the plugin within the telemetry dataset on the first event.
 
 ## Schema Reference
 
-The schema for the `agent_events_v2` table is maintained by the Agent Development Kit (ADK). To ensure you have the most up-to-date information and maintain a single source of truth, please refer to the [ADK Documentation](https://google.github.io/adk-docs/) for the official schema reference, or view it directly using the BigQuery schema viewer in the Google Cloud Console.
+The schema for the `agent_events` table is maintained by the Agent Development Kit (ADK). To ensure you have the most up-to-date information and maintain a single source of truth, please refer to the [ADK Documentation](https://google.github.io/adk-docs/) for the official schema reference, or view it directly using the BigQuery schema viewer in the Google Cloud Console.
 
 ## Example Queries
 
@@ -117,7 +117,7 @@ Replace `YOUR_PROJECT_ID` and `YOUR_AGENT_NAME` accordingly.
 **Recent Events:**
 ```sql
 SELECT *
-FROM `YOUR_PROJECT_ID.YOUR_AGENT_NAME_telemetry.agent_events_v2`
+FROM `YOUR_PROJECT_ID.YOUR_AGENT_NAME_telemetry.agent_events`
 ORDER BY timestamp DESC
 LIMIT 100;
 ```
@@ -130,7 +130,7 @@ SELECT
   JSON_VALUE(content, '$.args') AS tool_args,
   status,
   error_message
-FROM `YOUR_PROJECT_ID.YOUR_AGENT_NAME_telemetry.agent_events_v2`
+FROM `YOUR_PROJECT_ID.YOUR_AGENT_NAME_telemetry.agent_events`
 WHERE event_type IN ('TOOL_COMPLETED', 'TOOL_ERROR')
 ORDER BY timestamp DESC;
 ```
@@ -142,7 +142,7 @@ SELECT
   JSON_VALUE(attributes, '$.model') AS model,
   SUM(CAST(JSON_VALUE(attributes, '$.usage_metadata.prompt') AS INT64)) AS total_prompt_tokens,
   SUM(CAST(JSON_VALUE(attributes, '$.usage_metadata.completion') AS INT64)) AS total_completion_tokens
-FROM `YOUR_PROJECT_ID.YOUR_AGENT_NAME_telemetry.agent_events_v2`
+FROM `YOUR_PROJECT_ID.YOUR_AGENT_NAME_telemetry.agent_events`
 WHERE event_type = 'LLM_RESPONSE'
   AND JSON_VALUE(attributes, '$.usage_metadata.prompt') IS NOT NULL
 GROUP BY agent, model;

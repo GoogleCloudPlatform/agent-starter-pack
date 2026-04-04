@@ -469,6 +469,52 @@ app: FastAPI = get_fast_api_app(
 app.title = "{{cookiecutter.project_name}}"
 app.description = "API for interacting with the Agent {{cookiecutter.project_name}}"
 {%- endif %}
+{% elif cookiecutter.agent_name == "ag2" %}
+import logging
+
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+from {{cookiecutter.agent_directory}}.agent import run_agent
+from {{cookiecutter.agent_directory}}.app_utils.typing import Feedback
+
+logger = logging.getLogger(__name__)
+
+try:
+    from google.cloud import logging as google_cloud_logging
+
+    logging_client = google_cloud_logging.Client()
+    logging_client.setup_logging()
+except Exception:
+    logging.basicConfig(level=logging.INFO)
+
+
+class QueryRequest(BaseModel):
+    message: str
+
+
+class QueryResponse(BaseModel):
+    response: str
+
+
+app = FastAPI(
+    title="{{cookiecutter.project_name}}",
+    description="API for interacting with the Agent {{cookiecutter.project_name}}",
+)
+
+
+@app.post("/query", response_model=QueryResponse)
+def query(request: QueryRequest) -> QueryResponse:
+    """Run the AG2 agent with the given message."""
+    logger.info(f"Received query: {request.message}")
+    response = run_agent(request.message)
+    return QueryResponse(response=response)
+
+
+@app.get("/health")
+def health() -> dict[str, str]:
+    """Health check endpoint."""
+    return {"status": "healthy"}
 {% else %}
 import os
 from collections.abc import AsyncIterator
@@ -558,7 +604,11 @@ def collect_feedback(feedback: Feedback) -> dict[str, str]:
     Returns:
         Success message
     """
+{%- if cookiecutter.get("agent_name") == "ag2" %}
+    logger.info("Feedback received: %s", feedback.model_dump())
+{%- else %}
     logger.log_struct(feedback.model_dump(), severity="INFO")
+{%- endif %}
     return {"status": "success"}
 
 

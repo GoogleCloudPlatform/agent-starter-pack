@@ -40,6 +40,7 @@ from rich.prompt import Confirm, IntPrompt, Prompt
 from agent_starter_pack.cli.utils.version import get_current_version
 
 from .datastores import DATASTORES
+from .plugin_discovery import load_vertical_skill_plugins
 from .remote_template import (
     get_base_template_name,
     render_and_merge_makefiles,
@@ -600,7 +601,59 @@ def get_available_agents(deployment_target: str | None = None) -> dict:
     # Convert to numbered dictionary starting from 1
     agents = {i + 1: agent for i, agent in enumerate(agents_list)}
 
+    # Load vertical skill plugins
+    try:
+        vertical_skills = load_vertical_skill_plugins()
+        # Add vertical skills to agents dict starting from next number
+        next_number = len(agents) + 1
+        for skill_name, skill_config in vertical_skills.items():
+            agents[next_number] = {
+                "name": skill_name,
+                "display_name": skill_config.get("display_name", skill_name),
+                "description": skill_config.get("description", ""),
+                "language": "python",  # Vertical skills are Python-based
+                "framework": "vertical_skill",
+                "priority": 999,  # Display after built-in agents
+                "is_vertical_skill": True,
+                "skill_config": skill_config,
+            }
+            next_number += 1
+    except Exception as e:
+        logging.warning(f"Failed to load vertical skill plugins: {e}")
+
     return agents
+
+
+def is_vertical_skill_agent(agent_name: str) -> bool:
+    """Check if an agent is a vertical skill plugin.
+
+    Args:
+        agent_name: Name of the agent
+
+    Returns:
+        True if agent is a vertical skill, False otherwise
+    """
+    try:
+        vertical_skills = load_vertical_skill_plugins()
+        return agent_name in vertical_skills
+    except Exception:
+        return False
+
+
+def get_vertical_skill_config(agent_name: str) -> dict[str, Any] | None:
+    """Get configuration for a vertical skill plugin.
+
+    Args:
+        agent_name: Name of the vertical skill
+
+    Returns:
+        Skill configuration dictionary or None if not found
+    """
+    try:
+        vertical_skills = load_vertical_skill_plugins()
+        return vertical_skills.get(agent_name)
+    except Exception:
+        return None
 
 
 def load_template_config(template_dir: pathlib.Path) -> dict[str, Any]:
@@ -1460,8 +1513,12 @@ def process_template(
                 generate_java_package_vars(project_name) if language == "java" else {}
             )
 
+            # Compute project_slug from project_name (for vertical skill compatibility)
+            project_slug = project_name.lower().replace(' ', '-').replace('_', '-')
+
             cookiecutter_config = {
                 "project_name": project_name,
+                "project_slug": project_slug,
                 "agent_name": agent_name,
                 "package_version": get_current_version(),
                 "generated_at": datetime.now(tz=UTC).isoformat(),
@@ -1516,6 +1573,12 @@ def process_template(
                     "Makefile",  # Don't render Makefile - handled by render_and_merge_makefiles
                 ],
             }
+
+            # Merge vertical skill variables if present
+            if cli_overrides and "vertical_skill_vars" in cli_overrides:
+                vertical_skill_vars = cli_overrides["vertical_skill_vars"]
+                cookiecutter_config.update(vertical_skill_vars)
+                logging.debug(f"Merged vertical skill variables into cookiecutter config: {list(vertical_skill_vars.keys())}")
 
             with open(
                 cookiecutter_template / "cookiecutter.json", "w", encoding="utf-8"

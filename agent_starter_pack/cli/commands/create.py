@@ -605,7 +605,95 @@ def create(
         if debug:
             logging.debug(f"Selected agent: {final_agent}")
 
-        # Load template configuration based on whether it's remote or local
+        # Check if selected agent is a vertical skill plugin
+        from ..utils.template import is_vertical_skill_agent, get_vertical_skill_config
+
+        is_vertical = is_vertical_skill_agent(final_agent)
+
+        if is_vertical:
+            console.print(f"\n[bold cyan]Using vertical skill: {final_agent}[/]")
+
+            # Get vertical skill configuration
+            skill_config = get_vertical_skill_config(final_agent)
+
+            if not skill_config:
+                raise click.ClickException(f"Failed to load vertical skill: {final_agent}")
+
+            skill_instance = skill_config.get("skill_instance")
+            interview_questions = skill_config.get("interview_questions", [])
+
+            # Run vertical skill interview
+            if interview_questions:
+                interview_responses = run_vertical_skill_interview(
+                    questions=interview_questions,
+                    skill_name=skill_config["display_name"],
+                    auto_approve=auto_approve
+                )
+
+                if debug:
+                    logging.debug(f"Interview responses: {interview_responses}")
+
+                # Process interview responses to template variables
+                try:
+                    vertical_skill_vars = skill_instance.process_interview_responses(interview_responses)
+
+                    if debug:
+                        logging.debug(f"Processed template vars: {vertical_skill_vars}")
+
+                    # Merge vertical skill vars into cookiecutter context
+                    if not cli_overrides:
+                        cli_overrides = {}
+
+                    cli_overrides["vertical_skill_vars"] = vertical_skill_vars
+
+                    console.print(f"[green]✓ Processed interview responses[/]")
+
+                except Exception as e:
+                    console.print(f"Error processing interview responses: {e}", style="bold red")
+                    if debug:
+                        logging.exception("Interview processing failed")
+                    raise
+
+            # Use vertical skill's template path
+            # Vertical skills are complete cookiecutter templates - use them directly
+            template_path = pathlib.Path(skill_config["template_path"])
+
+            if debug:
+                logging.debug(f"Using vertical skill template: {template_path}")
+
+            # For vertical skills, call cookiecutter directly and skip process_template
+            from cookiecutter.main import cookiecutter
+
+            # Merge vertical skill vars into cookiecutter extra_context
+            extra_context = {"project_name": project_name}
+            if cli_overrides and "vertical_skill_vars" in cli_overrides:
+                extra_context.update(cli_overrides["vertical_skill_vars"])
+
+            if debug:
+                logging.debug(f"Calling cookiecutter with template: {template_path}")
+                logging.debug(f"Extra context: {extra_context}")
+
+            # Always print to see what we're passing
+            console.print(f"[dim]Extra context keys: {list(extra_context.keys())}[/]")
+
+            # Call cookiecutter directly
+            output_path = cookiecutter(
+                str(template_path),
+                no_input=True,
+                extra_context=extra_context,
+                output_dir=str(destination_dir)
+            )
+
+            console.print("\n[bold green]Success![/] Your agent project is ready.\n")
+            console.print("[bold cyan]Documentation[/]")
+            console.print(f"   README:    [cyan]cat {project_name}/README.md[/]")
+            console.print(f"   Dev Guide: [cyan][link=https://goo.gle/asp-dev]https://goo.gle/asp-dev[/link][/cyan]")
+            console.print("\n[bold cyan]Get Started[/]")
+            console.print(f"   [bold bright_green]cd {project_name} && make install && make playground[/]")
+
+            return  # Skip the rest of the create flow
+
+        # Load template configuration based on whether it's remote, local, or vertical skill
         # Track original base template to detect actual overrides (not just selection)
         original_base_template: str | None = None
         if template_source_path:
@@ -931,7 +1019,7 @@ def create(
         # Process template
         if not template_source_path:
             template_path = get_template_path(final_agent, debug=debug)
-        # template_path is already set above for remote templates
+        # template_path is already set above for remote templates (including vertical skills)
 
         if debug:
             logging.debug(f"Template path: {template_path}")
@@ -1159,12 +1247,29 @@ def display_agent_selection(
                 header = "\U0001f310 Other Languages"
             console.print(f"\n  [bold cyan]{header}[/]")
 
+        # Skip vertical skills in main display - they get their own section
+        if agent.get("is_vertical_skill"):
+            continue
+
         # Align agent names for cleaner display (use display_name if available)
         display_name = agent.get("display_name", agent["name"])
         name_padded = display_name.ljust(14)
         console.print(
             f"     {num}. [bold]{name_padded}[/] [dim]{agent['description']}[/]"
         )
+
+    # Display vertical skill plugins
+    vertical_skills = {num: agent for num, agent in agents.items() if agent.get("is_vertical_skill")}
+
+    if vertical_skills:
+        console.print(f"\n  [bold cyan]🎯 Vertical Skills (Domain-Specific)[/]")
+
+        for num, agent in vertical_skills.items():
+            display_name = agent.get("display_name", agent["name"])
+            name_padded = display_name.ljust(14)
+            console.print(
+                f"     {num}. [bold]{name_padded}[/] [dim]{agent['description']}[/]"
+            )
 
     # Add "More Options" submenu entry
     more_options_num = len(agents) + 1
@@ -1191,6 +1296,65 @@ def display_agent_selection(
         return AgentSelectionResult(agent=agents[choice]["name"])
     else:
         raise ValueError(f"Invalid agent selection: {choice}")
+
+
+def run_vertical_skill_interview(
+    questions: list[dict],
+    skill_name: str,
+    auto_approve: bool = False
+) -> dict:
+    """Run vertical skill interview questions."""
+    responses = {}
+
+    console.print(f"\n[bold cyan]Running {skill_name} Interview[/]")
+    console.print(f"[dim]{len(questions)} domain-specific questions[/]\n")
+
+    for idx, question in enumerate(questions, 1):
+        number = question.get("number", f"Q{idx-1}")
+        title = question.get("title", "Question")
+        question_text = question.get("question", "")
+        options = question.get("options", [])
+        default = question.get("default", "1")
+
+        console.print(f"\n[bold]{number}: {title}[/]")
+        console.print(f"{question_text}\n")
+
+        for option in options:
+            console.print(f"  {option}")
+
+        if auto_approve:
+            answer = default
+            console.print(f"> Using default: [yellow]{default}[/]", style="dim")
+        else:
+            valid_choices = [opt.split(".")[0].strip() for opt in options if "." in opt]
+
+            answer = Prompt.ask(
+                "\nYour choice",
+                choices=valid_choices if valid_choices else None,
+                default=default
+            )
+
+        response_key = _question_number_to_response_key(number)
+        responses[response_key] = answer
+
+    console.print(f"\n[green]✓ Interview complete![/]")
+    return responses
+
+
+def _question_number_to_response_key(question_number: str) -> str:
+    """Map question number (Q0, Q1, etc.) to response key."""
+    mapping = {
+        "Q0": "gate_question",
+        "Q1": "product_fields_label",
+        "Q2": "data_source",
+        "Q3": "search_type",
+        "Q4": "embedding_model",
+        "Q5": "catalog_size",
+        "Q6": "search_ui",
+        "Q7": "cart_action",
+        "Q8": "vague_query_behavior",
+    }
+    return mapping.get(question_number, question_number.lower().replace("q", "question_"))
 
 
 def display_more_options_submenu(

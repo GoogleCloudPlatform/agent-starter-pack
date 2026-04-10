@@ -486,9 +486,7 @@ if __name__ == "__main__":
                 config["project_id"] = match.group(1)
                 extracted_location = match.group(2)
                 config["location"] = (
-                    args.location
-                    if args.location != "us-west1"
-                    else extracted_location
+                    args.location if args.location != "us-west1" else extracted_location
                 )
                 print("Extracted project ID and location from remote agent engine ID")
             else:

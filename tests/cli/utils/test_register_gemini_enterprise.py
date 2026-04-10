@@ -177,9 +177,7 @@ class TestParseAgentEngineId:
 
     def test_valid_agent_engine_id(self) -> None:
         """Test parsing a valid Agent Engine resource name."""
-        agent_id = (
-            "projects/123456789/locations/us-west1/reasoningEngines/9876543210"
-        )
+        agent_id = "projects/123456789/locations/us-west1/reasoningEngines/9876543210"
         result = parse_agent_engine_id(agent_id)
 
         assert result is not None

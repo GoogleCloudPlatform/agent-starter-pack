@@ -175,7 +175,7 @@ class TestCreateCommand:
                     "vertex_ai_vector_search",
                     "--auto-approve",
                     "--region",
-                    "us-central1",
+                    "us-west1",
                 ],
                 catch_exceptions=False,
             )
@@ -300,7 +300,7 @@ class TestCreateCommand:
                     "--deployment-target",
                     "cloud_run",
                     "--region",
-                    "us-central1",
+                    "us-west1",
                 ],
                 catch_exceptions=False,
             )

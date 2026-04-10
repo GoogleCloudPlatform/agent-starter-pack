@@ -71,7 +71,7 @@ Create a minimal project without CI/CD or Terraform infrastructure. Ideal for:
 **Upgrade path:** Run `uvx agent-starter-pack enhance` later to add CI/CD scaffolding.
 
 ### `--region` REGION
-GCP region for deployment (default: `us-central1`)
+GCP region for deployment (default: `us-west1`)
 
 ## Data & Storage Options
 

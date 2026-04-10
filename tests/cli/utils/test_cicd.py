@@ -48,7 +48,7 @@ def test_project_config() -> None:
     )
 
     assert config.dev_project_id == "test-dev"
-    assert config.region == "us-central1"  # default value
+    assert config.region == "us-west1"  # default value
     assert config.git_provider == "github"  # default value
 
 

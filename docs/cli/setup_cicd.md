@@ -84,7 +84,7 @@ uvx agent-starter-pack setup-cicd \
 *   `--staging-project`, `--prod-project`: **Required Information.** Your Google Cloud project IDs for staging and production environments. The command will prompt for these if the flags are omitted.
 *   `--cicd-project`: (Optional) Project ID for hosting CI/CD resources. If omitted, defaults to the production project ID.
 *   `--dev-project`: (Optional) Project ID for a dedicated development environment.
-*   `--region`: (Optional) GCP region for resources (default: `us-central1`).
+*   `--region`: (Optional) GCP region for resources (default: `us-west1`).
 *   `--repository-name`, `--repository-owner`: (Optional) Details for your GitHub repository. If omitted, you'll be prompted.
 *   `--local-state`: (Optional) Use local files for Terraform state instead of the default GCS backend.
 *   `--auto-approve`: (Optional) Skip all interactive prompts.

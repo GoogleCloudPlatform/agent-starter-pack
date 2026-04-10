@@ -90,7 +90,7 @@ app = App(
 
 *   `enabled`: Toggles the plugin.
 *   `gcs_bucket_name` **(Optional)**: GCS bucket for offloading large/binary content. Set by `BQ_ANALYTICS_GCS_BUCKET` env var from Terraform. Required only if you have multimodal data to offload.
-*   `connection_id` **(Optional)**: Fully qualified BigQuery Connection ID (e.g., `us-central1.conn-id`) for GCS access. Set by `BQ_ANALYTICS_CONNECTION_ID` env var from Terraform. Required only if you have multimodal data to offload.
+*   `connection_id` **(Optional)**: Fully qualified BigQuery Connection ID (e.g., `us-west1.conn-id`) for GCS access. Set by `BQ_ANALYTICS_CONNECTION_ID` env var from Terraform. Required only if you have multimodal data to offload.
 *   `log_multi_modal_content`: Whether to handle content parts and offload to GCS.
 *   `max_content_length`: Threshold for offloading text parts to GCS.
 *   `table_id`: Name of the BigQuery table to write to (defaults to `agent_events`).

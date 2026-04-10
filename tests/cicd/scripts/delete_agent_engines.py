@@ -64,7 +64,7 @@ def get_project_ids() -> list[str]:
 
 
 # Regions to clean up
-REGIONS = ["us-central1", "europe-west4", "europe-west1"]
+REGIONS = ["us-west1", "us-central1", "europe-west4", "europe-west1"]
 
 # Rate limiting configuration
 MAX_RETRIES = 3

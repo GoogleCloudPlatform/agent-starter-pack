@@ -42,7 +42,7 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-central1" \
+		--region "us-west1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "" \

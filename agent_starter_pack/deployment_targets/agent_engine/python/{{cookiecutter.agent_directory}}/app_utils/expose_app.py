@@ -59,7 +59,7 @@ app.state.config = {
     "use_remote_agent": False,
     "remote_agent_engine_id": None,
     "project_id": None,
-    "location": "us-central1",
+    "location": "us-west1",
     "local_agent_path": "..agent.root_agent",
     "agent_engine_object_path": "..agent_engine_app.agent_engine",
 }
@@ -406,8 +406,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--location",
         type=str,
-        default="us-central1",
-        help="GCP location (default: us-central1)",
+        default="us-west1",
+        help="GCP location (default: us-west1)",
     )
     parser.add_argument(
         "--local-agent",
@@ -441,7 +441,7 @@ if __name__ == "__main__":
         "use_remote_agent": False,
         "remote_agent_engine_id": None,
         "project_id": None,
-        "location": "us-central1",
+        "location": "us-west1",
         "local_agent_path": args.local_agent,
         "agent_engine_object_path": args.agent_engine_object,
     }
@@ -487,7 +487,7 @@ if __name__ == "__main__":
                 extracted_location = match.group(2)
                 config["location"] = (
                     args.location
-                    if args.location != "us-central1"
+                    if args.location != "us-west1"
                     else extracted_location
                 )
                 print("Extracted project ID and location from remote agent engine ID")

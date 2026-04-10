@@ -146,7 +146,7 @@ steps:
 
 substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID
-  _REGION: us-central1
+  _REGION: us-west1
 
 logsBucket: gs://${PROJECT_ID}-{{ cookiecutter.project_name | replace('_', '-') }}-logs/build-logs
 options:

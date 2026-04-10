@@ -5,7 +5,7 @@ project_name = "{{ cookiecutter.project_name | replace('_', '-') }}"
 dev_project_id = "{{ cookiecutter.google_cloud_project }}"
 
 # The Google Cloud region you will use to deploy the infrastructure
-region = "us-central1"
+region = "us-west1"
 
 {%- if cookiecutter.data_ingestion %}
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}

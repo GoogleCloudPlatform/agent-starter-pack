@@ -26,7 +26,7 @@ variable "pipelines_roles" {
 variable "vector_search_location" {
   type        = string
   description = "The location for the Vector Search 2.0 Collection."
-  default     = "us-central1"
+  default     = "us-west1"
 }
 
 variable "vector_search_collection_id" {

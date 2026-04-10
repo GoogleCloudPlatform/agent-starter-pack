@@ -104,8 +104,8 @@ def shared_template_options(f: Callable) -> Callable:
     )(f)
     f = click.option(
         "--region",
-        help="GCP region for deployment (default: us-central1)",
-        default="us-central1",
+        help="GCP region for deployment (default: us-west1)",
+        default="us-west1",
     )(f)
     f = click.option(
         "--auto-approve",
@@ -976,7 +976,7 @@ def create(
             )
 
             # Replace region in all files if a different region was specified
-            if region != "us-central1":
+            if region != "us-west1":
                 replace_region_in_files(project_path, region, debug=debug)
 
             # Handle base template dependencies if override was used
@@ -1109,7 +1109,7 @@ def create(
 
 
 def prompt_region_confirmation(
-    default_region: str = "us-central1", agent_garden: bool = False
+    default_region: str = "us-west1", agent_garden: bool = False
 ) -> str:
     """Prompt user to confirm or change the default region."""
     new_region = Prompt.ask(
@@ -1473,7 +1473,7 @@ def _handle_interactive_credentials(context: str | None = None) -> dict:
 def replace_region_in_files(
     project_path: pathlib.Path, new_region: str, debug: bool = False
 ) -> None:
-    """Replace all instances of 'us-central1' with the specified region in project files.
+    """Replace all instances of 'us-west1' with the specified region in project files.
     Also handles vertex_ai_search region mapping.
 
     Args:
@@ -1483,7 +1483,7 @@ def replace_region_in_files(
     """
     if debug:
         logging.debug(
-            f"Replacing region 'us-central1' with '{new_region}' in {project_path}"
+            f"Replacing region 'us-west1' with '{new_region}' in {project_path}"
         )
 
     # Define allowed file extensions
@@ -1518,10 +1518,10 @@ def replace_region_in_files(
             modified = False
 
             # Replace standard region references
-            if "us-central1" in content:
+            if "us-west1" in content:
                 if debug:
                     logging.debug(f"Replacing region in {file_path}")
-                content = content.replace("us-central1", new_region)
+                content = content.replace("us-west1", new_region)
                 modified = True
 
             if modified:

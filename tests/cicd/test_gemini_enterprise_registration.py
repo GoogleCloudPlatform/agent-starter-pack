@@ -60,7 +60,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-DEFAULT_REGION = "us-central1"
+DEFAULT_REGION = "us-west1"
 TARGET_DIR = "target"
 
 

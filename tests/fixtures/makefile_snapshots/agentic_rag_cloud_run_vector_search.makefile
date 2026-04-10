@@ -42,13 +42,13 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-central1" \
+		--region "us-west1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-central1/collections/test-rag-collection" \
+		"VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-west1/collections/test-rag-collection" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
@@ -73,7 +73,7 @@ data-ingestion:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
 		--project-id=$$PROJECT_ID \
-		--region="us-central1" \
+		--region="us-west1" \
 		--collection-id="test-rag-collection" \
 		--local)
 

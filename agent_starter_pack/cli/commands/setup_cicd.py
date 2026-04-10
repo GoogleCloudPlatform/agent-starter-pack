@@ -297,7 +297,7 @@ def detect_region_from_terraform_vars() -> str | None:
         if region_match:
             detected_region = region_match.group(1)
             # Don't auto-detect if it's the default value
-            if detected_region != "us-central1":
+            if detected_region != "us-west1":
                 return detected_region
 
         return None
@@ -629,7 +629,7 @@ def setup_cicd(
             region = detected_region
             console.print(f"Auto-detected region from Terraform vars: {region}")
         else:
-            region = "us-central1"
+            region = "us-west1"
             console.print(f"Using default region: {region}")
     else:
         console.print(f"Using provided region: {region}")

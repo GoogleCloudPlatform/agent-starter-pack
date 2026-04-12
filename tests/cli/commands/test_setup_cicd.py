@@ -143,6 +143,63 @@ def mock_create_github_connection() -> MagicMock:
         yield mock
 
 
+@pytest.fixture
+def mock_command_side_effect_factory():
+    def run_command_side_effect(*args: Any, **kwargs: Any) -> MagicMock:
+        """Mock command execution side effect."""
+
+        command = args[0]
+        mock_response = MagicMock()
+
+        if "gcloud" in command and "services" in command and "list" in command:
+            mock_response.stdout = "[]"
+            mock_response.returncode = 0
+        elif "gh" in command and "auth" in command and "status" in command:
+            mock_response.stdout = "- Token scopes: 'repo', 'workflow'\n"
+            mock_response.returncode = 0
+        elif "gh" in command and "api" in command and "user" in command:
+            mock_response.stdout = "test-user"
+            mock_response.returncode = 0
+        elif "git" in command and "remote" in command and "get-url" in command:
+            mock_response.stdout = "git@github.com:test-user/test-repo.git"
+            mock_response.returncode = 0
+        elif "terraform" in command:
+            mock_response.stdout = ""
+            mock_response.returncode = 0
+        elif "gh" in command and "repo" in command and "view" in command:
+            mock_response.stdout = '{"isEmpty": true}'
+            mock_response.returncode = 0
+        elif "gcloud" in command and "storage" in command:
+            mock_response.stdout = ""
+            mock_response.returncode = 0
+        elif "git" in command and "init" in command:
+            mock_response.stdout = ""
+            mock_response.returncode = 0
+        elif "gcloud" in command and "builds" in command:
+            mock_response.stdout = json.dumps(
+                {
+                    "installationState": {"stage": "COMPLETE"},
+                    "githubConfig": {
+                        "authorizerCredential": {
+                            "oauthTokenSecretVersion": "projects/test-project/secrets/oauth-token/versions/1"
+                        },
+                        "appInstallationId": "test-installation-id",
+                    },
+                }
+            )
+            mock_response.returncode = 0
+        elif "gcloud" in command and "projects" in command:
+            mock_response.stdout = "123456789"
+            mock_response.returncode = 0
+        else:
+            mock_response.stdout = ""
+            mock_response.returncode = 0
+
+        return mock_response
+
+    return run_command_side_effect
+
+
 class TestSetupCICD:
     """Test class for setup-cicd command"""
 
@@ -266,86 +323,12 @@ class TestSetupCICD:
         mock_setup_terraform_backend: MagicMock,
         mock_create_github_connection: MagicMock,
         mock_template_files: None,
+        mock_command_side_effect_factory: MagicMock,
     ) -> None:
         """Test basic setup with minimal required arguments"""
         runner = CliRunner()
 
-        # Set up mock responses for different command calls
-        def run_command_side_effect(*args: Any, **kwargs: Any) -> MagicMock:
-            command = args[0]
-            mock_response = MagicMock()
-
-            print(f"\nMocked command: {command}")
-
-            # Mock gcloud services list
-            if "gcloud" in command and "services" in command and "list" in command:
-                mock_response.stdout = "[]"
-                mock_response.returncode = 0
-                print("Mocking gcloud services list")
-            # Mock GitHub auth status with scopes
-            elif "gh" in command and "auth" in command and "status" in command:
-                mock_response.stdout = "- Token scopes: 'repo', 'workflow'\n"
-                mock_response.returncode = 0
-                print("Mocking GitHub auth status")
-            # Mock GitHub username API call
-            elif "gh" in command and "api" in command and "user" in command:
-                mock_response.stdout = "test-user"
-                mock_response.returncode = 0
-                print("Mocking GitHub username API call")
-            # Mock git remote get-url
-            elif "git" in command and "remote" in command and "get-url" in command:
-                mock_response.stdout = "git@github.com:test-user/test-repo.git"
-                mock_response.returncode = 0
-                print("Mocking git remote get-url")
-            # Mock terraform commands
-            elif "terraform" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print("Mocking terraform command")
-            # Mock repository view command
-            elif "gh" in command and "repo" in command and "view" in command:
-                mock_response.stdout = '{"isEmpty": true}'
-                mock_response.returncode = 0
-                print("Mocking repository view command")
-            # Mock gcloud storage commands
-            elif "gcloud" in command and "storage" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print("Mocking gcloud storage command")
-            # Mock git init
-            elif "git" in command and "init" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print("Mocking git init")
-            # Mock gcloud builds commands
-            elif "gcloud" in command and "builds" in command:
-                mock_response.stdout = json.dumps(
-                    {
-                        "installationState": {"stage": "COMPLETE"},
-                        "githubConfig": {
-                            "authorizerCredential": {
-                                "oauthTokenSecretVersion": "projects/test-project/secrets/oauth-token/versions/1"
-                            },
-                            "appInstallationId": "test-installation-id",
-                        },
-                    }
-                )
-                mock_response.returncode = 0
-                print("Mocking gcloud builds command")
-            # Mock gcloud projects commands
-            elif "gcloud" in command and "projects" in command:
-                mock_response.stdout = "123456789"  # Mock project number
-                mock_response.returncode = 0
-                print("Mocking gcloud projects command")
-            # Default response for any other command
-            else:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print(f"Default mock for command: {command}")
-
-            return mock_response
-
-        mock_run_command.side_effect = run_command_side_effect
+        mock_run_command.side_effect = mock_command_side_effect_factory
         mock_create_github_connection.return_value = (
             "oauth-token",
             "test-installation-id",
@@ -359,7 +342,7 @@ class TestSetupCICD:
             patch("agent_starter_pack.cli.utils.cicd.ensure_apis_enabled"),
             patch(
                 "agent_starter_pack.cli.utils.cicd.run_command",
-                side_effect=run_command_side_effect,
+                side_effect=mock_command_side_effect_factory,
             ),
             patch(
                 "click.prompt",
@@ -454,39 +437,12 @@ class TestSetupCICD:
         mock_console: MagicMock,
         mock_run_command: MagicMock,
         mock_terraform_files: None,
+        mock_command_side_effect_factory: MagicMock,
     ) -> None:
         """Test setup with GitHub PAT authentication"""
         runner = CliRunner()
 
-        # Set up mock responses for different command calls
-        def run_command_side_effect(*args: Any, **kwargs: Any) -> MagicMock:
-            command = args[0]
-            mock_response = MagicMock()
-
-            # Mock gcloud services list
-            if "gcloud" in command and "services" in command and "list" in command:
-                mock_response.stdout = "[]"
-                mock_response.returncode = 0
-            # Mock GitHub auth status with scopes
-            elif "gh" in command and "auth" in command and "status" in command:
-                mock_response.stdout = "- Token scopes: 'repo', 'workflow'\n"
-                mock_response.returncode = 0
-            # Mock GitHub username API call
-            elif "gh" in command and "api" in command and "user" in command:
-                mock_response.stdout = "test-user"
-                mock_response.returncode = 0
-            # Mock terraform commands
-            elif "terraform" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-            # Mock gcloud secrets commands
-            elif "gcloud" in command and "secrets" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-
-            return mock_response
-
-        mock_run_command.side_effect = run_command_side_effect
+        mock_run_command.side_effect = mock_command_side_effect_factory
 
         # Mock required dependencies
         with (
@@ -494,7 +450,7 @@ class TestSetupCICD:
             patch("agent_starter_pack.cli.utils.cicd.ensure_apis_enabled"),
             patch(
                 "agent_starter_pack.cli.utils.cicd.run_command",
-                side_effect=run_command_side_effect,
+                side_effect=mock_command_side_effect_factory,
             ),
             patch("builtins.open", mock_open()),
             patch("shutil.copy2"),
@@ -532,86 +488,12 @@ class TestSetupCICD:
         mock_setup_terraform_backend: MagicMock,
         mock_create_github_connection: MagicMock,
         mock_template_files: None,
+        mock_command_side_effect_factory: MagicMock,
     ) -> None:
         """Test setup with --skip-terraform flag"""
         runner = CliRunner()
 
-        # Set up mock responses for different command calls
-        def run_command_side_effect(*args: Any, **kwargs: Any) -> MagicMock:
-            command = args[0]
-            mock_response = MagicMock()
-
-            print(f"\nMocked command: {command}")
-
-            # Mock gcloud services list
-            if "gcloud" in command and "services" in command and "list" in command:
-                mock_response.stdout = "[]"
-                mock_response.returncode = 0
-                print("Mocking gcloud services list")
-            # Mock GitHub auth status with scopes
-            elif "gh" in command and "auth" in command and "status" in command:
-                mock_response.stdout = "- Token scopes: 'repo', 'workflow'\n"
-                mock_response.returncode = 0
-                print("Mocking GitHub auth status")
-            # Mock GitHub username API call
-            elif "gh" in command and "api" in command and "user" in command:
-                mock_response.stdout = "test-user"
-                mock_response.returncode = 0
-                print("Mocking GitHub username API call")
-            # Mock git remote get-url
-            elif "git" in command and "remote" in command and "get-url" in command:
-                mock_response.stdout = "git@github.com:test-user/test-repo.git"
-                mock_response.returncode = 0
-                print("Mocking git remote get-url")
-            # Mock terraform commands
-            elif "terraform" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print("Mocking terraform command")
-            # Mock repository view command
-            elif "gh" in command and "repo" in command and "view" in command:
-                mock_response.stdout = '{"isEmpty": true}'
-                mock_response.returncode = 0
-                print("Mocking repository view command")
-            # Mock gcloud storage commands
-            elif "gcloud" in command and "storage" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print("Mocking gcloud storage command")
-            # Mock git init
-            elif "git" in command and "init" in command:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print("Mocking git init")
-            # Mock gcloud builds commands
-            elif "gcloud" in command and "builds" in command:
-                mock_response.stdout = json.dumps(
-                    {
-                        "installationState": {"stage": "COMPLETE"},
-                        "githubConfig": {
-                            "authorizerCredential": {
-                                "oauthTokenSecretVersion": "projects/test-project/secrets/oauth-token/versions/1"
-                            },
-                            "appInstallationId": "test-installation-id",
-                        },
-                    }
-                )
-                mock_response.returncode = 0
-                print("Mocking gcloud builds command")
-            # Mock gcloud projects commands
-            elif "gcloud" in command and "projects" in command:
-                mock_response.stdout = "123456789"  # Mock project number
-                mock_response.returncode = 0
-                print("Mocking gcloud projects command")
-            # Default response for any other command
-            else:
-                mock_response.stdout = ""
-                mock_response.returncode = 0
-                print(f"Default mock for command: {command}")
-
-            return mock_response
-
-        mock_run_command.side_effect = run_command_side_effect
+        mock_run_command.side_effect = mock_command_side_effect_factory
         mock_create_github_connection.return_value = (
             "oauth-token",
             "test-installation-id",
@@ -625,7 +507,7 @@ class TestSetupCICD:
             patch("agent_starter_pack.cli.utils.cicd.ensure_apis_enabled"),
             patch(
                 "agent_starter_pack.cli.utils.cicd.run_command",
-                side_effect=run_command_side_effect,
+                side_effect=mock_command_side_effect_factory,
             ),
             patch(
                 "click.prompt",
@@ -655,7 +537,7 @@ class TestSetupCICD:
                     "--cicd-project",
                     "test-cicd",
                     "--auto-approve",
-                    "--skip-terraform"
+                    "--skip-terraform",
                 ],
             )
 

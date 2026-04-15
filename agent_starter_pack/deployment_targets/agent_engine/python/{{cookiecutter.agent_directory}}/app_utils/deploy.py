@@ -385,6 +385,10 @@ def deploy_agent_engine_app(
     )
     vertexai.init(project=project, location=location)
 
+{%- if cookiecutter.agent_garden %}
+    labels_dict["deployed-with"] = "agent-garden"
+{%- endif %}
+
     # Dynamically import the agent instance to generate class_methods
     logging.info(f"Importing {entrypoint_module}.{entrypoint_object}")
     module = importlib.import_module(entrypoint_module)

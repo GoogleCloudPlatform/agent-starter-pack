@@ -25,10 +25,10 @@ import vertexai
 
 _, project_id = google.auth.default()
 os.environ["GOOGLE_CLOUD_PROJECT"] = project_id
-os.environ["GOOGLE_CLOUD_LOCATION"] = "us-west1"
+os.environ["GOOGLE_CLOUD_LOCATION"] = "us-east1"
 os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "True"
 
-vertexai.init(project=project_id, location="us-west1")
+vertexai.init(project=project_id, location="us-east1")
 {%- endif %}
 
 

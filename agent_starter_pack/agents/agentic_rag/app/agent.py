@@ -39,7 +39,7 @@ from {{cookiecutter.agent_directory}}.retrievers import search_collection
 {%- endif %}
 
 LLM_LOCATION = "global"
-LOCATION = "us-west1"
+LOCATION = "us-east1"
 LLM = "gemini-3-flash-preview"
 
 credentials, project_id = google.auth.default()
@@ -116,7 +116,7 @@ root_agent = Agent(
 _plugins = []
 _project_id = os.environ.get("GOOGLE_CLOUD_PROJECT")
 _dataset_id = os.environ.get("BQ_ANALYTICS_DATASET_ID", "adk_agent_analytics")
-_location = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-west1")
+_location = os.environ.get("GOOGLE_CLOUD_REGION", "us-east1")
 
 if _project_id:
     try:

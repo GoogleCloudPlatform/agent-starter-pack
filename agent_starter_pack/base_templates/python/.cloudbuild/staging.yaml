@@ -412,7 +412,7 @@ steps:
 
 substitutions:
   _STAGING_PROJECT_ID: YOUR_STAGING_PROJECT_ID
-  _REGION: us-west1
+  _REGION: us-east1
 
 logsBucket: gs://${PROJECT_ID}-{{ cookiecutter.project_name | replace('_', '-') }}-logs/build-logs
 options:

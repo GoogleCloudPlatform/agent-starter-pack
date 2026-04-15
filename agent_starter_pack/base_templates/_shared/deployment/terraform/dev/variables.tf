@@ -26,7 +26,7 @@ variable "dev_project_id" {
 variable "region" {
   type        = string
   description = "Google Cloud region for resource deployment."
-  default     = "us-west1"
+  default     = "us-east1"
 }
 
 variable "telemetry_logs_filter" {

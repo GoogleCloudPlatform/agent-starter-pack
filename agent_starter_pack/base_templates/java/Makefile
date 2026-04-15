@@ -73,11 +73,11 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-west1" \
+		--region "us-east1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "created-by=adk" \
-		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-west1.run.app" \
+		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-east1.run.app" \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'gke' %}
 # Usage: make deploy [IMAGE_TAG=mytag]
@@ -91,9 +91,9 @@ deploy:
 	(cd deployment/terraform/dev && terraform init && \
 	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
 	echo "Configuring kubectl credentials..." && \
-	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-west1 --project $$PROJECT_ID && \
+	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-east1 --project $$PROJECT_ID && \
 	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
-	IMAGE=us-west1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
+	IMAGE=us-east1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
@@ -179,7 +179,7 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "|    http://localhost:8080/.well-known/agent-card.json                        |"
 	@echo "|                                                                             |"
 	@echo "| Testing Remote Deployment:                                                  |"
-	@echo "|    1. Run: gcloud run services describe {{cookiecutter.project_name}} --region us-west1 |"
+	@echo "|    1. Run: gcloud run services describe {{cookiecutter.project_name}} --region us-east1 |"
 	@echo "|    2. Copy the URL and append: /.well-known/agent-card.json                 |"
 	@echo "|                                                                             |"
 	@echo "==============================================================================="
@@ -214,7 +214,7 @@ register-gemini-enterprise:
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
 	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
-		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-west1.run.app/.well-known/agent-card.json" \
+		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-east1.run.app/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
 		--project-number="$$PROJECT_NUMBER"
 {%- endif %}

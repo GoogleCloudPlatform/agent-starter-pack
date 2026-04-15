@@ -392,7 +392,7 @@ def prompt_for_agent_engine_id(default_from_metadata: str | None) -> str:
 
     console.print(
         "\nEnter your Agent Engine resource name"
-        "\n[blue]Example: projects/123456789/locations/us-west1/reasoningEngines/1234567890[/]"
+        "\n[blue]Example: projects/123456789/locations/us-east1/reasoningEngines/1234567890[/]"
         "\n(You can find this in the Agent Builder Console or deployment_metadata.json)"
     )
 

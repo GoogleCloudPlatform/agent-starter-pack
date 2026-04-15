@@ -45,7 +45,7 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-west1" \
+		--region "us-east1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "created-by=adk" \
@@ -66,9 +66,9 @@ deploy:
 	(cd deployment/terraform/dev && terraform init && \
 	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
 	echo "Configuring kubectl credentials..." && \
-	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-west1 --project $$PROJECT_ID && \
+	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-east1 --project $$PROJECT_ID && \
 	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
-	IMAGE=us-west1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
+	IMAGE=us-east1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \

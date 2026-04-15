@@ -72,7 +72,7 @@ The deployment uses Terraform variables that need to be configured for your envi
 - **`prod_project_id`**: Google Cloud Project ID for production deployment
 - **`staging_project_id`**: Google Cloud Project ID for staging deployment
 - **`cicd_runner_project_id`**: Google Cloud Project ID where CI/CD pipelines execute
-- **`region`**: Google Cloud region for resources (default: `us-west1`)
+- **`region`**: Google Cloud region for resources (default: `us-east1`)
 
 ### Repository Connection
 - **`repository_name`**: Name of your GitHub repository

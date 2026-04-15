@@ -255,7 +255,7 @@ Agent Engine deployments can take 5-10 minutes. If `make deploy` times out:
 1. Check if deployment succeeded:
 ```python
 import vertexai
-client = vertexai.Client(location="us-west1")
+client = vertexai.Client(location="us-east1")
 for engine in client.agent_engines.list():
     print(engine.name, engine.display_name)
 ```
@@ -453,7 +453,7 @@ with open("deployment_metadata.json") as f:
     engine_id = json.load(f)["remote_agent_engine_id"]
 
 # Connect to agent
-client = vertexai.Client(location="us-west1")
+client = vertexai.Client(location="us-east1")
 agent = client.agent_engines.get(name=engine_id)
 
 # Send a message

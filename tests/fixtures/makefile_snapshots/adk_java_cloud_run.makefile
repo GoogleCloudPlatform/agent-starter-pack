@@ -64,11 +64,11 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-west1" \
+		--region "us-east1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "created-by=adk" \
-		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,APP_URL=https://test-java-agent-$$PROJECT_NUMBER.us-west1.run.app" \
+		--update-env-vars "GOOGLE_CLOUD_PROJECT=$$PROJECT_ID,GOOGLE_CLOUD_LOCATION=global,GOOGLE_GENAI_USE_VERTEXAI=True,APP_URL=https://test-java-agent-$$PROJECT_NUMBER.us-east1.run.app" \
 		$(if $(PORT),--port=$(PORT))
 
 # Alias for 'make deploy' for backward compatibility
@@ -130,7 +130,7 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "|    http://localhost:8080/.well-known/agent-card.json                        |"
 	@echo "|                                                                             |"
 	@echo "| Testing Remote Deployment:                                                  |"
-	@echo "|    1. Run: gcloud run services describe test-java-agent --region us-west1 |"
+	@echo "|    1. Run: gcloud run services describe test-java-agent --region us-east1 |"
 	@echo "|    2. Copy the URL and append: /.well-known/agent-card.json                 |"
 	@echo "|                                                                             |"
 	@echo "==============================================================================="
@@ -164,6 +164,6 @@ register-gemini-enterprise:
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
 	uvx agent-starter-pack@0.20.0 register-gemini-enterprise \
-		--agent-card-url="https://test-java-agent-$$PROJECT_NUMBER.us-west1.run.app/.well-known/agent-card.json" \
+		--agent-card-url="https://test-java-agent-$$PROJECT_NUMBER.us-east1.run.app/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
 		--project-number="$$PROJECT_NUMBER"

@@ -97,13 +97,13 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-west1" \
+		--region "us-east1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"APP_URL=https://test-langgraph-$$PROJECT_NUMBER.us-west1.run.app" \
+		"APP_URL=https://test-langgraph-$$PROJECT_NUMBER.us-east1.run.app" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 
@@ -148,6 +148,6 @@ register-gemini-enterprise:
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
 	uvx agent-starter-pack@0.20.0 register-gemini-enterprise \
-		--agent-card-url="https://test-langgraph-$$PROJECT_NUMBER.us-west1.run.app/a2a/test_langgraph/.well-known/agent-card.json" \
+		--agent-card-url="https://test-langgraph-$$PROJECT_NUMBER.us-east1.run.app/a2a/test_langgraph/.well-known/agent-card.json" \
 		--deployment-target="cloud_run" \
 		--project-number="$$PROJECT_NUMBER"

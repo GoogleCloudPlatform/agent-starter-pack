@@ -280,13 +280,13 @@ deploy:
 		--source . \
 		--memory "4Gi" \
 		--project $$PROJECT_ID \
-		--region "us-west1" \
+		--region "us-east1" \
 		--no-allow-unauthenticated \
 		--no-cpu-throttling \
 		--labels "{% if cookiecutter.is_adk %}created-by=adk{% if cookiecutter.agent_garden %},{% endif %}{% endif %}{% if cookiecutter.agent_garden %}deployed-with=agent-garden{% if cookiecutter.agent_sample_id %},vertex-agent-sample-id={{cookiecutter.agent_sample_id}},vertex-agent-sample-publisher={{cookiecutter.agent_sample_publisher}}{% endif %}{% endif %}" \
 		--update-build-env-vars "AGENT_VERSION=$(shell awk -F'"' '/^version = / {print $$2}' pyproject.toml || echo '0.0.0')" \
 		--update-env-vars \
-		"{%- if cookiecutter.is_a2a %}APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-west1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{% if cookiecutter.is_a2a %},{% endif %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %}DATA_STORE_ID={{cookiecutter.project_name}}-collection_documents,DATA_STORE_REGION=global{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-west1/collections/{{cookiecutter.project_name}}-collection{%- endif %}{%- endif %}" \
+		"{%- if cookiecutter.is_a2a %}APP_URL=https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-east1.run.app{%- endif %}{%- if cookiecutter.data_ingestion %}{% if cookiecutter.is_a2a %},{% endif %}{%- if cookiecutter.datastore_type == "vertex_ai_search" %}DATA_STORE_ID={{cookiecutter.project_name}}-collection_documents,DATA_STORE_REGION=global{%- elif cookiecutter.datastore_type == "vertex_ai_vector_search" %}VECTOR_SEARCH_COLLECTION=projects/$$PROJECT_ID/locations/us-east1/collections/{{cookiecutter.project_name}}-collection{%- endif %}{%- endif %}" \
 		$(if $(IAP),--iap) \
 		$(if $(PORT),--port=$(PORT))
 {%- elif cookiecutter.deployment_target == 'gke' %}
@@ -295,9 +295,9 @@ deploy:
 	(cd deployment/terraform/dev && terraform init && \
 	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
 	echo "Configuring kubectl credentials..." && \
-	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-west1 --project $$PROJECT_ID && \
+	gcloud container clusters get-credentials {{cookiecutter.project_name}}-dev --region us-east1 --project $$PROJECT_ID && \
 	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
-	IMAGE=us-west1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
+	IMAGE=us-east1-docker.pkg.dev/$$PROJECT_ID/{{cookiecutter.project_name}}/{{cookiecutter.project_name}}:$$IMAGE_TAG && \
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
@@ -354,7 +354,7 @@ data-ingestion:
 	PROJECT_ID=$$(gcloud config get-value project) && \
 	(cd data_ingestion && uv run data_ingestion_pipeline/submit_pipeline.py \
 		--project-id=$$PROJECT_ID \
-		--region="us-west1" \
+		--region="us-east1" \
 		--collection-id="{{cookiecutter.project_name}}-collection" \
 		--local)
 {%- elif cookiecutter.data_ingestion and cookiecutter.datastore_type == "vertex_ai_search" %}
@@ -459,7 +459,7 @@ register-gemini-enterprise:
 	@PROJECT_ID=$$(gcloud config get-value project 2>/dev/null) && \
 	PROJECT_NUMBER=$$(gcloud projects describe $$PROJECT_ID --format="value(projectNumber)" 2>/dev/null) && \
 	uvx agent-starter-pack@{{ cookiecutter.package_version }} register-gemini-enterprise \
-		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-west1.run.app/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json" \
+		--agent-card-url="https://{{cookiecutter.project_name}}-$$PROJECT_NUMBER.us-east1.run.app/a2a/{{cookiecutter.agent_directory}}/.well-known/agent-card.json" \
 		--deployment-target="{{cookiecutter.deployment_target}}" \
 		--project-number="$$PROJECT_NUMBER"
 {%- else %}

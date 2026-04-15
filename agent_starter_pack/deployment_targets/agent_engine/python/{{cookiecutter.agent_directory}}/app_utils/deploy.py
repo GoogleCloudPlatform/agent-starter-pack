@@ -385,13 +385,8 @@ def deploy_agent_engine_app(
     )
     vertexai.init(project=project, location=location)
 
-    # Add agent garden labels if configured
 {%- if cookiecutter.agent_garden %}
-{%- if cookiecutter.agent_sample_id and cookiecutter.agent_sample_publisher %}
-    labels_dict["vertex-agent-sample-id"] = "{{cookiecutter.agent_sample_id}}"
-    labels_dict["vertex-agent-sample-publisher"] = "{{cookiecutter.agent_sample_publisher}}"
     labels_dict["deployed-with"] = "agent-garden"
-{%- endif %}
 {%- endif %}
 
     # Dynamically import the agent instance to generate class_methods

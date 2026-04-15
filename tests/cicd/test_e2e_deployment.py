@@ -1203,7 +1203,7 @@ class TestE2EDeployment:
 
         # Set region based on agent type
         if config.agent == "adk_live":
-            region = "us-west1"
+            region = "us-east1"
         elif config.agent == "agentic_rag":
             region = "europe-west4"
         else:

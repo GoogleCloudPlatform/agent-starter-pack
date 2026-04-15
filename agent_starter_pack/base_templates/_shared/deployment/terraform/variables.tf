@@ -36,7 +36,7 @@ variable "cicd_runner_project_id" {
 variable "region" {
   type        = string
   description = "Google Cloud region for resource deployment."
-  default     = "us-west1"
+  default     = "us-east1"
 }
 
 variable "host_connection_name" {

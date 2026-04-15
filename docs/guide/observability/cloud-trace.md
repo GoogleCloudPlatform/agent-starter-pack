@@ -93,7 +93,7 @@ Check that the dedicated Cloud Logging bucket was created:
 ```bash
 # Describe the telemetry logging bucket
 gcloud logging buckets describe ${PROJECT_NAME}-genai-telemetry \
-  --location=us-west1 \
+  --location=us-east1 \
   --project=${PROJECT_ID}
 ```
 

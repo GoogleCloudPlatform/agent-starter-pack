@@ -56,7 +56,7 @@ This framework also supports load testing against remote targets, such as a stag
 Start the proxy in a separate terminal to expose your Cloud Run service on localhost. The proxy automatically handles IAM authentication:
 
 ```bash
-gcloud run services proxy YOUR_SERVICE_NAME --port=8080 --region us-west1 --quiet
+gcloud run services proxy YOUR_SERVICE_NAME --port=8080 --region us-east1 --quiet
 ```
 
 Replace `YOUR_SERVICE_NAME` with your Cloud Run service name. The `--quiet` flag auto-approves component installation prompts. You can optionally specify `--tag` to target a specific traffic tag.

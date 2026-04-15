@@ -22,7 +22,7 @@ repository_owner = "Your GitHub organization or username."
 repository_name = "{{cookiecutter.project_name}}"
 
 # The Google Cloud region you will use to deploy the infrastructure
-region = "us-west1"
+region = "us-east1"
 
 {%- if cookiecutter.data_ingestion %}
 {%- if cookiecutter.datastore_type == "vertex_ai_search" %}

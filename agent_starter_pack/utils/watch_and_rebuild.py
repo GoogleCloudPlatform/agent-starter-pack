@@ -123,7 +123,7 @@ class TemplateHandler(FileSystemEventHandler):
     help="Output directory for the project",
 )
 @click.option("--debug", is_flag=True, help="Enable debug logging")
-@click.option("--region", default="us-west1", help="GCP region to use")
+@click.option("--region", default="us-east1", help="GCP region to use")
 @click.option("--extra-params", help="Additional parameters to pass to the create command")
 def watch(
     agent: str,

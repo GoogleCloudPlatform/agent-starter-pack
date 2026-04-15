@@ -177,29 +177,29 @@ class TestParseAgentEngineId:
 
     def test_valid_agent_engine_id(self) -> None:
         """Test parsing a valid Agent Engine resource name."""
-        agent_id = "projects/123456789/locations/us-west1/reasoningEngines/9876543210"
+        agent_id = "projects/123456789/locations/us-east1/reasoningEngines/9876543210"
         result = parse_agent_engine_id(agent_id)
 
         assert result is not None
         assert result["project"] == "123456789"
-        assert result["location"] == "us-west1"
+        assert result["location"] == "us-east1"
         assert result["engine_id"] == "9876543210"
 
     def test_invalid_agent_engine_id_wrong_format(self) -> None:
         """Test that invalid format returns None."""
-        invalid_id = "projects/123/locations/us-west1/engines/123"
+        invalid_id = "projects/123/locations/us-east1/engines/123"
         result = parse_agent_engine_id(invalid_id)
         assert result is None
 
     def test_invalid_agent_engine_id_too_short(self) -> None:
         """Test that too short ID returns None."""
-        invalid_id = "projects/123/locations/us-west1"
+        invalid_id = "projects/123/locations/us-east1"
         result = parse_agent_engine_id(invalid_id)
         assert result is None
 
     def test_invalid_agent_engine_id_wrong_keywords(self) -> None:
         """Test that wrong keywords return None."""
-        invalid_id = "projects/123/regions/us-west1/reasoningEngines/456"
+        invalid_id = "projects/123/regions/us-east1/reasoningEngines/456"
         result = parse_agent_engine_id(invalid_id)
         assert result is None
 

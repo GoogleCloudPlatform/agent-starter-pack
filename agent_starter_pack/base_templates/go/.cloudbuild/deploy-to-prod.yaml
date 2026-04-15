@@ -50,7 +50,7 @@ steps:
 
 substitutions:
   _PROD_PROJECT_ID: YOUR_PROD_PROJECT_ID
-  _REGION: us-west1
+  _REGION: us-east1
 
 logsBucket: gs://${PROJECT_ID}-{{cookiecutter.project_name}}-logs/build-logs
 options:

@@ -60,9 +60,9 @@ deploy:
 	(cd deployment/terraform/dev && terraform init && \
 	terraform apply --var-file vars/env.tfvars --var dev_project_id=$$PROJECT_ID --auto-approve) && \
 	echo "Configuring kubectl credentials..." && \
-	gcloud container clusters get-credentials test-go-agent-dev --region us-west1 --project $$PROJECT_ID && \
+	gcloud container clusters get-credentials test-go-agent-dev --region us-east1 --project $$PROJECT_ID && \
 	IMAGE_TAG=$${IMAGE_TAG:-$$(date +%Y%m%d%H%M%S)} && \
-	IMAGE=us-west1-docker.pkg.dev/$$PROJECT_ID/test-go-agent/test-go-agent:$$IMAGE_TAG && \
+	IMAGE=us-east1-docker.pkg.dev/$$PROJECT_ID/test-go-agent/test-go-agent:$$IMAGE_TAG && \
 	echo "Building and pushing Docker image..." && \
 	gcloud builds submit --tag $$IMAGE && \
 	echo "Deploying container image..." && \
@@ -152,7 +152,7 @@ inspector: setup-inspector-if-needed build-inspector-if-needed
 	@echo "|    http://localhost:8000/.well-known/agent-card.json                        |"
 	@echo "|                                                                             |"
 	@echo "| Testing Remote Deployment:                                                  |"
-	@echo "|    1. Run: gcloud run services describe test-go-agent --region us-west1 |"
+	@echo "|    1. Run: gcloud run services describe test-go-agent --region us-east1 |"
 	@echo "|    2. Copy the URL and append: /.well-known/agent-card.json                 |"
 	@echo "|                                                                             |"
 	@echo "==============================================================================="

@@ -390,7 +390,7 @@ class ProjectConfig:
     deployment_target: str
     repository_name: str
     repository_owner: str
-    region: str = "us-west1"
+    region: str = "us-east1"
     dev_project_id: str | None = None
     project_name: str | None = None
     create_repository: bool | None = None

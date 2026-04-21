@@ -21,6 +21,7 @@ settings:
     "langchain-google-genai>=4.0.0",
     "langchain~=1.0.7",
     "langgraph~=1.0.3",
+    "langgraph-prebuilt<1.0.9",
     "langchain-community~=0.4.1",
     "a2a-sdk[http-server]~=0.3.12",
     "nest-asyncio>=1.6.0,<2.0.0",

@@ -36,6 +36,16 @@ from pydantic import (
     Field,
 )
 {%- endif %}
+{%- elif cookiecutter.agent_name == "ag2" %}
+import uuid
+from typing import (
+    Literal,
+)
+
+from pydantic import (
+    BaseModel,
+    Field,
+)
 {%- else %}
 import json
 import uuid
@@ -73,6 +83,7 @@ class Request(BaseModel):
 
     model_config = {"extra": "allow"}
 {%- endif %}
+{%- elif cookiecutter.agent_name == "ag2" %}
 {%- else %}
 
 
@@ -109,7 +120,7 @@ class Feedback(BaseModel):
     service_name: Literal["{{cookiecutter.project_name}}"] = "{{cookiecutter.project_name}}"
     user_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     session_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-{% if not cookiecutter.is_adk %}
+{% if not cookiecutter.is_adk and cookiecutter.agent_name != "ag2" %}
 
 def ensure_valid_config(config: RunnableConfig | None) -> RunnableConfig:
     """Ensures a valid RunnableConfig by setting defaults for missing fields."""

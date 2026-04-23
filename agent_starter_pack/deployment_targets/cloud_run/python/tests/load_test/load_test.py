@@ -230,6 +230,9 @@ ENDPOINT = "/a2a/{{cookiecutter.agent_directory}}"
 {%- elif cookiecutter.is_adk %}
 
 ENDPOINT = "/run_sse"
+{%- elif cookiecutter.agent_name == "ag2" %}
+
+ENDPOINT = "/query"
 {%- else %}
 
 ENDPOINT = "/stream_messages"
@@ -306,6 +309,8 @@ class ChatStreamUser(HttpUser):
             },
             "streaming": True,
         }
+{%- elif cookiecutter.agent_name == "ag2" %}
+        data = {"message": "Hello! What's the weather in New York?"}
 {%- else %}
         data = {
             "input": {
@@ -328,8 +333,10 @@ class ChatStreamUser(HttpUser):
             headers=headers,
             json=data,
             catch_response=True,
+{%- if cookiecutter.agent_name != "ag2" %}
             stream=True,
             params={"alt": "sse"},
+{%- endif %}
         ) as response:
 {%- endif %}
             if response.status_code == 200:

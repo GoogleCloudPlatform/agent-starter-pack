@@ -79,6 +79,24 @@ def setup_telemetry() -> str | None:
 {%- endif %}
 
     return bucket
+{%- elif cookiecutter.agent_name == "ag2" %}
+
+"""Telemetry setup for AG2 agents."""
+
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+
+def setup_telemetry() -> str | None:
+    """Configure telemetry for AG2 agents."""
+    bucket = os.environ.get("LOGS_BUCKET_NAME")
+    if bucket:
+        logger.info("Telemetry bucket configured: %s", bucket)
+    else:
+        logger.info("No telemetry bucket configured")
+    return bucket
 {%- else %}
 
 """OpenTelemetry setup for LangGraph agents with GenAI instrumentation."""

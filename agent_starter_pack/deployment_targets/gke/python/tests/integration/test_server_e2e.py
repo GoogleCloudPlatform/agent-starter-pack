@@ -218,8 +218,10 @@ def test_feedback_endpoint(server_fixture: subprocess.Popen[str]) -> None:
     assert response.json() == {"status": "success"}
     logger.info("Feedback endpoint test passed")
 {%- else %}
+{%- if cookiecutter.agent_name != "ag2" %}
 
 import json
+{%- endif %}
 import logging
 import os
 import subprocess
@@ -260,6 +262,8 @@ A2A_RPC_URL = BASE_URL + "a2a/{{cookiecutter.agent_directory}}/"
 AGENT_CARD_URL = A2A_RPC_URL + ".well-known/agent-card.json"
 {%- elif cookiecutter.is_adk %}
 STREAM_URL = BASE_URL + "run_sse"
+{%- elif cookiecutter.agent_name == "ag2" %}
+QUERY_URL = BASE_URL + "query"
 {%- else %}
 STREAM_URL = BASE_URL + "stream_messages"
 {%- endif %}
@@ -427,6 +431,18 @@ def test_chat_stream(server_fixture: subprocess.Popen[str]) -> None:
         for part in artifact.parts
     )
     assert has_text, "No text content found in artifact"
+{%- elif cookiecutter.agent_name == "ag2" %}
+    """Test the query functionality."""
+    logger.info("Starting query test")
+
+    data = {"message": "Hi!"}
+    response = requests.post(QUERY_URL, headers=HEADERS, json=data, timeout=60)
+    assert response.status_code == 200
+
+    result = response.json()
+    assert "response" in result, "Response should contain 'response' field"
+    assert isinstance(result["response"], str), "Response should be a string"
+    assert len(result["response"]) > 0, "Response should not be empty"
 {%- else %}
     """Test the chat stream functionality."""
     logger.info("Starting chat stream test")
@@ -608,6 +624,19 @@ def test_chat_stream_error_handling(server_fixture: subprocess.Popen[str]) -> No
     # Assert error for invalid parameters
     assert error_response.error.code == -32602
 
+    logger.info("Error handling test completed successfully")
+{%- elif cookiecutter.agent_name == "ag2" %}
+
+
+def test_query_error_handling(server_fixture: subprocess.Popen[str]) -> None:
+    """Test the query error handling with invalid input."""
+    logger.info("Starting query error handling test")
+    data = {"invalid_field": "this should fail"}
+    response = requests.post(QUERY_URL, headers=HEADERS, json=data, timeout=10)
+
+    assert response.status_code == 422, (
+        f"Expected status code 422, got {response.status_code}"
+    )
     logger.info("Error handling test completed successfully")
 {%- else %}
 

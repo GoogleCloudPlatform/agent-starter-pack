@@ -85,6 +85,8 @@ playground:{%- if cookiecutter.is_adk_live %} build-frontend-if-needed{%- endif 
 	uv run adk web . --port 8501 --reload_agents
 {%- endif %}
 {%- endif %}
+{%- elif cookiecutter.get("agent_name") == "ag2" and cookiecutter.deployment_target not in ('cloud_run', 'gke') %}
+	uv run python -m {{cookiecutter.agent_directory}}.agent
 {%- else %}
 	uv run uvicorn {{cookiecutter.agent_directory}}.fast_api_app:app --host localhost --port 8000 --reload
 {%- endif %}

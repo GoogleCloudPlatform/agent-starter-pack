@@ -39,7 +39,10 @@ deploy:
 		--entrypoint-object=agent_engine \
 		--requirements-file=test_adk/app_utils/.requirements.txt \
 		$(if $(AGENT_IDENTITY),--agent-identity) \
-		$(if $(filter command line,$(origin SECRETS)),--set-secrets="$(SECRETS)")
+		$(if $(filter command line,$(origin SECRETS)),--set-secrets="$(SECRETS)") \
+		$(if $(VPC_NETWORK),--vpc-network="$(VPC_NETWORK)") \
+		$(if $(NETWORK_ATTACHMENT),--network-attachment="$(NETWORK_ATTACHMENT)") \
+		$(if $(DNS_PEERING_DOMAINS),--dns-peering-domains="$(DNS_PEERING_DOMAINS)")
 
 # Alias for 'make deploy' for backward compatibility
 backend: deploy

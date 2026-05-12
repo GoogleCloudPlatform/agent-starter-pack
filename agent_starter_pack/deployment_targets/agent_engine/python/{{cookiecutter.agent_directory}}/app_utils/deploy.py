@@ -434,9 +434,19 @@ def deploy_agent_engine_app(
                 )
                 for domain in dns_peering_domains_list
             ]
+        elif vpc_network or dns_peering_domains_list:
+            logging.warning(
+                "Both vpc_network and dns_peering_domains are required for DNS peering. "
+                "Skipping DNS peering configuration."
+            )
         psc_config = PscInterfaceConfig(
             network_attachment=network_attachment,
             dns_peering_configs=dns_peering_configs,
+        )
+    elif vpc_network or dns_peering_domains_list:
+        logging.warning(
+            "network_attachment is required for private VPC connection. "
+            "Skipping PSC interface configuration."
         )
 
     # Dynamically import the agent instance to generate class_methods

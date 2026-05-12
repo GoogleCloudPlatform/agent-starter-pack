@@ -572,6 +572,12 @@ console = Console()
     default=False,
     help="Flag indicating whether to use an existing repository",
 )
+@click.option(
+    "--skip-terraform",
+    is_flag=True,
+    default=False,
+    help="Flag indicating whether to skip terraform steps",
+)
 @backoff.on_exception(
     backoff.expo,
     (subprocess.CalledProcessError, click.ClickException),
@@ -594,6 +600,7 @@ def setup_cicd(
     auto_approve: bool,
     create_repository: bool,
     use_existing_repository: bool,
+    skip_terraform: bool,
     cicd_runner: str | None = None,
 ) -> None:
     """Set up CI/CD infrastructure using Terraform."""
@@ -791,116 +798,117 @@ def setup_cicd(
     console.print("\n📦 Starting CI/CD Infrastructure Setup", style="bold blue")
     console.print("=====================================")
 
-    # Setup Terraform backend if not using local state
-    if not local_state:
-        console.print("\n🔧 Setting up remote Terraform backend...")
-        setup_terraform_backend(
-            tf_dir=tf_dir,
-            project_id=cicd_project,
-            region=region,
-            repository_name=repository_name,
-        )
-        console.print("✅ Remote Terraform backend configured")
-    else:
-        console.print("\n📝 Using local Terraform state (remote backend disabled)")
-
-    # Prepare Terraform variables
-    env_vars_path = tf_dir / "vars" / "env.tfvars"
-    terraform_vars = {
-        "staging_project_id": staging_project,
-        "prod_project_id": prod_project,
-        "cicd_runner_project_id": cicd_project,
-        "region": region,
-        "repository_name": repository_name,
-        "repository_owner": repository_owner
-        or run_command(
-            ["gh", "api", "user", "--jq", ".login"], capture_output=True
-        ).stdout.strip(),
-    }
-
-    # Add CI/CD runner specific variables
-    if cicd_runner == "google_cloud_build":
-        terraform_vars.update(
-            {
-                "host_connection_name": host_connection_name,
-                "create_cb_connection": str(create_cb_connection).lower(),
-                "create_repository": str(
-                    terraform_create_repository
-                ).lower(),  # Use original state
-                "github_app_installation_id": github_app_installation_id,
-                "github_pat_secret_id": oauth_token_secret_id,
-            }
-        )
-    else:  # github_actions
-        terraform_vars["create_repository"] = str(
-            terraform_create_repository
-        ).lower()  # Use original state
-
-    # Write Terraform variables
-    with open(env_vars_path, "w", encoding="utf-8") as f:
-        for var_name, var_value in terraform_vars.items():
-            if var_value in ("true", "false"):  # Boolean values
-                f.write(f"{var_name} = {var_value}\n")
-            elif var_value is not None:  # String values
-                f.write(f'{var_name} = "{var_value}"\n')
-
-    console.print("✅ Updated env.tfvars with variables")
-
-    # Update dev environment vars if dev project provided
-    if dev_project:
-        dev_tf_vars_path = tf_dir / "dev" / "vars" / "env.tfvars"
-        if dev_tf_vars_path.exists():
-            with open(dev_tf_vars_path, "w", encoding="utf-8") as f:
-                f.write(f'dev_project_id = "{dev_project}"\n')
-            console.print("✅ Updated dev env.tfvars")
-
-    # Apply dev Terraform if dev project is provided
-    if dev_project:
-        dev_tf_dir = tf_dir / "dev"
-        if dev_tf_dir.exists():
-            console.print("\n🏗️ Applying dev Terraform configuration...")
-            if local_state:
-                run_command(["terraform", "init", "-backend=false"], cwd=dev_tf_dir)
-            else:
-                run_command(["terraform", "init"], cwd=dev_tf_dir)
-            run_command(
-                [
-                    "terraform",
-                    "apply",
-                    "-auto-approve",
-                    "--var-file",
-                    "vars/env.tfvars",
-                ],
-                cwd=dev_tf_dir,
+    if not skip_terraform:
+        # Setup Terraform backend if not using local state
+        if not local_state:
+            console.print("\n🔧 Setting up remote Terraform backend...")
+            setup_terraform_backend(
+                tf_dir=tf_dir,
+                project_id=cicd_project,
+                region=region,
+                repository_name=repository_name,
             )
-            console.print("✅ Dev environment deployed")
+            console.print("✅ Remote Terraform backend configured")
         else:
-            console.print("ℹ️ No dev Terraform directory found")
+            console.print("\n📝 Using local Terraform state (remote backend disabled)")
 
-    # Apply prod Terraform
-    console.print("\n🚀 Applying prod Terraform configuration...")
-    if local_state:
-        run_command(["terraform", "init", "-backend=false"], cwd=tf_dir)
-    else:
-        run_command(["terraform", "init"], cwd=tf_dir)
+        # Prepare Terraform variables
+        env_vars_path = tf_dir / "vars" / "env.tfvars"
+        terraform_vars = {
+            "staging_project_id": staging_project,
+            "prod_project_id": prod_project,
+            "cicd_runner_project_id": cicd_project,
+            "region": region,
+            "repository_name": repository_name,
+            "repository_owner": repository_owner
+            or run_command(
+                ["gh", "api", "user", "--jq", ".login"], capture_output=True
+            ).stdout.strip(),
+        }
 
-    # Prepare environment variables for Terraform
-    terraform_env_vars = {}
-    if (
-        cicd_runner == "google_cloud_build"
-        and detected_mode == "programmatic"
-        and github_pat
-    ):
-        terraform_env_vars["GITHUB_TOKEN"] = (
-            github_pat  # For GitHub provider authentication
+        # Add CI/CD runner specific variables
+        if cicd_runner == "google_cloud_build":
+            terraform_vars.update(
+                {
+                    "host_connection_name": host_connection_name,
+                    "create_cb_connection": str(create_cb_connection).lower(),
+                    "create_repository": str(
+                        terraform_create_repository
+                    ).lower(),  # Use original state
+                    "github_app_installation_id": github_app_installation_id,
+                    "github_pat_secret_id": oauth_token_secret_id,
+                }
+            )
+        else:  # github_actions
+            terraform_vars["create_repository"] = str(
+                terraform_create_repository
+            ).lower()  # Use original state
+
+        # Write Terraform variables
+        with open(env_vars_path, "w", encoding="utf-8") as f:
+            for var_name, var_value in terraform_vars.items():
+                if var_value in ("true", "false"):  # Boolean values
+                    f.write(f"{var_name} = {var_value}\n")
+                elif var_value is not None:  # String values
+                    f.write(f'{var_name} = "{var_value}"\n')
+
+        console.print("✅ Updated env.tfvars with variables")
+
+        # Update dev environment vars if dev project provided
+        if dev_project:
+            dev_tf_vars_path = tf_dir / "dev" / "vars" / "env.tfvars"
+            if dev_tf_vars_path.exists():
+                with open(dev_tf_vars_path, "w", encoding="utf-8") as f:
+                    f.write(f'dev_project_id = "{dev_project}"\n')
+                console.print("✅ Updated dev env.tfvars")
+
+        # Apply dev Terraform if dev project is provided
+        if dev_project:
+            dev_tf_dir = tf_dir / "dev"
+            if dev_tf_dir.exists():
+                console.print("\n🏗️ Applying dev Terraform configuration...")
+                if local_state:
+                    run_command(["terraform", "init", "-backend=false"], cwd=dev_tf_dir)
+                else:
+                    run_command(["terraform", "init"], cwd=dev_tf_dir)
+                run_command(
+                    [
+                        "terraform",
+                        "apply",
+                        "-auto-approve",
+                        "--var-file",
+                        "vars/env.tfvars",
+                    ],
+                    cwd=dev_tf_dir,
+                )
+                console.print("✅ Dev environment deployed")
+            else:
+                console.print("ℹ️ No dev Terraform directory found")
+
+        # Apply prod Terraform
+        console.print("\n🚀 Applying prod Terraform configuration...")
+        if local_state:
+            run_command(["terraform", "init", "-backend=false"], cwd=tf_dir)
+        else:
+            run_command(["terraform", "init"], cwd=tf_dir)
+
+        # Prepare environment variables for Terraform
+        terraform_env_vars = {}
+        if (
+            cicd_runner == "google_cloud_build"
+            and detected_mode == "programmatic"
+            and github_pat
+        ):
+            terraform_env_vars["GITHUB_TOKEN"] = (
+                github_pat  # For GitHub provider authentication
+            )
+
+        run_command(
+            ["terraform", "apply", "-auto-approve", "--var-file", "vars/env.tfvars"],
+            cwd=tf_dir,
+            env_vars=terraform_env_vars if terraform_env_vars else None,
         )
-
-    run_command(
-        ["terraform", "apply", "-auto-approve", "--var-file", "vars/env.tfvars"],
-        cwd=tf_dir,
-        env_vars=terraform_env_vars if terraform_env_vars else None,
-    )
-    console.print("✅ Prod/Staging infrastructure deployed")
+        console.print("✅ Prod/Staging infrastructure deployed")
 
     config = ProjectConfig(
         staging_project_id=staging_project,
@@ -931,10 +939,11 @@ def setup_cicd(
     else:
         console.print(f"• GitHub Actions: {repo_url}/actions")
 
-    if not local_state:
-        console.print(f"• Terraform State: gs://{cicd_project}-terraform-state")
-    else:
-        console.print("• Terraform State: Local")
+    if not skip_terraform:
+        if not local_state:
+            console.print(f"• Terraform State: gs://{cicd_project}-terraform-state")
+        else:
+            console.print("• Terraform State: Local")
 
     console.print("\n💡 Next steps:")
     console.print("1. Commit and push your code to the repository")

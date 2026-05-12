@@ -1,3 +1,0 @@
-skips:
-- B603  # Ignore warnings about calling subprocess.Popen without shell=True
-- B607  # Ignore warnings about calling subprocess.Popen without a full path to executable

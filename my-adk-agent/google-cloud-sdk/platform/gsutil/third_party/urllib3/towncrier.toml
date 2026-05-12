@@ -1,7 +1,0 @@
-[tool.towncrier]
-package = "urllib3"
-package_dir = "src"
-filename = "CHANGES.rst"
-directory = "changelog"
-issue_format = "`#{issue} <https://github.com/urllib3/urllib3/issues/{issue}>`__"
-title_format = "{version} ({project_date})"

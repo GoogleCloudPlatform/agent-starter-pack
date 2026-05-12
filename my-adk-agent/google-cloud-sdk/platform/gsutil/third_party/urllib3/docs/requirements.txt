@@ -1,6 +1,0 @@
--r ../dev-requirements.txt
-sphinx>=7.2.6
-requests
-furo
-sphinx-copybutton
-sphinxext-opengraph

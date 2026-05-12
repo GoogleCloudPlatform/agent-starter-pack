@@ -1,0 +1,6 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+from sys import argv
+
+if argv[1:] != ["no-input"]:
+    input()

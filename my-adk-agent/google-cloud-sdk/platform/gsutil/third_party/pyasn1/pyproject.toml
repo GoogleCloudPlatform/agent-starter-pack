@@ -1,0 +1,71 @@
+[build-system]
+requires = [
+    "setuptools"
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyasn1"
+license.text = "BSD-2-Clause"  # Replace with 'license' once Python 3.8 is dropped
+description = "Pure-Python implementation of ASN.1 types and DER/BER/CER codecs (X.208)"
+readme = "README.md"
+authors = [
+    {name = "Ilya Etingof", email = "etingof@gmail.com"}
+]
+maintainers = [
+    {name = "pyasn1 maintenance organization"},
+    {name = "Christian Heimes", email = "christian@python.org"}
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Intended Audience :: Telecommunications Industry",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Communications",
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+dynamic = ["version"]
+
+[project.urls]
+"Homepage" = "https://github.com/pyasn1/pyasn1"
+"Documentation" = "https://pyasn1.readthedocs.io"
+"Source" = "https://github.com/pyasn1/pyasn1"
+"Issues" = "https://github.com/pyasn1/pyasn1/issues"
+"Changelog" = "https://pyasn1.readthedocs.io/en/latest/changelog.html"
+
+[tool.setuptools]
+zip-safe = true
+platforms = ["any"]
+# Additional files to include in the distribution (replaces MANIFEST.in functionality)
+include-package-data = true
+license-files = ["LICENSE.rst"]  # Replace with 'project.license-files' once Python 3.8 is dropped
+
+[tool.setuptools.dynamic]
+version = {attr = "pyasn1.__version__"}
+
+[tool.setuptools.packages.find]
+include = [
+    "pyasn1*"
+]
+
+[tool.setuptools.package-data]
+"*" = [
+    "*.rst",
+    "*.md"
+]

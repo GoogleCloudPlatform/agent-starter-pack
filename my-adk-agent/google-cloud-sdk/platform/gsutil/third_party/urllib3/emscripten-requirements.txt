@@ -1,0 +1,3 @@
+pytest-pyodide==0.54.0
+pyodide-build==0.24.1
+webdriver-manager==4.0.1

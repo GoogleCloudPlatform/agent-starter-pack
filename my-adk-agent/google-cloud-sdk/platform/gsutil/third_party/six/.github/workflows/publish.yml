@@ -1,0 +1,39 @@
+name: Upload package
+
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -U build twine
+    - name: Build package
+      run: |
+        python -m build
+    - name: Publish package
+      env:
+        TWINE_USERNAME: "__token__"
+      run: |
+        if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+          export TWINE_REPOSITORY="testpypi"
+          export TWINE_PASSWORD="${{ secrets.TEST_PYPI_UPLOAD_TOKEN }}"
+        elif [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+          export TWINE_REPOSITORY="pypi"
+          export TWINE_PASSWORD="${{ secrets.PYPI_UPLOAD_TOKEN }}"
+        else
+          echo "Unknown event name: ${GITHUB_EVENT_NAME}"
+          exit 1
+        fi
+        python -m twine upload dist/*

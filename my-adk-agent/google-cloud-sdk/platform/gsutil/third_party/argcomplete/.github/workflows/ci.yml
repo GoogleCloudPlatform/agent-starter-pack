@@ -1,0 +1,45 @@
+name: Python package
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{matrix.os}}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-20.04, ubuntu-latest, macos-13, macos-latest]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: ${{matrix.python-version}}
+        allow-prereleases: true
+    - name: Install CI dependencies
+      run: |
+        [[ $(uname) == Linux ]] && sudo apt-get install --yes rpm tcsh fish zsh
+        [[ $(uname) == Darwin ]] && brew install bash tcsh fish
+        # Some runners have python-argcomplete preinstalled
+        # as a dependency of pipx, which interferes with the tests.
+        [[ $(uname) == Darwin ]] && brew uninstall --ignore-dependencies python-argcomplete || true
+        python -m pip install --quiet --upgrade codecov
+    - run: make install
+    - run: make lint
+    - run: make test
+    - uses: codecov/codecov-action@v5
+      if: ${{matrix.python-version == '3.12' && matrix.os == 'ubuntu-22.04'}}
+  isort:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: isort/isort-action@v1.1.0
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/ruff-action@v1
+      - uses: astral-sh/ruff-action@v1
+        with:
+          args: "format --check"

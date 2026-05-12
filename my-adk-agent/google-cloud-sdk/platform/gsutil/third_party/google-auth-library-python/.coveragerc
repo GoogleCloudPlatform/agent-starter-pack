@@ -1,0 +1,17 @@
+[run]
+branch = True
+
+[report]
+omit =
+    */samples/*
+    */conftest.py
+    */google-cloud-sdk/lib/*
+    # NOTE: Temporarily disabling coverage for `_requests_base.py`.
+    */_requests_base.py
+exclude_lines =
+    # Re-enable the standard pragma
+    pragma: NO COVER
+    # Ignore debug-only repr
+    def __repr__
+    # Don't complain if tests don't hit defensive assertion code:
+    raise NotImplementedError

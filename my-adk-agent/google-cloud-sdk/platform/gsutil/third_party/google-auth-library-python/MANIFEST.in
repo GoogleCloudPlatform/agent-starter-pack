@@ -1,0 +1,4 @@
+include README.rst LICENSE CHANGELOG.rst
+recursive-include tests *
+global-exclude *.pyc __pycache__
+global-include *.typed

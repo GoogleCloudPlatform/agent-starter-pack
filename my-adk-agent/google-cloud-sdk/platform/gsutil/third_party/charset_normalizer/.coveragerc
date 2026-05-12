@@ -1,0 +1,28 @@
+[run]
+source =
+    charset_normalizer
+# Needed for Python 3.11 and lower
+disable_warnings = no-sysmon
+
+[paths]
+source =
+    src/charset_normalizer
+    */charset_normalizer
+    *\charset_normalizer
+
+[report]
+omit =
+    src/charset_normalizer/__main__.py
+
+exclude_lines =
+    except ModuleNotFoundError:
+    except ImportError:
+    pass
+    import
+    raise NotImplementedError
+    .* # Platform-specific.*
+    .*:.* # Python \d.*
+    .* # Abstract
+    .* # Defensive:
+    if (?:typing.)?TYPE_CHECKING:
+    ^\s*?\.\.\.\s*$

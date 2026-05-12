@@ -1,0 +1,4 @@
+# These are supported funding model platforms
+tidelift: pypi/charset-normalizer
+github:
+  - Ousret

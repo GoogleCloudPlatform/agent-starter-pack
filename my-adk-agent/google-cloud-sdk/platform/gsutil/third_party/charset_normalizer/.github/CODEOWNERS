@@ -1,0 +1,9 @@
+# Restrict all files related to deploying to
+# require lead maintainer approval.
+
+.github/workflows/          @Ousret
+.github/CODEOWNERS          @Ousret
+src/charset_normalizer/     @Ousret
+pyproject.toml              @Ousret
+tests/                      @Ousret
+data/                       @Ousret

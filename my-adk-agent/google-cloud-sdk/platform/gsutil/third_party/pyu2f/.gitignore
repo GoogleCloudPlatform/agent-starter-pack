@@ -1,0 +1,15 @@
+*~
+*.py[cod]
+.pytest_cache/
+.python-version
+venv
+*.swp
+
+.tox/
+.cache/
+
+build/
+dist/
+*.egg-info
+
+*.bak

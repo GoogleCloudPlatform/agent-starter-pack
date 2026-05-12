@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "backend"
+backend-path = ["_mypyc_hook"]
+
+[project]
+name = "charset-normalizer"
+description = "The Real First Universal Charset Detector. Open, modern and actively maintained alternative to Chardet."
+license = {text = "MIT"}
+keywords = ["encoding", "charset", "charset-detector", "detector", "normalization", "unicode", "chardet", "detect"]
+authors = [
+  {name = "Ahmed R. TAHRI", email="tahri.ahmed@proton.me"},
+]
+maintainers = [
+  {name = "Ahmed R. TAHRI", email="tahri.ahmed@proton.me"},
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Text Processing :: Linguistic",
+  "Topic :: Utilities",
+  "Typing :: Typed",
+]
+requires-python = ">=3.7"
+dynamic = ["version", "readme"]
+
+[project.optional-dependencies]
+unicode_backport = []
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["charset_normalizer", "charset_normalizer.cli", ]
+
+[tool.setuptools.dynamic]
+version = {attr = "charset_normalizer.__version__"}
+readme = {file = ["README.md", "CHANGELOG.md", "LICENSE"], content-type = "text/markdown"}
+
+[project.scripts]
+normalizer = "charset_normalizer.cli:cli_detect"
+
+[project.urls]
+"Changelog" = "https://github.com/jawah/charset_normalizer/blob/master/CHANGELOG.md"
+"Documentation" = "https://charset-normalizer.readthedocs.io/"
+"Code" = "https://github.com/jawah/charset_normalizer"
+"Issue tracker" = "https://github.com/jawah/charset_normalizer/issues"
+
+[tool.pytest.ini_options]
+log_level = "DEBUG"
+filterwarnings = [
+    "error",
+]
+
+[tool.isort]
+profile = "black"
+add_imports = "from __future__ import annotations"
+
+[tool.mypy]
+check_untyped_defs = true
+disallow_any_generics = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+no_implicit_optional = true
+no_implicit_reexport = true
+show_error_codes = true
+strict_equality = true
+warn_redundant_casts = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = false

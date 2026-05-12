@@ -1,0 +1,247 @@
+# Copyright 2026 Google. This software is provided as-is, without warranty or
+# representation for any use or purpose. Your use of it is subject to your
+# agreement with Google.
+include .env
+export
+.PHONY: setup-infra destroy-infra deploy-agent deploy-service push-databricks-secret agent-export-deps service-export-deps guard-%
+
+# --- Infrastructure Management ---
+# Setup all GCP infrastructure using Terraform
+setup-infra: guard-GOOGLE_CLOUD_PROJECT \
+             guard-GOOGLE_CLOUD_LOCATION \
+             guard-PENALTY_CONTEST_DOCS_BUCKET \
+             guard-LOGS_BUCKET_NAME \
+             guard-BATCH_QUEUE_NAME \
+             guard-PENALTY_CONTEST_SERVICE_SA \
+             guard-PENALTY_CONTEST_AGENT_SA \
+             guard-DATABRICKS_CLIENT_SECRET_ID
+	@echo "==============================================================================="
+	@echo "| 🔧 Setting up infrastructure (Terraform)                                     |"
+	@echo "==============================================================================="
+	cd terraform && terraform init && \
+	TF_VAR_project_id=$(GOOGLE_CLOUD_PROJECT) \
+	TF_VAR_region=$(GOOGLE_CLOUD_LOCATION) \
+	TF_VAR_penalty_contest_docs_bucket=$(PENALTY_CONTEST_DOCS_BUCKET) \
+	TF_VAR_logs_bucket_name=$(LOGS_BUCKET_NAME) \
+	TF_VAR_batch_queue_name=$(BATCH_QUEUE_NAME) \
+	TF_VAR_penalty_contest_service_sa=$(PENALTY_CONTEST_SERVICE_SA) \
+	TF_VAR_penalty_contest_agent_sa=$(PENALTY_CONTEST_AGENT_SA) \
+	TF_VAR_databricks_client_secret_id=$(DATABRICKS_CLIENT_SECRET_ID) \
+	terraform apply -auto-approve
+
+# Destroy all GCP infrastructure using Terraform
+destroy-infra: guard-GOOGLE_CLOUD_PROJECT \
+               guard-GOOGLE_CLOUD_LOCATION \
+               guard-DATABRICKS_CLIENT_SECRET_ID
+	@echo "==============================================================================="
+	@echo "| 🔥 Destroying infrastructure (Terraform)                                     |"
+	@echo "==============================================================================="
+	cd terraform && \
+	TF_VAR_project_id=$(GOOGLE_CLOUD_PROJECT) \
+	TF_VAR_region=$(GOOGLE_CLOUD_LOCATION) \
+	TF_VAR_databricks_client_secret_id=$(DATABRICKS_CLIENT_SECRET_ID) \
+	terraform destroy -auto-approve
+
+# --- Secret Management ---
+# Pushes the Databricks client secret to GCP Secret Manager.
+push-databricks-secret: guard-DATABRICKS_CLIENT_SECRET \
+                        guard-DATABRICKS_CLIENT_SECRET_ID \
+                        guard-GOOGLE_CLOUD_PROJECT
+	@echo "==============================================================================="
+	@echo "| 🔐 Syncing Databricks Secret to Secret Manager                              |"
+	@echo "==============================================================================="
+	@if gcloud secrets versions describe latest --secret="$(DATABRICKS_CLIENT_SECRET_ID)" \
+		--project="$(GOOGLE_CLOUD_PROJECT)" >/dev/null 2>&1; then \
+		echo "INFO: Secret versions already exist. Skipping push."; \
+	else \
+		echo "INFO: No versions found. Pushing secret value..."; \
+		if printf "%s" "$(DATABRICKS_CLIENT_SECRET)" | \
+			gcloud secrets versions add "$(DATABRICKS_CLIENT_SECRET_ID)" \
+			--data-file=- \
+			--project="$(GOOGLE_CLOUD_PROJECT)" > /dev/null; then \
+			echo "SUCCESS: Initial secret version created successfully."; \
+		else \
+			echo "ERROR: Failed to push secret. Ensure the secret resource exists and you have permissions."; \
+			exit 1; \
+		fi; \
+	fi
+
+# --- Agent Deployment ---
+# Export dependencies for the agent
+agent-export-deps:
+	@echo "# Exporting dependencies to requirements file using uv export."
+	@(uv export --no-hashes --no-header --no-dev --no-emit-project \
+		--no-annotate \
+		> src/penalty_contest_agent/app_utils/.requirements.txt \
+		2>/dev/null || \
+	uv export --no-hashes --no-header --no-dev --no-emit-project \
+		> src/penalty_contest_agent/app_utils/.requirements.txt)
+
+# Define runtime environment variables for the agent
+# These are the only variables that will be available inside the agent container.
+AGENT_RUNTIME_ENV_VARS := \
+	GOOGLE_GENAI_USE_VERTEXAI=$(GOOGLE_GENAI_USE_VERTEXAI),\
+	AGENT_NAME=$(AGENT_NAME),\
+	LLM_MODEL=$(LLM_MODEL),\
+	GEMINI_LOCATION=$(GEMINI_LOCATION),\
+	LOGS_BUCKET_NAME=$(LOGS_BUCKET_NAME),\
+	TELEMETRY_BQ_DATASET_ID=$(TELEMETRY_BQ_DATASET_ID),\
+	DB_ENGINE_TYPE=$(DB_ENGINE_TYPE),\
+	DB_DATASET_ID=$(DB_DATASET_ID),\
+	DATABRICKS_HOST=$(DATABRICKS_HOST),\
+	DATABRICKS_CLIENT_ID=$(DATABRICKS_CLIENT_ID),\
+	DATABRICKS_WAREHOUSE_ID=$(DATABRICKS_WAREHOUSE_ID),\
+	TBL_SMARTSUB_PENALTIES=$(TBL_SMARTSUB_PENALTIES),\
+	TBL_GEOINFRA_WORKS=$(TBL_GEOINFRA_WORKS),\
+	TBL_GEOINFRA_PROTOCOLS=$(TBL_GEOINFRA_PROTOCOLS),\
+	TBL_WFM_SERVICE_ORDERS=$(TBL_WFM_SERVICE_ORDERS),\
+	TBL_SAP_CONTRACTS=$(TBL_SAP_CONTRACTS),\
+	MAX_DISTANCE=$(MAX_DISTANCE),\
+	PROXIMITY_THRESHOLD=$(PROXIMITY_THRESHOLD),\
+	MAX_ROWS=$(MAX_ROWS),\
+	LOOKBACK_YEARS=$(LOOKBACK_YEARS)
+
+# Deploy the Agent to Vertex AI Agent Engine
+deploy-agent: guard-GOOGLE_CLOUD_PROJECT \
+              guard-GOOGLE_CLOUD_LOCATION \
+              guard-PENALTY_CONTEST_AGENT_SA \
+              guard-DATABRICKS_CLIENT_SECRET_ID \
+              guard-VPC_NETWORK \
+              guard-NETWORK_ATTACHMENT \
+              guard-DNS_PEERING_DOMAINS \
+              push-databricks-secret \
+              agent-export-deps
+	@echo "==============================================================================="
+	@echo "| 🚀 Deploying Agent to Vertex AI Agent Engine                                 |"
+	@echo "==============================================================================="
+	cd src && uv run -m penalty_contest_agent.app_utils.deploy \
+		--project=$(GOOGLE_CLOUD_PROJECT) \
+		--location=$(GOOGLE_CLOUD_LOCATION) \
+		--display-name="sabesp-penalty-agent" \
+		--source-packages=./penalty_contest_agent \
+		--source-packages=./penalty_contest_common \
+		--entrypoint-module=penalty_contest_agent.agent_engine_app \
+		--entrypoint-object=agent_engine \
+		--requirements-file=penalty_contest_agent/app_utils/.requirements.txt \
+		--cpu=4 \
+		--memory=8Gi \
+		--num-workers=9 \
+		--container-concurrency=36 \
+		--min-instances=1 \
+		--max-instances=2 \
+		--vpc-network=$(VPC_NETWORK) \
+		--network-attachment=$(NETWORK_ATTACHMENT) \
+		--dns-peering-domains="$(DNS_PEERING_DOMAINS)" \
+		--set-env-vars="$(AGENT_RUNTIME_ENV_VARS)" \
+		--set-secrets="DATABRICKS_CLIENT_SECRET=$(DATABRICKS_CLIENT_SECRET_ID)" \
+		--service-account=$(PENALTY_CONTEST_AGENT_SA)@$(GOOGLE_CLOUD_PROJECT).iam.gserviceaccount.com
+
+# --- Service Deployment ---
+# Export dependencies for the Cloud Run service
+service-export-deps:
+	uv export --only-group penalty-contest-service --no-hashes --no-header \
+		--no-dev --no-emit-project > src/penalty_contest_service/requirements.txt
+
+# Deploy the Cloud Run service directly from source
+deploy-service: guard-GOOGLE_CLOUD_PROJECT \
+                guard-GOOGLE_CLOUD_LOCATION \
+                guard-PENALTY_CONTEST_SERVICE_SA \
+                guard-AGENT_ENGINE_ID \
+                guard-PENALTY_CONTEST_DOCS_BUCKET \
+                guard-BATCH_QUEUE_NAME \
+                guard-BATCH_QUEUE_DISPATCH_INTERVAL_SECONDS \
+                guard-DATABRICKS_HOST \
+                guard-DATABRICKS_CLIENT_ID \
+                guard-DATABRICKS_CLIENT_SECRET_ID \
+                guard-DATABRICKS_WAREHOUSE_ID \
+                guard-DB_DATASET_ID \
+                guard-TBL_SMARTSUB_PENALTIES \
+                guard-TELEMETRY_BQ_DATASET_ID \
+                guard-PENALTY_LOOKUP_START_DATE \
+                guard-VPC_NETWORK \
+                guard-VPC_SUBNET \
+                push-databricks-secret \
+                service-export-deps
+	@echo "==============================================================================="
+	@echo "| 🚀 Deploying Cloud Run Service (Direct Source)                              |"
+	@echo "==============================================================================="
+	@echo "Using AGENT_ENGINE_ID: $(AGENT_ENGINE_ID)"
+	gcloud run deploy penalty-contest-service \
+		--quiet \
+		--source src \
+		--region $(GOOGLE_CLOUD_LOCATION) \
+		--project $(GOOGLE_CLOUD_PROJECT) \
+		--platform managed \
+		--no-allow-unauthenticated \
+		--network $(VPC_NETWORK) \
+		--subnet $(VPC_SUBNET) \
+		--vpc-egress all-traffic \
+		--timeout 3600 \
+		--cpu 4 \
+		--memory 8Gi \
+		--concurrency 4 \
+		--min-instances 1 \
+		--max-instances 4 \
+		--service-account $(PENALTY_CONTEST_SERVICE_SA)@$(GOOGLE_CLOUD_PROJECT).iam.gserviceaccount.com \
+		--set-env-vars WEB_CONCURRENCY=4 \
+		--set-env-vars GUNICORN_TIMEOUT=3600 \
+		--set-env-vars AGENT_ENGINE_ID=$(AGENT_ENGINE_ID) \
+		--set-env-vars GOOGLE_CLOUD_PROJECT=$(GOOGLE_CLOUD_PROJECT) \
+		--set-env-vars GOOGLE_CLOUD_LOCATION=$(GOOGLE_CLOUD_LOCATION) \
+		--set-env-vars PENALTY_CONTEST_SERVICE_SA=$(PENALTY_CONTEST_SERVICE_SA) \
+		--set-env-vars PENALTY_CONTEST_DOCS_BUCKET=$(PENALTY_CONTEST_DOCS_BUCKET) \
+		--set-env-vars BATCH_QUEUE_NAME=$(BATCH_QUEUE_NAME) \
+		--set-env-vars BATCH_QUEUE_DISPATCH_INTERVAL_SECONDS=$(BATCH_QUEUE_DISPATCH_INTERVAL_SECONDS) \
+		--set-env-vars DATABRICKS_SERVER_HOSTNAME=$(DATABRICKS_HOST) \
+		--set-env-vars DATABRICKS_CLIENT_ID=$(DATABRICKS_CLIENT_ID) \
+		--set-env-vars DATABRICKS_HTTP_PATH=$(DATABRICKS_WAREHOUSE_ID) \
+		--set-env-vars DB_DATASET_ID=$(DB_DATASET_ID) \
+		--set-env-vars TBL_SMARTSUB_PENALTIES=$(TBL_SMARTSUB_PENALTIES) \
+		--set-env-vars BIGQUERY_TELEMETRY_DATASET=$(TELEMETRY_BQ_DATASET_ID) \
+		--set-env-vars PENALTY_LOOKUP_START_DATE=$(PENALTY_LOOKUP_START_DATE) \
+		--set-secrets="DATABRICKS_ACCESS_TOKEN=$(DATABRICKS_CLIENT_SECRET_ID):latest"
+	@$(MAKE) deploy-scheduler
+
+# Deploy the Cloud Scheduler job to trigger the daily dispatch
+deploy-scheduler: guard-GOOGLE_CLOUD_PROJECT \
+                  guard-GOOGLE_CLOUD_LOCATION \
+                  guard-PENALTY_CONTEST_SERVICE_SA
+	@echo "==============================================================================="
+	@echo "| 🚀 Deploying Cloud Scheduler Job                                            |"
+	@echo "==============================================================================="
+	$(eval SERVICE_URL=$(shell gcloud run services describe \
+		penalty-contest-service --format='value(status.url)' \
+		--region $(GOOGLE_CLOUD_LOCATION) \
+		--project $(GOOGLE_CLOUD_PROJECT) 2>/dev/null))
+	@if [ -z "$(SERVICE_URL)" ]; then \
+		echo "ERROR: Cloud Run service 'penalty-contest-service' not found."; \
+		echo "Deploy the service first."; \
+		exit 1; \
+	fi; \
+	echo "Updating scheduler job 'penalty-contest-dispatch' for: $(SERVICE_URL)"; \
+	gcloud scheduler jobs update http penalty-contest-dispatch \
+		--project=$(GOOGLE_CLOUD_PROJECT) \
+		--location=$(GOOGLE_CLOUD_LOCATION) \
+		--schedule="0 6 * * 1-5" \
+		--uri="$(SERVICE_URL)/dispatch-new-penalties" \
+		--http-method=POST \
+		--oidc-service-account-email=$(PENALTY_CONTEST_SERVICE_SA)@$(GOOGLE_CLOUD_PROJECT).iam.gserviceaccount.com \
+		--oidc-token-audience="$(SERVICE_URL)" \
+		--time-zone="America/Sao_Paulo" --quiet 2>/dev/null || \
+	gcloud scheduler jobs create http penalty-contest-dispatch \
+		--project=$(GOOGLE_CLOUD_PROJECT) \
+		--location=$(GOOGLE_CLOUD_LOCATION) \
+		--schedule="0 6 * * 1-5" \
+		--uri="$(SERVICE_URL)/dispatch-new-penalties" \
+		--http-method=POST \
+		--oidc-service-account-email=$(PENALTY_CONTEST_SERVICE_SA)@$(GOOGLE_CLOUD_PROJECT).iam.gserviceaccount.com \
+		--oidc-token-audience="$(SERVICE_URL)" \
+		--time-zone="America/Sao_Paulo" --quiet
+
+# --- Utility Targets ---
+# Guard to ensure environment variables are set
+guard-%:
+	@if [ -z "$($(*))" ]; then \
+		echo "ERROR: Environment variable $(*) is not set."; \
+		exit 1; \
+	fi

@@ -1,0 +1,28 @@
+name: Check
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, opened, reopened, synchronize]
+
+permissions: "read-all"
+
+jobs:
+  check-changelog-entry:
+    name: changelog entry
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@0ad4b8fadaa221de15dcec353f45205ec38ea70b # v4.1.4
+        with:
+          # `towncrier check` runs `git diff --name-only origin/main...`, which
+          # needs a non-shallow clone.
+          fetch-depth: 0
+
+      - name: "Check changelog"
+        if: "!contains(github.event.pull_request.labels.*.name, 'Skip Changelog')"
+        run: |
+          if ! pipx run towncrier check --compare-with origin/${{ github.base_ref }}; then
+          echo "Please see https://github.com/urllib3/urllib3/blob/main/changelog/README.rst for guidance."
+            false
+          fi

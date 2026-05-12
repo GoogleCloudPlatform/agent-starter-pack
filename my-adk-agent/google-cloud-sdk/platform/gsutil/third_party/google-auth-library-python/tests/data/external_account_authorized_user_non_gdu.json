@@ -1,0 +1,10 @@
+{
+    "type": "external_account_authorized_user",
+    "audience": "//iam.fake_universe_domain/locations/global/workforcePools/$WORKFORCE_POOL_ID/providers/$PROVIDER_ID",
+    "refresh_token": "refreshToken",
+    "token_url": "https://sts.fake_universe_domain/v1/oauth/token",
+    "token_info_url": "https://sts.fake_universe_domain/v1/instrospect",
+    "client_id": "clientId",
+    "client_secret": "clientSecret",
+    "universe_domain": "fake_universe_domain"
+}

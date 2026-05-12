@@ -1,0 +1,60 @@
+[build-system]
+requires = ["flit_core >=3.11,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "idna"
+description = "Internationalized Domain Names in Applications (IDNA)"
+readme = "README.rst"
+license = "BSD-3-Clause"
+license-files = ["LICENSE.md"]
+authors = [
+  {name = "Kim Davies", email = "kim+pypi@gumleaf.org"}
+]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Topic :: Internet :: Name Service (DNS)",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Utilities",
+]
+requires-python = ">=3.8"
+dynamic = ["version"]
+
+[project.urls]
+"Source" = "https://github.com/kjd/idna"
+"Changelog" = "https://github.com/kjd/idna/blob/master/HISTORY.rst"
+"Issue tracker" = "https://github.com/kjd/idna/issues"
+
+[tool.flit.sdist]
+exclude = [".gitignore", ".github/"]
+include = ["tests", "tools", "HISTORY.rst"]
+
+[project.optional-dependencies]
+all = [
+    "ruff >= 0.6.2",
+    "mypy >= 1.11.2",
+    "pytest >= 8.3.2",
+    "flake8 >= 7.1.1",
+]
+
+[tool.ruff]
+line-length = 127
+[tool.ruff.lint]
+extend-select = [
+    "I",            # isort
+]

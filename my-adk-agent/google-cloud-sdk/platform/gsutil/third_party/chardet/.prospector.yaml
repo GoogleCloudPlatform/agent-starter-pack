@@ -1,0 +1,24 @@
+strictness: medium
+test-warnings: true
+
+pylint:
+  disable:
+    - line-too-long
+    - too-many-branches
+    - too-many-locals
+    - too-many-arguments
+
+pycodestyle:
+  disable:
+    - E122
+    - E126
+    - E131
+    - E203
+    - E221
+    - E231
+    - E261
+    - E262
+    - E501
+
+mccabe:
+  run: false

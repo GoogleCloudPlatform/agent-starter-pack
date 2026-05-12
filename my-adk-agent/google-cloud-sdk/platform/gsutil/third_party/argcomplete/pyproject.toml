@@ -1,0 +1,83 @@
+[project]
+name = "argcomplete"
+description = "Bash tab completion for argparse"
+readme = "README.rst"
+requires-python = ">=3.8"
+license = { text = "Apache Software License" }
+authors = [{ name = "Andrey Kislyuk"}, {email = "kislyuk@gmail.com" }]
+maintainers = [{ name = "Andrey Kislyuk"}, {email = "kislyuk@gmail.com" }]
+dynamic = ["version"]
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: POSIX",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
+  "Development Status :: 5 - Production/Stable",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: System :: Shells",
+  "Topic :: Terminals",
+]
+
+[project.scripts]
+activate-global-python-argcomplete = "argcomplete.scripts.activate_global_python_argcomplete:main"
+python-argcomplete-check-easy-install-script = "argcomplete.scripts.python_argcomplete_check_easy_install_script:main"
+register-python-argcomplete = "argcomplete.scripts.register_python_argcomplete:main"
+
+[project.optional-dependencies]
+test = ["coverage", "pexpect", "wheel", "ruff", "mypy"]
+
+[project.urls]
+"Homepage"= "https://github.com/kislyuk/argcomplete"
+"Documentation"= "https://kislyuk.github.io/argcomplete"
+"Source Code"= "https://github.com/kislyuk/argcomplete"
+"Issue Tracker"= "https://github.com/kislyuk/argcomplete/issues"
+"Change Log"= "https://github.com/kislyuk/argcomplete/blob/develop/Changes.rst"
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.black]
+line-length = 120
+exclude = ".*/version.py"
+skip-string-normalization = true
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = ".*/version.py"
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+per-file-ignores = {"argcomplete/__init__.py" = ["F401"]}
+
+[tool.ruff.format]
+quote-style = "preserve"
+
+[tool.mypy]
+files = [
+  "argcomplete"
+]
+check_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = "importlib.*"
+ignore_missing_imports = true

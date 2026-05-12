@@ -1,0 +1,45 @@
+=============================
+What's New in Pyparsing 3.x.0
+=============================
+
+:author: Paul McGuire
+
+:date: month, year
+
+:abstract: This document summarizes the changes made
+    in the 3.x.x releases of pyparsing.
+
+.. sectnum::    :depth: 4
+
+.. contents::   :depth: 4
+
+
+Supported Python versions
+=========================
+
+New Features
+============
+
+API Changes
+===========
+
+Discontinued Features
+=====================
+
+
+Other discontinued features
+---------------------------
+
+
+Fixed Bugs
+==========
+
+
+New / Enhanced Examples
+=======================
+
+
+Acknowledgments
+===============
+Again, thanks to the many contributors who submitted issues, questions, suggestions,
+and PRs.

@@ -1,0 +1,59 @@
+---
+name: Build and upload to PyPI
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: tag to build
+        required: true
+        type: string
+      testpypi:
+        description: upload to Test PyPI
+        type: boolean
+        default: false
+      pypi:
+        description: upload to PyPI
+        type: boolean
+        default: false
+
+jobs:
+  tests:
+    uses: ./.github/workflows/main.yml
+    with:
+      tag: ${{ inputs.tag }}
+  pypi:
+    name: Build and upload to PyPI
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Set up Python 3.x
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: "Update pip"
+        run: python -m pip install --upgrade pip
+      - name: "Install 'build' and 'twine'"
+        run: python -m pip install --upgrade build twine
+      - name: "Run 'build'"
+        run: "python -m build"
+      - name: "Run twine check"
+        run: "python -m twine check dist/*"
+      - name: Publish distribution to Test PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
+        if: inputs.testpypi || false
+      - name: Publish distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+        if: inputs.pypi || false

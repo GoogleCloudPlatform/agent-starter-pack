@@ -37,6 +37,7 @@ from vertexai._genai.types import (
 {%- else %}
 from vertexai._genai.types import AgentEngine, AgentEngineConfig, IdentityType
 {%- endif %}
+from vertexai._genai.types.common import DnsPeeringConfig, PscInterfaceConfig
 {%- if cookiecutter.is_adk_live %}
 
 from {{cookiecutter.agent_directory}}.app_utils.gcs import create_bucket_if_not_exists
@@ -297,6 +298,21 @@ def setup_agent_identity(client: Any, project: str, display_name: str) -> Any:
     default=False,
     help="Enable agent identity for per-agent IAM access control (Preview feature)",
 )
+@click.option(
+    "--network-attachment",
+    default=None,
+    help="VPC Network Attachment for private deployment",
+)
+@click.option(
+    "--vpc-network",
+    default=None,
+    help="VPC Network for private DNS Peering",
+)
+@click.option(
+    "--dns-peering-domains",
+    multiple=True,
+    help="Private DNS zones for PSC. Can be specified multiple times (e.g., --dns-peering-domains=example.com --dns-peering-domains=myzone.internal)",
+)
 def deploy_agent_engine_app(
     project: str | None,
     location: str,
@@ -317,6 +333,9 @@ def deploy_agent_engine_app(
     container_concurrency: int,
     num_workers: int,
     agent_identity: bool,
+    network_attachment: str | None,
+    vpc_network: str | None,
+    dns_peering_domains: tuple[str, ...],
 ) -> AgentEngine:
     """Deploy the agent engine app to Vertex AI."""
 
@@ -327,6 +346,13 @@ def deploy_agent_engine_app(
     env_vars: dict[str, Any] = parse_key_value_pairs(set_env_vars)
     secrets = parse_secrets(set_secrets)
     labels_dict = parse_key_value_pairs(labels)
+
+    # Parse DNS Peering domains (support comma separated values or multiple parameters)
+    dns_peering_domains_list = []
+    for d in dns_peering_domains:
+        dns_peering_domains_list.extend(
+            [item.strip() for item in d.split(",") if item.strip()]
+        )
 
     # Merge secrets into env_vars (secrets override plain env vars)
     env_vars.update(secrets)  # type: ignore
@@ -366,6 +392,12 @@ def deploy_agent_engine_app(
         params.append(("Service Account", service_account))
     if agent_identity:
         params.append(("Agent Identity", "Enabled (Preview)"))
+    if network_attachment:
+        params.append(("Network Attachment", network_attachment))
+    if vpc_network:
+        params.append(("VPC Network", vpc_network))
+    if dns_peering_domains_list:
+        params.append(("DNS Peering Domains", ", ".join(dns_peering_domains_list)))
     for name, value in params:
         click.echo(f"  {name}: {value}")
     if env_vars:
@@ -388,6 +420,34 @@ def deploy_agent_engine_app(
 {%- if cookiecutter.agent_garden %}
     labels_dict["deployed-with"] = "agent-garden"
 {%- endif %}
+
+    # Configure private VPC connection using network attachment and optional DNS peering
+    psc_config = None
+    if network_attachment:
+        dns_peering_configs = None
+        if vpc_network and dns_peering_domains_list:
+            dns_peering_configs = [
+                DnsPeeringConfig(
+                    domain=domain if domain.endswith(".") else f"{domain}.",
+                    target_project=project,
+                    target_network=vpc_network,
+                )
+                for domain in dns_peering_domains_list
+            ]
+        elif vpc_network or dns_peering_domains_list:
+            logging.warning(
+                "Both vpc_network and dns_peering_domains are required for DNS peering. "
+                "Skipping DNS peering configuration."
+            )
+        psc_config = PscInterfaceConfig(
+            network_attachment=network_attachment,
+            dns_peering_configs=dns_peering_configs,
+        )
+    elif vpc_network or dns_peering_domains_list:
+        logging.warning(
+            "network_attachment is required for private VPC connection. "
+            "Skipping PSC interface configuration."
+        )
 
     # Dynamically import the agent instance to generate class_methods
     logging.info(f"Importing {entrypoint_module}.{entrypoint_object}")
@@ -421,6 +481,7 @@ def deploy_agent_engine_app(
         agent_server_mode=AgentServerMode.EXPERIMENTAL,  # Enable bidi streaming
         resource_limits={"cpu": cpu, "memory": memory},
         identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
+        psc_interface_config=psc_config,
     )
 {%- else %}
     # Generate class methods spec from register_operations
@@ -445,6 +506,7 @@ def deploy_agent_engine_app(
         agent_framework="google-adk",
 {%- endif %}
         identity_type=IdentityType.AGENT_IDENTITY if agent_identity else None,
+        psc_interface_config=psc_config,
     )
 {%- endif %}
 

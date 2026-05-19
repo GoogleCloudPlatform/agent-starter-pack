@@ -6,9 +6,12 @@ authors = [
     {name = "Your Name", email = "your@email.com"},
 ]
 dependencies = [
+    # cookiecutter.extra_dependencies: {{ cookiecutter.extra_dependencies | default([]) | join(', ') if cookiecutter.extra_dependencies else '' }}
+{%- if cookiecutter.extra_dependencies %}
 {%- for dep in cookiecutter.extra_dependencies %}
     "{{ dep }}",
 {%- endfor %}
+{%- endif %}
     "opentelemetry-instrumentation-google-genai>=0.1.0,<1.0.0",
     "gcsfs>=2024.11.0",
 {%- if not cookiecutter.is_adk %}

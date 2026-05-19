@@ -63,7 +63,12 @@ log_cli_date_format = "%Y-%m-%d %H:%M:%S"
 line-length = 88
 target-version = "py311"
 include = ["agent_starter_pack/cli/**/*.py", "tests/**/*.py"]
-exclude = ["./agent_starter_pack/agents/**/*.py", "./tests/cicd/scripts/**/*.py"]
+exclude = [
+    "./agent_starter_pack/agents/**/*.py",
+    "./tests/cicd/scripts/**/*.py",
+    "./agent_starter_pack/base_template/**",
+    "./agent_starter_pack/deployment_targets/**",
+]
 
 [tool.ruff.lint]
 preview = true

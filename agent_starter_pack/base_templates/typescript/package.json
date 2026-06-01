@@ -20,7 +20,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.0",
     "typescript-eslint": "^8.50.1",
-    "vitest": "^4.0.16"
+    "vitest": "^4.1.0"
   },
   "dependencies": {
     "@google/adk": "^0.3.0",

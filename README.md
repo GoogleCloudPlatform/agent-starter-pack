@@ -104,7 +104,7 @@ Looking to explore more ADK examples? Check out the [ADK Samples Repository](htt
 
 ## 🌟 Community Showcase
 
-Explore amazing projects built with the Agent Starter Pack! 
+Explore amazing projects built with the Agent Starter Pack!
 
 **[View Community Showcase →](https://googlecloudplatform.github.io/agent-starter-pack/guide/community-showcase)**
 

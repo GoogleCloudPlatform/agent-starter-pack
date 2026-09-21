@@ -112,7 +112,7 @@ def display_agents_from_path(
         console.print(table)
 
 
-def list_remote_agents(remote_source: str, scan_from_root: bool = False) -> None:
+def list_remote_agents(remote_source: str) -> None:
     """Lists agents from a remote source (Git URL)."""
     spec = parse_agent_spec(remote_source)
     if not spec:
@@ -122,13 +122,11 @@ def list_remote_agents(remote_source: str, scan_from_root: bool = False) -> None
     console.print(f"\nFetching agents from [bold blue]{remote_source}[/]...")
 
     try:
-        # fetch_remote_template clones the repo and returns a path to the
-        # specific template directory within the repo.
-        template_dir_path = fetch_remote_template(spec)
-
-        # fetch_remote_template always returns a tuple of (repo_path, template_path)
-        repo_path, template_path = template_dir_path
-        scan_path = repo_path if scan_from_root else template_path
+        # fetch_remote_template returns (template_dir, temp_dir): the directory
+        # inside the clone that matches the requested template path, plus the
+        # clone root. When the spec has no sub-path (e.g. the adk-samples repo
+        # itself) template_dir is the clone root.
+        template_dir, _temp_dir = fetch_remote_template(spec)
 
         # Check if this is ADK samples to enable inference
         is_adk_samples = (
@@ -136,7 +134,7 @@ def list_remote_agents(remote_source: str, scan_from_root: bool = False) -> None
         )
 
         display_agents_from_path(
-            scan_path, remote_source, is_adk_samples=is_adk_samples
+            template_dir, remote_source, is_adk_samples=is_adk_samples
         )
 
     except (RuntimeError, FileNotFoundError) as e:
@@ -167,7 +165,7 @@ def list_agents(adk: bool, source: str | None) -> None:
         return
 
     if adk:
-        list_remote_agents("https://github.com/google/adk-samples", scan_from_root=True)
+        list_remote_agents("https://github.com/google/adk-samples")
         return
 
     if source:

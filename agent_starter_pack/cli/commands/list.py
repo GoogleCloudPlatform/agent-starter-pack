@@ -14,6 +14,7 @@
 
 import logging
 import pathlib
+import shutil
 import sys
 
 import click
@@ -121,12 +122,15 @@ def list_remote_agents(remote_source: str) -> None:
 
     console.print(f"\nFetching agents from [bold blue]{remote_source}[/]...")
 
+    temp_root: str | None = None
     try:
         # fetch_remote_template returns (template_dir, temp_dir): the directory
         # inside the clone that matches the requested template path, plus the
-        # clone root. When the spec has no sub-path (e.g. the adk-samples repo
-        # itself) template_dir is the clone root.
-        template_dir, _temp_dir = fetch_remote_template(spec)
+        # clone root, which the caller is responsible for cleaning up. When the
+        # spec has no sub-path (e.g. the adk-samples repo itself) template_dir is
+        # the clone root.
+        template_dir, temp_dir = fetch_remote_template(spec)
+        temp_root = str(temp_dir)
 
         # Check if this is ADK samples to enable inference
         is_adk_samples = (
@@ -139,6 +143,10 @@ def list_remote_agents(remote_source: str) -> None:
 
     except (RuntimeError, FileNotFoundError) as e:
         console.print(f"Error: {e}", style="bold red")
+    finally:
+        # The clone is only needed while the table is being built.
+        if temp_root:
+            shutil.rmtree(temp_root, ignore_errors=True)
 
 
 @click.command("list")

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pathlib
+
 from click.testing import CliRunner
 from pytest_mock import MockerFixture
 
@@ -38,3 +40,39 @@ def test_list_agents_local(mocker: MockerFixture) -> None:
     assert "Agent Two" in result.output
     assert "Description two" in result.output
     mock_get_agents.assert_called_once()
+
+
+def test_list_remote_agents_scans_template_dir(
+    mocker: MockerFixture, tmp_path: pathlib.Path
+) -> None:
+    """A remote source has to be scanned from the template dir inside the clone.
+
+    fetch_remote_template returns (template_dir, temp_dir). Taking the second
+    element points the scan at the clone root, which has no python/agents/ in
+    it, so listing reports "No agents found" for a perfectly valid source.
+    """
+    clone_root = tmp_path / "asp_remote_template_test"
+    repo_root = clone_root / "repo"
+    agent_dir = repo_root / "python" / "agents" / "data-science"
+    agent_dir.mkdir(parents=True)
+    (agent_dir / "agent.py").write_text("root_agent = None\n")
+    (agent_dir / "pyproject.toml").write_text(
+        '[project]\nname = "data-science"\ndescription = "Sample agent"\n'
+    )
+
+    mocker.patch(
+        "agent_starter_pack.cli.commands.list.fetch_remote_template",
+        return_value=(repo_root, clone_root),
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        list_agents, ["--source", "https://github.com/google/adk-samples"]
+    )
+
+    assert result.exit_code == 0
+    assert "data-science" in result.output
+    assert "No agents found" not in result.output
+
+    # the temporary clone is only needed while the table is rendered
+    assert not clone_root.exists()

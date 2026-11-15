@@ -1,133 +1,25 @@
 [project]
 name = "agent-starter-pack"
-version = "0.41.3"
-description = "CLI to bootstrap production-ready Google Cloud GenAI agent projects from templates."
-authors = [
-    { name = "Google LLC", email = "agent-starter-pack@google.com" },
-]
-license = {text = "Apache-2.0"}
+version = "1.0.0"
+description = "Agent Starter Pack is now Agents CLI (google-agents-cli)."
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "click>=8.1.7",
-    "cookiecutter>=2.6.0, <3.0.0",
-    "google-cloud-aiplatform>=1.120.0",
-    "rich>=13.7.0",
-    "pyyaml>=6.0.1",
-    "backoff>=2.2.1",
-    "tomli>=1.1.0; python_version < \"3.11\"",
-    "requests>=2.31.0",
-]
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = ["google-agents-cli"]
 
-[dependency-groups]
-dev = [
-    "google-cloud-logging~=3.11.4",
-    "grpcio~=1.70.0",
-    "myst-parser~=2.0.0",
-    "pytest~=7.4.3",
-    "pytest-cov~=4.1.0",
-    "pytest-mock~=3.12.0",
-    "pytest-rerunfailures>=15.0",
-    "pytest-xdist~=3.6.1",
-    "rich~=13.7.0",
-    "sphinx~=7.1.2",
-    "sphinx-autoapi~=3.0.0",
-    "sphinx-click~=5.1.0",
-    "sphinx-rtd-theme~=2.0.0",
-    "types-PyYAML",
-    "types-requests",
-]
+[project.urls]
+Homepage = "https://github.com/google/agents-cli"
 
-[project.optional-dependencies]
-jupyter = [
-    "ipykernel>=6.29.5",
-    "jupyter"
-]
-
-lint = [
-    "ruff",
-    "ty",
-    "codespell",
-]
-
-[tool.pytest.ini_options]
-pythonpath = [".", "agent_starter_pack", "agent_starter_pack/agents/agentic_rag"]
-testpaths = ["tests"]
-addopts = "-s -v --ignore=tests/integration"
-log_cli = true
-log_cli_level = "INFO"
-log_cli_format = "%(asctime)s - %(levelname)s - %(message)s"
-log_cli_date_format = "%Y-%m-%d %H:%M:%S"
-
-[tool.ruff]
-line-length = 88
-target-version = "py311"
-include = ["agent_starter_pack/cli/**/*.py", "tests/**/*.py"]
-exclude = ["./agent_starter_pack/agents/**/*.py", "./tests/cicd/scripts/**/*.py"]
-
-[tool.ruff.lint]
-preview = true
-select = [
-    "E",   # pycodestyle
-    "F",   # pyflakes
-    "W",   # pycodestyle warnings
-    "I",   # isort
-    "C",  # flake8-comprehensions
-    "B",   # flake8-bugbear
-    "UP", # pyupgrade
-    "RUF", # ruff specific rules
-    "PLW1514", # unspecified-encoding (require encoding in open calls)
-]
-ignore = ["E501", "C901", "RUF001", "UP036"]
-
-[tool.ruff.lint.isort]
-known-first-party = ["app", "frontend"]
-
-[tool.ty]
-# ty is Astral's Rust-based type checker (same team as ruff/uv)
-# See: https://docs.astral.sh/ty/
-
-[tool.ty.environment]
-python-version = "3.11"
-
-[tool.ty.src]
-# Exclude agent templates and cicd scripts from type checking
-exclude = [
-    "agent_starter_pack/agents/**",
-    "tests/cicd/scripts/**",
-]
-
-[tool.ty.rules]
-# Ignore missing third-party type stubs
-unresolved-import = "ignore"
-
-[[tool.ty.overrides]]
-# Relax type checking for test files (pytest fixtures with yield have complex types)
-include = ["tests/**"]
-[tool.ty.overrides.rules]
-invalid-return-type = "ignore"
-
-[tool.codespell]
-ignore-words-list = "rouge"
-skip = "./locust_env/*,uv.lock,.venv,**/*.ipynb"
+[project.scripts]
+agent-starter-pack = "google.agents.cli.main:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
-[project.scripts]
-agent-starter-pack = "agent_starter_pack.cli.main:cli"
-
+# No module of its own: the script runs the agents-cli root command.
 [tool.hatch.build.targets.wheel]
-packages = ["agent_starter_pack", "llm.txt"]
-exclude = [
-    "agent_starter_pack/resources/idx",
-    "agent_starter_pack/resources/idx_ag",
-    "agent_starter_pack/resources/containers",
-]
+bypass-selection = true
 
-[tool.uv]
-index-url = "https://pypi.org/simple"
-
-[tool.uv.workspace]
-members = ["temp"]
+[tool.hatch.build.targets.sdist]
+include = ["pyproject.toml", "README.md", "LICENSE"]
